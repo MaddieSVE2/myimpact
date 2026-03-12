@@ -314,15 +314,18 @@ export default function Intro() {
               },
             ].map((s, i) => (
               <FadeIn key={s.name} delay={i * 0.12}>
-                <div className="mi-story-card" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <div style={{
+                  borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
+                  transition: "all 0.3s", height: "100%", display: "flex", flexDirection: "column",
+                }}>
                   <div style={{ padding: "28px 24px 20px", flex: 1 }}>
-                    <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>{s.name}</p>
-                    <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2 }}>{s.age}</p>
-                    <p style={{ fontSize: 15, color: "#4A5568", lineHeight: 1.65, marginTop: 12, fontStyle: "italic" }}>"{s.quote}"</p>
+                    <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
+                    <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
+                    <p style={{ fontSize: 15, color: "#4A5568", lineHeight: 1.65, marginTop: 12, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
                   </div>
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-                    <p className="mi-fraunces" style={{ fontSize: 26, fontWeight: 900, color: C.orange }}>{s.value}</p>
-                    <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4 }}>{s.what}</p>
+                    <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 26, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
+                    <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
                   </div>
                 </div>
               </FadeIn>
