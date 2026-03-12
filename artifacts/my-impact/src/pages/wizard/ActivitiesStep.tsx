@@ -4,8 +4,16 @@ import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface AnalysedActivity {
+  friendlyQuestion: string;
+  unit: string;
+  unitLabel: string;
+  defaultQuantity: number;
+  sdgHint: string;
+}
 
 type Phase = "select" | "quantify";
 
@@ -25,6 +33,10 @@ export default function ActivitiesStep() {
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customHours, setCustomHours] = useState(10);
+  const [analysing, setAnalysing] = useState(false);
+  const [analysed, setAnalysed] = useState<AnalysedActivity | null>(null);
+  const [customQuantity, setCustomQuantity] = useState(20);
+  const [analyseError, setAnalyseError] = useState("");
 
   const preferredCategories = useMemo(() => {
     return new Set(
@@ -97,11 +109,39 @@ export default function ActivitiesStep() {
     }
   };
 
+  const analyseActivity = async () => {
+    if (!customName.trim()) return;
+    setAnalysing(true);
+    setAnalyseError("");
+    setAnalysed(null);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/custom-activity/analyse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: customName.trim() }),
+      });
+      if (!res.ok) throw new Error("API error");
+      const data: AnalysedActivity = await res.json();
+      setAnalysed(data);
+      setCustomQuantity(data.defaultQuantity);
+    } catch {
+      setAnalyseError("Couldn't analyse that activity — try a different description.");
+    } finally {
+      setAnalysing(false);
+    }
+  };
+
   const handleAddCustom = () => {
     if (!customName.trim()) return;
-    addActivity({ activityId: `custom_${Date.now()}`, quantity: 1, hoursPerYear: customHours });
+    const hrs = analysed
+      ? analysed.unit === "hour" ? customQuantity : customHours
+      : customHours;
+    addActivity({ activityId: `custom_${Date.now()}`, quantity: 1, hoursPerYear: hrs });
     setCustomName("");
     setCustomHours(10);
+    setAnalysed(null);
+    setCustomQuantity(20);
     setShowCustom(false);
   };
 
@@ -199,28 +239,77 @@ export default function ActivitiesStep() {
                         animate={{ opacity: 1 }}
                         className="space-y-3"
                       >
+                        {/* Step 1: name */}
                         <div>
                           <label className="block text-xs font-medium text-foreground mb-1">What do you do?</label>
-                          <input
-                            value={customName}
-                            onChange={e => setCustomName(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && handleAddCustom()}
-                            placeholder="e.g. Litter picking, befriending scheme, peer support…"
-                            className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                            autoFocus
-                          />
-                          <p className="text-xs text-muted-foreground mt-1.5">Hours will default to 10 — you can adjust this on your results page.</p>
+                          <div className="flex gap-2">
+                            <input
+                              value={customName}
+                              onChange={e => { setCustomName(e.target.value); setAnalysed(null); setAnalyseError(""); }}
+                              onKeyDown={e => e.key === "Enter" && !analysed && analyseActivity()}
+                              placeholder="e.g. Litter picking, befriending scheme, peer support…"
+                              className="flex-1 p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
+                              autoFocus
+                              disabled={analysing}
+                            />
+                            {!analysed && (
+                              <button
+                                onClick={analyseActivity}
+                                disabled={!customName.trim() || analysing}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white disabled:opacity-40 transition-all shrink-0"
+                                style={{ background: "#E8633A" }}
+                              >
+                                {analysing ? (
+                                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</>
+                                ) : (
+                                  <><Sparkles className="w-3.5 h-3.5" /> Analyse</>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          {analyseError && (
+                            <p className="text-xs text-destructive mt-1.5">{analyseError}</p>
+                          )}
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleAddCustom}
-                            disabled={!customName.trim()}
-                            className="px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 disabled:opacity-40 transition-colors"
+
+                        {/* Step 2: AI-generated question + quantity */}
+                        {analysed && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-muted/30 rounded-lg p-4 space-y-3"
                           >
-                            Add
-                          </button>
+                            <div className="flex items-start gap-2">
+                              <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
+                              <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="number"
+                                min="1"
+                                value={customQuantity}
+                                onChange={e => setCustomQuantity(Number(e.target.value))}
+                                className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                              />
+                              <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
+                            </div>
+                            {analysed.sdgHint && (
+                              <p className="text-xs text-muted-foreground">Aligns with {analysed.sdgHint}</p>
+                            )}
+                          </motion.div>
+                        )}
+
+                        <div className="flex gap-2">
+                          {analysed ? (
+                            <button
+                              onClick={handleAddCustom}
+                              className="px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 transition-colors"
+                            >
+                              Add activity
+                            </button>
+                          ) : null}
                           <button
-                            onClick={() => setShowCustom(false)}
+                            onClick={() => { setShowCustom(false); setAnalysed(null); setCustomName(""); setAnalyseError(""); }}
                             className="px-4 py-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
                           >
                             Cancel
