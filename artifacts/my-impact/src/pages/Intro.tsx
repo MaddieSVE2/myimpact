@@ -37,6 +37,7 @@ function FadeIn({ children, delay = 0, className = "" }: { children: React.React
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(28px)",
         transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+        height: "100%",
       }}
     >
       {children}
@@ -123,13 +124,13 @@ export default function Intro() {
         @keyframes miScrollDown { 0% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(0.3) translateY(20px); } }
         @keyframes miPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.olive}; animation: miPulse 2s infinite; display: inline-block; flex-shrink: 0; }
-        .mi-count-card { padding: 28px 24px; border-radius: 16px; background: ${C.cream}; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; }
+        .mi-count-card { padding: 28px 24px; border-radius: 16px; background: ${C.cream}; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; height: 100%; box-sizing: border-box; }
         .mi-count-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
-        .mi-story-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: all 0.3s; }
+        .mi-story-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: all 0.3s; height: 100%; display: flex; flex-direction: column; }
         .mi-story-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.08); }
         .mi-how-step { display: flex; gap: 28px; padding: 36px 0; border-bottom: 1px solid rgba(0,0,0,0.07); }
         .mi-how-step:last-child { border-bottom: none; }
-        .mi-org-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px 24px; }
+        .mi-org-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px 24px; height: 100%; box-sizing: border-box; position: relative; }
         .mi-cta-section { background: ${C.orange}; padding: clamp(60px,8vw,100px) 5%; text-align: center; position: relative; overflow: hidden; }
         .mi-cta-section::before { content: ''; position: absolute; top: -50%; right: -30%; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); }
         .mi-btn-white { background: white; color: ${C.dark}; padding: 16px 40px; border-radius: 100px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.25s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
@@ -138,7 +139,7 @@ export default function Intro() {
           .mi-proof-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
           .mi-cv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
           .mi-how-step { flex-direction: column; gap: 12px; }
-          .mi-counts-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
+          .mi-counts-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
       {/* ── HERO ── */}
@@ -227,7 +228,7 @@ export default function Intro() {
             <p className="mi-section-label">What counts</p>
             <p className="mi-section-title">If it helps people or planet, it counts.</p>
           </FadeIn>
-          <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
+          <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "stretch" }}>
             {[
               { icon: "🤝", bg: `${C.lightBlue}55`, title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
               { icon: "💚", bg: `${C.olive}28`, title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
@@ -288,7 +289,7 @@ export default function Intro() {
             <p className="mi-section-label">Real stories</p>
             <p className="mi-section-title">What does social value look like?</p>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24, alignItems: "stretch" }}>
             {[
               {
                 name: "Aisha",
@@ -322,33 +323,6 @@ export default function Intro() {
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <p className="mi-fraunces text-[#f06127]" style={{ fontSize: 26, fontWeight: 900, color: C.olive }}>{s.value}</p>
                     <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4 }}>{s.what}</p>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-      {/* ── HOW IT WORKS ── */}
-      <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <FadeIn>
-            <p className="mi-section-label">How it works</p>
-            <p className="mi-section-title">Three minutes to your first report.</p>
-          </FadeIn>
-          <div>
-            {[
-              { num: "01", title: "Log what you did", desc: "Helped at a food bank? Visited your nan? Picked up litter? Tell us what you did and how long it took. It takes about 30 seconds." },
-              { num: "02", title: "We calculate the value", desc: "My Impact maps your activity to real financial proxies — the same methodology used by councils and charities to measure social value. Your contribution gets a pound figure." },
-              { num: "03", title: "See your impact grow", desc: "Your personal dashboard tracks everything over time. Watch your total social value add up, hit milestones, and unlock badges as you go." },
-              { num: "04", title: "Share your proof", desc: "Generate Impact Cards — shareable visuals showing your social value. Perfect for CVs, funding applications, UCAS statements, DofE portfolios, or just showing people what you're about." },
-            ].map((s, i) => (
-              <FadeIn key={s.num} delay={i * 0.1}>
-                <div className="mi-how-step">
-                  <div className="mi-fraunces" style={{ fontSize: 52, fontWeight: 900, color: C.slate, opacity: 0.3, lineHeight: 1, minWidth: 68 }}>{s.num}</div>
-                  <div>
-                    <h3 className="mi-fraunces" style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{s.title}</h3>
-                    <p style={{ fontSize: 16, color: "#5A6572", lineHeight: 1.65 }}>{s.desc}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -419,16 +393,28 @@ export default function Intro() {
               Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data — ready for reporting, funding bids, and programme evaluation.
             </p>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, alignItems: "stretch" }}>
             {[
-              { title: "Evidence outcomes", desc: "Credible social value data from the same methodology used by councils and housing associations." },
-              { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme." },
-              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Feeds directly into SVE for SROI analysis." },
-              { title: "Keep it safe", desc: "GDPR-compliant, pseudonymised, under-16 consent flows built in. Designed with safeguarding first." },
+              { title: "Evidence outcomes", desc: "Credible social value data from the same methodology used by councils and housing associations.", comingSoon: false },
+              { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme.", comingSoon: true },
+              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Feeds directly into SVE for SROI analysis.", comingSoon: true },
+              { title: "Keep it safe", desc: "GDPR-compliant, pseudonymised, under-16 consent flows built in. Designed with safeguarding first.", comingSoon: false },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-org-card">
-                  <h3 className="mi-fraunces" style={{ color: C.orange, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{c.title}</h3>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                    <h3 className="mi-fraunces" style={{ color: C.orange, fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
+                    {c.comingSoon && (
+                      <span style={{
+                        flexShrink: 0,
+                        fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+                        background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                        color: "rgba(255,255,255,0.45)", borderRadius: 100, padding: "3px 9px", whiteSpace: "nowrap",
+                      }}>
+                        Coming soon
+                      </span>
+                    )}
+                  </div>
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               </FadeIn>
@@ -454,18 +440,20 @@ export default function Intro() {
       </section>
       {/* ── FOOTER ── */}
       <footer style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
-        <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 900, color: "white", marginBottom: 6 }}>
-          my<span style={{ color: C.orange }}>.</span>impact
-        </p>
+        <img
+          src={`${import.meta.env.BASE_URL}images/myimpact.png`}
+          alt="My Impact"
+          style={{ height: 40, marginBottom: 16, display: "inline-block" }}
+        />
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>Your impact, counted.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
-          {["About", "How it works", "Privacy", "Contact"].map(l => (
+          {["About", "Privacy", "Contact"].map(l => (
             <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
           ))}
           <Link href="/org" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>For organisations</Link>
         </div>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-          Powered by Social Value Engine methodology · SVI Accredited · UK data centres
+          Powered by Social Value Engine methodology · UK data centres
         </p>
       </footer>
     </div>
