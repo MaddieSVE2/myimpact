@@ -295,11 +295,11 @@ export function Sidekick() {
         /* Collapsed strip */
         <div
           onClick={() => setOpen(true)}
-          className="flex-1 flex items-center justify-center cursor-pointer hover:bg-accent transition-colors pt-16 select-none"
+          className="flex-1 flex items-center justify-center cursor-pointer hover:bg-[#E8633A] transition-colors pt-16 select-none group"
           title="Open Sidekick AI"
         >
           <span
-            className="text-[11px] font-semibold text-muted-foreground tracking-[1.5px] uppercase"
+            className="text-[11px] font-semibold text-muted-foreground group-hover:text-white tracking-[1.5px] uppercase transition-colors"
             style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
           >
             SIDEKICK
