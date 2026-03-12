@@ -213,7 +213,6 @@ export default function Intro() {
             <Link href="/wizard/actions" className="mi-btn-hero">
               Calculate my impact →
             </Link>
-            <a href="#how" className="mi-btn-ghost">See how it works</a>
           </div>
         </div>
 
