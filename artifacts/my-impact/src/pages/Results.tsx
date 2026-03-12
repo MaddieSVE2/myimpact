@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { formatCurrency } from "@/lib/utils";
@@ -12,6 +12,9 @@ import {
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer
+} from "recharts";
 
 // Metric tile — styled to match original My Impact design
 function MetricTile({
@@ -190,14 +193,6 @@ export default function Results() {
 
   const nextMilestone = getNextMilestone(result.totalValue);
 
-  // Stacked bar data
-  const total = result.totalValue || 1;
-  const segments = [
-    { label: "Direct Impact", value: result.impactValue, colour: "#F06127" },
-    { label: "Contribution", value: result.contributionValue, colour: "#3b82f6" },
-    { label: "Donations", value: result.donationsValue, colour: "#22c55e" },
-    { label: "Personal Dev", value: result.personalDevelopmentValue, colour: "#f59e0b" },
-  ].filter(s => s.value > 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 pb-28">
@@ -276,32 +271,100 @@ export default function Results() {
         </motion.div>
       )}
 
-      {/* Stacked proportion bar */}
-      {segments.length > 1 && (
+      {/* Donut charts */}
+      {(segments.length > 0 || result.sdgBreakdowns.length > 0) && (
         <motion.div
-          className="mb-8"
+          className="mb-8 grid grid-cols-2 gap-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.12 }}
         >
-          <div className="h-3 rounded-full overflow-hidden flex gap-0.5 bg-muted">
-            {segments.map(s => (
-              <div
-                key={s.label}
-                style={{ width: `${(s.value / total) * 100}%`, backgroundColor: s.colour }}
-                className="rounded-full"
-                title={`${s.label}: ${formatCurrency(s.value)}`}
-              />
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-            {segments.map(s => (
-              <div key={s.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.colour }} />
-                {s.label}
+          {/* Activity donut */}
+          {result.activityBreakdowns.length > 0 && (
+            <div className="bg-white border border-border rounded-xl p-4">
+              <p className="text-xs font-semibold text-muted-foreground mb-3">By activity</p>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={result.activityBreakdowns.map((a: any) => ({
+                      name: a.activityName,
+                      value: a.impactValue,
+                      color: a.sdgColor || "#F06127",
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={42}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {result.activityBreakdowns.map((a: any, i: number) => (
+                      <Cell key={i} fill={a.sdgColor || "#F06127"} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number) => formatCurrency(val)}
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1 mt-1">
+                {result.activityBreakdowns.map((a: any) => (
+                  <div key={a.activityId} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "#F06127" }} />
+                    <span className="truncate flex-1">{a.activityName}</span>
+                    <span className="font-medium text-foreground shrink-0">{formatCurrency(a.impactValue)}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* SDG donut */}
+          {result.sdgBreakdowns.length > 0 && (
+            <div className="bg-white border border-border rounded-xl p-4">
+              <p className="text-xs font-semibold text-muted-foreground mb-3">By SDG</p>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={result.sdgBreakdowns.map((s: any) => ({
+                      name: `SDG ${s.sdg}`,
+                      value: s.value,
+                      color: s.sdgColor,
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={42}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {result.sdgBreakdowns.map((s: any, i: number) => (
+                      <Cell key={i} fill={s.sdgColor} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number) => formatCurrency(val)}
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1 mt-1">
+                {result.sdgBreakdowns.map((s: any) => (
+                  <div key={s.sdg} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span
+                      className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shrink-0"
+                      style={{ backgroundColor: s.sdgColor }}
+                    >
+                      {s.sdg}
+                    </span>
+                    <span className="truncate flex-1">{s.sdgName || `SDG ${s.sdg}`}</span>
+                    <span className="font-medium text-foreground shrink-0">{formatCurrency(s.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -338,65 +401,6 @@ export default function Results() {
         />
       </motion.div>
 
-      {/* Activity breakdown */}
-      {result.activityBreakdowns.length > 0 && (
-        <motion.div
-          className="mb-8 bg-white border border-border rounded-xl overflow-hidden"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Value by activity</h3>
-          </div>
-          <div className="divide-y divide-border">
-            {result.activityBreakdowns.map((a: any) => (
-              <div key={a.activityId} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "#F06127" }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{a.activityName}</p>
-                  <p className="text-xs text-muted-foreground">{a.sdg}</p>
-                </div>
-                <p className="text-sm font-semibold text-foreground shrink-0">{formatCurrency(a.impactValue)}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* SDG breakdown */}
-      {result.sdgBreakdowns.length > 0 && (
-        <motion.div
-          className="mb-10 bg-white border border-border rounded-xl p-5"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          <h3 className="text-sm font-semibold text-foreground mb-4">UN SDG alignment</h3>
-          <div className="space-y-2.5">
-            {result.sdgBreakdowns.map((s: any) => (
-              <div key={s.sdg} className="flex items-center gap-3">
-                <span
-                  className="text-[10px] font-bold text-white px-2 py-0.5 rounded shrink-0"
-                  style={{ backgroundColor: s.sdgColor }}
-                >
-                  SDG {s.sdg}
-                </span>
-                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${Math.min(100, (s.value / result.totalValue) * 100)}%`,
-                      backgroundColor: s.sdgColor,
-                    }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-foreground shrink-0">{formatCurrency(s.value)}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       {/* Fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border">
