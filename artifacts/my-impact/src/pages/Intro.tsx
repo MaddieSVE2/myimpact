@@ -439,9 +439,10 @@ export default function Intro() {
         </p>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>Your impact, counted.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
-          {["About", "How it works", "For organisations", "Privacy", "Contact"].map(l => (
+          {["About", "How it works", "Privacy", "Contact"].map(l => (
             <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
           ))}
+          <Link href="/org" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>For organisations</Link>
         </div>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
           Powered by Social Value Engine methodology · SVI Accredited · UK data centres
