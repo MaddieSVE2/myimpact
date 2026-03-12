@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 
 const C = {
-  dark: "#01343F",
-  teal: "#0A7877",
-  green: "#94A53A",
-  yellow: "#EABD1E",
-  cream: "#F7F5EF",
-  orange: "#F06127",
-  offBlack: "#0D1B1E",
+  dark: "#213547",      // primary dark — hero/proof/orgs background
+  orange: "#E8633A",    // main accent — CTAs, highlights, section labels, "prove it"
+  olive: "#B5BE2E",     // secondary — pound values, story values
+  slate: "#7E8FAD",     // tertiary — step numbers, hours
+  lightBlue: "#A8C8DA", // card icon backgrounds, soft fills
+  cream: "#F7F5EF",     // light section backgrounds
+  offBlack: "#0D1B1E",  // footer background
 };
 
 function useInView(threshold = 0.15) {
@@ -63,7 +63,7 @@ function Counter({ end, prefix = "", suffix = "", duration = 1800 }: { end: numb
 
 export default function Intro() {
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.offBlack, overflowX: "hidden" }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
       <style>{`
         .mi-hero {
           min-height: calc(100vh - 4rem);
@@ -80,7 +80,7 @@ export default function Intro() {
           top: -40%; right: -20%;
           width: 80vw; height: 80vw;
           border-radius: 50%;
-          background: radial-gradient(circle, ${C.teal}50 0%, transparent 70%);
+          background: radial-gradient(circle, ${C.orange}28 0%, transparent 70%);
           pointer-events: none;
         }
         .mi-hero::after {
@@ -89,14 +89,13 @@ export default function Intro() {
           bottom: -20%; left: -10%;
           width: 50vw; height: 50vw;
           border-radius: 50%;
-          background: radial-gradient(circle, ${C.yellow}18 0%, transparent 70%);
+          background: radial-gradient(circle, ${C.lightBlue}22 0%, transparent 70%);
           pointer-events: none;
         }
         .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
-        .mi-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${C.teal}; margin-bottom: 12px; }
-        .mi-section-label.light { color: ${C.yellow}; }
+        .mi-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${C.orange}; margin-bottom: 12px; }
         .mi-section-title { font-family: 'Fraunces', Georgia, serif; font-size: clamp(26px, 4vw, 42px); font-weight: 700; color: ${C.dark}; letter-spacing: -1px; margin-bottom: 48px; max-width: 500px; line-height: 1.15; }
-        .mi-btn-primary {
+        .mi-btn-hero {
           background: ${C.orange};
           color: white;
           padding: 14px 32px;
@@ -111,38 +110,7 @@ export default function Intro() {
           gap: 8px;
           transition: all 0.25s;
         }
-        .mi-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.orange}40; }
-        .mi-btn-hero {
-          background: ${C.yellow};
-          color: ${C.dark};
-          padding: 14px 32px;
-          border-radius: 100px;
-          font-weight: 700;
-          font-size: 15px;
-          text-decoration: none;
-          border: none;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          transition: all 0.25s;
-        }
-        .mi-btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.yellow}45; }
-        .mi-btn-ghost {
-          background: transparent;
-          color: white;
-          padding: 14px 32px;
-          border-radius: 100px;
-          font-weight: 600;
-          font-size: 15px;
-          border: 1px solid rgba(255,255,255,0.25);
-          cursor: pointer;
-          transition: all 0.25s;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-        }
-        .mi-btn-ghost:hover { border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
+        .mi-btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.orange}50; }
         .mi-scroll-hint {
           position: absolute;
           bottom: 28px; left: 50%;
@@ -154,7 +122,7 @@ export default function Intro() {
         .mi-scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent); animation: miScrollDown 2s infinite; }
         @keyframes miScrollDown { 0% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(0.3) translateY(20px); } }
         @keyframes miPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; animation: miPulse 2s infinite; display: inline-block; flex-shrink: 0; }
+        .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.olive}; animation: miPulse 2s infinite; display: inline-block; flex-shrink: 0; }
         .mi-count-card { padding: 28px 24px; border-radius: 16px; background: ${C.cream}; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; }
         .mi-count-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
         .mi-story-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: all 0.3s; }
@@ -162,10 +130,10 @@ export default function Intro() {
         .mi-how-step { display: flex; gap: 28px; padding: 36px 0; border-bottom: 1px solid rgba(0,0,0,0.07); }
         .mi-how-step:last-child { border-bottom: none; }
         .mi-org-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px 24px; }
-        .mi-cta-section { background: ${C.teal}; padding: clamp(60px,8vw,100px) 5%; text-align: center; position: relative; overflow: hidden; }
-        .mi-cta-section::before { content: ''; position: absolute; top: -50%; right: -30%; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%); }
+        .mi-cta-section { background: ${C.orange}; padding: clamp(60px,8vw,100px) 5%; text-align: center; position: relative; overflow: hidden; }
+        .mi-cta-section::before { content: ''; position: absolute; top: -50%; right: -30%; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); }
         .mi-btn-white { background: white; color: ${C.dark}; padding: 16px 40px; border-radius: 100px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.25s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
-        .mi-btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .mi-btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
         @media (max-width: 768px) {
           .mi-proof-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
           .mi-cv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
@@ -183,7 +151,7 @@ export default function Intro() {
             border: "1px solid rgba(255,255,255,0.13)",
             backdropFilter: "blur(8px)",
             padding: "8px 18px", borderRadius: 100,
-            color: C.yellow, fontSize: 12, fontWeight: 700,
+            color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700,
             letterSpacing: 1.5, textTransform: "uppercase" as const,
             marginBottom: 28,
           }}>
@@ -200,7 +168,7 @@ export default function Intro() {
           >
             You already make a difference.<br />
             Now{" "}
-            <span style={{ color: C.yellow, fontStyle: "italic" }}>prove it.</span>
+            <span style={{ color: C.orange, fontStyle: "italic" }}>prove it.</span>
           </h1>
 
           <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 40 }}>
@@ -209,11 +177,9 @@ export default function Intro() {
             <strong style={{ color: "rgba(255,255,255,0.9)" }}>in pounds</strong> — so you can finally see the difference you make.
           </p>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, alignItems: "center" }}>
-            <Link href="/wizard/actions" className="mi-btn-hero">
-              Calculate my impact →
-            </Link>
-          </div>
+          <Link href="/wizard/actions" className="mi-btn-hero">
+            Calculate my impact →
+          </Link>
         </div>
 
         <div className="mi-scroll-hint">
@@ -228,7 +194,7 @@ export default function Intro() {
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p className="mi-fraunces" style={{ fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 24, letterSpacing: -1 }}>
               Your worth isn't measured in{" "}
-              <span style={{ color: C.teal, fontStyle: "italic" }}>GDP.</span>
+              <span style={{ color: C.orange, fontStyle: "italic" }}>GDP.</span>
             </p>
             <p style={{ fontSize: 18, color: "#4A5568", lineHeight: 1.75, maxWidth: 680 }}>
               The economy doesn't count the hours you spend mentoring someone, looking after a relative, picking litter off a riverbank, or running a community group. But that work matters. It holds communities together. And until now, there's been no way for you to see what it's actually worth. We built My Impact to change that.
@@ -246,12 +212,12 @@ export default function Intro() {
           </FadeIn>
           <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
             {[
-              { icon: "🤝", bg: `${C.teal}15`, title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
-              { icon: "💚", bg: `${C.green}22`, title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
-              { icon: "🌱", bg: `${C.green}22`, title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
-              { icon: "🏘️", bg: `${C.yellow}28`, title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
-              { icon: "📢", bg: `${C.teal}15`, title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
-              { icon: "🎓", bg: `${C.yellow}28`, title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
+              { icon: "🤝", bg: `${C.lightBlue}55`, title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
+              { icon: "💚", bg: `${C.olive}28`, title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
+              { icon: "🌱", bg: `${C.olive}28`, title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
+              { icon: "🏘️", bg: `${C.orange}1A`, title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
+              { icon: "📢", bg: `${C.lightBlue}55`, title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
+              { icon: "🎓", bg: `${C.orange}1A`, title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-count-card">
@@ -272,7 +238,7 @@ export default function Intro() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 56 }}>
-              <p className="mi-section-label light">The difference we make</p>
+              <p className="mi-section-label" style={{ color: C.orange }}>The difference we make</p>
               <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1 }}>
                 It adds up faster than you think.
               </h2>
@@ -289,7 +255,7 @@ export default function Intro() {
             ].map((s, i) => (
               <FadeIn key={i} delay={i * 0.12}>
                 <div>
-                  <div className="mi-fraunces" style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.yellow, letterSpacing: -2 }}>
+                  <div className="mi-fraunces" style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.orange, letterSpacing: -2 }}>
                     {s.end === 0 ? `${s.prefix}0${s.suffix}` : <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />}
                   </div>
                   <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.5, maxWidth: 220, margin: "10px auto 0" }}>{s.label}</p>
@@ -335,11 +301,11 @@ export default function Intro() {
                 <div className="mi-story-card">
                   <div style={{ padding: "28px 24px 20px" }}>
                     <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>{s.name}</p>
-                    <p style={{ fontSize: 13, color: C.teal, fontWeight: 600, marginTop: 2 }}>{s.age}</p>
+                    <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2 }}>{s.age}</p>
                     <p style={{ fontSize: 15, color: "#4A5568", lineHeight: 1.65, marginTop: 12, fontStyle: "italic" }}>"{s.quote}"</p>
                   </div>
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <p className="mi-fraunces" style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{s.value}</p>
+                    <p className="mi-fraunces" style={{ fontSize: 26, fontWeight: 900, color: C.olive }}>{s.value}</p>
                     <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4 }}>{s.what}</p>
                   </div>
                 </div>
@@ -365,7 +331,7 @@ export default function Intro() {
             ].map((s, i) => (
               <FadeIn key={s.num} delay={i * 0.1}>
                 <div className="mi-how-step">
-                  <div className="mi-fraunces" style={{ fontSize: 52, fontWeight: 900, color: `${C.teal}25`, lineHeight: 1, minWidth: 68 }}>{s.num}</div>
+                  <div className="mi-fraunces" style={{ fontSize: 52, fontWeight: 900, color: C.slate, opacity: 0.3, lineHeight: 1, minWidth: 68 }}>{s.num}</div>
                   <div>
                     <h3 className="mi-fraunces" style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{s.title}</h3>
                     <p style={{ fontSize: 16, color: "#5A6572", lineHeight: 1.65 }}>{s.desc}</p>
@@ -393,11 +359,11 @@ export default function Intro() {
               </p>
               <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 10, marginTop: 28 }}>
                 {[
-                  { label: "CVs and job applications", bg: `${C.teal}14`, color: C.teal },
-                  { label: "Funding bids", bg: `${C.green}20`, color: C.dark },
-                  { label: "UCAS & DofE", bg: `${C.yellow}30`, color: C.dark },
-                  { label: "Annual reports", bg: `${C.teal}14`, color: C.teal },
-                  { label: "Social media", bg: `${C.green}20`, color: C.dark },
+                  { label: "CVs and job applications", bg: `${C.orange}18`, color: C.orange },
+                  { label: "Funding bids", bg: `${C.olive}28`, color: C.dark },
+                  { label: "UCAS & DofE", bg: `${C.lightBlue}55`, color: C.dark },
+                  { label: "Annual reports", bg: `${C.orange}18`, color: C.orange },
+                  { label: "Social media", bg: `${C.olive}28`, color: C.dark },
                 ].map(t => (
                   <span key={t.label} style={{ padding: "7px 16px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: t.bg, color: t.color }}>
                     {t.label}
@@ -409,22 +375,22 @@ export default function Intro() {
 
           <FadeIn delay={0.15}>
             <div style={{ background: C.cream, borderRadius: 20, padding: "36px 32px", border: "1px solid rgba(0,0,0,0.04)" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.teal, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
               <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.dark, marginBottom: 4 }}>Chloe M.</p>
               <p style={{ fontSize: 14, color: "#5A6572", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
                   <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Total social value</p>
-                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.green }}>£3,150</p>
+                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.olive }}>£3,150</p>
                 </div>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
                   <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Hours contributed</p>
-                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.teal }}>187</p>
+                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.slate }}>187</p>
                 </div>
               </div>
               <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.green}22`, fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
-                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.teal}14`, fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.olive}28`, fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.lightBlue}55`, fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
               </div>
               <p style={{ marginTop: 16, fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Powered by Social Value Engine methodology</p>
             </div>
@@ -436,7 +402,7 @@ export default function Intro() {
       <section id="orgs" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <p className="mi-section-label light">For organisations</p>
+            <p className="mi-section-label" style={{ color: C.orange }}>For organisations</p>
             <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15 }}>
               See the value your people create.
             </h2>
@@ -453,7 +419,7 @@ export default function Intro() {
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-org-card">
-                  <h3 className="mi-fraunces" style={{ color: C.yellow, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{c.title}</h3>
+                  <h3 className="mi-fraunces" style={{ color: C.orange, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{c.title}</h3>
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               </FadeIn>
@@ -469,7 +435,7 @@ export default function Intro() {
             <h2 className="mi-fraunces" style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 }}>
               Ready to see what you're worth?
             </h2>
-            <p style={{ fontSize: 18, color: "rgba(255,255,255,0.75)", marginBottom: 36, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 18, color: "rgba(255,255,255,0.85)", marginBottom: 36, lineHeight: 1.6 }}>
               My Impact is live. Calculate your social value now and be one of the first to turn your positive actions into proof.
             </p>
             <Link href="/wizard/actions" className="mi-btn-white">
@@ -482,7 +448,7 @@ export default function Intro() {
       {/* ── FOOTER ── */}
       <footer style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 900, color: "white", marginBottom: 6 }}>
-          my<span style={{ color: C.yellow }}>.</span>impact
+          my<span style={{ color: C.orange }}>.</span>impact
         </p>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>Your impact, counted.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>

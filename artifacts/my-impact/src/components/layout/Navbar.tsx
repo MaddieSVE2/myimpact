@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award, Menu, X } from "lucide-react";
 
-const DARK = "#01343F";
+const DARK = "#213547";
 
 export function Navbar() {
   const [location] = useLocation();
