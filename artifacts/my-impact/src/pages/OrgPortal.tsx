@@ -59,7 +59,6 @@ export default function OrgPortal() {
         </div>
         <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">Preview</span>
       </div>
-
       {isLoading ? (
         <div className="py-16 flex justify-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -115,9 +114,7 @@ export default function OrgPortal() {
           >
             <div>
               <p className="text-sm font-semibold text-foreground mb-1">Want the full Organisation tier?</p>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-                The full portal includes cohort analytics, challenge tools, branded reports, data export, and multi-programme views — from £500/year.
-              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">The full portal includes cohort analytics, challenge tools, branded reports, data export, and multi-programme views — from £2,500/year.</p>
             </div>
             <a
               href="mailto:hello@socialvalueengine.com?subject=MyImpact Organisation tier"
