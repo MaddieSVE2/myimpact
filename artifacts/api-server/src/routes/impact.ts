@@ -30,21 +30,47 @@ router.post("/suggestions", (req, res) => {
   const body = GetSuggestionsBody.parse(req.body);
   const currentIds = new Set(body.currentActivities);
 
-  const availableActivities = ACTIVITIES.filter((a) => !currentIds.has(a.id));
+  // Map interest labels to categories
+  const INTEREST_CATEGORY_MAP: Record<string, string> = {
+    "The environment": "Environment",
+    "Mental health": "Health",
+    "My community": "Community",
+    "Education": "Education",
+    "Physical health": "Health",
+    "Fairness & equality": "Community",
+    "Animal welfare": "Environment",
+  };
 
+  const preferredCategories = new Set(
+    (body.interests ?? []).map((i) => INTEREST_CATEGORY_MAP[i]).filter(Boolean)
+  );
+
+  const availableActivities = ACTIVITIES.filter((a) => !currentIds.has(a.id));
   const weeklyHours = body.availableHoursPerWeek;
+
+  const reasonsByCategory: Record<string, string> = {
+    Environment: "A great fit for your focus on the environment — this directly reduces harm to the planet.",
+    Community: "Aligned with your interest in community — this helps people who need support most.",
+    Education: "Perfect for your interest in education — it empowers others with knowledge and skills.",
+    Health: "Suits your focus on health — this makes a real difference to wellbeing in your area.",
+  };
+
+  const fallbackReasons: Record<string, string> = {
+    Environment: "This directly reduces environmental harm and supports a more sustainable future.",
+    Community: "Builds stronger communities and helps people who need support most.",
+    Education: "Empowers others with knowledge and skills that last a lifetime.",
+    Health: "Directly improves physical or mental wellbeing for people in your community.",
+  };
 
   const scored = availableActivities.map((a) => {
     const hoursNeeded = a.unit === "hour" ? weeklyHours : 1;
     const yearlyHours = hoursNeeded * 52;
     const estimatedImpact = a.unit === "hour" ? yearlyHours * a.valuePerUnit : a.valuePerUnit * hoursNeeded;
+    const isPreferred = preferredCategories.size > 0 && preferredCategories.has(a.category);
 
-    const reasons: Record<string, string> = {
-      Environment: "Great for the planet — this directly reduces environmental harm.",
-      Community: "Builds stronger communities and helps people who need support most.",
-      Education: "Empowers others with knowledge and skills that last a lifetime.",
-      Health: "Directly improves physical or mental health for people in your community.",
-    };
+    const reason = isPreferred
+      ? (reasonsByCategory[a.category] ?? "A high-impact way to make a real difference.")
+      : (fallbackReasons[a.category] ?? "A high-impact way to make a real difference.");
 
     return {
       activityId: a.id,
@@ -52,10 +78,10 @@ router.post("/suggestions", (req, res) => {
       category: a.category,
       sdg: a.sdg,
       sdgColor: a.sdgColor,
-      reason: reasons[a.category] ?? "A high-impact way to make a difference.",
+      reason,
       estimatedImpactPerYear: Math.round(estimatedImpact * 100) / 100,
       recommendedHoursPerWeek: Math.min(weeklyHours, a.unit === "hour" ? weeklyHours : 1),
-      score: estimatedImpact,
+      score: estimatedImpact * (isPreferred ? 1.5 : 1),
     };
   });
 

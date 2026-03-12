@@ -7,7 +7,7 @@ interface StepProgressProps {
 
 export function StepProgress({ currentStep }: StepProgressProps) {
   const steps = [
-    { id: 1, name: "Actions" },
+    { id: 1, name: "About you" },
     { id: 2, name: "Activities" },
     { id: 3, name: "Contributions" },
   ];

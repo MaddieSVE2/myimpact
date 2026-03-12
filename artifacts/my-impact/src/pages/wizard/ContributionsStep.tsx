@@ -45,9 +45,9 @@ export default function ContributionsStep() {
           <Heart className="w-6 h-6 text-primary" />
         </div>
         
-        <h2 className="text-2xl font-display font-semibold mb-2">Additional Contributions</h2>
+        <h2 className="text-xl font-display font-semibold mb-2">Additional contributions</h2>
         <p className="text-muted-foreground mb-8 text-sm">
-          Include any monetary donations or general volunteering hours not covered in the previous step.
+          Include any monetary donations or general volunteering hours not covered in your activities.
         </p>
 
         <div className="space-y-4">

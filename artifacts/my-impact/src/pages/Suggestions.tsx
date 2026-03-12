@@ -1,86 +1,96 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "wouter";
-import { useWizard } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { useGetSuggestions } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
-import { Lightbulb, ArrowLeft, Star, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function Suggestions() {
-  const { input } = useWizard();
+  const { input, interests } = useWizard();
   const suggestionsMutation = useGetSuggestions();
-  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    if (!hasLoaded) {
-      suggestionsMutation.mutate({
-        data: {
-          currentActivities: input.activities.map(a => a.activityId),
-          availableHoursPerWeek: 5,
-        }
-      });
-      setHasLoaded(true);
-    }
-  }, [hasLoaded, input.activities, suggestionsMutation]);
+    const interestLabels = interests
+      .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
+      .filter(Boolean) as string[];
+
+    suggestionsMutation.mutate({
+      data: {
+        currentActivities: input.activities.map(a => a.activityId),
+        availableHoursPerWeek: 3,
+        interests: interestLabels,
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data, isPending } = suggestionsMutation;
 
+  const interestLabels = interests
+    .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
+    .filter(Boolean);
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-foreground">
-          <Lightbulb className="w-6 h-6" />
+    <div className="max-w-2xl mx-auto px-4 py-10">
+
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-xs font-medium text-primary uppercase tracking-widest">Personalised for you</span>
         </div>
-        <div>
-          <h1 className="text-3xl font-display font-semibold text-foreground">Next Steps</h1>
-          <p className="text-muted-foreground text-sm">Personalised ideas to boost your social value.</p>
-        </div>
+        <h1 className="text-2xl font-display font-semibold text-foreground mb-2">Ideas to boost your impact</h1>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {interestLabels.length > 0
+            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering next year.</>
+            : <>Here are some of the most impactful activities you could add next year.</>
+          }
+        </p>
       </div>
 
+      {/* Suggestions list */}
       {isPending ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-white border border-border p-6 rounded-xl h-48 animate-pulse" />
+            <div key={i} className="h-24 bg-white border border-border rounded-lg animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-3">
           {data?.suggestions.map((sug, idx) => (
-            <motion.div 
+            <motion.div
               key={sug.activityId}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white border border-border rounded-xl overflow-hidden group shadow-sm hover:shadow-md transition-shadow"
+              transition={{ delay: idx * 0.07 }}
+              className="bg-white border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group"
             >
-              <div className="h-1.5 w-full" style={{ backgroundColor: sug.sdgColor }} />
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-background text-foreground border border-border">
-                    {sug.category}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                    <Clock className="w-3.5 h-3.5" /> {sug.recommendedHoursPerWeek} hrs/wk
-                  </span>
-                </div>
-                
-                <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                  {sug.activityName}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                  {sug.reason}
-                </p>
-                
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Estimated Impact</p>
-                    <p className="text-lg font-display font-semibold text-foreground">
-                      +{formatCurrency(sug.estimatedImpactPerYear)}<span className="text-xs text-muted-foreground font-sans font-normal">/yr</span>
-                    </p>
+              {/* Coloured SDG stripe */}
+              <div className="flex items-stretch">
+                <div className="w-1 shrink-0" style={{ backgroundColor: sug.sdgColor }} />
+
+                <div className="flex items-center justify-between gap-4 px-5 py-4 flex-1 min-w-0">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded uppercase tracking-wider">{sug.category}</span>
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 group-hover:text-primary transition-colors">
+                      {sug.activityName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{sug.reason}</p>
                   </div>
-                  <button className="w-8 h-8 rounded bg-background border border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors text-muted-foreground">
-                    <Star className="w-4 h-4" />
-                  </button>
+
+                  <div className="shrink-0 text-right">
+                    <p className="text-base font-display font-semibold text-foreground whitespace-nowrap">
+                      +{formatCurrency(sug.estimatedImpactPerYear)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground whitespace-nowrap">est. per year</p>
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-muted-foreground">
+                      <Clock className="w-2.5 h-2.5" />
+                      {sug.recommendedHoursPerWeek} hrs/wk
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -88,9 +98,31 @@ export default function Suggestions() {
         </div>
       )}
 
-      <div className="mt-10 flex justify-center">
-        <Link href="/results" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to My Impact
+      {/* Recalculate prompt */}
+      {!isPending && data && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 p-5 bg-primary/5 border border-primary/15 rounded-lg text-center"
+        >
+          <p className="text-sm text-foreground font-medium mb-1">Ready to add some of these?</p>
+          <p className="text-xs text-muted-foreground mb-4">Go back through the calculator and add new activities to see how your total social value grows.</p>
+          <Link
+            href="/wizard/actions"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+          >
+            Recalculate with new activities <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </motion.div>
+      )}
+
+      <div className="mt-6 flex justify-start">
+        <Link
+          href="/results"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to my impact
         </Link>
       </div>
     </div>
