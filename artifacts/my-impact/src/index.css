@@ -59,34 +59,37 @@
 }
 
 :root {
-  /* Very light warm off-white background #F7F5F2 */
-  --background: 36 21% 96%;
-  /* Dark charcoal/grey #4A4A4A */
-  --foreground: 0 0% 29%;
+  /* Warm cream #F7F5EF */
+  --background: 45 33% 95%;
+  /* Dark navy #0D1B1E */
+  --foreground: 191 40% 8%;
   
   /* Primary orange #F06127 */
   --primary: 17 88% 55%;
   --primary-foreground: 0 0% 100%;
   
-  /* Light Blue/Grey */
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 0 0% 29%;
+  /* Soft warm secondary */
+  --secondary: 45 25% 91%;
+  --secondary-foreground: 191 40% 8%;
   
+  /* Card white */
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 29%;
+  --card-foreground: 191 40% 8%;
   
-  --muted: 36 10% 90%;
-  --muted-foreground: 0 0% 45%;
+  /* Muted cream */
+  --muted: 45 20% 90%;
+  --muted-foreground: 191 20% 38%;
   
-  /* Warm Yellow Accent */
-  --accent: 45 93% 47%;
-  --accent-foreground: 0 0% 29%;
+  /* Warm yellow accent #EABD1E */
+  --accent: 46 80% 52%;
+  --accent-foreground: 191 40% 8%;
   
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 36 10% 90%;
-  --input: 36 10% 90%;
+  /* Warm cream border */
+  --border: 45 18% 87%;
+  --input: 45 18% 87%;
   --ring: 17 88% 55%;
 }
 
