@@ -3,10 +3,11 @@ import { Link } from "wouter";
 
 const C = {
   dark: "#01343F",
-  orange: "#F06127",
   teal: "#0A7877",
   green: "#94A53A",
+  yellow: "#EABD1E",
   cream: "#F7F5EF",
+  orange: "#F06127",
   offBlack: "#0D1B1E",
 };
 
@@ -79,7 +80,7 @@ export default function Intro() {
           top: -40%; right: -20%;
           width: 80vw; height: 80vw;
           border-radius: 50%;
-          background: radial-gradient(circle, ${C.teal}40 0%, transparent 70%);
+          background: radial-gradient(circle, ${C.teal}50 0%, transparent 70%);
           pointer-events: none;
         }
         .mi-hero::after {
@@ -88,10 +89,13 @@ export default function Intro() {
           bottom: -20%; left: -10%;
           width: 50vw; height: 50vw;
           border-radius: 50%;
-          background: radial-gradient(circle, ${C.orange}25 0%, transparent 70%);
+          background: radial-gradient(circle, ${C.yellow}18 0%, transparent 70%);
           pointer-events: none;
         }
         .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
+        .mi-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${C.teal}; margin-bottom: 12px; }
+        .mi-section-label.light { color: ${C.yellow}; }
+        .mi-section-title { font-family: 'Fraunces', Georgia, serif; font-size: clamp(26px, 4vw, 42px); font-weight: 700; color: ${C.dark}; letter-spacing: -1px; margin-bottom: 48px; max-width: 500px; line-height: 1.15; }
         .mi-btn-primary {
           background: ${C.orange};
           color: white;
@@ -108,6 +112,22 @@ export default function Intro() {
           transition: all 0.25s;
         }
         .mi-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.orange}40; }
+        .mi-btn-hero {
+          background: ${C.yellow};
+          color: ${C.dark};
+          padding: 14px 32px;
+          border-radius: 100px;
+          font-weight: 700;
+          font-size: 15px;
+          text-decoration: none;
+          border: none;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.25s;
+        }
+        .mi-btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.yellow}45; }
         .mi-btn-ghost {
           background: transparent;
           color: white;
@@ -119,7 +139,8 @@ export default function Intro() {
           cursor: pointer;
           transition: all 0.25s;
           text-decoration: none;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
         }
         .mi-btn-ghost:hover { border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
         .mi-scroll-hint {
@@ -133,7 +154,7 @@ export default function Intro() {
         .mi-scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent); animation: miScrollDown 2s infinite; }
         @keyframes miScrollDown { 0% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(0.3) translateY(20px); } }
         @keyframes miPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; animation: miPulse 2s infinite; display: inline-block; }
+        .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; animation: miPulse 2s infinite; display: inline-block; flex-shrink: 0; }
         .mi-count-card { padding: 28px 24px; border-radius: 16px; background: ${C.cream}; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; }
         .mi-count-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
         .mi-story-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: all 0.3s; }
@@ -149,24 +170,23 @@ export default function Intro() {
           .mi-proof-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
           .mi-cv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
           .mi-how-step { flex-direction: column; gap: 12px; }
+          .mi-counts-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
         }
       `}</style>
 
       {/* ── HERO ── */}
       <section className="mi-hero">
         <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
-          <div
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.13)",
-              backdropFilter: "blur(8px)",
-              padding: "8px 18px", borderRadius: 100,
-              color: "#EABD1E", fontSize: 12, fontWeight: 700,
-              letterSpacing: 1.5, textTransform: "uppercase",
-              marginBottom: 28,
-            }}
-          >
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.13)",
+            backdropFilter: "blur(8px)",
+            padding: "8px 18px", borderRadius: 100,
+            color: C.yellow, fontSize: 12, fontWeight: 700,
+            letterSpacing: 1.5, textTransform: "uppercase" as const,
+            marginBottom: 28,
+          }}>
             <span className="mi-dot" /> Powered by the Social Value Engine
           </div>
 
@@ -178,10 +198,9 @@ export default function Intro() {
               lineHeight: 1.05, marginBottom: 24, letterSpacing: -2,
             }}
           >
-            You already make<br />
-            a difference.<br />
+            You already make a difference.<br />
             Now{" "}
-            <span style={{ color: C.orange, fontStyle: "italic" }}>prove it.</span>
+            <span style={{ color: C.yellow, fontStyle: "italic" }}>prove it.</span>
           </h1>
 
           <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 40 }}>
@@ -190,8 +209,8 @@ export default function Intro() {
             <strong style={{ color: "rgba(255,255,255,0.9)" }}>in pounds</strong> — so you can finally see the difference you make.
           </p>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <Link href="/wizard/actions" className="mi-btn-primary">
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, alignItems: "center" }}>
+            <Link href="/wizard/actions" className="mi-btn-hero">
               Calculate my impact →
             </Link>
             <a href="#how" className="mi-btn-ghost">See how it works</a>
@@ -212,36 +231,33 @@ export default function Intro() {
               Your worth isn't measured in{" "}
               <span style={{ color: C.teal, fontStyle: "italic" }}>GDP.</span>
             </p>
-            <p style={{ fontSize: 18, color: "#4A5568", lineHeight: 1.75, maxWidth: 640 }}>
-              The economy measures your productivity. Your employer measures your outputs. But neither of them counts
-              what you do for free — the hours you give, the people you help, the communities you strengthen.
-              My Impact gives that a number. A real one, backed by the same{" "}
-              <strong>Social Value Engine methodology</strong> used by local councils, housing associations, and the NHS.
+            <p style={{ fontSize: 18, color: "#4A5568", lineHeight: 1.75, maxWidth: 680 }}>
+              The economy doesn't count the hours you spend mentoring someone, looking after a relative, picking litter off a riverbank, or running a community group. But that work matters. It holds communities together. And until now, there's been no way for you to see what it's actually worth. We built My Impact to change that.
             </p>
           </div>
         </FadeIn>
       </section>
 
       {/* ── WHAT COUNTS ── */}
-      <section style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
+      <section id="how" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.teal, marginBottom: 12 }}>What we count</p>
-            <p className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 48, maxWidth: 480, lineHeight: 1.15 }}>
-              Everything you already do counts.
-            </p>
+            <p className="mi-section-label">What counts</p>
+            <p className="mi-section-title">If it helps people or planet, it counts.</p>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 20 }}>
+          <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
             {[
-              { emoji: "🌱", title: "Environment", desc: "Recycling, cutting food waste, cycling instead of driving, planting trees — every action adds up." },
-              { emoji: "🤝", title: "Community", desc: "Food bank volunteering, befriending older people, social clubs, community events and fundraising." },
-              { emoji: "📚", title: "Education", desc: "Mentoring young people, tutoring, running youth groups, supporting others to learn new skills." },
-              { emoji: "💛", title: "Giving", desc: "Money donated to charity, time given to good causes, and contributing to fundraising efforts." },
+              { icon: "🤝", bg: `${C.teal}15`, title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
+              { icon: "💚", bg: `${C.green}22`, title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
+              { icon: "🌱", bg: `${C.green}22`, title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
+              { icon: "🏘️", bg: `${C.yellow}28`, title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
+              { icon: "📢", bg: `${C.teal}15`, title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
+              { icon: "🎓", bg: `${C.yellow}28`, title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-count-card">
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16, border: `1px solid rgba(0,0,0,0.05)` }}>
-                    {c.emoji}
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>
+                    {c.icon}
                   </div>
                   <h3 className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{c.title}</h3>
                   <p style={{ fontSize: 15, color: "#5A6572", lineHeight: 1.6 }}>{c.desc}</p>
@@ -252,22 +268,30 @@ export default function Intro() {
         </div>
       </section>
 
-      {/* ── PROOF STATS ── */}
+      {/* ── PROOF IN NUMBERS ── */}
       <section style={{ background: C.dark, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <p className="mi-section-label light">The difference we make</p>
+              <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1 }}>
+                It adds up faster than you think.
+              </h2>
+            </div>
+          </FadeIn>
           <div
             className="mi-proof-grid"
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, textAlign: "center", marginBottom: 48 }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, textAlign: "center" }}
           >
             {[
-              { prefix: "£", end: 888, suffix: "", label: "Average social value calculated per user per year" },
-              { prefix: "", end: 20, suffix: "+", label: "Verified activity types from the SVE proxy library" },
-              { prefix: "", end: 100, suffix: "%", label: "Based on Social Value Engine accredited methodology" },
+              { prefix: "£", end: 2847, suffix: "", label: "Average social value created per regular volunteer per year" },
+              { prefix: "", end: 900, suffix: "m", label: "Hours volunteered across the UK each year" },
+              { prefix: "", end: 0, suffix: "%", label: "Of that value is currently tracked by the people who create it" },
             ].map((s, i) => (
-              <FadeIn key={i} delay={i * 0.1}>
-                <div style={{ color: "white" }}>
-                  <div className="mi-fraunces" style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.orange, letterSpacing: -2 }}>
-                    <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />
+              <FadeIn key={i} delay={i * 0.12}>
+                <div>
+                  <div className="mi-fraunces" style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.yellow, letterSpacing: -2 }}>
+                    {s.end === 0 ? `${s.prefix}0${s.suffix}` : <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />}
                   </div>
                   <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.5, maxWidth: 220, margin: "10px auto 0" }}>{s.label}</p>
                 </div>
@@ -281,18 +305,34 @@ export default function Intro() {
       <section id="stories" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.teal, marginBottom: 12 }}>Real people</p>
-            <p className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 48, lineHeight: 1.15 }}>
-              See what others discovered.
-            </p>
+            <p className="mi-section-label">Real stories</p>
+            <p className="mi-section-title">What does social value look like?</p>
           </FadeIn>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24 }}>
             {[
-              { name: "Amara", age: "19, Manchester", quote: "I volunteered at my local food bank every weekend and ran a youth club, but I had no idea it was worth this much. Now I put it on every application I make.", value: "£1,240", what: "Food bank + youth mentoring" },
-              { name: "Josh", age: "22, Bristol", quote: "I used my My Impact report in my graduate scheme interview. It gave me something concrete to talk about beyond just saying 'I do a bit of volunteering'.", value: "£960", what: "Cycling + community volunteering" },
-              { name: "Priya", age: "16, Edinburgh", quote: "It's in my UCAS personal statement. My teacher said it's one of the most original things she's seen — and she could actually see the methodology behind the number.", value: "£640", what: "Recycling + mentoring younger pupils" },
+              {
+                name: "Aisha",
+                age: "21, Glasgow",
+                quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that — I could finally put a number on the pride, engagement, and connection we were creating.",
+                value: "£4,230",
+                what: "Community art project, 6 months",
+              },
+              {
+                name: "Ben",
+                age: "19, Hull",
+                quote: "I'm not in work right now and people make assumptions. But I run a tech drop-in for older people every week. I'm reducing isolation, building digital skills, bringing people together. MyImpact shows that what I do has real, measurable worth.",
+                value: "£7,860",
+                what: "Weekly tech hub, 12 months",
+              },
+              {
+                name: "Chloe",
+                age: "17, Cardiff",
+                quote: "Call me a snowflake if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
+                value: "£3,150",
+                what: "River clean-up crew, 8 months",
+              },
             ].map((s, i) => (
-              <FadeIn key={s.name} delay={i * 0.1}>
+              <FadeIn key={s.name} delay={i * 0.12}>
                 <div className="mi-story-card">
                   <div style={{ padding: "28px 24px 20px" }}>
                     <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>{s.name}</p>
@@ -301,7 +341,7 @@ export default function Intro() {
                   </div>
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <p className="mi-fraunces" style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{s.value}</p>
-                    <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 140, lineHeight: 1.4 }}>{s.what}</p>
+                    <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4 }}>{s.what}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -311,23 +351,22 @@ export default function Intro() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how" style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
+      <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <FadeIn>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.teal, marginBottom: 12 }}>How it works</p>
-            <p className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 48, lineHeight: 1.15 }}>
-              Three steps. Five minutes.
-            </p>
+            <p className="mi-section-label">How it works</p>
+            <p className="mi-section-title">Three minutes. That's it.</p>
           </FadeIn>
           <div>
             {[
-              { n: "01", title: "Tell us about you", desc: "Share where you live and what you care about. Takes about 30 seconds — we use this to personalise your activities and suggestions." },
-              { n: "02", title: "Log your activities", desc: "Pick from our library of 20+ activities drawn from the Social Value Engine proxy database. Tick what you already do — volunteering, eco-actions, donating, mentoring, and more." },
-              { n: "03", title: "See your social value", desc: "Get a credible, shareable breakdown of your social impact in pounds, aligned to the UN Sustainable Development Goals — ready for CVs, UCAS, or funding applications." },
+              { num: "01", title: "Log what you did", desc: "Helped at a food bank? Visited your nan? Picked up litter? Tell us what you did and how long it took. It takes about 30 seconds." },
+              { num: "02", title: "We calculate the value", desc: "My Impact maps your activity to real financial proxies — the same methodology used by councils and charities to measure social value. Your contribution gets a pound figure." },
+              { num: "03", title: "See your impact grow", desc: "Your personal dashboard tracks everything over time. Watch your total social value add up, hit milestones, and unlock badges as you go." },
+              { num: "04", title: "Share your proof", desc: "Generate Impact Cards — shareable visuals showing your social value. Perfect for CVs, funding applications, UCAS statements, DofE portfolios, or just showing people what you're about." },
             ].map((s, i) => (
-              <FadeIn key={s.n} delay={i * 0.1}>
+              <FadeIn key={s.num} delay={i * 0.1}>
                 <div className="mi-how-step">
-                  <div className="mi-fraunces" style={{ fontSize: 52, fontWeight: 900, color: `${C.teal}25`, lineHeight: 1, minWidth: 68 }}>{s.n}</div>
+                  <div className="mi-fraunces" style={{ fontSize: 52, fontWeight: 900, color: `${C.teal}25`, lineHeight: 1, minWidth: 68 }}>{s.num}</div>
                   <div>
                     <h3 className="mi-fraunces" style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{s.title}</h3>
                     <p style={{ fontSize: 16, color: "#5A6572", lineHeight: 1.65 }}>{s.desc}</p>
@@ -339,33 +378,30 @@ export default function Intro() {
         </div>
       </section>
 
-      {/* ── CV / CREDENTIALS ── */}
+      {/* ── CV / PROOF ── */}
       <section style={{ background: "white", padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div className="mi-cv-grid" style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
           <FadeIn>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.teal, marginBottom: 12 }}>Your proof</p>
               <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15 }}>
-                Put your impact where it counts.
+                Your impact is your proof.
               </h2>
-              <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7, marginBottom: 12 }}>
-                Whether it's your UCAS personal statement, a job interview, or a DofE portfolio — My Impact gives you a number to back up what you already do.
+              <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7, marginBottom: 16 }}>
+                Employers want evidence. Funders want outcomes. Commissioners want data. My Impact gives you something most people don't have: a verified, quantified record of the difference you make.
               </p>
               <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7 }}>
-                Not a vague claim. A credible, methodology-backed social value figure that recruiters and admissions teams recognise.
+                Not a vague paragraph in an application. An actual number, backed by real methodology.
               </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
-                {["DofE", "UCAS Personal Statement", "Job interviews", "Graduate schemes", "Funding applications"].map((tag, i) => (
-                  <span
-                    key={tag}
-                    style={{
-                      padding: "7px 16px", borderRadius: 100, fontSize: 13, fontWeight: 600,
-                      background: i === 0 ? C.dark : i === 1 ? C.teal : i === 2 ? C.green : i === 3 ? C.orange : C.cream,
-                      color: i === 4 ? C.dark : "white",
-                      border: i === 4 ? `1px solid rgba(0,0,0,0.08)` : "none",
-                    }}
-                  >
-                    {tag}
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 10, marginTop: 28 }}>
+                {[
+                  { label: "CVs and job applications", bg: `${C.teal}14`, color: C.teal },
+                  { label: "Funding bids", bg: `${C.green}20`, color: C.dark },
+                  { label: "UCAS & DofE", bg: `${C.yellow}30`, color: C.dark },
+                  { label: "Annual reports", bg: `${C.teal}14`, color: C.teal },
+                  { label: "Social media", bg: `${C.green}20`, color: C.dark },
+                ].map(t => (
+                  <span key={t.label} style={{ padding: "7px 16px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: t.bg, color: t.color }}>
+                    {t.label}
                   </span>
                 ))}
               </div>
@@ -373,39 +409,39 @@ export default function Intro() {
           </FadeIn>
 
           <FadeIn delay={0.15}>
-            <div style={{ background: C.dark, borderRadius: 24, padding: 32, color: "white" }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>My annual social value</p>
-              <p className="mi-fraunces" style={{ fontSize: 56, fontWeight: 900, color: C.orange, letterSpacing: -2, lineHeight: 1, marginBottom: 24 }}>£1,240</p>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {[
-                  { label: "Direct impact", val: "£740" },
-                  { label: "Contribution", val: "£310" },
-                  { label: "Donations", val: "£120" },
-                  { label: "Personal dev", val: "£70" },
-                ].map(m => (
-                  <div key={m.label}>
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 1 }}>{m.label}</p>
-                    <p className="mi-fraunces" style={{ fontSize: 22, fontWeight: 700, color: "white" }}>{m.val}</p>
-                  </div>
-                ))}
+            <div style={{ background: C.cream, borderRadius: 20, padding: "36px 32px", border: "1px solid rgba(0,0,0,0.04)" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.teal, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
+              <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.dark, marginBottom: 4 }}>Chloe M.</p>
+              <p style={{ fontSize: 14, color: "#5A6572", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
+                  <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Total social value</p>
+                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.green }}>£3,150</p>
+                </div>
+                <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
+                  <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Hours contributed</p>
+                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.teal }}>187</p>
+                </div>
               </div>
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: 1 }}>
-                POWERED BY SOCIAL VALUE ENGINE METHODOLOGY
+              <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.green}22`, fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.teal}14`, fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
               </div>
+              <p style={{ marginTop: 16, fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Powered by Social Value Engine methodology</p>
             </div>
           </FadeIn>
         </div>
       </section>
 
-      {/* ── FOR ORGS ── */}
+      {/* ── FOR ORGANISATIONS ── */}
       <section id="orgs" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.teal, marginBottom: 12 }}>For organisations</p>
-            <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 700, color: "white", letterSpacing: -1, lineHeight: 1.15 }}>
-              Built for schools, charities<br />and local authorities.
+            <p className="mi-section-label light">For organisations</p>
+            <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15 }}>
+              See the value your people create.
             </h2>
-            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
+            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
               Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data — ready for reporting, funding bids, and programme evaluation.
             </p>
           </FadeIn>
@@ -418,31 +454,24 @@ export default function Intro() {
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-org-card">
-                  <h3 className="mi-fraunces" style={{ color: C.orange, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{c.title}</h3>
+                  <h3 className="mi-fraunces" style={{ color: C.yellow, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{c.title}</h3>
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
-          <FadeIn delay={0.2}>
-            <div style={{ marginTop: 40 }}>
-              <Link href="/org" className="mi-btn-primary">
-                Explore the org portal →
-              </Link>
-            </div>
-          </FadeIn>
         </div>
       </section>
 
       {/* ── CTA ── */}
       <section className="mi-cta-section">
         <FadeIn>
-          <div style={{ maxWidth: 600, margin: "0 auto", position: "relative", zIndex: 2, textAlign: "center" }}>
+          <div style={{ maxWidth: 600, margin: "0 auto", position: "relative", zIndex: 2 }}>
             <h2 className="mi-fraunces" style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 }}>
               Ready to see what you're worth?
             </h2>
             <p style={{ fontSize: 18, color: "rgba(255,255,255,0.75)", marginBottom: 36, lineHeight: 1.6 }}>
-              It takes five minutes to calculate your social value. Find out what you've already been doing is really worth.
+              My Impact is live. Calculate your social value now and be one of the first to turn your positive actions into proof.
             </p>
             <Link href="/wizard/actions" className="mi-btn-white">
               Calculate my impact →
@@ -454,10 +483,10 @@ export default function Intro() {
       {/* ── FOOTER ── */}
       <footer style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 900, color: "white", marginBottom: 6 }}>
-          My<span style={{ color: C.orange }}>Impact</span>
+          my<span style={{ color: C.yellow }}>.</span>impact
         </p>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>Your impact, counted.</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
           {["About", "How it works", "For organisations", "Privacy", "Contact"].map(l => (
             <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
           ))}
