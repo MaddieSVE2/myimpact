@@ -1,0 +1,20 @@
+packages:
+  "framer-motion": "For fluid page transitions, layout animations, and micro-interactions essential for a premium youth-friendly feel"
+  "recharts": "For rendering beautiful interactive donut and line charts for impact and SDG breakdowns"
+  "clsx": "Utility for conditionally joining classNames"
+  "tailwind-merge": "Utility to merge tailwind classes safely"
+  "@hookform/resolvers": "For Zod form validation"
+  "react-hook-form": "For complex wizard form state management"
+
+images:
+  - path: "artifacts/my-impact/public/images/hero-abstract.png"
+    description: "Vibrant abstract 3D geometric shapes floating in space, warm coral orange and deep navy blue colors, clean modern lighting, youth-oriented energetic aesthetic, transparent background"
+    aspect_ratio: "16:9"
+  - path: "artifacts/my-impact/public/images/pattern-bg.png"
+    description: "Subtle modern memphis-style geometric pattern background, very light warm grey with faint orange and blue dots and squiggles, low contrast"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated Orval hooks from @workspace/api-client-react
+  - Wizard state is managed in a local React Context until the final step submission
+  - The calculated results are saved to context state to be displayed on the Results page

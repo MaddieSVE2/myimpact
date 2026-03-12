@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: My Impact API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: impact
+    description: Impact calculation operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,90 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /impact/calculate:
+    post:
+      operationId: calculateImpact
+      tags: [impact]
+      summary: Calculate personal social value
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImpactInput"
+      responses:
+        "200":
+          description: Calculated impact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImpactResult"
+  /impact/activities:
+    get:
+      operationId: getActivities
+      tags: [impact]
+      summary: Get available activities from Social Value Engine proxy library
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivitiesResponse"
+  /impact/suggestions:
+    post:
+      operationId: getSuggestions
+      tags: [impact]
+      summary: Get suggested activities based on user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestionsInput"
+      responses:
+        "200":
+          description: Suggested activities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestionsResponse"
+  /impact/save:
+    post:
+      operationId: saveImpact
+      tags: [impact]
+      summary: Save a user's impact record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveImpactInput"
+      responses:
+        "200":
+          description: Saved impact record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedImpact"
+  /impact/history:
+    get:
+      operationId: getImpactHistory
+      tags: [impact]
+      summary: Get impact history for a user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Impact history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImpactHistoryResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +118,277 @@ components:
           type: string
       required:
         - status
-
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        proxy:
+          type: string
+        proxyYear:
+          type: string
+        unit:
+          type: string
+        unitLabel:
+          type: string
+        valuePerUnit:
+          type: number
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - category
+        - proxy
+        - proxyYear
+        - unit
+        - unitLabel
+        - valuePerUnit
+        - sdg
+        - sdgColor
+        - description
+    ActivitiesResponse:
+      type: object
+      properties:
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+        categories:
+          type: array
+          items:
+            type: string
+      required:
+        - activities
+        - categories
+    SelectedActivity:
+      type: object
+      properties:
+        activityId:
+          type: string
+        quantity:
+          type: number
+        hoursPerYear:
+          type: number
+        description:
+          type: string
+      required:
+        - activityId
+        - quantity
+        - hoursPerYear
+    ImpactInput:
+      type: object
+      properties:
+        description:
+          type: string
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        donationsGBP:
+          type: number
+        additionalVolunteerHours:
+          type: number
+      required:
+        - description
+        - activities
+        - donationsGBP
+        - additionalVolunteerHours
+    ActivityBreakdown:
+      type: object
+      properties:
+        activityId:
+          type: string
+        activityName:
+          type: string
+        category:
+          type: string
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+        impactValue:
+          type: number
+        hours:
+          type: number
+      required:
+        - activityId
+        - activityName
+        - category
+        - sdg
+        - sdgColor
+        - impactValue
+        - hours
+    ImpactResult:
+      type: object
+      properties:
+        totalValue:
+          type: number
+        impactValue:
+          type: number
+        contributionValue:
+          type: number
+        donationsValue:
+          type: number
+        personalDevelopmentValue:
+          type: number
+        totalHours:
+          type: number
+        activityBreakdowns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityBreakdown"
+        sdgBreakdowns:
+          type: array
+          items:
+            type: object
+            properties:
+              sdg:
+                type: string
+              sdgColor:
+                type: string
+              value:
+                type: number
+            required:
+              - sdg
+              - sdgColor
+              - value
+        explanations:
+          type: object
+          properties:
+            impact:
+              type: string
+            contribution:
+              type: string
+            donations:
+              type: string
+            personalDevelopment:
+              type: string
+          required:
+            - impact
+            - contribution
+            - donations
+            - personalDevelopment
+      required:
+        - totalValue
+        - impactValue
+        - contributionValue
+        - donationsValue
+        - personalDevelopmentValue
+        - totalHours
+        - activityBreakdowns
+        - sdgBreakdowns
+        - explanations
+    SaveImpactInput:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        impactResult:
+          $ref: "#/components/schemas/ImpactResult"
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        donationsGBP:
+          type: number
+        additionalVolunteerHours:
+          type: number
+      required:
+        - userId
+        - name
+        - impactResult
+        - activities
+        - donationsGBP
+        - additionalVolunteerHours
+    SavedImpact:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+        impactResult:
+          $ref: "#/components/schemas/ImpactResult"
+      required:
+        - id
+        - userId
+        - name
+        - createdAt
+        - impactResult
+    ImpactHistoryResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedImpact"
+      required:
+        - records
+    SuggestionsInput:
+      type: object
+      properties:
+        currentActivities:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        availableHoursPerWeek:
+          type: number
+      required:
+        - currentActivities
+        - availableHoursPerWeek
+    SuggestionItem:
+      type: object
+      properties:
+        activityId:
+          type: string
+        activityName:
+          type: string
+        category:
+          type: string
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+        reason:
+          type: string
+        estimatedImpactPerYear:
+          type: number
+        recommendedHoursPerWeek:
+          type: number
+      required:
+        - activityId
+        - activityName
+        - category
+        - sdg
+        - sdgColor
+        - reason
+        - estimatedImpactPerYear
+        - recommendedHoursPerWeek
+    SuggestionsResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SuggestionItem"
+      required:
+        - suggestions
