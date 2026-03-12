@@ -13,6 +13,9 @@ import ContributionsStep from "@/pages/wizard/ContributionsStep";
 import Results from "@/pages/Results";
 import Suggestions from "@/pages/Suggestions";
 import History from "@/pages/History";
+import Journal from "@/pages/Journal";
+import Badges from "@/pages/Badges";
+import OrgPortal from "@/pages/OrgPortal";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -34,6 +37,9 @@ function AppRouter() {
           <Route path="/results" component={Results} />
           <Route path="/suggestions" component={Suggestions} />
           <Route path="/history" component={History} />
+          <Route path="/journal" component={Journal} />
+          <Route path="/badges" component={Badges} />
+          <Route path="/org" component={OrgPortal} />
           
           <Route component={NotFound} />
         </Switch>

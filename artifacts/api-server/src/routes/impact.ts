@@ -205,4 +205,42 @@ router.get("/history", async (req, res) => {
   res.json({ records: formatted });
 });
 
+router.get("/org-stats", async (_req, res) => {
+  try {
+    const records = await db.select().from(impactRecordsTable);
+
+    const totalRecords = records.length;
+    const totalUsers = new Set(records.map(r => r.userId)).size;
+
+    let totalSocialValue = 0;
+    let totalHours = 0;
+    const categoryValueMap: Record<string, number> = {};
+
+    for (const r of records) {
+      const result = r.resultJson as any;
+      totalSocialValue += result.totalValue ?? 0;
+      totalHours += result.totalHours ?? 0;
+      for (const breakdown of result.activityBreakdowns ?? []) {
+        categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + (breakdown.impactValue ?? 0);
+      }
+    }
+
+    const valueByCategory = Object.entries(categoryValueMap)
+      .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
+      .sort((a, b) => b.value - a.value);
+
+    res.json({
+      totalRecords,
+      totalUsers,
+      totalSocialValue: Math.round(totalSocialValue * 100) / 100,
+      totalHours: Math.round(totalHours * 100) / 100,
+      averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+      valueByCategory,
+      recentActivity: [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to compute org stats" });
+  }
+});
+
 export default router;

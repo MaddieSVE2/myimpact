@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { formatCurrency } from "@/lib/utils";
+import { computeBadges, getNextMilestone } from "@/lib/badges";
 import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
-  ArrowRight, ChevronDown, Download, Share2, Twitter, Linkedin, Check
+  ArrowRight, ChevronDown, Download, Share2, Twitter, Linkedin, Check,
+  BookOpen, Award
 } from "lucide-react";
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -176,6 +178,13 @@ export default function Results() {
     }
   };
 
+  const earnedBadges = computeBadges(
+    { totalValue: result.totalValue, activityBreakdowns: result.activityBreakdowns },
+    true
+  ).filter(b => b.earned);
+
+  const nextMilestone = getNextMilestone(result.totalValue);
+
   // Stacked bar data
   const total = result.totalValue || 1;
   const segments = [
@@ -205,6 +214,61 @@ export default function Results() {
           That's the equivalent financial value of the positive difference you've made to society over the past year, calculated using globally recognised Social Value Engine proxies.
         </p>
       </motion.div>
+
+      {/* Badges earned */}
+      {earnedBadges.length > 0 && (
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Badges earned</p>
+            <Link href="/badges" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Award className="w-3 h-3" /> View all
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {earnedBadges.map(badge => (
+              <div
+                key={badge.id}
+                className="flex items-center gap-2 bg-white border border-border rounded-full pl-2.5 pr-3.5 py-1.5"
+                style={{ borderLeftColor: badge.colour, borderLeftWidth: 3 }}
+                title={badge.description}
+              >
+                <span className="text-base">{badge.emoji}</span>
+                <span className="text-xs font-semibold text-foreground">{badge.name}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Milestone progress */}
+      {nextMilestone && (
+        <motion.div
+          className="bg-white border border-border rounded-xl p-4 mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-semibold text-muted-foreground">
+              Next milestone: {nextMilestone.milestone.emoji} {nextMilestone.milestone.label}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go
+            </p>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "#F06127" }}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* Stacked proportion bar */}
       {segments.length > 1 && (
@@ -373,6 +437,13 @@ export default function Results() {
               </div>
             )}
           </div>
+
+          <Link
+            href="/journal"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors shrink-0"
+          >
+            <BookOpen className="w-3.5 h-3.5" /> Journal
+          </Link>
 
           <Link
             href="/suggestions"

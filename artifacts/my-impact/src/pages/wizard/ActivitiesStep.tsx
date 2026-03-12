@@ -4,355 +4,395 @@ import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Plus, Trash2, Check, ChevronDown, PenLine } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Expanded inline editor for a picked activity
-function ActivityEditor({
-  activity,
-  onAdd,
-  onCancel,
-}: {
-  activity: ActivityItem;
-  onAdd: (qty: number, hours: number) => void;
-  onCancel: () => void;
-}) {
-  const [qty, setQty] = useState(1);
-  const [hours, setHours] = useState(10);
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="mt-2 p-4 bg-muted/40 rounded-lg border border-border space-y-3"
-    >
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-foreground mb-1">{activity.unitLabel || "Quantity"}</label>
-          <input
-            type="number" min="1" value={qty}
-            onChange={e => setQty(Number(e.target.value))}
-            className="w-full p-2 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-foreground mb-1">Hours per year</label>
-          <input
-            type="number" min="1" value={hours}
-            onChange={e => setHours(Number(e.target.value))}
-            className="w-full p-2 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
-          />
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={() => onAdd(qty, hours)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add to my list
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-3 py-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </motion.div>
-  );
-}
+type Phase = "select" | "quantify";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
   const { input, interests, addActivity, removeActivity } = useWizard();
   const { data, isLoading } = useGetActivities();
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [phase, setPhase] = useState<Phase>("select");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    new Set(input.activities.map(a => a.activityId))
+  );
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [hours, setHours] = useState<Record<string, number>>({});
+  const [quantifyIndex, setQuantifyIndex] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customHours, setCustomHours] = useState(10);
-  const [customDesc, setCustomDesc] = useState("");
 
-  // Map selected interests to categories for prioritisation
   const preferredCategories = useMemo(() => {
-    return interests
-      .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.category)
-      .filter(Boolean) as string[];
+    return new Set(
+      interests.map(id => INTEREST_OPTIONS.find(o => o.id === id)?.category).filter(Boolean) as string[]
+    );
   }, [interests]);
 
   const sortedActivities = useMemo(() => {
     if (!data) return [];
-    let acts = categoryFilter
-      ? data.activities.filter(a => a.category === categoryFilter)
-      : data.activities;
+    return [...data.activities].sort((a, b) => {
+      const aP = preferredCategories.has(a.category) ? 0 : 1;
+      const bP = preferredCategories.has(b.category) ? 0 : 1;
+      return aP - bP;
+    });
+  }, [data, preferredCategories]);
 
-    if (preferredCategories.length > 0 && !categoryFilter) {
-      acts = [...acts].sort((a, b) => {
-        const aP = preferredCategories.includes(a.category) ? 0 : 1;
-        const bP = preferredCategories.includes(b.category) ? 0 : 1;
-        return aP - bP;
-      });
-    }
-    return acts;
-  }, [data, categoryFilter, preferredCategories]);
+  const primaryActivities = sortedActivities.slice(0, 8);
+  const moreActivities = sortedActivities.slice(8);
 
-  const addedIds = new Set(input.activities.map(a => a.activityId));
+  const displayedActivities = showAll ? sortedActivities : primaryActivities;
 
-  const handleSelectActivity = (a: ActivityItem) => {
-    if (addedIds.has(a.id)) return;
-    setExpandedId(prev => (prev === a.id ? null : a.id));
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Set defaults
+        const activity = data?.activities.find(a => a.id === id);
+        if (activity && quantities[id] === undefined) {
+          setQuantities(q => ({ ...q, [id]: activity.defaultQuantity ?? 1 }));
+          setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : 10 }));
+        }
+      }
+      return next;
+    });
   };
 
-  const handleAdd = (activityId: string, qty: number, hours: number) => {
-    addActivity({ activityId, quantity: qty, hoursPerYear: hours });
-    setExpandedId(null);
+  // The ordered list of selected activities for the quantify phase
+  const selectedList = useMemo(() => {
+    return (data?.activities ?? []).filter(a => selectedIds.has(a.id));
+  }, [data, selectedIds]);
+
+  const currentActivity = selectedList[quantifyIndex];
+
+  const handleStartQuantify = () => {
+    if (selectedIds.size === 0) {
+      setLocation("/wizard/contributions");
+      return;
+    }
+    setQuantifyIndex(0);
+    setPhase("quantify");
+  };
+
+  const handleQuantifyNext = () => {
+    if (quantifyIndex < selectedList.length - 1) {
+      setQuantifyIndex(i => i + 1);
+    } else {
+      // Commit all to wizard context
+      // Clear existing
+      input.activities.forEach((_, i) => removeActivity(0));
+      selectedList.forEach(a => {
+        const qty = quantities[a.id] ?? (a.defaultQuantity ?? 1);
+        const hrs = a.unit === "hour" ? (quantities[a.id] ?? (a.defaultQuantity ?? 20)) : (hours[a.id] ?? 10);
+        const finalQty = a.unit === "hour" ? 1 : qty;
+        addActivity({ activityId: a.id, quantity: finalQty, hoursPerYear: a.unit === "hour" ? qty : hrs });
+      });
+      setLocation("/wizard/contributions");
+    }
   };
 
   const handleAddCustom = () => {
     if (!customName.trim()) return;
-    addActivity({
-      activityId: `custom_${Date.now()}`,
-      quantity: 1,
-      hoursPerYear: customHours,
-    });
+    addActivity({ activityId: `custom_${Date.now()}`, quantity: 1, hoursPerYear: customHours });
     setCustomName("");
     setCustomHours(10);
-    setCustomDesc("");
     setShowCustom(false);
   };
+
+  // Helper: is unit-based (not hours)
+  const isQuantityUnit = (a: ActivityItem) => a.unit !== "hour";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <StepProgress currentStep={2} />
 
-      <motion.div
-        className="bg-white border border-border rounded-xl p-6 md:p-8 mb-6"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h2 className="text-xl font-display font-semibold text-foreground mb-1">Log your activities</h2>
-        <p className="text-sm text-muted-foreground mb-5">
-          Select from the library below — tap any activity to log it.
-          {preferredCategories.length > 0 && (
-            <span className="text-primary"> Your interests are shown first.</span>
-          )}
-        </p>
-
-        {/* Category filter tabs */}
-        {!isLoading && data && (
-          <div className="flex flex-wrap gap-2 mb-5">
-            <button
-              onClick={() => setCategoryFilter("")}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium border transition-all",
-                !categoryFilter ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border hover:border-primary/50"
-              )}
-            >
-              All
-            </button>
-            {data.categories.map(c => (
-              <button
-                key={c}
-                onClick={() => setCategoryFilter(f => f === c ? "" : c)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium border transition-all",
-                  categoryFilter === c
-                    ? "bg-primary text-white border-primary"
-                    : preferredCategories.includes(c)
-                    ? "bg-primary/10 text-primary border-primary/30 hover:border-primary"
-                    : "bg-white text-foreground border-border hover:border-primary/50"
+      <AnimatePresence mode="wait">
+        {phase === "select" ? (
+          <motion.div
+            key="select"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="bg-white border border-border rounded-xl p-6 md:p-8 mb-5">
+              <h2 className="text-xl font-display font-semibold text-foreground mb-1">
+                Which of these do you already do?
+              </h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                Tick everything that applies — don't worry about the details yet.
+                {preferredCategories.size > 0 && (
+                  <span className="text-primary"> Your interests are shown first.</span>
                 )}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        )}
+              </p>
 
-        {/* Activity list */}
-        {isLoading ? (
-          <div className="py-8 flex justify-center">
-            <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
-          </div>
-        ) : (
-          <div className="space-y-2 mb-6">
-            {sortedActivities.map(a => {
-              const isAdded = addedIds.has(a.id);
-              const isExpanded = expandedId === a.id;
-              const isPreferred = preferredCategories.includes(a.category);
+              {isLoading ? (
+                <div className="py-8 flex justify-center">
+                  <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2 mb-3">
+                    {displayedActivities.map(a => {
+                      const selected = selectedIds.has(a.id);
+                      const isPreferred = preferredCategories.has(a.category);
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => toggleSelect(a.id)}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
+                            selected
+                              ? "bg-primary/8 border-primary"
+                              : isPreferred
+                              ? "bg-primary/4 border-primary/20 hover:border-primary/50"
+                              : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
+                              selected ? "bg-primary border-primary" : "border-border"
+                            )}
+                          >
+                            {selected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{a.category}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              return (
-                <div key={a.id}>
-                  <button
-                    onClick={() => handleSelectActivity(a)}
-                    disabled={isAdded}
-                    className={cn(
-                      "w-full text-left flex items-center justify-between gap-3 px-4 py-3 rounded-lg border transition-all",
-                      isAdded
-                        ? "bg-green-50 border-green-200 cursor-default"
-                        : isExpanded
-                        ? "bg-primary/5 border-primary"
-                        : isPreferred
-                        ? "bg-primary/5 border-primary/20 hover:border-primary/50"
-                        : "bg-white border-border hover:border-primary/40 hover:bg-muted/20"
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-1 h-6 rounded-full shrink-0"
-                        style={{ backgroundColor: a.sdgColor }}
-                      />
-                      <div className="min-w-0">
-                        <p className={cn("text-sm font-medium truncate", isAdded ? "text-green-700" : "text-foreground")}>
-                          {a.name}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">{a.category}</p>
-                      </div>
-                    </div>
-                    {isAdded ? (
-                      <Check className="w-4 h-4 text-green-600 shrink-0" />
+                  {moreActivities.length > 0 && !showAll && (
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      Show {moreActivities.length} more activities
+                    </button>
+                  )}
+
+                  {/* Custom activity */}
+                  <div className="border-t border-border pt-4 mt-2">
+                    {!showCustom ? (
+                      <button
+                        onClick={() => setShowCustom(true)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <PenLine className="w-3.5 h-3.5" />
+                        Do something else? Add it here
+                      </button>
                     ) : (
-                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-3"
+                      >
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-1">What do you do?</label>
+                          <input
+                            value={customName}
+                            onChange={e => setCustomName(e.target.value)}
+                            placeholder="e.g. Litter picking, befriending scheme, peer support…"
+                            className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-1">Hours per year</label>
+                          <input
+                            type="number" min="1"
+                            value={customHours}
+                            onChange={e => setCustomHours(Number(e.target.value))}
+                            className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleAddCustom}
+                            disabled={!customName.trim()}
+                            className="px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 disabled:opacity-40 transition-colors"
+                          >
+                            Add
+                          </button>
+                          <button
+                            onClick={() => setShowCustom(false)}
+                            className="px-4 py-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Custom activities already added */}
+            {input.activities.filter(a => a.activityId.startsWith("custom_")).length > 0 && (
+              <div className="bg-white border border-border rounded-xl p-4 mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Custom activities added</p>
+                <div className="space-y-1.5">
+                  {input.activities.filter(a => a.activityId.startsWith("custom_")).map((act, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span className="text-foreground font-medium">Custom activity · {act.hoursPerYear} hrs/yr</span>
+                      <button onClick={() => removeActivity(input.activities.indexOf(act))} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <button
+                onClick={() => setLocation("/wizard/actions")}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button
+                onClick={handleStartQuantify}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
+              >
+                {selectedIds.size === 0 ? "Skip" : `Next — ${selectedIds.size} selected`}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="quantify"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {currentActivity && (
+              <>
+                {/* Progress indicator */}
+                <div className="flex items-center gap-1.5 mb-5">
+                  {selectedList.map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "h-1 rounded-full flex-1 transition-all",
+                        i < quantifyIndex ? "bg-primary" : i === quantifyIndex ? "bg-primary" : "bg-muted"
+                      )}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Activity {quantifyIndex + 1} of {selectedList.length}
+                </p>
+
+                <motion.div
+                  key={currentActivity.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-border rounded-xl p-6 md:p-8 mb-5"
+                >
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: currentActivity.sdgColor }} />
+                    <div>
+                      <h2 className="text-lg font-display font-semibold text-foreground leading-snug">
+                        {currentActivity.shortName}
+                      </h2>
+                      <span className="text-xs text-muted-foreground">{currentActivity.category}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <p className="text-sm font-medium text-foreground mb-3">
+                      {currentActivity.friendlyQuestion}
+                    </p>
+
+                    {/* For household-based activities, just show a confirm toggle */}
+                    {currentActivity.unit === "household" ? (
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-md border border-border">
+                        <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="text-sm text-foreground">Yes, I do this</span>
+                      </div>
+                    ) : currentActivity.unit === "hour" ? (
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            min="1"
+                            value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20}
+                            onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
+                            className="w-28 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                          />
+                          <span className="text-sm text-muted-foreground">hours per year</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          That's roughly {Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20) / 52 * 10) / 10} hours a week
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1}
+                          onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
+                          className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                        />
+                        <span className="text-sm text-muted-foreground">{currentActivity.unitLabel}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SDG note */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <span
+                      className="text-[10px] font-bold text-white px-2 py-0.5 rounded"
+                      style={{ backgroundColor: currentActivity.sdgColor }}
+                    >
+                      SDG
+                    </span>
+                    <span className="text-xs text-muted-foreground">{currentActivity.sdg}</span>
+                  </div>
+                </motion.div>
+
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => quantifyIndex === 0 ? setPhase("select") : setQuantifyIndex(i => i - 1)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                  <button
+                    onClick={handleQuantifyNext}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
+                  >
+                    {quantifyIndex < selectedList.length - 1 ? (
+                      <><ChevronRight className="w-4 h-4" /> Next activity</>
+                    ) : (
+                      <>Done <Check className="w-4 h-4" /></>
                     )}
                   </button>
-
-                  <AnimatePresence>
-                    {isExpanded && !isAdded && (
-                      <ActivityEditor
-                        activity={a}
-                        onAdd={(qty, hrs) => handleAdd(a.id, qty, hrs)}
-                        onCancel={() => setExpandedId(null)}
-                      />
-                    )}
-                  </AnimatePresence>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Custom activity */}
-        <div className="border-t border-border pt-4">
-          <button
-            onClick={() => setShowCustom(o => !o)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
-          >
-            <PenLine className="w-4 h-4" />
-            Can't find your activity? Add it manually
-          </button>
-          <AnimatePresence>
-            {showCustom && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-4 space-y-3"
-              >
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">Activity name</label>
-                  <input
-                    value={customName}
-                    onChange={e => setCustomName(e.target.value)}
-                    placeholder="e.g. Litter picking in the park"
-                    className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">Brief description (optional)</label>
-                  <input
-                    value={customDesc}
-                    onChange={e => setCustomDesc(e.target.value)}
-                    placeholder="What do you do? Who does it benefit?"
-                    className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">Hours per year</label>
-                  <input
-                    type="number" min="1"
-                    value={customHours}
-                    onChange={e => setCustomHours(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                  />
-                </div>
-                <button
-                  onClick={handleAddCustom}
-                  disabled={!customName.trim()}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 transition-colors disabled:opacity-40"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add custom activity
-                </button>
-              </motion.div>
+              </>
             )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
-
-      {/* Added activities summary */}
-      {input.activities.length > 0 && (
-        <motion.div
-          className="bg-white border border-border rounded-xl p-5 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <h3 className="text-sm font-semibold text-foreground mb-3">
-            Your activities ({input.activities.length})
-          </h3>
-          <div className="space-y-2">
-            <AnimatePresence>
-              {input.activities.map((act, idx) => {
-                const def = data?.activities.find(a => a.id === act.activityId);
-                const isCustom = act.activityId.startsWith("custom_");
-                return (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {def && <div className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: def.sdgColor }} />}
-                      {isCustom && <div className="w-1 h-6 rounded-full shrink-0 bg-muted-foreground/30" />}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {def?.name || "Custom activity"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {act.quantity} {def?.unitLabel || "entry"} · {act.hoursPerYear} hrs/yr
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeActivity(idx)}
-                      className="p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 rounded transition-all shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => setLocation("/wizard/actions")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm text-foreground font-medium hover:bg-secondary transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
-        <button
-          onClick={() => setLocation("/wizard/contributions")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
-        >
-          Next <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -9,11 +9,14 @@
 export interface ActivityItem {
   id: string;
   name: string;
+  shortName: string;
   category: string;
   proxy: string;
   proxyYear: string;
   unit: string;
   unitLabel: string;
+  friendlyQuestion: string;
+  defaultQuantity: number;
   valuePerUnit: number;
   sdg: string;
   sdgColor: string;

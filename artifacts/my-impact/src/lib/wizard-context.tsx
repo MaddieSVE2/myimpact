@@ -23,12 +23,14 @@ export const INTEREST_OPTIONS = [
 interface WizardState {
   location: string;
   interests: string[];
+  customInterest: string;
   input: ImpactInput;
   result: ImpactResult | null;
 }
 
 interface WizardContextType extends WizardState {
   setLocation: (location: string) => void;
+  setCustomInterest: (val: string) => void;
   toggleInterest: (interestId: string) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
@@ -49,10 +51,12 @@ const WizardContext = createContext<WizardContextType | undefined>(undefined);
 export function WizardProvider({ children }: { children: ReactNode }) {
   const [location, setLocationState] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
+  const [customInterest, setCustomInterestState] = useState('');
   const [input, setInput] = useState<ImpactInput>(defaultInput);
   const [result, setResult] = useState<ImpactResult | null>(null);
 
   const setLocation = (loc: string) => setLocationState(loc);
+  const setCustomInterest = (val: string) => setCustomInterestState(val);
 
   const toggleInterest = (interestId: string) => {
     setInterests(prev =>
@@ -75,14 +79,15 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const reset = () => {
     setLocationState('');
     setInterests([]);
+    setCustomInterestState('');
     setInput(defaultInput);
     setResult(null);
   };
 
   return (
     <WizardContext.Provider value={{
-      location, interests, input, result,
-      setLocation, toggleInterest, updateInput,
+      location, interests, customInterest, input, result,
+      setLocation, setCustomInterest, toggleInterest, updateInput,
       addActivity, removeActivity, setResult, reset
     }}>
       {children}
