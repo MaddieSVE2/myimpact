@@ -141,7 +141,6 @@ export default function Intro() {
           .mi-counts-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
         }
       `}</style>
-
       {/* ── HERO ── */}
       <section className="mi-hero">
         <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
@@ -187,7 +186,6 @@ export default function Intro() {
           <div className="mi-scroll-line" />
         </div>
       </section>
-
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <FadeIn>
@@ -202,7 +200,6 @@ export default function Intro() {
           </div>
         </FadeIn>
       </section>
-
       {/* ── WHAT COUNTS ── */}
       <section id="how" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -232,7 +229,6 @@ export default function Intro() {
           </div>
         </div>
       </section>
-
       {/* ── PROOF IN NUMBERS ── */}
       <section style={{ background: C.dark, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -265,7 +261,6 @@ export default function Intro() {
           </div>
         </div>
       </section>
-
       {/* ── STORIES ── */}
       <section id="stories" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -314,13 +309,12 @@ export default function Intro() {
           </div>
         </div>
       </section>
-
       {/* ── HOW IT WORKS ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label">How it works</p>
-            <p className="mi-section-title">Three minutes. That's it.</p>
+            <p className="mi-section-title">Three minutes to your first report.</p>
           </FadeIn>
           <div>
             {[
@@ -342,7 +336,6 @@ export default function Intro() {
           </div>
         </div>
       </section>
-
       {/* ── CV / PROOF ── */}
       <section style={{ background: "white", padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div className="mi-cv-grid" style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
@@ -394,7 +387,6 @@ export default function Intro() {
           </FadeIn>
         </div>
       </section>
-
       {/* ── FOR ORGANISATIONS ── */}
       <section id="orgs" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -424,7 +416,6 @@ export default function Intro() {
           </div>
         </div>
       </section>
-
       {/* ── CTA ── */}
       <section className="mi-cta-section">
         <FadeIn>
@@ -441,7 +432,6 @@ export default function Intro() {
           </div>
         </FadeIn>
       </section>
-
       {/* ── FOOTER ── */}
       <footer style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <p className="mi-fraunces" style={{ fontSize: 20, fontWeight: 900, color: "white", marginBottom: 6 }}>
