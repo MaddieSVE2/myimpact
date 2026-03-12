@@ -354,9 +354,6 @@ export default function Intro() {
               <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7, marginBottom: 16 }}>
                 Employers want evidence. Funders want outcomes. Commissioners want data. My Impact gives you something most people don't have: a verified, quantified record of the difference you make.
               </p>
-              <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7 }}>
-                Not a vague paragraph in an application. An actual number, backed by real methodology.
-              </p>
               <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 10, marginTop: 28 }}>
                 {[
                   { label: "CVs and job applications", bg: `${C.orange}18`, color: C.orange },
