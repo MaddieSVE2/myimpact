@@ -20,34 +20,34 @@ export default function ActionsStep() {
       <StepProgress currentStep={1} />
       
       <motion.div 
-        className="glass-card rounded-[2rem] p-8 md:p-12"
+        className="bg-white border border-border shadow-sm rounded-xl p-6 md:p-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6">
-          <FileText className="w-8 h-8" />
+        <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-primary mb-6">
+          <FileText className="w-6 h-6" />
         </div>
         
-        <h2 className="text-3xl font-display font-bold mb-2">Tell us about yourself</h2>
-        <p className="text-muted-foreground mb-8 text-lg">
+        <h2 className="text-2xl font-display font-semibold mb-2">Tell us about yourself</h2>
+        <p className="text-muted-foreground mb-6 text-base">
           What kind of things do you do for others? A brief description helps contextualize your impact.
         </p>
 
-        <div className="space-y-4 mb-10">
+        <div className="space-y-4 mb-8">
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="E.g., I regularly volunteer at the local food bank and help my elderly neighbors with their shopping..."
-            className="w-full min-h-[150px] p-5 rounded-2xl bg-white border-2 border-border focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all resize-none text-base"
+            className="w-full min-h-[150px] p-4 rounded-md bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none text-sm"
           />
         </div>
 
         <div className="flex justify-end">
           <button
             onClick={handleNext}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/25"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
           >
-            Next: Add Activities <ArrowRight className="w-5 h-5" />
+            Next: Add Activities <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </motion.div>

@@ -15,16 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 function ExplanationAccordion({ title, content, icon: Icon }: { title: string, content: string, icon: any }) {
   return (
     <details className="group border border-border rounded-2xl bg-white overflow-hidden [&_summary::-webkit-details-marker]:hidden">
-      <summary className="flex items-center justify-between p-5 cursor-pointer font-bold select-none text-foreground hover:bg-secondary/30 transition-colors">
+      <summary className="flex items-center justify-between p-4 cursor-pointer font-medium select-none text-foreground hover:bg-secondary/30 transition-colors">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg">
-            <Icon className="w-5 h-5" />
+          <div className="p-1.5 bg-secondary text-foreground rounded-md">
+            <Icon className="w-4 h-4" />
           </div>
           {title}
         </div>
-        <ChevronDown className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" />
+        <ChevronDown className="w-4 h-4 text-muted-foreground group-open:rotate-180 transition-transform" />
       </summary>
-      <div className="p-5 pt-0 text-muted-foreground border-t border-border/50 bg-secondary/10 leading-relaxed">
+      <div className="p-4 pt-0 text-sm text-muted-foreground border-t border-border/50 bg-background leading-relaxed">
         {content}
       </div>
     </details>
@@ -89,45 +89,45 @@ export default function Results() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">
-          <Trophy className="w-4 h-4 text-accent" /> Your Social Value
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-foreground text-xs font-medium mb-3">
+          <Trophy className="w-3.5 h-3.5 text-primary" /> Your Social Value
         </div>
-        <h1 className="text-6xl md:text-8xl font-black font-display text-foreground tracking-tighter mb-4">
+        <h1 className="text-5xl md:text-6xl font-display font-bold text-foreground tracking-tight mb-3">
           {formatCurrency(result.totalValue)}
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           That's the equivalent financial value of the good you've done for society over the last year.
         </p>
       </motion.div>
 
       {/* Primary Value Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-        <div className="glass-card p-6 rounded-3xl border-l-4 border-l-primary relative overflow-hidden group hover:-translate-y-1 transition-transform">
-          <div className="text-primary mb-3"><TrendingUp className="w-8 h-8" /></div>
-          <p className="text-sm font-bold text-muted-foreground mb-1">Direct Impact</p>
-          <p className="text-3xl font-display font-black">{formatCurrency(result.impactValue)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <div className="bg-white border border-border p-5 rounded-xl border-t-2 border-t-primary relative overflow-hidden group">
+          <div className="text-primary mb-2"><TrendingUp className="w-5 h-5" /></div>
+          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Direct Impact</p>
+          <p className="text-2xl font-display font-semibold">{formatCurrency(result.impactValue)}</p>
         </div>
-        <div className="glass-card p-6 rounded-3xl border-l-4 border-l-blue-500 hover:-translate-y-1 transition-transform">
-          <div className="text-blue-500 mb-3"><UserPlus className="w-8 h-8" /></div>
-          <p className="text-sm font-bold text-muted-foreground mb-1">Contribution</p>
-          <p className="text-3xl font-display font-black">{formatCurrency(result.contributionValue)}</p>
+        <div className="bg-white border border-border p-5 rounded-xl border-t-2 border-t-blue-500">
+          <div className="text-blue-500 mb-2"><UserPlus className="w-5 h-5" /></div>
+          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Contribution</p>
+          <p className="text-2xl font-display font-semibold">{formatCurrency(result.contributionValue)}</p>
         </div>
-        <div className="glass-card p-6 rounded-3xl border-l-4 border-l-green-500 hover:-translate-y-1 transition-transform">
-          <div className="text-green-500 mb-3"><HandCoins className="w-8 h-8" /></div>
-          <p className="text-sm font-bold text-muted-foreground mb-1">Donations</p>
-          <p className="text-3xl font-display font-black">{formatCurrency(result.donationsValue)}</p>
+        <div className="bg-white border border-border p-5 rounded-xl border-t-2 border-t-green-500">
+          <div className="text-green-500 mb-2"><HandCoins className="w-5 h-5" /></div>
+          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Donations</p>
+          <p className="text-2xl font-display font-semibold">{formatCurrency(result.donationsValue)}</p>
         </div>
-        <div className="glass-card p-6 rounded-3xl border-l-4 border-l-accent hover:-translate-y-1 transition-transform">
-          <div className="text-accent-foreground mb-3"><Trophy className="w-8 h-8 text-accent" /></div>
-          <p className="text-sm font-bold text-muted-foreground mb-1">Personal Dev</p>
-          <p className="text-3xl font-display font-black">{formatCurrency(result.personalDevelopmentValue)}</p>
+        <div className="bg-white border border-border p-5 rounded-xl border-t-2 border-t-accent">
+          <div className="text-foreground mb-2"><Trophy className="w-5 h-5" /></div>
+          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Personal Dev</p>
+          <p className="text-2xl font-display font-semibold">{formatCurrency(result.personalDevelopmentValue)}</p>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        <div className="glass-card p-8 rounded-3xl">
-          <h3 className="text-xl font-bold mb-6 font-display">Value by Activity</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+        <div className="bg-white border border-border p-6 rounded-xl">
+          <h3 className="text-lg font-semibold mb-4 font-display">Value by Activity</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -149,8 +149,8 @@ export default function Results() {
           </div>
         </div>
 
-        <div className="glass-card p-8 rounded-3xl">
-          <h3 className="text-xl font-bold mb-6 font-display">SDG Alignment</h3>
+        <div className="bg-white border border-border p-6 rounded-xl">
+          <h3 className="text-lg font-semibold mb-4 font-display">SDG Alignment</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -175,11 +175,11 @@ export default function Results() {
 
       {/* Explanations */}
       <div className="mb-16">
-        <div className="flex items-center gap-2 mb-6">
-          <Info className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-display font-bold">What do these numbers mean?</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Info className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-xl font-display font-semibold">What do these numbers mean?</h2>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           <ExplanationAccordion 
             icon={TrendingUp} title="Direct Impact" 
             content={result.explanations.impact} 
@@ -200,19 +200,19 @@ export default function Results() {
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-foreground/95 backdrop-blur-xl p-4 rounded-[2rem] shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 z-40 border border-white/10">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-xl bg-white border border-border p-3 rounded-xl shadow-lg flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 z-40">
         <button 
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors font-bold disabled:opacity-50"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-secondary text-foreground hover:bg-secondary/70 transition-colors text-sm font-medium disabled:opacity-50"
         >
-          <Save className="w-5 h-5" /> Save Record
+          <Save className="w-4 h-4" /> Save Record
         </button>
         <Link 
           href="/suggestions"
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-bold shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white text-sm font-medium shadow-sm hover:bg-primary/90 transition-all"
         >
-          Get Activity Ideas <ArrowRight className="w-5 h-5" />
+          Get Activity Ideas <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </div>

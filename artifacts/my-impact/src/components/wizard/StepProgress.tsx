@@ -30,16 +30,16 @@ export function StepProgress({ currentStep }: StepProgressProps) {
             <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
               <div 
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-md",
-                  isCompleted ? "bg-primary text-white" : 
+                  "w-8 h-8 rounded-full flex items-center justify-center font-medium text-xs transition-all duration-300 shadow-sm",
+                  isCompleted ? "bg-primary text-white border-primary" : 
                   isCurrent ? "bg-white border-2 border-primary text-primary" : 
-                  "bg-white border-2 border-muted text-muted-foreground"
+                  "bg-white border-2 border-border text-muted-foreground"
                 )}
               >
-                {isCompleted ? <Check className="w-5 h-5" /> : step.id}
+                {isCompleted ? <Check className="w-4 h-4" /> : step.id}
               </div>
               <span className={cn(
-                "text-xs font-semibold absolute -bottom-6 whitespace-nowrap transition-colors",
+                "text-[11px] font-medium absolute -bottom-5 whitespace-nowrap transition-colors",
                 isCurrent ? "text-primary" : "text-muted-foreground"
               )}>
                 {step.name}

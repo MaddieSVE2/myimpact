@@ -26,13 +26,13 @@ export default function History() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <div className="flex items-center gap-4 mb-10">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-          <HistoryIcon className="w-7 h-7" />
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-foreground">
+          <HistoryIcon className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-4xl font-display font-black text-foreground">Impact History</h1>
-          <p className="text-muted-foreground text-lg">Watch your social value grow over time.</p>
+          <h1 className="text-3xl font-display font-semibold text-foreground">Impact History</h1>
+          <p className="text-muted-foreground text-sm">Watch your social value grow over time.</p>
         </div>
       </div>
 
@@ -40,9 +40,9 @@ export default function History() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 md:p-8 rounded-[2rem] mb-12"
+          className="bg-white border border-border shadow-sm p-6 rounded-xl mb-10"
         >
-          <h3 className="text-xl font-bold mb-6 font-display">Value Trend</h3>
+          <h3 className="text-lg font-semibold mb-4 font-display">Value Trend</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -70,10 +70,10 @@ export default function History() {
         </motion.div>
       )}
 
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold font-display">Past Records</h3>
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold font-display mb-2">Past Records</h3>
         {records.length === 0 ? (
-          <div className="text-center py-12 glass-card rounded-3xl text-muted-foreground">
+          <div className="text-center py-10 bg-white border border-border rounded-xl text-sm text-muted-foreground">
             No history found. Complete the wizard and save a record!
           </div>
         ) : (
@@ -83,15 +83,15 @@ export default function History() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="glass-card p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-primary/30 transition-colors cursor-default"
+              className="bg-white border border-border p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-primary/50 transition-colors shadow-sm cursor-default"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
-                  <Calendar className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-md bg-background flex items-center justify-center text-muted-foreground border border-border">
+                  <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg">{record.name}</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <h4 className="font-semibold text-base">{record.name}</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {new Date(record.createdAt).toLocaleDateString('en-GB', { 
                       weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' 
                     })}
@@ -99,8 +99,8 @@ export default function History() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-display font-black text-foreground">{formatCurrency(record.impactResult.totalValue)}</p>
-                <p className="text-sm text-primary font-bold">Social Value</p>
+                <p className="text-xl font-display font-semibold text-foreground">{formatCurrency(record.impactResult.totalValue)}</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Social Value</p>
               </div>
             </motion.div>
           ))

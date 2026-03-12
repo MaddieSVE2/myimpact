@@ -27,20 +27,20 @@ export default function Suggestions() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <div className="flex items-center gap-4 mb-10">
-        <div className="w-14 h-14 rounded-2xl bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
-          <Lightbulb className="w-7 h-7 text-accent" fill="currentColor" />
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-foreground">
+          <Lightbulb className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-4xl font-display font-black text-foreground">Next Steps</h1>
-          <p className="text-muted-foreground text-lg">Personalised ideas to boost your social value.</p>
+          <h1 className="text-3xl font-display font-semibold text-foreground">Next Steps</h1>
+          <p className="text-muted-foreground text-sm">Personalised ideas to boost your social value.</p>
         </div>
       </div>
 
       {isPending ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="glass-card p-6 rounded-3xl h-48 animate-pulse bg-white/40" />
+            <div key={i} className="bg-white border border-border p-6 rounded-xl h-48 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -51,35 +51,35 @@ export default function Suggestions() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="glass-card rounded-[2rem] overflow-hidden group"
+              className="bg-white border border-border rounded-xl overflow-hidden group shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="h-2 w-full" style={{ backgroundColor: sug.sdgColor }} />
-              <div className="p-6 md:p-8">
+              <div className="h-1.5 w-full" style={{ backgroundColor: sug.sdgColor }} />
+              <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground border border-border">
+                  <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-background text-foreground border border-border">
                     {sug.category}
                   </span>
-                  <span className="flex items-center gap-1 text-sm font-bold text-muted-foreground">
-                    <Clock className="w-4 h-4" /> {sug.recommendedHoursPerWeek} hrs/wk
+                  <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" /> {sug.recommendedHoursPerWeek} hrs/wk
                   </span>
                 </div>
                 
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
                   {sug.activityName}
                 </h3>
-                <p className="text-muted-foreground mb-6 leading-relaxed">
+                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
                   {sug.reason}
                 </p>
                 
                 <div className="flex items-center justify-between pt-4 border-t border-border">
                   <div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Estimated Impact</p>
-                    <p className="text-xl font-display font-black text-primary">
-                      +{formatCurrency(sug.estimatedImpactPerYear)}<span className="text-sm text-muted-foreground font-sans">/yr</span>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Estimated Impact</p>
+                    <p className="text-lg font-display font-semibold text-foreground">
+                      +{formatCurrency(sug.estimatedImpactPerYear)}<span className="text-xs text-muted-foreground font-sans font-normal">/yr</span>
                     </p>
                   </div>
-                  <button className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
-                    <Star className="w-5 h-5" />
+                  <button className="w-8 h-8 rounded bg-background border border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors text-muted-foreground">
+                    <Star className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -88,9 +88,9 @@ export default function Suggestions() {
         </div>
       )}
 
-      <div className="mt-12 flex justify-center">
-        <Link href="/results" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold transition-colors">
-          <ArrowLeft className="w-5 h-5" /> Back to My Impact
+      <div className="mt-10 flex justify-center">
+        <Link href="/results" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to My Impact
         </Link>
       </div>
     </div>

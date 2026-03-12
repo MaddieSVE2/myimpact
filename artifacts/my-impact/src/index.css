@@ -59,34 +59,34 @@
 }
 
 :root {
-  /* Warm grey background */
-  --background: 40 14% 97%;
-  /* Deep Navy */
-  --foreground: 226 59% 11%;
+  /* Very light warm off-white background #F7F5F2 */
+  --background: 36 21% 96%;
+  /* Dark charcoal/grey #4A4A4A */
+  --foreground: 0 0% 29%;
   
-  /* Vibrant Coral/Orange */
+  /* Primary orange #F06127 */
   --primary: 17 88% 55%;
   --primary-foreground: 0 0% 100%;
   
   /* Light Blue/Grey */
   --secondary: 210 40% 96%;
-  --secondary-foreground: 226 59% 11%;
+  --secondary-foreground: 0 0% 29%;
   
   --card: 0 0% 100%;
-  --card-foreground: 226 59% 11%;
+  --card-foreground: 0 0% 29%;
   
-  --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
+  --muted: 36 10% 90%;
+  --muted-foreground: 0 0% 45%;
   
   /* Warm Yellow Accent */
   --accent: 45 93% 47%;
-  --accent-foreground: 226 59% 11%;
+  --accent-foreground: 0 0% 29%;
   
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
+  --border: 36 10% 90%;
+  --input: 36 10% 90%;
   --ring: 17 88% 55%;
 }
 
@@ -96,27 +96,27 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground font-normal;
     background-image: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply font-bold tracking-tight text-foreground;
+    @apply font-semibold tracking-tight text-foreground;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-xl shadow-black/5;
+    @apply bg-white border border-border shadow-sm;
   }
   
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+    @apply text-primary;
   }
 }
 
 /* Recharts Customizations */
 .recharts-default-tooltip {
-  @apply !bg-white/90 !backdrop-blur-md !border-none !shadow-xl !rounded-xl !p-4 !font-sans !text-sm;
+  @apply !bg-white !border !border-border !shadow-md !rounded-xl !p-4 !font-sans !text-sm;
 }
