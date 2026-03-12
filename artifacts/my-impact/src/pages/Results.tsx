@@ -272,7 +272,7 @@ export default function Results() {
       )}
 
       {/* Donut charts */}
-      {(segments.length > 0 || result.sdgBreakdowns.length > 0) && (
+      {(result.activityBreakdowns.length > 0 || result.sdgBreakdowns.length > 0) && (
         <motion.div
           className="mb-8 grid grid-cols-2 gap-3"
           initial={{ opacity: 0, y: 10 }}
