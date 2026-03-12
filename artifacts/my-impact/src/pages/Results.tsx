@@ -403,21 +403,31 @@ export default function Results() {
 
 
       {/* Fixed action bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border" style={{ background: "white", boxShadow: "0 -4px 24px rgba(0,0,0,0.10)" }}>
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+
+          {/* Save — primary action, always prominent */}
           <button
             onClick={handleSave}
             disabled={saveMutation.isPending || saved}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors disabled:opacity-50 shrink-0"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
+            style={{
+              background: saved ? "#22c55e" : "#213547",
+              boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
+            }}
           >
-            {saved ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Save className="w-3.5 h-3.5" />}
-            {saved ? "Saved" : "Save"}
+            {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saveMutation.isPending ? "Saving…" : saved ? "Saved!" : "Save progress"}
           </button>
 
+          {/* Divider */}
+          <div className="hidden sm:block w-px h-6 bg-border shrink-0" />
+
+          {/* Secondary actions */}
           <button
             onClick={handleExportPNG}
             disabled={exporting}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors disabled:opacity-50 shrink-0"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
             {exporting ? "Exporting…" : "Download PNG"}
@@ -426,17 +436,17 @@ export default function Results() {
           <div className="relative shrink-0">
             <button
               onClick={handleNativeShare}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all"
             >
               <Share2 className="w-3.5 h-3.5" /> Share
             </button>
             {shareOpen && (
-              <div className="absolute bottom-full mb-2 left-0 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[140px] z-50">
+              <div className="absolute bottom-full mb-2 left-0 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-50">
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <Twitter className="w-3.5 h-3.5 text-sky-500" /> Share on X
                 </a>
@@ -444,7 +454,7 @@ export default function Results() {
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <Linkedin className="w-3.5 h-3.5 text-blue-600" /> Share on LinkedIn
                 </a>
@@ -454,17 +464,20 @@ export default function Results() {
 
           <Link
             href="/journal"
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors shrink-0"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5" /> Journal
           </Link>
 
+          {/* Ideas CTA — grows to fill remaining space */}
           <Link
             href="/suggestions"
-            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-px"
+            style={{ background: "#E8633A", boxShadow: "0 2px 12px #E8633A40" }}
           >
             Get personalised ideas <ArrowRight className="w-3.5 h-3.5" />
           </Link>
+
         </div>
       </div>
     </div>
