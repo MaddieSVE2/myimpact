@@ -127,15 +127,11 @@ router.post("/suggestions", (req, res) => {
     const estimatedImpact = a.unit === "hour" ? yearlyHours * a.valuePerUnit : a.valuePerUnit * hoursNeeded;
     const isPreferred = preferredCategories.has(a.category);
 
-    // Check if contextually related to current activities
     const hasRelatedCurrent = Array.from(currentIds).some(
       (id) => (RELATED_PAIRS[id] || []).includes(a.id)
     );
 
     const reason = buildContextualReason(a.id, a.category);
-
-    // Boost score for contextually relevant or interest-matched suggestions
-    const boostMultiplier = hasRelatedCurrent ? 2.0 : isPreferred ? 1.5 : 1.0;
 
     return {
       activityId: a.id,
@@ -146,15 +142,34 @@ router.post("/suggestions", (req, res) => {
       reason,
       estimatedImpactPerYear: Math.round(estimatedImpact * 100) / 100,
       recommendedHoursPerWeek: Math.min(weeklyHours, a.unit === "hour" ? weeklyHours : 1),
-      score: estimatedImpact * boostMultiplier,
+      estimatedImpact,
+      isPreferred,
+      hasRelatedCurrent,
     };
   });
 
-  scored.sort((a, b) => b.score - a.score);
+  // When the user has stated interests, preferred-category activities always
+  // fill the top slots. Non-preferred only appear to pad remaining space.
+  const hasPreferences = preferredCategories.size > 0;
 
-  const suggestions = scored.slice(0, 6).map(({ score: _score, ...rest }) => rest);
+  const byImpactDesc = (a: typeof scored[0], b: typeof scored[0]) =>
+    b.estimatedImpact - a.estimatedImpact;
 
-  res.json({ suggestions });
+  let suggestions: typeof scored;
+
+  if (hasPreferences) {
+    const related   = scored.filter((a) => a.hasRelatedCurrent).sort(byImpactDesc);
+    const preferred = scored.filter((a) => !a.hasRelatedCurrent && a.isPreferred).sort(byImpactDesc);
+    const other     = scored.filter((a) => !a.hasRelatedCurrent && !a.isPreferred).sort(byImpactDesc);
+    suggestions = [...related, ...preferred, ...other].slice(0, 6);
+  } else {
+    // No stated interests — sort purely by impact
+    suggestions = [...scored].sort(byImpactDesc).slice(0, 6);
+  }
+
+  const output = suggestions.map(({ estimatedImpact: _ei, isPreferred: _ip, hasRelatedCurrent: _hrc, ...rest }) => rest);
+
+  res.json({ suggestions: output });
 });
 
 router.post("/save", async (req, res) => {
