@@ -22,7 +22,7 @@ export function Navbar() {
 
   return (
     <nav style={{ background: DARK }} className="sticky top-0 z-50 w-full border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between pl-[10px] pr-[10px]">
         <Link href="/" className="flex items-center gap-2 group">
           <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-8" />
         </Link>
@@ -104,7 +104,6 @@ export function Navbar() {
           </button>
         </div>
       </div>
-
       {/* Mobile dropdown */}
       {mobileOpen && (
         <div
