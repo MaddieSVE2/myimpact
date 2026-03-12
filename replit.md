@@ -82,6 +82,18 @@ artifacts-monorepo/
 - `POST /api/impact/suggestions` — get recommended activities based on current activities
 - `POST /api/impact/save` — save impact record to database
 - `GET /api/impact/history?userId=xxx` — retrieve historical records
+- `GET /api/impact/org-stats` — aggregate stats for org portal
+- `POST /api/sidekick/chat` — streaming AI chat endpoint (SSE), uses OpenAI via Replit AI Integrations
+
+## Sidekick AI
+
+A collapsible right-side panel (SVE-style) providing contextual AI assistance:
+- Powered by OpenAI via Replit AI Integrations (`lib/integrations-openai-ai-server`)
+- Collapses to 48px strip with vertical "SIDEKICK" label; expands to 380px chat panel
+- Context-aware: passes user's current impact score, activities, and SDGs to the AI
+- System prompt: social value expert, warm/encouraging tone for 14-25 age group
+- Component: `artifacts/my-impact/src/components/Sidekick.tsx`
+- Route: `artifacts/api-server/src/routes/sidekick.ts`
 
 ## TypeScript & Composite Projects
 

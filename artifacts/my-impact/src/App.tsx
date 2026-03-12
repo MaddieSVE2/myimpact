@@ -6,6 +6,7 @@ import { WizardProvider } from "@/lib/wizard-context";
 
 // Layout & Pages
 import { Navbar } from "@/components/layout/Navbar";
+import { Sidekick } from "@/components/Sidekick";
 import Intro from "@/pages/Intro";
 import ActionsStep from "@/pages/wizard/ActionsStep";
 import ActivitiesStep from "@/pages/wizard/ActivitiesStep";
@@ -22,17 +23,17 @@ const queryClient = new QueryClient();
 
 function AppRouter() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ paddingRight: 48 }}>
       <Navbar />
       <main className="flex-grow">
         <Switch>
           <Route path="/" component={Intro} />
-          
+
           {/* Wizard Routes */}
           <Route path="/wizard/actions" component={ActionsStep} />
           <Route path="/wizard/activities" component={ActivitiesStep} />
           <Route path="/wizard/contributions" component={ContributionsStep} />
-          
+
           {/* Post-Wizard Routes */}
           <Route path="/results" component={Results} />
           <Route path="/suggestions" component={Suggestions} />
@@ -40,10 +41,11 @@ function AppRouter() {
           <Route path="/journal" component={Journal} />
           <Route path="/badges" component={Badges} />
           <Route path="/org" component={OrgPortal} />
-          
+
           <Route component={NotFound} />
         </Switch>
       </main>
+      <Sidekick />
     </div>
   );
 }

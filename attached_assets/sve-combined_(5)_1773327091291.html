@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVE — Combined Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fabPulse { 0%,100%{ box-shadow: 0 4px 20px rgba(10,120,119,0.4); } 50%{ box-shadow: 0 4px 28px rgba(10,120,119,0.6); } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+/* ── Brand ── */
+const C = {
+  dark:   '#01343F',
+  gray:   '#58595B',
+  teal:   '#0A7877',
+  tealL:  '#066E8C',
+  olive:  '#94A53A',
+  gold:   '#EABD1E',
+  bg:     '#e4eff3',
+  card:   '#ffffff',
+  border: '#e2e8f0',
+};
+
+/* ── Data ── */
+const projects = [
+  { id:1, name:"NEN", description:"Deliver a level 1 qualification in enterprise to young people not in education", status:"draft", type:"forecast", outcomes:5, stakeholders:2, labels:["Education","Youth"], created:"15 Jan 2025", lastUpdated:"2 hours ago", projectStart:"Apr 2024", projectEnd:"Mar 2025", organisation:"SVE demo", creator:"Sean Inglis" },
+  { id:2, name:"Sparrows", description:"Sparrows Project works for the release and rehabilitation of prisoners", status:"draft", type:"evaluation", outcomes:4, stakeholders:3, labels:["Justice","Rehabilitation"], created:"3 Dec 2024", lastUpdated:"2 days ago", projectStart:"Jan 2024", projectEnd:"Dec 2024", organisation:"SVE demo", creator:"Maddie Kortenaar" },
+  { id:3, name:"Georgia's Voice", description:"To improve the mental wellbeing and social connectedness of young people", status:"active", type:"forecast", outcomes:5, stakeholders:2, labels:["Mental Health"], created:"20 Nov 2024", lastUpdated:"1 day ago", projectStart:"Sep 2024", projectEnd:"Aug 2025", organisation:"SVE demo", creator:"Maddie Kortenaar" },
+  { id:4, name:"Open up Music", description:"Over a 12-month period, bring together disabled and non-disabled musicians", status:"active", type:"forecast", outcomes:4, stakeholders:2, labels:[], created:"8 Jan 2025", lastUpdated:"1 day ago", projectStart:"Mar 2025", projectEnd:"Feb 2026", organisation:"Bromford Flagship (outward)", creator:"Jennie Watkins" },
+  { id:5, name:"HDC Active for health", description:"To increase food security and financial resilience in local communities", status:"active", type:"evaluation", outcomes:4, stakeholders:1, labels:["Food Security"], created:"5 Oct 2024", lastUpdated:"1 hour ago", projectStart:"Jun 2024", projectEnd:"May 2025", organisation:"ERYC", creator:"Jennifer Jefferson" },
+  { id:6, name:"Shrewsbury Park Rangers", description:"Project to provide a safe environment for children to play and learn", status:"archived", type:"evaluation", outcomes:5, stakeholders:3, labels:["Youth","Community"], created:"12 Sep 2023", lastUpdated:"3 months ago", projectStart:"Apr 2023", projectEnd:"Mar 2024", organisation:"Cornwall Council", creator:"Nicola Willcocks" },
+  { id:7, name:"Digital Skills for All", description:"Providing digital literacy training to older adults in rural communities", status:"archived", type:"evaluation", outcomes:3, stakeholders:2, labels:["Digital","Elderly"], created:"5 Mar 2023", lastUpdated:"6 months ago", projectStart:"Jan 2023", projectEnd:"Dec 2023", organisation:"CVS Falkirk and District", creator:"Lynsey Hansford" },
+];
+
+const statusCfg = {
+  draft:    { label:"Draft",    color:C.gold,  bg:"#fef9e7" },
+  active:   { label:"Active",   color:C.olive, bg:"#f3f6e8" },
+  archived: { label:"Archived", color:'#94a3b8', bg:"#f1f5f9" },
+};
+const typeCfg = {
+  forecast:   { label:"Forecast",   color:"#fff",  bg:C.teal  },
+  evaluation: { label:"Evaluation", color:"#fff",  bg:C.olive },
+};
+
+const proxies = [
+  { id:1, category:"A Reduction in Social Isolation", name:"A Reduction in Social Isolation", value:2337, currency:"€", organisation:"SFF", source:"Social Finance Foundation", sourceDate:"2023", unit:"Number of participants involved in faith-based events", deflator:"No recommendation", isGlobal:false, createdBy:"Ivan Googins", createdDate:"12 Nov 2024", lastUpdated:"12 Nov 2024", priorities:[{name:"Well Connected",framework:"Bristol Accord",color:"#EABD1E"},{name:"Reducing Loneliness",framework:"CWB (Cleveland Model)",color:"#94A53A"}] },
+  { id:2, category:"Arts and Heritage", name:"Arts and Heritage/Tourism", value:1850, currency:"€", organisation:null, source:"GMCA Unit Cost Database", sourceDate:"2024", unit:"Per Person", deflator:"GDP Deflator", isGlobal:true, createdBy:"Maddie Kirk", createdDate:"18 Dec 2025", lastUpdated:"18 Dec 2025", priorities:[{name:"Valuing the Environment",framework:"ERYC",color:"#0A7877"},{name:"Life On Land",framework:"SDGs",color:"#94A53A"}] },
+  { id:3, category:"Arts and Wellbeing", name:"Annual wellbeing benefit from general cultural engagement", value:1200, currency:"€", organisation:"Demo organisation", source:"Frontier Economics", sourceDate:"2024", unit:"Per adult per year", deflator:"No recommendation", isGlobal:false, createdBy:"Maddie Kirk", createdDate:"18 Dec 2025", lastUpdated:"18 Dec 2025", priorities:[] },
+  { id:4, category:"Average Cost of Childcare", name:"Average Cost of Childcare", value:9880, currency:"€", organisation:null, source:"OECD Family Database", sourceDate:"2023", unit:"Number of additional children supported", deflator:"CPI", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"10 Jan 2025", priorities:[{name:"Quality Education",framework:"SDGs",color:"#dc2626"}] },
+  { id:5, category:"Average Cost of Starting a Micro-Business", name:"Average Cost of Starting a Micro-Business", value:22756, currency:"€", organisation:null, source:"New Economy Manchester", sourceDate:"2021", unit:"Number of participants operational one year after funding", deflator:"GDP Deflator", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"05 Sep 2024", priorities:[{name:"Decent Work & Economic Growth",framework:"SDGs",color:"#9333ea"},{name:"Inclusive Local Economy",framework:"CWB",color:"#94A53A"}] },
+  { id:6, category:"Average Spend Per Person on Health", name:"Average Spend Per Person on Health", value:2948, currency:"€", organisation:null, source:"Public Health England", sourceDate:"2022", unit:"Per person per year", deflator:"Health Inflation Index", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"15 Nov 2024", priorities:[{name:"Good Health and Wellbeing",framework:"SDGs",color:"#22c55e"}] },
+  { id:7, category:"Better access to natural assets", name:"Average cumulative benefit over 50 years per tree planted", value:3200, currency:"€", organisation:null, source:"Forestry Commission", sourceDate:"2018", unit:"Number of trees", deflator:"No recommendation", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"05 Sep 2024", priorities:[{name:"Life On Land",framework:"SDGs",color:"#94A53A"},{name:"Climate Action",framework:"SDGs",color:"#3b82f6"}] },
+  { id:8, category:"Employment and Skills", name:"Fiscal benefit of moving from unemployment to employment", value:12450, currency:"£", organisation:null, source:"New Economy Manchester", sourceDate:"2021", unit:"Number of people moved into employment", deflator:"GDP Deflator", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"05 Sep 2024", priorities:[{name:"Decent Work & Economic Growth",framework:"SDGs",color:"#9333ea"},{name:"No Poverty",framework:"SDGs",color:"#ef4444"}] },
+  { id:9, category:"Mental Health", name:"Cost of treating depression and anxiety", value:3800, currency:"£", organisation:null, source:"NHS England Reference Costs", sourceDate:"2024", unit:"Number of people with improved mental health", deflator:"Health Inflation Index", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"18 Dec 2025", priorities:[{name:"Good Health and Wellbeing",framework:"SDGs",color:"#22c55e"}] },
+  { id:10, category:"Education", name:"Value of achieving Level 1 qualification", value:8500, currency:"£", organisation:null, source:"New Economy Manchester", sourceDate:"2021", unit:"Per qualification achieved", deflator:"GDP Deflator", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"05 Sep 2024", priorities:[{name:"Quality Education",framework:"SDGs",color:"#dc2626"}] },
+  { id:11, category:"Housing", name:"Cost of homelessness to local authority", value:26000, currency:"£", organisation:null, source:"Crisis UK", sourceDate:"2023", unit:"Per person per year", deflator:"CPI", isGlobal:true, createdBy:"Ivan Googins", createdDate:"05 Sep 2024", lastUpdated:"10 Jan 2025", priorities:[{name:"No Poverty",framework:"SDGs",color:"#ef4444"},{name:"Sustainable Cities",framework:"SDGs",color:"#f97316"}] },
+];
+
+const frameworks = [
+  { id:1, name:"Bristol Accord", organisation:null, isGlobal:true, priorities:[{name:"Well Connected",color:"#0A7877"},{name:"Active, Inclusive and Safe",color:"#066E8C"},{name:"Well Run",color:"#94A53A"},{name:"Well Designed and Built",color:"#22c55e"},{name:"Well Served",color:"#3b82f6"},{name:"Environmentally Sensitive",color:"#EABD1E"},{name:"Thriving",color:"#f97316"},{name:"Fair for Everyone",color:"#58595B"}] },
+  { id:2, name:"Community Wealth Building (Cleveland Model)", organisation:null, isGlobal:true, priorities:[{name:"Inclusive Local Economy",color:"#01343F"},{name:"Land and Property",color:"#0A7877"},{name:"Plural Ownership",color:"#94A53A"},{name:"Reducing Loneliness",color:"#EABD1E"}] },
+  { id:3, name:"ERYC", organisation:null, isGlobal:true, priorities:[{name:"Valuing the Environment",color:"#EABD1E"},{name:"Empowering Communities",color:"#0A7877"},{name:"Improving Health",color:"#94A53A"},{name:"Growing the Economy",color:"#3b82f6"},{name:"Protecting the Vulnerable",color:"#d8b4fe"}] },
+  { id:4, name:"Lincolnshire Health", organisation:"Demo organisation", isGlobal:false, priorities:[{name:"Health Outcomes",color:"#0A7877"}] },
+  { id:5, name:"Rab", organisation:"Demo organisation", isGlobal:false, priorities:[{name:"Community Impact",color:"#01343F"},{name:"Social Inclusion",color:"#9333ea"}] },
+  { id:6, name:"Sustainable Development Goals", organisation:null, isGlobal:true, priorities:[{name:"No Poverty",color:"#ef4444"},{name:"Zero Hunger",color:"#EABD1E"},{name:"Good Health and Wellbeing",color:"#22c55e"},{name:"Quality Education",color:"#dc2626"},{name:"Gender Equality",color:"#f97316"},{name:"Clean Water and Sanitation",color:"#3b82f6"},{name:"Affordable and Clean Energy",color:"#facc15"},{name:"Decent Work and Economic Growth",color:"#9333ea"},{name:"Industry, Innovation and Infrastructure",color:"#f97316"},{name:"Reduced Inequalities",color:"#ec4899"},{name:"Sustainable Cities",color:"#f59e0b"},{name:"Responsible Consumption",color:"#a16207"},{name:"Climate Action",color:"#166534"},{name:"Life Below Water",color:"#0ea5e9"},{name:"Life On Land",color:"#94A53A"},{name:"Peace, Justice and Strong Institutions",color:"#1d4ed8"},{name:"Partnerships for the Goals",color:"#154D26"}] },
+  { id:7, name:"Welsh Wellbeing and Future Generations Act", organisation:null, isGlobal:true, priorities:[{name:"A Prosperous Wales",color:"#154D26"},{name:"A Resilient Wales",color:"#0A7877"},{name:"A Healthier Wales",color:"#94A53A"},{name:"A More Equal Wales",color:"#3b82f6"},{name:"A Wales of Cohesive Communities",color:"#01343F"},{name:"A Wales of Vibrant Culture",color:"#9333ea"}] },
+];
+
+const userOrganisations = ["All Organisations","Big Climate Circus","Bolton at Home","Bromford Flagship (Internal)","Bromford Flagship (outward)","Cornwall Council","CVS Falkirk and District","Demo organisation","Development Trusts Association Scotland (DTAS)","East Suffolk Council","Edinburgh Airport","ERYC","ERYC - Local Growth","Hopestead","Inn Churches","Poverty Alliance","Rural Perth and Kinross","SCVO Demo Account","SFF","SVE"];
+
+/* ── SVE Logo SVG ── */
+const SVELogo = ({ width=140 }) => (
+  <svg viewBox="0 0 140.5 43.3" width={width} style={{display:'block'}}>
+    <g>
+      <path fill="#01343F" d="M52.4,20.5v-2c0.5,0.4,1.3,0.7,2.3,0.7c1.6,0,2.2-0.8,2.2-1.6c0-0.6-0.4-1.2-1.2-1.6l-1.2-0.6c-1.3-0.6-2.1-1.5-2.1-2.8c0-1.8,1.6-3.1,4.1-3.1c0.9,0,1.7,0.2,2,0.4v2c-0.4-0.3-1.2-0.5-1.9-0.5c-1.3,0-2,0.5-2,1.3c0,0.5,0.3,0.9,1.1,1.2l1.2,0.6c1.5,0.7,2.2,1.7,2.2,3.1c0,1.9-1.3,3.5-4.2,3.5C53.8,21.2,53,20.9,52.4,20.5z"/>
+      <path fill="#01343F" d="M60.1,16.9c0-2.4,1.9-4.3,4.4-4.3c2.5,0,4.4,1.9,4.4,4.3c0,2.4-1.9,4.3-4.4,4.3C62,21.2,60.1,19.3,60.1,16.9z M66.8,16.9c0-1.4-0.9-2.5-2.3-2.5c-1.3,0-2.3,1.1-2.3,2.5c0,1.4,1,2.5,2.3,2.5C65.8,19.4,66.8,18.3,66.8,16.9z"/>
+      <path fill="#01343F" d="M69.8,16.9c0-2.4,1.9-4.3,4.7-4.3c0.7,0,1.4,0.1,1.8,0.4l0,1.9c-0.3-0.1-0.9-0.3-1.6-0.3c-1.7,0-2.7,1.1-2.7,2.4c0,1.4,1,2.5,2.7,2.5c0.8,0,1.3-0.2,1.6-0.4l0,1.9c-0.4,0.2-1.1,0.4-1.8,0.4C71.7,21.2,69.8,19.3,69.8,16.9z"/>
+      <path fill="#01343F" d="M77.7,10.1c0-0.7,0.5-1.1,1.3-1.1c0.9,0,1.3,0.4,1.3,1.1c0,0.7-0.5,1-1.3,1C78.2,11.2,77.7,10.8,77.7,10.1z M77.9,12.8h2.1V21h-2.1V12.8z"/>
+      <path fill="#01343F" d="M90.6,19.2v1.7c-0.3,0.2-0.7,0.3-1.2,0.3c-1.1,0-1.9-0.7-2-1.7c-0.1,0.2-0.2,0.4-0.4,0.6c-0.6,0.6-1.6,1.1-2.8,1.1c-1.5,0-2.5-0.9-2.6-2.3c0-0.7,0.2-1.2,0.6-1.5c0.6-0.6,1.6-0.9,2.6-1.1c1-0.2,1.9-0.3,2.3-0.7c0.1-0.1,0.2-0.3,0.2-0.4c0-0.4-0.4-0.8-1.6-0.8c-1.3,0-2.7,0.5-3.6,1.1v-2c0.9-0.5,2.3-0.9,3.7-0.9c2.5,0,3.5,1,3.5,2.7v3.3c0,0.6,0.4,0.8,0.7,0.8C90.3,19.4,90.4,19.3,90.6,19.2z M87.5,17c-0.3,0.3-0.9,0.4-1.5,0.5c-0.7,0.1-1.4,0.3-1.8,0.7c-0.1,0.1-0.2,0.3-0.2,0.6c0,0.5,0.5,0.8,1,0.8c0.6,0,1.2-0.3,1.7-0.8C87.1,18.4,87.4,17.7,87.5,17z"/>
+      <path fill="#01343F" d="M91.6,9.3h2.1v9.1c0,0.6,0.4,0.8,0.8,0.8c0.2,0,0.4-0.1,0.6-0.1v1.8c-0.3,0.2-0.7,0.3-1.2,0.3c-1.5,0-2.3-1.1-2.3-2.4V9.3z"/>
+      <path fill="#01343F" d="M109.3,9.8L104,21.2h-0.3L98.5,9.8h2.4l3.1,7.2l3.1-7.2H109.3z"/>
+      <path fill="#01343F" d="M117.4,19.2v1.7c-0.3,0.2-0.7,0.3-1.2,0.3c-1.1,0-1.9-0.7-2-1.7c-0.1,0.2-0.2,0.4-0.4,0.6c-0.6,0.6-1.6,1.1-2.8,1.1c-1.5,0-2.5-0.9-2.6-2.3c0-0.7,0.2-1.2,0.6-1.5c0.6-0.6,1.6-0.9,2.6-1.1c1-0.2,1.9-0.3,2.3-0.7c0.1-0.1,0.2-0.3,0.2-0.4c0-0.4-0.4-0.8-1.6-0.8c-1.3,0-2.7,0.5-3.6,1.1v-2c0.9-0.5,2.3-0.9,3.7-0.9c2.5,0,3.5,1,3.5,2.7v3.3c0,0.6,0.4,0.8,0.7,0.8C117.1,19.4,117.3,19.3,117.4,19.2z M114.3,17c-0.3,0.3-0.9,0.4-1.5,0.5c-0.7,0.1-1.4,0.3-1.8,0.7c-0.1,0.1-0.2,0.3-0.2,0.6c0,0.5,0.5,0.8,1,0.8c0.6,0,1.2-0.3,1.7-0.8C114,18.4,114.3,17.7,114.3,17z"/>
+      <path fill="#01343F" d="M118.5,9.3h2.1v9.1c0,0.6,0.4,0.8,0.8,0.8c0.2,0,0.4-0.1,0.6-0.1v1.8c-0.3,0.2-0.7,0.3-1.2,0.3c-1.5,0-2.3-1.1-2.3-2.4V9.3z"/>
+      <path fill="#01343F" d="M123.1,17.1v-4.3h2.1v4.5c0,1.3,0.6,2.1,1.9,2.1c1.3,0,1.9-0.9,1.9-2.1v-4.5h2.1v4.3c0,2.5-1.4,4.1-4,4.1C124.5,21.2,123.1,19.6,123.1,17.1z"/>
+      <path fill="#01343F" d="M140.5,17.5h-5.8c0.2,1.2,1.2,1.9,2.7,1.9c1.2,0,2.1-0.3,2.8-0.7l0,1.8c-0.9,0.5-1.9,0.7-3,0.7c-2.7,0-4.6-1.7-4.6-4.3c0-2.4,1.8-4.3,4.1-4.3c2.1,0,3.8,1.5,3.8,4C140.5,17,140.5,17.3,140.5,17.5z M134.6,16.1h3.9c-0.1-1.1-0.8-1.8-1.9-1.8C135.6,14.3,134.9,15,134.6,16.1z"/>
+      <path fill="#58595B" d="M60,32.9v0.9h-7.1V22.5h6.9v0.9h-6v3.9h5.7v0.9h-5.7v4.7H60z"/>
+      <path fill="#58595B" d="M69.4,29.1v4.6h-0.9v-4.4c0-1.9-1-3.1-2.7-3.1c-1.7,0-3,1.3-3,3.4v4.1h-0.9v-8.1h0.9v2c0.4-1.2,1.5-2.2,3.2-2.2C68,25.4,69.4,26.8,69.4,29.1z"/>
+      <path fill="#58595B" d="M79.5,25.6V33c0,2.4-1.4,3.9-4.2,3.9c-1.5,0-2.7-0.5-3.4-1V35c0.8,0.6,2,1.1,3.4,1.1c2.4,0,3.4-1.3,3.4-3.1v-1.2c-0.7,1.3-1.9,2.1-3.4,2.1c-2.3,0-4.1-1.8-4.1-4.2c0-2.5,1.8-4.3,4.1-4.3c1.6,0,2.8,0.8,3.5,2.1v-1.9H79.5z M78.7,29.7c0-2.1-1.4-3.5-3.4-3.5c-1.9,0-3.3,1.5-3.3,3.5c0,2,1.4,3.4,3.3,3.4C77.2,33.1,78.7,31.7,78.7,29.7z"/>
+      <path fill="#58595B" d="M82,22.9c0-0.5,0.3-0.7,0.7-0.7c0.5,0,0.7,0.2,0.7,0.7c0,0.4-0.3,0.7-0.7,0.7C82.2,23.5,82,23.3,82,22.9z M82.3,25.6h0.9v8.1h-0.9V25.6z"/>
+      <path fill="#58595B" d="M93.5,29.1v4.6h-0.9v-4.4c0-1.9-1-3.1-2.7-3.1c-1.7,0-3,1.3-3,3.4v4.1H86v-8.1h0.9v2c0.4-1.2,1.5-2.2,3.2-2.2C92.1,25.4,93.5,26.8,93.5,29.1z"/>
+      <path fill="#58595B" d="M103,29.9h-6.9c0.1,2.1,1.5,3.3,3.8,3.3c1.1,0,2.1-0.3,2.8-0.7l0,0.8c-0.8,0.4-1.8,0.7-2.9,0.7c-2.8,0-4.6-1.7-4.6-4.3c0-2.4,1.8-4.2,4-4.2c2.3,0,3.7,1.7,3.7,3.9C103,29.5,103,29.7,103,29.9z M96.1,29.1h6.1c-0.1-1.7-1.1-3-2.9-3C97.6,26.2,96.3,27.4,96.1,29.1z"/>
+    </g>
+    <path fill="#066E8C" d="M4.3,8.7c0.6,0.6,1.1,1.2,1.4,2c0.6,1.4,0.6,2.9,0,4.3c-0.6,1.4-1.6,2.4-3,3c-0.8,0.3-1.7,0.5-2.5,0.4c-0.2,1-0.2,2.1-0.2,3.2c0,1.1,0.1,2.1,0.2,3.2c0.1,0,0.2,0,0.3,0c4.7,0,9.1-2.8,11.1-7.4c1.2-2.9,1.2-6.2,0-9.1C11,6.7,10,5.3,8.8,4.2C7.1,5.5,5.6,7,4.3,8.7z"/>
+    <path fill="#0A7877" d="M18.4,0.2c0,2.2-1.3,4.3-3.4,5.2c-2.2,0.9-4.6,0.3-6.1-1.3C7.1,5.5,5.6,7,4.3,8.7c2.2,2.3,5.3,3.6,8.5,3.6c1.5,0,3.1-0.3,4.6-0.9c4.6-1.9,7.4-6.4,7.4-11.1c-1-0.1-2.1-0.2-3.1-0.2C20.5,0,19.5,0.1,18.4,0.2z"/>
+    <path fill="#94A53A" d="M38.9,8.6c-1.3-1.7-2.8-3.2-4.5-4.5c-0.5,0.6-1.2,1-1.9,1.3c-0.7,0.3-1.4,0.4-2.1,0.4s-1.4-0.1-2.1-0.4l0,0c-1.4-0.6-2.4-1.6-3-3c-0.3-0.7-0.4-1.5-0.4-2.2c-1-0.2-2.1-0.2-3.2-0.2c-1.1,0-2.2,0.1-3.2,0.2c0,1.6,0.3,3.2,0.9,4.7c1.2,2.9,3.5,5.2,6.5,6.5c2.9,1.2,6.2,1.2,9.1,0C36.5,10.7,37.8,9.8,38.9,8.6z"/>
+    <path fill="#EABD1E" d="M43,18.3c-0.1,0-0.2,0-0.2,0c-0.7,0-1.4-0.1-2.1-0.4c-1.4-0.6-2.4-1.6-3-3c-0.6-1.4-0.6-2.9,0-4.3c0.3-0.7,0.8-1.4,1.3-1.9c-1.3-1.7-2.8-3.2-4.5-4.5c-1.1,1.1-2,2.4-2.7,4c-1.2,2.9-1.2,6.2,0,9.1c1.2,2.9,3.5,5.2,6.5,6.5c1.6,0.6,3.2,0.9,4.9,0.9c0.1-1,0.2-2,0.2-3C43.3,20.5,43.2,19.4,43,18.3z"/>
+    <path fill="#066E8C" d="M37.6,32.4c-0.6-1.4-0.6-2.9,0-4.3c0.6-1.4,1.6-2.4,3-3c0.8-0.3,1.6-0.5,2.4-0.4c0.1-1,0.2-2,0.2-3c0-1.1-0.1-2.3-0.3-3.3c-0.1,0-0.2,0-0.2,0c-4.7,0-9.1,2.8-11.1,7.4c-1.2,2.9-1.2,6.2,0,9.1c0.7,1.6,1.6,3,2.9,4.2c1.7-1.3,3.2-2.8,4.5-4.5C38.5,33.9,38,33.2,37.6,32.4z"/>
+    <path fill="#0A7877" d="M30.5,30.8c-1.5,0-3.1,0.3-4.6,0.9c-4.7,1.9-7.5,6.5-7.4,11.3c1,0.1,2,0.2,3,0.2c1.1,0,2.2-0.1,3.3-0.3c-0.1-2.3,1.2-4.5,3.4-5.4c2.2-0.9,4.7-0.3,6.2,1.3c1.7-1.3,3.2-2.8,4.5-4.5C36.8,32.1,33.7,30.8,30.5,30.8z"/>
+    <path fill="#94A53A" d="M17.6,31.7c-2.9-1.2-6.2-1.2-9.1,0c-1.6,0.7-3,1.6-4.1,2.8c1.3,1.7,2.8,3.2,4.5,4.5c0.6-0.6,1.2-1.1,2-1.5c0.7-0.3,1.4-0.4,2.1-0.4c0.7,0,1.4,0.1,2.1,0.4l0,0c1.4,0.6,2.4,1.6,3,3c0.3,0.8,0.5,1.6,0.4,2.4c1,0.1,2,0.2,3.1,0.2c1.1,0,2.2-0.1,3.3-0.3c0-1.6-0.3-3.3-0.9-4.8C22.8,35.3,20.5,33,17.6,31.7z"/>
+    <path fill="#EABD1E" d="M5.2,19.4c-1.6-0.7-3.3-1-4.9-0.9c-0.2,1-0.2,2.1-0.2,3.2c0,1.1,0.1,2.1,0.2,3.2c0.1,0,0.2,0,0.4,0c0.7,0,1.4,0.1,2.1,0.4c1.4,0.6,2.4,1.6,3,3c0.6,1.4,0.6,2.9,0,4.3c-0.3,0.8-0.8,1.5-1.5,2c1.3,1.7,2.8,3.2,4.5,4.5c1.2-1.1,2.2-2.5,2.8-4.1c1.2-2.9,1.2-6.2,0-9.1C10.4,22.9,8.1,20.6,5.2,19.4z"/>
+    <path fill="#154D26" d="M20.3,0c-0.1,0-0.2,0-0.3,0c-0.2,0-0.4,0-0.6,0.1c-0.1,0-0.2,0-0.2,0c-0.2,0-0.4,0-0.5,0.1c-0.1,0-0.2,0-0.2,0c0,1.6,0.3,3.2,0.9,4.7c0.5,1.3,1.3,2.5,2.3,3.5c2.1-2.2,3.2-5.2,3.2-8.2c-0.1,0-0.2,0-0.3,0c-0.2,0-0.3,0-0.5-0.1c-0.1,0-0.2,0-0.3,0c-0.2,0-0.3,0-0.5,0c-0.1,0-0.3,0-0.4,0c-0.1,0-0.2,0-0.4,0c-0.3,0-0.5,0-0.8,0C20.8,0,20.5,0,20.3,0z"/>
+    <path fill="#1D5329" d="M43.3,20.6c0-0.2,0-0.5,0-0.7c0,0,0-0.1,0-0.1c0-0.2,0-0.5-0.1-0.7c0,0,0-0.1,0-0.1c0-0.2-0.1-0.5-0.1-0.7c-0.1,0-0.2,0-0.2,0c-3,0-5.9,1.1-8.1,3.2c1,0.9,2.2,1.7,3.5,2.3c1.6,0.6,3.2,0.9,4.9,0.9c0-0.1,0-0.3,0.1-0.4c0-0.1,0-0.2,0-0.3c0-0.1,0-0.3,0-0.5c0-0.1,0-0.2,0-0.3c0-0.2,0-0.4,0-0.5c0-0.1,0-0.2,0-0.2c0-0.3,0-0.5,0-0.8C43.3,21.1,43.3,20.9,43.3,20.6z"/>
+    <path fill="#154D26" d="M22.6,43.3c0.2,0,0.5,0,0.7,0c0,0,0.1,0,0.1,0c0.2,0,0.5,0,0.7-0.1c0,0,0.1,0,0.1,0c0.2,0,0.5-0.1,0.7-0.1c0-1.6-0.3-3.3-0.9-4.8c-0.5-1.3-1.3-2.5-2.3-3.5c-2.1,2.3-3.2,5.3-3.2,8.4c0.1,0,0.3,0,0.4,0c0.1,0,0.2,0,0.4,0c0.1,0,0.3,0,0.4,0c0.1,0,0.2,0,0.4,0c0.2,0,0.3,0,0.5,0c0.1,0,0.2,0,0.3,0c0.3,0,0.5,0,0.8,0C22.1,43.3,22.3,43.3,22.6,43.3z"/>
+    <path fill="#1D5329" d="M0,22.8c0,0.1,0,0.3,0,0.4c0,0.2,0,0.3,0,0.5c0,0.1,0,0.2,0,0.3c0,0.2,0,0.3,0.1,0.5c0,0.1,0,0.2,0,0.3c0.1,0,0.2,0,0.3,0c3,0,5.9-1.1,8.1-3.2c-1-0.9-2.2-1.7-3.5-2.3c-1.6-0.7-3.3-1-4.9-0.9c0,0.1,0,0.2,0,0.2c0,0.2,0,0.4-0.1,0.5c0,0.1,0,0.2,0,0.3c0,0.2,0,0.4,0,0.5c0,0.1,0,0.2,0,0.4c0,0.1,0,0.3,0,0.4c0,0.3,0,0.5,0,0.8C0,22.3,0,22.5,0,22.8z"/>
+    <path fill="#877B30" d="M31.7,8.1c-0.6,1.3-0.9,2.7-0.9,4.1c1.4-0.1,2.8-0.4,4.1-0.9c1.5-0.6,2.9-1.6,4-2.7c0-0.1-0.1-0.1-0.1-0.2c-0.1-0.2-0.2-0.3-0.4-0.5c0-0.1-0.1-0.1-0.1-0.2c-0.1-0.1-0.2-0.3-0.4-0.4c-0.1-0.1-0.1-0.1-0.2-0.2c-0.1-0.1-0.2-0.3-0.4-0.4c-0.1-0.1-0.1-0.1-0.2-0.2c-0.1-0.1-0.3-0.3-0.4-0.4c-0.1-0.1-0.1-0.1-0.2-0.2c-0.1-0.1-0.2-0.2-0.4-0.3c-0.1-0.1-0.2-0.2-0.3-0.2c-0.1-0.1-0.2-0.2-0.3-0.3c-0.1-0.1-0.2-0.2-0.3-0.2c-0.1-0.1-0.2-0.2-0.3-0.3c-0.1-0.1-0.2-0.1-0.3-0.2c-0.1-0.1-0.2-0.2-0.3-0.3C33.3,5.3,32.4,6.6,31.7,8.1z"/>
+    <path fill="#01343F" d="M11.6,8.3C11,6.7,10,5.3,8.8,4.2C8.7,4.3,8.6,4.4,8.4,4.5C8.4,4.6,8.3,4.6,8.2,4.7C8.1,4.8,7.9,4.9,7.8,5C7.7,5.1,7.7,5.1,7.6,5.2C7.4,5.3,7.3,5.4,7.2,5.5C7.1,5.6,7,5.7,7,5.7C6.8,5.8,6.7,6,6.6,6.1C6.5,6.2,6.5,6.2,6.4,6.3C6.3,6.4,6.1,6.6,6,6.7c0,0-0.1,0.1-0.1,0.1C5.7,7,5.6,7.2,5.4,7.3c0,0-0.1,0.1-0.1,0.1C5.2,7.6,5,7.8,4.9,7.9C4.9,8,4.8,8,4.8,8C4.7,8.2,4.5,8.4,4.4,8.6c0,0-0.1,0.1-0.1,0.1c2.2,2.2,5.1,3.5,8.2,3.6C12.5,10.9,12.2,9.6,11.6,8.3z"/>
+    <path fill="#877B30" d="M11.6,35c0.6-1.3,0.9-2.7,0.9-4.1c-1.4,0.1-2.8,0.4-4.1,0.9c-1.6,0.7-3,1.6-4.1,2.8c0.1,0.2,0.2,0.3,0.4,0.5c0,0,0.1,0.1,0.1,0.1c0.1,0.2,0.3,0.3,0.4,0.5c0,0.1,0.1,0.1,0.1,0.2c0.1,0.1,0.2,0.3,0.4,0.4c0.1,0.1,0.1,0.1,0.2,0.2c0.1,0.1,0.2,0.2,0.4,0.4c0.1,0.1,0.1,0.1,0.2,0.2c0.1,0.1,0.2,0.2,0.3,0.3c0.1,0.1,0.2,0.2,0.3,0.2c0.1,0.1,0.2,0.2,0.3,0.3c0.1,0.1,0.2,0.2,0.3,0.3c0.1,0.1,0.2,0.1,0.3,0.2c0.1,0.1,0.2,0.2,0.4,0.3c0.1,0.1,0.2,0.1,0.2,0.2c0.1,0.1,0.3,0.2,0.4,0.3C10,37.9,11,36.5,11.6,35z"/>
+    <path fill="#01343F" d="M30.8,30.8c0.1,1.3,0.4,2.7,0.9,4c0.7,1.6,1.6,3,2.9,4.2c0,0,0.1-0.1,0.1-0.1c0.2-0.1,0.3-0.3,0.5-0.4c0,0,0.1-0.1,0.1-0.1c0.2-0.1,0.3-0.3,0.5-0.4c0.1,0,0.1-0.1,0.2-0.1c0.1-0.1,0.3-0.3,0.4-0.4c0.1-0.1,0.1-0.1,0.2-0.2c0.1-0.1,0.3-0.3,0.4-0.4c0.1-0.1,0.1-0.1,0.2-0.2c0.1-0.1,0.2-0.3,0.4-0.4c0.1-0.1,0.1-0.1,0.2-0.2c0.1-0.1,0.2-0.3,0.3-0.4c0.1-0.1,0.1-0.2,0.2-0.2c0.1-0.1,0.2-0.3,0.3-0.4c0.1-0.1,0.1-0.2,0.2-0.2c0.1-0.1,0.2-0.3,0.3-0.4C36.9,32.2,33.9,30.9,30.8,30.8z"/>
+  </svg>
+);
+
+/* ── Shared Header ── */
+function Header({ activePage, setActivePage, wizardMode, setWizardMode, sidekickOpen }) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+
+  const navItems = ['Projects','Reports','Proxies','Frameworks'];
+  const pageKey  = { Projects:0, Reports:1, Proxies:2, Frameworks:3 };
+
+  return (
+    <header onClick={() => setProfileOpen(false)} style={{
+      backgroundColor:'#fff', borderBottom:`1px solid ${C.border}`,
+      padding:'12px 24px',
+      paddingRight: sidekickOpen ? '404px' : '72px',
+      display:'flex', alignItems:'center',
+      justifyContent:'space-between', position:'sticky', top:0, zIndex:200,
+      boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+      transition:'padding-right 0.3s ease'
+    }}>
+      <div style={{display:'flex', alignItems:'center', gap:'40px'}}>
+        <SVELogo width={140}/>
+        <nav style={{display:'flex', gap:'4px'}}>
+          {navItems.map(item => {
+            const active = activePage===item;
+            return (
+              <button key={item} onClick={()=>setActivePage(item)} style={{
+                padding:'8px 16px', borderRadius:'6px', border:'none',
+                background: active ? '#e8f4f4' : 'transparent',
+                color: active ? C.teal : C.gray,
+                fontWeight: active ? 600 : 500,
+                fontSize:'15px', cursor:'pointer', transition:'all 0.15s ease',
+                fontFamily:'inherit'
+              }}
+              onMouseOver={e=>{ if(!active){ e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.color=C.dark; }}}
+              onMouseOut={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=C.gray; }}}
+              >{item}</button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+        {/* Wizard / Expert toggle */}
+        <div style={{display:'flex', background:C.border, borderRadius:'20px', padding:'3px'}}>
+          {['Wizard','Expert'].map(mode => {
+            const active = wizardMode===mode;
+            return (
+              <button key={mode} onClick={()=>setWizardMode(mode)} style={{
+                padding:'5px 12px', borderRadius:'17px', border:'none',
+                background: active ? '#fff' : 'transparent',
+                color: active ? C.dark : C.gray,
+                fontSize:'13px', fontWeight: active ? 600 : 500,
+                cursor:'pointer', boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                transition:'all 0.15s ease', fontFamily:'inherit'
+              }}>{mode}</button>
+            );
+          })}
+        </div>
+
+        <div style={{width:'1px', height:'24px', backgroundColor:C.border}}/>
+
+        {/* Profile */}
+        <div style={{position:'relative'}}>
+          <div onClick={e=>{e.stopPropagation(); setProfileOpen(!profileOpen);}} style={{
+            width:'32px', height:'32px', borderRadius:'50%',
+            background:C.teal, color:'white', display:'flex',
+            alignItems:'center', justifyContent:'center',
+            fontSize:'14px', fontWeight:600, cursor:'pointer',
+            userSelect:'none'
+          }}>MK</div>
+
+          {profileOpen && (
+            <div onClick={e=>e.stopPropagation()} style={{
+              position:'absolute', top:'44px', right:0, width:'284px',
+              backgroundColor:'#fff', borderRadius:'12px',
+              border:`1px solid ${C.border}`,
+              boxShadow:'0 8px 32px rgba(0,0,0,0.14)',
+              overflow:'hidden', zIndex:400,
+              animation:'fadeIn 0.15s ease'
+            }}>
+              {/* User info */}
+              <div style={{padding:'16px', backgroundColor:'#f8fafc', borderBottom:`1px solid ${C.border}`}}>
+                <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
+                  <div style={{width:'40px', height:'40px', borderRadius:'50%', background:C.teal, color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:600}}>MK</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600, fontSize:'15px', color:C.dark}}>Maddie Kirk</div>
+                    <div style={{fontSize:'13px', color:C.gray}}>maddie@socialvalueengine.com</div>
+                    <div style={{fontSize:'12px', color:C.teal, fontWeight:500, marginTop:'2px'}}>SVE Demo · Admin</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account */}
+              <MenuSection label="Account" items={[
+                {label:'Profile', icon:<><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></>},
+                {label:'Organisation Settings', icon:<><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="8" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></>, badge:'Admin'},
+                {label:'Manage Colleagues', icon:<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>, badge:'Admin'},
+              ]}/>
+
+              <Divider/>
+              <MenuSection label="Resources" items={[
+                {label:'Help & Guides', icon:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>},
+                {label:'Book Training', icon:<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>},
+              ]}/>
+
+              <Divider/>
+              <MenuSection label="Tools" items={[
+                {label:'Impact Card Studio', icon:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></>, external:true},
+              ]}/>
+
+              <Divider/>
+              {/* High Contrast toggle */}
+              <div style={{padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                  <span style={{fontSize:'15px', color:C.dark}}>High Contrast</span>
+                </div>
+                <div onClick={e=>{e.stopPropagation(); setHighContrast(!highContrast);}} style={{
+                  width:'44px', height:'24px', borderRadius:'12px',
+                  backgroundColor: highContrast ? C.teal : C.border,
+                  cursor:'pointer', position:'relative', transition:'background-color 0.2s ease'
+                }}>
+                  <div style={{width:'20px', height:'20px', borderRadius:'50%', backgroundColor:'#fff', position:'absolute', top:'2px', left: highContrast ? '22px' : '2px', transition:'left 0.2s ease', boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
+                </div>
+              </div>
+
+              <Divider/>
+              <div style={{padding:'8px 0'}}>
+                <div style={{padding:'10px 16px', display:'flex', alignItems:'center', gap:'12px', cursor:'pointer'}}
+                  onMouseOver={e=>e.currentTarget.style.backgroundColor='#fef2f2'}
+                  onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  <span style={{fontSize:'15px', color:'#dc2626'}}>Sign Out</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Divider() {
+  return <div style={{height:'1px', backgroundColor:C.border, margin:'0 12px'}}/>;
+}
+
+function MenuSection({label, items}) {
+  return (
+    <div style={{padding:'8px 0'}}>
+      <div style={{padding:'4px 12px 8px', fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>{label}</div>
+      {items.map(it=>(
+        <div key={it.label} style={{padding:'10px 16px', display:'flex', alignItems:'center', gap:'12px', cursor:'pointer'}}
+          onMouseOver={e=>e.currentTarget.style.backgroundColor=C.bg}
+          onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2">{it.icon}</svg>
+          <span style={{fontSize:'15px', color:C.dark, flex:1}}>{it.label}</span>
+          {it.badge && <span style={{fontSize:'11px', fontWeight:600, color:C.teal, backgroundColor:'#e8f4f4', padding:'2px 6px', borderRadius:'4px'}}>{it.badge}</span>}
+          {it.external && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Sidekick Right-Side Panel (collapsible, full height) ── */
+function SidekickPanel({activePage, open, setOpen}) {
+  const quickActions = {
+    Projects:   ["Help me create a project","Explain SROI methodology","Review my outcomes"],
+    Reports:    ["Help me build a report","Explain my SROI ratio","What does this figure mean?"],
+    Proxies:    ["Help me find a proxy","Explain this proxy value","Compare similar proxies"],
+    Frameworks: ["Which framework should I use?","Explain SDG priorities","Compare two frameworks"],
+  };
+
+  return (
+    <div style={{
+      position:'fixed', top:0, right:0, height:'100vh',
+      width: open ? '380px' : '48px',
+      backgroundColor:'#fff',
+      borderLeft:`1px solid ${C.border}`,
+      transition:'width 0.3s ease',
+      display:'flex', flexDirection:'column',
+      zIndex:150,
+      boxShadow: open ? '-4px 0 24px rgba(0,0,0,0.08)' : 'none',
+      overflow:'hidden'
+    }}>
+
+      {/* ── EXPANDED state ── */}
+      {open && (<>
+        {/* Header */}
+        <div style={{padding:'16px 20px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:'60px', flexShrink:0}}>
+          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+            <div>
+              <div style={{fontWeight:600, fontSize:'16px', color:C.dark}}>Sidekick</div>
+              <div style={{fontSize:'12px', color:C.gray}}>AI Assistant</div>
+            </div>
+          </div>
+          <button onClick={()=>setOpen(false)} style={{width:'28px', height:'28px', borderRadius:'6px', border:'none', backgroundColor:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:C.gray, flexShrink:0}}
+            onMouseOver={e=>e.currentTarget.style.backgroundColor=C.bg}
+            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+          >
+            {/* chevron-right to collapse */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{flex:1, padding:'20px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'16px'}}>
+          <div style={{backgroundColor:C.bg, borderRadius:'12px', padding:'16px', marginBottom:'4px'}}>
+            <p style={{margin:'0 0 12px 0', fontSize:'15px', color:C.dark, lineHeight:1.5}}>
+              Hi! I'm Sidekick, your AI assistant for social value measurement. I can help you:
+            </p>
+            <ul style={{margin:0, paddingLeft:'20px', fontSize:'14px', color:C.gray, lineHeight:1.9}}>
+              <li>Find the right financial proxies</li>
+              <li>Understand your SROI results</li>
+              <li>Draft outcome descriptions</li>
+              <li>Explain methodology to stakeholders</li>
+            </ul>
+          </div>
+
+          <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+            <p style={{margin:'0 0 4px 0', fontSize:'13px', color:C.gray, fontWeight:500}}>Quick actions:</p>
+            {(quickActions[activePage]||quickActions.Projects).map((action,i)=>(
+              <button key={i} style={{padding:'10px 14px', borderRadius:'8px', border:`1px solid ${C.border}`, backgroundColor:'#fff', color:C.dark, fontSize:'14px', textAlign:'left', cursor:'pointer', transition:'all 0.15s ease', fontFamily:'inherit'}}
+                onMouseOver={e=>{e.currentTarget.style.borderColor=C.teal; e.currentTarget.style.backgroundColor='#f0fdfa';}}
+                onMouseOut={e=>{e.currentTarget.style.borderColor=C.border; e.currentTarget.style.backgroundColor='#fff';}}
+              >{action}</button>
+            ))}
+          </div>
+
+          <div style={{marginTop:'auto', padding:'12px', backgroundColor:'#f8fafc', borderRadius:'8px', fontSize:'12px', color:C.gray, lineHeight:1.7}}>
+            You are using the AI-enabled version of the Social Value Engine. Please read our{' '}
+            <a href="#" style={{color:C.teal, textDecoration:'none', fontWeight:500}}>FAQ</a>
+            {' '}for more information. Alternatively{' '}
+            <a href="#" style={{color:C.teal, textDecoration:'none', fontWeight:500}}>get in touch</a>
+            {' '}with our team for support.
+          </div>
+        </div>
+
+        {/* Chat input */}
+        <div style={{padding:'16px 20px', borderTop:`1px solid ${C.border}`, backgroundColor:'#fff', flexShrink:0}}>
+          <div style={{display:'flex', gap:'8px', alignItems:'flex-end'}}>
+            <textarea placeholder="Ask Sidekick anything…" style={{flex:1, padding:'12px 14px', borderRadius:'10px', border:`1px solid ${C.border}`, fontSize:'15px', resize:'none', minHeight:'44px', maxHeight:'120px', fontFamily:'inherit', outline:'none', transition:'border-color 0.15s ease'}}
+              rows={1}
+              onFocus={e=>e.currentTarget.style.borderColor=C.teal}
+              onBlur={e=>e.currentTarget.style.borderColor=C.border}
+            />
+            <button style={{width:'44px', height:'44px', borderRadius:'10px', border:'none', backgroundColor:C.teal, color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}
+              onMouseOver={e=>e.currentTarget.style.backgroundColor=C.tealL}
+              onMouseOut={e=>e.currentTarget.style.backgroundColor=C.teal}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </>)}
+
+      {/* ── COLLAPSED state — vertical "SIDEKICK" label ── */}
+      {!open && (
+        <div onClick={()=>setOpen(true)} style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', paddingTop:'60px'}}
+          onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+          onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+        >
+          <span style={{writingMode:'vertical-rl', textOrientation:'mixed', transform:'rotate(180deg)', fontSize:'12px', fontWeight:600, color:C.gray, letterSpacing:'1.5px', userSelect:'none'}}>SIDEKICK</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConnectModal({ project, onClose, onSend }) {
+  const [org, setOrg]     = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const inp = { width:'100%', padding:'9px 12px', border:`1px solid ${C.border}`, borderRadius:'8px', fontSize:'15px', fontFamily:'inherit', outline:'none', color:C.dark };
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,backgroundColor:'rgba(1,52,63,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:480,backgroundColor:'#fff',borderRadius:'12px',boxShadow:'0 20px 60px rgba(1,52,63,0.25)',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 24px',borderBottom:`1px solid ${C.border}`}}>
+          <h2 style={{fontSize:'18px',fontWeight:700,color:C.dark,margin:0}}>Connect to another organisation</h2>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:'6px',border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:C.gray}}
+            onMouseOver={e=>e.currentTarget.style.backgroundColor=C.bg} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+          ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:'14px'}}>
+          <div style={{backgroundColor:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'10px 14px',fontSize:'14px',color:'#166534',lineHeight:1.5}}>
+            Connecting allows another organisation to contribute evidence and track outcomes collaboratively on <strong>{project.name}</strong>.
+          </div>
+          <div>
+            <p style={{fontSize:'13px',fontWeight:600,color:C.dark,margin:'0 0 5px'}}>Organisation name</p>
+            <input value={org} onChange={e=>setOrg(e.target.value)} placeholder="e.g. Bromford Flagship" style={inp}
+              onFocus={e=>e.currentTarget.style.borderColor=C.teal} onBlur={e=>e.currentTarget.style.borderColor=C.border}/>
+          </div>
+          <div>
+            <p style={{fontSize:'13px',fontWeight:600,color:C.dark,margin:'0 0 5px'}}>Contact email</p>
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="contact@organisation.com" type="email" style={inp}
+              onFocus={e=>e.currentTarget.style.borderColor=C.teal} onBlur={e=>e.currentTarget.style.borderColor=C.border}/>
+          </div>
+          <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',paddingTop:'6px',borderTop:`1px solid ${C.border}`}}>
+            <button onClick={onClose} style={{padding:'9px 18px',border:`1px solid ${C.border}`,borderRadius:'8px',background:'#fff',color:C.dark,fontSize:'14px',fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}
+              onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='#fff'}
+            >Cancel</button>
+            <button onClick={()=>onSend(org||'New Organisation')} style={{padding:'9px 18px',backgroundColor:C.teal,border:'none',borderRadius:'8px',color:'#fff',fontSize:'14px',fontWeight:600,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:'7px'}}
+              onMouseOver={e=>e.currentTarget.style.backgroundColor='#066E8C'} onMouseOut={e=>e.currentTarget.style.backgroundColor=C.teal}
+            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send invitation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PAGE 1 · PROJECTS
+══════════════════════════════════════════ */
+function ProjectsPage() {
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedFilters, setSelectedFilters] = useState(['all']);
+  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState('all');
+  const [cardMenuOpen, setCardMenuOpen] = useState(null);
+  const [listMenuOpen, setListMenuOpen] = useState(null);
+  const [connectMap, setConnectMap] = useState({
+    1: { state:'own' },
+    2: { state:'connected', partner:'Sparrows Trust',      lastUpdate:'15 March 2025' },
+    3: { state:'connected', partner:'Rural Perth & Kinross', lastUpdate:'2 March 2025' },
+    4: { state:'pending',   partner:'Bromford Flagship',   sentDate:'5 Feb 2025' },
+    5: { state:'own' },
+    6: { state:'own' },
+    7: { state:'own' },
+  });
+  const [connectModalId, setConnectModalId] = useState(null);
+  const [connectMenuOpen, setConnectMenuOpen] = useState(null);
+  const [toast, setToast] = useState(null);
+  const showToast = msg => { setToast(msg); setTimeout(()=>setToast(null), 3000); };
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+  const [projectStatuses, setProjectStatuses] = useState(
+    Object.fromEntries(projects.map(p=>[p.id, p.status]))
+  );
+
+  const changeStatus = (id, newStatus) => {
+    setProjectStatuses(prev => ({...prev, [id]: newStatus}));
+    setCardMenuOpen(null);
+  };
+
+  const doConnect = (projectId, orgName) => {
+    setConnectMap(m=>({...m, [projectId]:{ state:'pending', partner:orgName, sentDate:'Today' }}));
+    setConnectModalId(null);
+    showToast(`Invitation sent to ${orgName}`);
+  };
+  const doDisconnect = (projectId) => {
+    const partner = connectMap[projectId]?.partner;
+    setConnectMap(m=>({...m, [projectId]:{ state:'own' }}));
+    setConnectMenuOpen(null);
+    showToast(`Disconnected from ${partner}`);
+  };
+  const doCancel = (projectId) => {
+    setConnectMap(m=>({...m, [projectId]:{ state:'own' }}));
+    setConnectMenuOpen(null);
+    showToast('Invitation cancelled');
+  };
+  const doResend = (projectId) => {
+    setConnectMenuOpen(null);
+    showToast(`Invitation resent to ${connectMap[projectId]?.partner}`);
+  };
+
+  const orgs = [{id:'all',name:'All Organisations'},{id:'sve-demo',name:'SVE Demo'},{id:'rural-perth',name:'Rural Perth and Kinross'},{id:'eryc',name:'ERYC'},{id:'bromford',name:'Bromford Flagship (outward)'},{id:'edinburgh-airport',name:'Edinburgh Airport'}];
+
+  const toggleFilter = key => {
+    if(key==='all'){ setSelectedFilters(['all']); return; }
+    let f = selectedFilters.filter(x=>x!=='all');
+    f = f.includes(key) ? f.filter(x=>x!==key) : [...f,key];
+    setSelectedFilters(f.length===0 ? ['all'] : f);
+  };
+
+  const projectsWithStatus = projects.map(p => ({...p, status: projectStatuses[p.id]}));
+
+  const filteredProjects = projectsWithStatus.filter(p=>{
+    const passOrg = selectedOrg==='all' || p.organisation.toLowerCase().includes(selectedOrg.replace('-',' '));
+    const cs = connectMap[p.id] || { state:'own' };
+    const passFilter = selectedFilters.includes('all')
+      || selectedFilters.includes(p.status)
+      || selectedFilters.includes(p.type)
+      || (selectedFilters.includes('connected') && (cs.state==='connected' || cs.state==='pending'));
+    return passOrg && passFilter;
+  });
+
+
+  const handleSort = key => {
+    if(sortColumn===key) setSortDir(d=>d==='asc'?'desc':'asc');
+    else { setSortColumn(key); setSortDir('asc'); }
+  };
+
+  const sortedProjects = sortColumn ? [...filteredProjects].sort((a,b)=>{
+    let av = a[sortColumn], bv = b[sortColumn];
+    if(typeof av==='number') return sortDir==='asc' ? av-bv : bv-av;
+    return sortDir==='asc' ? String(av||'').localeCompare(String(bv||'')) : String(bv||'').localeCompare(String(av||''));
+  }) : filteredProjects;
+
+  /* ── Connect-aware grid card renderer ── */
+  const renderGridCard = (p) => {
+    const cs = connectMap[p.id] || { state:'own' };
+    const isConnected = cs.state==='connected';
+    const isPending   = cs.state==='pending';
+    const cardBg     = isConnected ? '#eef7f0' : isPending ? '#fdf0ec' : p.status==='archived' ? '#fafbfc' : '#fff';
+    const cardBorder = isConnected ? '#a7d7b0' : isPending ? '#f5c4b0' : C.border;
+    const footerBg   = isConnected ? '#e4f2e7' : isPending ? '#f8e5de' : '#f8fafc';
+    const footerBorder = isConnected ? '#a7d7b0' : isPending ? '#f5c4b0' : C.border;
+    return (
+      <div key={p.id} style={{backgroundColor:cardBg, borderRadius:'12px', border:`1px solid ${cardBorder}`, overflow:'hidden', cursor:'pointer', transition:'all 0.2s ease', opacity:p.status==='archived'?0.75:1, position:'relative', display:'flex', flexDirection:'column'}}
+        onMouseOver={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(1,52,63,0.10)'; e.currentTarget.style.transform='translateY(-2px)';}}
+        onMouseOut={e=>{e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='';}}
+        onClick={()=>{ setCardMenuOpen(null); setConnectMenuOpen(null); }}
+      >
+        {/* Connect state icon — top-right corner */}
+        {(isConnected || isPending) && (
+          <div style={{position:'absolute', top:'14px', right:'14px', zIndex:2}}>
+            {isConnected ? (
+              <div title={`Connected · ${cs.partner}`} style={{width:'26px',height:'26px',borderRadius:'50%',backgroundColor:'#dcfce7',border:'1px solid #86efac',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </div>
+            ) : (
+              <div title={`Waiting · ${cs.partner}`} style={{width:'26px',height:'26px',borderRadius:'50%',backgroundColor:'#fff7ed',border:'1px solid #fdba74',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{padding:'20px', paddingRight:(isConnected||isPending)?'48px':'20px', flex:1}}>
+          <h3 style={{fontSize:'19px', fontWeight:700, color:C.dark, margin:'0 0 6px 0'}}>{p.name}</h3>
+          <p style={{fontSize:'15px', color:C.gray, margin:'0 0 14px 0', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{p.description}</p>
+
+          <div style={{display:'flex', gap:'6px', marginBottom:'14px', flexWrap:'wrap', alignItems:'center'}}>
+            {p.labels.map(l=>(
+              <span key={l} style={{padding:'4px 10px', backgroundColor:'#f1f5f9', color:C.gray, borderRadius:'12px', fontSize:'13px', fontWeight:500, border:`1px solid ${C.border}`}}>{l}</span>
+            ))}
+            <button style={{width:'24px', height:'24px', borderRadius:'12px', border:`1px dashed ${C.border}`, backgroundColor:'transparent', color:C.gray, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s ease', flexShrink:0}}
+              onClick={e=>e.stopPropagation()}
+              onMouseOver={e=>{e.currentTarget.style.borderColor=C.teal; e.currentTarget.style.color=C.teal; e.currentTarget.style.backgroundColor='#f0fdfa';}}
+              onMouseOut={e=>{e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.gray; e.currentTarget.style.backgroundColor='transparent';}}
+              title="Add label"
+            ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          </div>
+
+          <div style={{display:'flex', gap:'8px', marginBottom:'12px', alignItems:'center'}}>
+            <span style={{padding:'4px 10px', borderRadius:'4px', fontSize:'13px', fontWeight:600, color:statusCfg[p.status].color, backgroundColor:'transparent', border:`1.5px solid ${statusCfg[p.status].color}`}}>{statusCfg[p.status].label}</span>
+            <span style={{padding:'4px 10px', borderRadius:'4px', fontSize:'13px', fontWeight:600, color:typeCfg[p.type].color, backgroundColor:typeCfg[p.type].bg}}>{typeCfg[p.type].label}</span>
+          </div>
+
+          <div style={{fontSize:'13px', color:C.gray, display:'flex', alignItems:'center', gap:'6px', marginBottom:'12px'}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Project period: {p.projectStart} – {p.projectEnd}
+          </div>
+
+          <div style={{display:'flex', gap:'20px', paddingTop:'12px', borderTop:'1px solid rgba(0,0,0,0.05)', marginBottom:(isConnected||isPending)?'12px':'0'}}>
+            <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.olive} strokeWidth="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span style={{fontSize:'14px', color:C.gray}}><strong style={{color:C.dark}}>{p.outcomes}</strong> outcomes</span>
+            </div>
+            <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span style={{fontSize:'14px', color:C.gray}}><strong style={{color:C.dark}}>{p.stakeholders}</strong> stakeholders</span>
+            </div>
+          </div>
+
+          {isConnected && (
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:'10px', borderTop:'1px solid rgba(0,0,0,0.05)'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                <span style={{width:'7px', height:'7px', borderRadius:'50%', backgroundColor:'#16a34a', flexShrink:0}}/>
+                <span style={{fontSize:'13px', color:'#166534', fontWeight:500}}>Connected · {cs.partner}</span>
+              </div>
+              <button onClick={e=>{e.stopPropagation(); showToast(`Viewing progress for ${p.name}`);}}
+                style={{fontSize:'13px', color:C.teal, fontWeight:600, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', display:'flex', alignItems:'center', gap:'4px'}}
+                onMouseOver={e=>e.currentTarget.style.color='#066E8C'} onMouseOut={e=>e.currentTarget.style.color=C.teal}
+              >View progress <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+          )}
+          {isPending && (
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:'10px', borderTop:'1px solid rgba(0,0,0,0.05)'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                <span style={{width:'7px', height:'7px', borderRadius:'50%', backgroundColor:'#ea580c', flexShrink:0}}/>
+                <span style={{fontSize:'13px', color:'#9a3412', fontWeight:500}}>Waiting · {cs.partner}</span>
+              </div>
+              <button onClick={e=>{e.stopPropagation(); doResend(p.id);}}
+                style={{fontSize:'13px', color:C.teal, fontWeight:600, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', display:'flex', alignItems:'center', gap:'4px'}}
+                onMouseOver={e=>e.currentTarget.style.color='#066E8C'} onMouseOut={e=>e.currentTarget.style.color=C.teal}
+              >Resend <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+          )}
+        </div>
+
+        {/* Card footer */}
+        <div style={{padding:'10px 20px', backgroundColor:footerBg, borderTop:`1px solid ${footerBorder}`, display:'flex', justifyContent:'space-between', alignItems:'center'}} onClick={e=>e.stopPropagation()}>
+          <div style={{fontSize:'12px', color:'#94a3b8', lineHeight:1.5}}>Created {p.created} · Updated {p.lastUpdated}</div>
+          <div style={{display:'flex', gap:'2px', alignItems:'center'}}>
+            <button title="Duplicate" style={{padding:'5px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'4px', color:'#94a3b8'}}
+              onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.dark;}}
+              onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#94a3b8';}}
+            ><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+
+            {/* Connect icon button */}
+            <div style={{position:'relative'}}>
+              <button title={cs.state==='own' ? 'Connect to partner' : cs.state==='connected' ? `Connected · ${cs.partner}` : `Pending · ${cs.partner}`}
+                onClick={e=>{e.stopPropagation();
+                  if(cs.state==='own'){ setConnectModalId(p.id); }
+                  else { setConnectMenuOpen(connectMenuOpen===p.id ? null : p.id); }
+                }}
+                style={{padding:'5px', border:'none', cursor:'pointer', borderRadius:'4px',
+                  background: connectMenuOpen===p.id ? C.bg : 'transparent',
+                  color: cs.state==='connected' ? '#16a34a' : cs.state==='pending' ? '#ea580c' : '#94a3b8',
+                  transition:'all 0.15s ease'
+                }}
+                onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; if(cs.state==='own') e.currentTarget.style.color=C.teal;}}
+                onMouseOut={e=>{if(connectMenuOpen!==p.id){e.currentTarget.style.backgroundColor='transparent'; if(cs.state==='own') e.currentTarget.style.color='#94a3b8';}}}
+              >
+                {cs.state==='pending' ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                )}
+              </button>
+              {connectMenuOpen===p.id && (cs.state==='connected'||cs.state==='pending') && (
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',bottom:'calc(100% + 6px)',right:0,backgroundColor:'#fff',borderRadius:'10px',boxShadow:'0 4px 24px rgba(0,0,0,0.14)',border:`1px solid ${C.border}`,minWidth:'200px',overflow:'hidden',zIndex:300}}>
+                  <div style={{padding:'8px 12px 4px',fontSize:'11px',fontWeight:700,color:C.gray,textTransform:'uppercase',letterSpacing:'0.6px'}}>SVE Connect</div>
+                  {cs.state==='connected' && (<>
+                    <div onClick={()=>{setConnectMenuOpen(null); showToast(`Viewing progress for ${p.name}`);}}
+                      style={{padding:'9px 14px',cursor:'pointer',fontSize:'14px',color:C.teal,fontWeight:500,display:'flex',alignItems:'center',gap:'9px'}}
+                      onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                    ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>View progress</div>
+                    <div onClick={()=>doDisconnect(p.id)}
+                      style={{padding:'9px 14px',cursor:'pointer',fontSize:'14px',color:'#dc2626',display:'flex',alignItems:'center',gap:'9px'}}
+                      onMouseOver={e=>e.currentTarget.style.backgroundColor='#fff5f5'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                    ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>Disconnect</div>
+                  </>)}
+                  {cs.state==='pending' && (<>
+                    <div onClick={()=>doResend(p.id)}
+                      style={{padding:'9px 14px',cursor:'pointer',fontSize:'14px',color:C.dark,display:'flex',alignItems:'center',gap:'9px'}}
+                      onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                    ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Resend invitation</div>
+                    <div onClick={()=>doCancel(p.id)}
+                      style={{padding:'9px 14px',cursor:'pointer',fontSize:'14px',color:'#dc2626',display:'flex',alignItems:'center',gap:'9px'}}
+                      onMouseOver={e=>e.currentTarget.style.backgroundColor='#fff5f5'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                    ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cancel invitation</div>
+                  </>)}
+                </div>
+              )}
+            </div>
+
+            {/* Three dots */}
+            <div style={{position:'relative'}}>
+              <button title="More options"
+                style={{padding:'5px', border:'none', background:cardMenuOpen===p.id?C.bg:'transparent', cursor:'pointer', borderRadius:'4px', color:cardMenuOpen===p.id?C.dark:'#94a3b8'}}
+                onClick={e=>{e.stopPropagation(); setCardMenuOpen(cardMenuOpen===p.id?null:p.id); setConnectMenuOpen(null);}}
+                onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.dark;}}
+                onMouseOut={e=>{if(cardMenuOpen!==p.id){e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#94a3b8';}}}
+              ><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              {cardMenuOpen===p.id && (
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',bottom:'calc(100% + 6px)',right:0,backgroundColor:'#fff',borderRadius:'10px',boxShadow:'0 4px 24px rgba(0,0,0,0.14)',border:`1px solid ${C.border}`,minWidth:'200px',overflow:'hidden',zIndex:300}}>
+                  <div style={{padding:'8px 0 4px'}}>
+                    <p style={{margin:0,padding:'4px 14px 8px',fontSize:'12px',fontWeight:700,color:C.gray,textTransform:'uppercase',letterSpacing:'0.6px'}}>Change Status</p>
+                    {p.status!=='active' && <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.dark}} onClick={()=>changeStatus(p.id,'active')} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><span style={{width:'10px',height:'10px',borderRadius:'50%',backgroundColor:statusCfg.active.color,flexShrink:0}}/>Mark as Active</div>}
+                    {p.status!=='draft' && <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.dark}} onClick={()=>changeStatus(p.id,'draft')} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><span style={{width:'10px',height:'10px',borderRadius:'50%',backgroundColor:statusCfg.draft.color,flexShrink:0}}/>Mark as Draft</div>}
+                    {p.status!=='archived' && <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.dark}} onClick={()=>changeStatus(p.id,'archived')} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><span style={{width:'10px',height:'10px',borderRadius:'50%',backgroundColor:statusCfg.archived.color,flexShrink:0}}/>Mark as Archived</div>}
+                  </div>
+                  <div style={{height:'1px',backgroundColor:C.border,margin:'0 10px'}}/>
+                  <div style={{padding:'4px 0 6px'}}>
+                    <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.teal,fontWeight:500}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                      View SROI Report
+                    </div>
+                  </div>
+                  <div style={{height:'1px',backgroundColor:C.border,margin:'0 10px'}}/>
+                  <div style={{padding:'4px 0 6px'}}>
+                    <p style={{margin:0,padding:'4px 14px 6px',fontSize:'12px',fontWeight:700,color:C.gray,textTransform:'uppercase',letterSpacing:'0.6px'}}>SVE Connect</p>
+                    {cs.state==='own' && <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.dark}} onClick={()=>{setCardMenuOpen(null); setConnectModalId(p.id);}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Connect to partner</div>}
+                    {cs.state==='connected' && (<>
+                      <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.teal,fontWeight:500}} onClick={()=>{setCardMenuOpen(null); showToast(`Viewing progress for ${p.name}`);}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>View progress</div>
+                      <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:'#dc2626'}} onClick={()=>{setCardMenuOpen(null); doDisconnect(p.id);}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#fff5f5'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>Disconnect</div>
+                    </>)}
+                    {cs.state==='pending' && (<>
+                      <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:C.dark}} onClick={()=>{setCardMenuOpen(null); doResend(p.id);}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Resend invitation</div>
+                      <div style={{padding:'8px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',color:'#dc2626'}} onClick={()=>{setCardMenuOpen(null); doCancel(p.id);}} onMouseOver={e=>e.currentTarget.style.backgroundColor='#fff5f5'} onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cancel invitation</div>
+                    </>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <main onClick={()=>{setOrgDropdownOpen(false); setCardMenuOpen(null); setListMenuOpen(null); setConnectMenuOpen(null);}} style={{padding:'24px 32px', minHeight:'calc(100vh - 56px)'}}>
+      {/* Page title row */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'24px'}}>
+        <div style={{position:'relative'}}>
+          <button onClick={e=>{e.stopPropagation(); setOrgDropdownOpen(!orgDropdownOpen);}} style={{display:'flex', alignItems:'center', gap:'8px', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit'}}>
+            <h1 style={{fontSize:'25px', fontWeight:700, color:C.dark, margin:0}}>Projects</h1>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <p style={{color:C.gray, fontSize:'14px', margin:'4px 0 0 0'}}>{orgs.find(o=>o.id===selectedOrg)?.name}</p>
+          {orgDropdownOpen && (
+            <div onClick={e=>e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:'8px', backgroundColor:'#fff', borderRadius:'10px', boxShadow:'0 4px 20px rgba(0,0,0,0.15)', border:`1px solid ${C.border}`, minWidth:'240px', overflow:'hidden', zIndex:50}}>
+              <div style={{padding:'8px 12px', borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>Filter by Organisation</span></div>
+              <div style={{padding:'6px 0', maxHeight:'280px', overflowY:'auto'}}>
+                {orgs.map(org=>(
+                  <div key={org.id} onClick={()=>{setSelectedOrg(org.id); setOrgDropdownOpen(false);}} style={{padding:'10px 12px', cursor:'pointer', fontSize:'15px', color: selectedOrg===org.id ? C.teal : C.dark, backgroundColor: selectedOrg===org.id ? '#e8f4f4' : 'transparent', display:'flex', alignItems:'center', gap:'8px'}}
+                    onMouseOver={e=>{if(selectedOrg!==org.id) e.currentTarget.style.backgroundColor='#f8fafc';}}
+                    onMouseOut={e=>{if(selectedOrg!==org.id) e.currentTarget.style.backgroundColor='transparent';}}
+                  >
+                    {selectedOrg===org.id && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                    <span style={{marginLeft: selectedOrg===org.id ? 0 : '22px'}}>{org.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button style={{padding:'10px 20px', backgroundColor:C.teal, color:'white', border:'none', borderRadius:'8px', fontWeight:600, fontSize:'15px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', boxShadow:`0 1px 3px rgba(10,120,119,0.3)`, fontFamily:'inherit'}}
+          onMouseOver={e=>{e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 4px 12px rgba(10,120,119,0.3)';}}
+          onMouseOut={e=>{e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 1px 3px rgba(10,120,119,0.3)`;}}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Project
+        </button>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px', gap:'16px'}}>
+        <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+          {[{key:'all',label:'All',count:7},{key:'draft',label:'Draft',count:3},{key:'active',label:'Active',count:3},{key:'archived',label:'Archived',count:2},{key:'forecast',label:'Forecast',count:4},{key:'evaluation',label:'Evaluation',count:4},{key:'connected',label:'Connected',count:Object.values(connectMap).filter(c=>c.state==='connected'||c.state==='pending').length}].map(f=>{
+            const active = selectedFilters.includes(f.key);
+            return (
+              <button key={f.key} onClick={()=>toggleFilter(f.key)} style={{
+                padding:'6px 12px', borderRadius:'20px', fontFamily:'inherit',
+                border: active ? `2px solid ${C.teal}` : `1px solid ${C.border}`,
+                background: active ? '#e8f4f4' : '#fff',
+                color: active ? C.teal : C.gray,
+                fontSize:'14px', fontWeight:500, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:'6px', height:'32px',
+                transition:'all 0.15s ease'
+              }}>
+                {f.label}
+                <span style={{backgroundColor: active ? C.teal : C.border, color: active ? '#fff' : C.gray, padding:'2px 6px', borderRadius:'10px', fontSize:'12px', fontWeight:600}}>{f.count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+          <div style={{position:'relative', display:'flex', alignItems:'center'}}>
+            <svg style={{position:'absolute', left:'12px', color:'#94a3b8'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search projects..." style={{padding:'8px 12px 8px 36px', border:`1px solid ${C.border}`, borderRadius:'8px', fontSize:'15px', width:'200px', outline:'none', fontFamily:'inherit'}}/>
+          </div>
+          <div style={{display:'flex', background:C.border, borderRadius:'8px', padding:'2px'}}>
+            {['grid','list'].map(mode=>(
+              <button key={mode} onClick={()=>setViewMode(mode)} style={{padding:'6px 10px', border:'none', borderRadius:'6px', background: viewMode===mode ? '#fff' : 'transparent', cursor:'pointer', display:'flex', alignItems:'center', boxShadow: viewMode===mode ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', transition:'all 0.15s ease'}}>
+                {mode==='grid' ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={viewMode===mode ? C.dark : '#94a3b8'} strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={viewMode===mode ? C.dark : '#94a3b8'} strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── GRID VIEW ── */}
+      {viewMode==='grid' && (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px,1fr))', gap:'16px'}}>
+          {filteredProjects.map(p => renderGridCard(p))}
+        </div>
+      )}
+
+      {/* ── LIST VIEW ── */}
+      {viewMode==='list' && (
+        <div style={{backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, overflow:'hidden'}}>
+          {/* Table Header — sortable columns */}
+          <div style={{display:'grid', gridTemplateColumns:'1.8fr 90px 1.4fr 1.3fr 70px 90px 110px 1.1fr 130px', padding:'14px 20px', backgroundColor:'#f8fafc', borderBottom:`1px solid ${C.border}`, fontSize:'13px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px', gap:'12px'}}>
+            {[
+              {key:'name',label:'Name',align:'left'},
+              {key:'status',label:'Status',align:'left'},
+              {key:'organisation',label:'Organisation',align:'left'},
+              {key:'lastUpdated',label:'Last Updated',align:'left'},
+              {key:'labels',label:'Labels',align:'center'},
+              {key:'outcomes',label:'Outcomes',align:'center'},
+              {key:'stakeholders',label:'Stakeholders',align:'center'},
+              {key:'creator',label:'Creator',align:'left'},
+            ].map(col=>(
+              <span key={col.key} onClick={()=>handleSort(col.key)} style={{display:'flex', alignItems:'center', justifyContent:col.align==='center'?'center':'flex-start', gap:'4px', cursor:'pointer', userSelect:'none', transition:'color 0.15s ease', color:sortColumn===col.key ? C.dark : C.gray}}
+                onMouseOver={e=>e.currentTarget.style.color=C.dark}
+                onMouseOut={e=>e.currentTarget.style.color=sortColumn===col.key ? C.dark : C.gray}
+              >
+                {col.label}
+                {sortColumn===col.key && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {sortDir==='asc' ? <path d="M18 15l-6-6-6 6"/> : <path d="M6 9l6 6 6-6"/>}
+                  </svg>
+                )}
+              </span>
+            ))}
+            <span/>
+          </div>
+
+          {/* Table Rows */}
+          {sortedProjects.map((p,i)=>(
+            <div key={p.id} style={{
+              display:'grid', gridTemplateColumns:'1.8fr 90px 1.4fr 1.3fr 70px 90px 110px 1.1fr 130px',
+              padding:'22px 20px', borderBottom: i<sortedProjects.length-1 ? `1px solid ${C.border}` : 'none',
+              alignItems:'center', cursor:'pointer', transition:'background-color 0.15s ease',
+              opacity: p.status==='archived' ? 0.7 : 1, gap:'12px'
+            }}
+              onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+              onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+            >
+              <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                <span style={{fontSize:'15px', fontWeight:700, color:C.dark, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{p.name}</span>
+                {connectMap[p.id]?.state==='connected' && <div title={`Connected · ${connectMap[p.id].partner}`} style={{width:'16px',height:'16px',borderRadius:'50%',backgroundColor:'#dcfce7',border:'1px solid #86efac',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>}
+                {connectMap[p.id]?.state==='pending' && <div title={`Pending · ${connectMap[p.id].partner}`} style={{width:'16px',height:'16px',borderRadius:'50%',backgroundColor:'#fff7ed',border:'1px solid #fdba74',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg></div>}
+              </div>
+              {/* Status — filled bg matching wireframe */}
+              <div>
+                <span style={{padding:'4px 10px', backgroundColor:statusCfg[p.status].bg, color:statusCfg[p.status].color, borderRadius:'4px', fontSize:'13px', fontWeight:600}}>
+                  {statusCfg[p.status].label}
+                </span>
+              </div>
+              {/* Organisation */}
+              <span style={{fontSize:'14px', color:C.gray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{p.organisation}</span>
+              {/* Last Updated */}
+              <span style={{fontSize:'14px', color:C.gray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>Last Updated: {p.lastUpdated}</span>
+              {/* Labels count */}
+              <span style={{fontSize:'14px', color:C.gray, textAlign:'center'}}>{p.labels.length}</span>
+              {/* Outcomes */}
+              <span style={{fontSize:'14px', color:C.gray, textAlign:'center'}}>{p.outcomes}</span>
+              {/* Stakeholders */}
+              <span style={{fontSize:'14px', color:C.gray, textAlign:'center'}}>{p.stakeholders}</span>
+              {/* Creator */}
+              <span style={{fontSize:'14px', color:C.gray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{p.creator}</span>
+              {/* Actions */}
+              <div style={{display:'flex', alignItems:'center', gap:'4px', justifyContent:'flex-end'}} onClick={e=>e.stopPropagation()}>
+                {/* Open button */}
+                <button style={{padding:'6px 12px', borderRadius:'6px', border:`1px solid ${C.teal}`, backgroundColor:'transparent', color:C.teal, fontSize:'13px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', transition:'all 0.15s ease', fontFamily:'inherit'}}
+                  onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.teal; e.currentTarget.style.color='#fff';}}
+                  onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.teal;}}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                  Open
+                </button>
+                {/* Duplicate */}
+                <button title="Duplicate" style={{padding:'6px', borderRadius:'6px', border:'none', backgroundColor:'transparent', color:C.gray, cursor:'pointer'}}
+                  onMouseOver={e=>e.currentTarget.style.backgroundColor='#f1f5f9'}
+                  onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                {/* Three-dots with working dropdown */}
+                <div style={{position:'relative'}}>
+                  <button title="More options"
+                    onClick={e=>{e.stopPropagation(); setListMenuOpen(listMenuOpen===p.id ? null : p.id);}}
+                    style={{padding:'6px', borderRadius:'6px', border:'none', backgroundColor: listMenuOpen===p.id ? '#f1f5f9' : 'transparent', color:C.gray, cursor:'pointer'}}
+                    onMouseOver={e=>{if(listMenuOpen!==p.id) e.currentTarget.style.backgroundColor='#f1f5f9';}}
+                    onMouseOut={e=>{if(listMenuOpen!==p.id) e.currentTarget.style.backgroundColor='transparent';}}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  {listMenuOpen===p.id && (
+                    <div onClick={e=>e.stopPropagation()} style={{position:'absolute', bottom:'100%', right:0, marginBottom:'4px', backgroundColor:'#fff', borderRadius:'10px', boxShadow:'0 4px 20px rgba(0,0,0,0.15)', border:`1px solid ${C.border}`, minWidth:'180px', overflow:'hidden', zIndex:200}}>
+                      <div style={{padding:'6px 0'}}>
+                        <div style={{padding:'4px 12px 6px', fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>Change Status</div>
+                        {p.status !== 'draft' && (
+                          <div style={{padding:'8px 12px', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', fontSize:'14px', color:C.dark}}
+                            onClick={()=>changeStatus(p.id,'draft')}
+                            onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                          >
+                            <span style={{width:'8px', height:'8px', borderRadius:'50%', backgroundColor:statusCfg.draft.color, flexShrink:0}}/>
+                            Mark as Draft
+                          </div>
+                        )}
+                        {p.status !== 'active' && (
+                          <div style={{padding:'8px 12px', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', fontSize:'14px', color:C.dark}}
+                            onClick={()=>changeStatus(p.id,'active')}
+                            onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                          >
+                            <span style={{width:'8px', height:'8px', borderRadius:'50%', backgroundColor:statusCfg.active.color, flexShrink:0}}/>
+                            Mark as Active
+                          </div>
+                        )}
+                        {p.status !== 'archived' && (
+                          <div style={{padding:'8px 12px', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', fontSize:'14px', color:C.dark}}
+                            onClick={()=>changeStatus(p.id,'archived')}
+                            onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                          >
+                            <span style={{width:'8px', height:'8px', borderRadius:'50%', backgroundColor:statusCfg.archived.color, flexShrink:0}}/>
+                            Mark as Archived
+                          </div>
+                        )}
+                      </div>
+                      <div style={{height:'1px', backgroundColor:C.border, margin:'0 8px'}}/>
+                      <div style={{padding:'6px 0'}}>
+                        <div style={{padding:'8px 12px', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', fontSize:'14px', color:C.dark}}
+                          onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                          onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+                          onClick={()=>setListMenuOpen(null)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                          <span style={{color:C.teal, fontWeight:500}}>View SROI Report</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Connect modal */}
+      {connectModalId && (
+        <ConnectModal
+          project={projectsWithStatus.find(p=>p.id===connectModalId)}
+          onClose={()=>setConnectModalId(null)}
+          onSend={(org)=>doConnect(connectModalId, org)}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', backgroundColor:C.dark, color:'#fff', padding:'11px 20px', borderRadius:'8px', fontSize:'14px', fontWeight:500, boxShadow:'0 4px 20px rgba(0,0,0,0.2)', zIndex:2000, whiteSpace:'nowrap'}}>
+          {toast}
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PAGE 2 · PROXIES
+══════════════════════════════════════════ */
+function ProxiesPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [includeGlobal, setIncludeGlobal] = useState(true);
+  const [selectedOrganisation, setSelectedOrganisation] = useState('All Organisations');
+  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
+  const [selectedProxy, setSelectedProxy] = useState(null);
+
+  const fmt = (v,c) => `${c}${v.toLocaleString()}`;
+
+  const filtered = proxies.filter(p=>{
+    if(searchQuery){
+      const q=searchQuery.toLowerCase();
+      if(!p.name.toLowerCase().includes(q) && !p.category.toLowerCase().includes(q) && !p.source.toLowerCase().includes(q)) return false;
+    }
+    if(p.isGlobal) return includeGlobal;
+    if(selectedOrganisation==='All Organisations') return true;
+    return p.organisation===selectedOrganisation;
+  });
+
+  return (
+    <main onClick={()=>setOrgDropdownOpen(false)} style={{padding:'24px 32px', minHeight:'calc(100vh - 56px)'}}>
+      {/* Page title */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'24px'}}>
+        <div>
+          <h1 style={{fontSize:'25px', fontWeight:700, color:C.dark, margin:'0 0 4px 0'}}>Proxies</h1>
+          <p style={{margin:0, color:C.gray, fontSize:'14px'}}>{filtered.length} proxies available</p>
+        </div>
+        <div style={{display:'flex', gap:'12px'}}>
+          <button style={{padding:'10px 20px', borderRadius:'8px', border:`1px solid ${C.border}`, backgroundColor:'#fff', color:C.dark, fontSize:'15px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', fontFamily:'inherit'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+          <button style={{padding:'10px 20px', borderRadius:'8px', border:'none', backgroundColor:C.teal, color:'white', fontSize:'15px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', boxShadow:`0 1px 3px rgba(10,120,119,0.3)`, fontFamily:'inherit'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Proxy
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{backgroundColor:'#fff', borderRadius:'12px', padding:'16px 20px', marginBottom:'16px', border:`1px solid ${C.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', gap:'16px'}}>
+        <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
+          <label style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', borderRadius:'8px', backgroundColor: includeGlobal ? `${C.teal}10` : 'transparent', border:`1px solid ${includeGlobal ? C.teal : C.border}`, cursor:'pointer', fontSize:'14px', fontWeight:500, color: includeGlobal ? C.teal : C.gray}}>
+            <input type="checkbox" checked={includeGlobal} onChange={e=>setIncludeGlobal(e.target.checked)} style={{width:'16px', height:'16px', accentColor:C.teal}}/>
+            Inc. Global
+            <span style={{backgroundColor: includeGlobal ? C.teal : C.border, color: includeGlobal ? '#fff' : C.gray, padding:'2px 8px', borderRadius:'10px', fontSize:'12px'}}>{proxies.filter(p=>p.isGlobal).length}</span>
+          </label>
+          <div style={{position:'relative'}}>
+            <button onClick={e=>{e.stopPropagation(); setOrgDropdownOpen(!orgDropdownOpen);}} style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', borderRadius:'8px', border:`1px solid ${C.border}`, backgroundColor:'#fff', fontSize:'14px', fontWeight:500, color:C.dark, cursor:'pointer', minWidth:'200px', justifyContent:'space-between', fontFamily:'inherit'}}>
+              <span style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                {selectedOrganisation}
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {orgDropdownOpen && (
+              <div onClick={e=>e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:'4px', width:'280px', maxHeight:'300px', overflowY:'auto', backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:100}}>
+                {userOrganisations.map(org=>(
+                  <div key={org} onClick={()=>{setSelectedOrganisation(org); setOrgDropdownOpen(false);}} style={{padding:'10px 14px', cursor:'pointer', fontSize:'14px', backgroundColor: selectedOrganisation===org ? '#e8f4f4' : 'transparent', color: selectedOrganisation===org ? C.teal : C.dark, display:'flex', alignItems:'center', gap:'8px'}}
+                    onMouseOver={e=>{if(selectedOrganisation!==org) e.currentTarget.style.backgroundColor='#f8fafc';}}
+                    onMouseOut={e=>{if(selectedOrganisation!==org) e.currentTarget.style.backgroundColor='transparent';}}
+                  >
+                    {selectedOrganisation===org && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                    <span style={{marginLeft: selectedOrganisation===org ? 0 : '22px'}}>{org}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{position:'relative', width:'320px'}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2" style={{position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)'}}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search proxy, category or source..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} style={{width:'100%', padding:'10px 12px 10px 42px', borderRadius:'8px', border:`1px solid ${C.border}`, fontSize:'15px', outline:'none', boxSizing:'border-box', fontFamily:'inherit'}}/>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, overflow:'hidden'}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1.5fr 1fr 200px 110px 110px', padding:'14px 20px', backgroundColor:'#f8fafc', borderBottom:`1px solid ${C.border}`, fontSize:'13px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>
+          <div>Category</div><div>Proxy</div><div>Unit</div><div>Source</div><div>Organisation</div><div style={{textAlign:'right'}}>Actions</div>
+        </div>
+        {filtered.map((proxy,index)=>(
+          <div key={proxy.id} style={{display:'grid', gridTemplateColumns:'1fr 1.5fr 1fr 200px 110px 110px', padding:'16px 20px', borderBottom: index<filtered.length-1 ? `1px solid ${C.border}` : 'none', alignItems:'center', cursor:'pointer', transition:'background-color 0.15s ease'}}
+            onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+            onClick={()=>setSelectedProxy(proxy)}
+          >
+            <div style={{fontSize:'14px', color:C.dark, fontWeight:500, paddingRight:'12px'}}>{proxy.category}</div>
+            <div style={{paddingRight:'12px'}}>
+              <div style={{fontSize:'15px', color:C.dark, marginBottom:'5px'}}>{proxy.name}</div>
+              <div style={{display:'inline-block', padding:'3px 10px', backgroundColor:`${C.teal}15`, color:C.teal, borderRadius:'6px', fontSize:'14px', fontWeight:600}}>{fmt(proxy.value,proxy.currency)}</div>
+            </div>
+            <div style={{fontSize:'14px', color:C.gray, paddingRight:'12px', lineHeight:1.4}}>{proxy.unit}</div>
+            <div style={{paddingRight:'12px'}}>
+              <div style={{fontSize:'14px', color:C.dark, fontWeight:500, marginBottom:'2px'}}>{proxy.source}</div>
+              <div style={{fontSize:'12px', color:C.gray}}>{proxy.sourceDate}</div>
+            </div>
+            <div>
+              <span style={{display:'inline-block', padding:'4px 10px', backgroundColor: proxy.isGlobal ? `${C.olive}15` : `${C.gold}15`, color: proxy.isGlobal ? C.olive : C.gold, borderRadius:'6px', fontSize:'13px', fontWeight:500}}>
+                {proxy.isGlobal ? 'Global' : proxy.organisation}
+              </span>
+            </div>
+            <div style={{display:'flex', gap:'2px', justifyContent:'flex-end'}} onClick={e=>e.stopPropagation()}>
+              {!proxy.isGlobal && (
+                <button title="Edit proxy" style={{padding:'8px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'6px', color:C.gray}}
+                  onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.teal;}}
+                  onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.gray;}}
+                ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              )}
+              <button title="View proxy" onClick={()=>setSelectedProxy(proxy)} style={{padding:'8px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'6px', color:C.gray}}
+                onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.teal;}}
+                onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.gray;}}
+              ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Proxy modal */}
+      {selectedProxy && (
+        <div onClick={()=>setSelectedProxy(null)} style={{position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600}}>
+          <div onClick={e=>e.stopPropagation()} style={{backgroundColor:'#fff', borderRadius:'14px', width:'620px', maxHeight:'85vh', overflow:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)', animation:'fadeIn 0.2s ease'}}>
+            <div style={{padding:'20px 24px', borderBottom:`1px solid ${C.border}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+              <div style={{flex:1, paddingRight:'16px'}}>
+                <h2 style={{margin:'0 0 8px 0', fontSize:'18px', fontWeight:600, color:C.dark, lineHeight:1.4}}>{selectedProxy.name}</h2>
+                <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                  <span style={{padding:'4px 12px', backgroundColor:`${C.teal}18`, color:C.teal, borderRadius:'6px', fontSize:'14px', fontWeight:600}}>{selectedProxy.currency}{selectedProxy.value.toLocaleString()}</span>
+                  <span style={{padding:'4px 12px', backgroundColor: selectedProxy.isGlobal ? `${C.olive}15` : `${C.gold}15`, color: selectedProxy.isGlobal ? C.olive : C.gold, borderRadius:'6px', fontSize:'13px', fontWeight:500}}>{selectedProxy.isGlobal ? 'Global' : selectedProxy.organisation}</span>
+                </div>
+              </div>
+              <button onClick={()=>setSelectedProxy(null)} style={{padding:'4px', border:'none', background:'transparent', cursor:'pointer', color:C.gray}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div style={{padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
+              {[['Category', selectedProxy.category],['Unit', selectedProxy.unit],['Source', selectedProxy.source],['Source Date', selectedProxy.sourceDate],['Deflator', selectedProxy.deflator],['Created By', selectedProxy.createdBy],['Created', selectedProxy.createdDate],['Last Updated', selectedProxy.lastUpdated]].map(([k,v])=>(
+                <div key={k}>
+                  <div style={{fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'4px'}}>{k}</div>
+                  <div style={{fontSize:'15px', color:C.dark}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {selectedProxy.priorities.length>0 && (
+              <div style={{padding:'0 24px 20px'}}>
+                <div style={{fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px'}}>Framework Priorities</div>
+                <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                  {selectedProxy.priorities.map((pr,i)=>(
+                    <div key={i} style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', backgroundColor:'#f8fafc', borderRadius:'8px'}}>
+                      <div style={{width:'10px', height:'10px', borderRadius:'50%', backgroundColor:pr.color, flexShrink:0}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:'14px', fontWeight:500, color:C.dark}}>{pr.name}</div>
+                        <div style={{fontSize:'12px', color:C.gray}}>{pr.framework}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{padding:'16px 24px', borderTop:`1px solid ${C.border}`, display:'flex', justifyContent:'flex-end', gap:'10px'}}>
+              <button onClick={()=>setSelectedProxy(null)} style={{padding:'10px 20px', backgroundColor:'#f1f5f9', color:C.dark, border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:500, cursor:'pointer', fontFamily:'inherit'}}>Close</button>
+              {!selectedProxy.isGlobal && <button style={{padding:'10px 20px', backgroundColor:C.teal, color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Edit Proxy</button>}
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PAGE 3 · FRAMEWORKS
+══════════════════════════════════════════ */
+function FrameworksPage() {
+  const [selectedOrganisation, setSelectedOrganisation] = useState('All Organisations');
+  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
+  const [selectedFramework, setSelectedFramework] = useState(null);
+
+  const filtered = frameworks.filter(fw=>{
+    if(selectedOrganisation==='All Organisations') return true;
+    if(fw.isGlobal) return true;
+    return fw.organisation===selectedOrganisation;
+  });
+
+  return (
+    <main onClick={()=>setOrgDropdownOpen(false)} style={{padding:'24px 32px', minHeight:'calc(100vh - 56px)'}}>
+      {/* Page title */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'24px'}}>
+        <div>
+          <h1 style={{fontSize:'25px', fontWeight:700, color:C.dark, margin:'0 0 4px 0'}}>Frameworks</h1>
+          <p style={{margin:0, color:C.gray, fontSize:'14px'}}>{filtered.length} frameworks available</p>
+        </div>
+        <button style={{padding:'10px 20px', borderRadius:'8px', border:'none', backgroundColor:C.teal, color:'white', fontSize:'15px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', boxShadow:`0 1px 3px rgba(10,120,119,0.3)`, fontFamily:'inherit'}}
+          onMouseOver={e=>{e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 4px 12px rgba(10,120,119,0.3)';}}
+          onMouseOut={e=>{e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 1px 3px rgba(10,120,119,0.3)`;}}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Framework
+        </button>
+      </div>
+
+      {/* Organisation filter */}
+      <div style={{marginBottom:'16px'}}>
+        <div style={{position:'relative', display:'inline-block'}}>
+          <button onClick={e=>{e.stopPropagation(); setOrgDropdownOpen(!orgDropdownOpen);}} style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', borderRadius:'8px', border:`1px solid ${C.border}`, backgroundColor:'#fff', fontSize:'14px', fontWeight:500, color:C.dark, cursor:'pointer', minWidth:'220px', justifyContent:'space-between', fontFamily:'inherit'}}>
+            <span style={{display:'flex', alignItems:'center', gap:'8px'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+              {selectedOrganisation}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {orgDropdownOpen && (
+            <div onClick={e=>e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:'4px', width:'280px', maxHeight:'320px', overflowY:'auto', backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:100}}>
+              {userOrganisations.map(org=>(
+                <div key={org} onClick={()=>{setSelectedOrganisation(org); setOrgDropdownOpen(false);}} style={{padding:'10px 14px', cursor:'pointer', fontSize:'14px', backgroundColor: selectedOrganisation===org ? '#e8f4f4' : 'transparent', color: selectedOrganisation===org ? C.teal : C.dark, display:'flex', alignItems:'center', gap:'8px'}}
+                  onMouseOver={e=>{if(selectedOrganisation!==org) e.currentTarget.style.backgroundColor='#f8fafc';}}
+                  onMouseOut={e=>{if(selectedOrganisation!==org) e.currentTarget.style.backgroundColor='transparent';}}
+                >
+                  {selectedOrganisation===org && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                  <span style={{marginLeft: selectedOrganisation===org ? 0 : '22px'}}>{org}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, overflow:'hidden'}}>
+        <div style={{display:'grid', gridTemplateColumns:'1.6fr 1fr 2fr 160px', padding:'14px 20px', backgroundColor:'#f8fafc', borderBottom:`1px solid ${C.border}`, fontSize:'13px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>
+          <div>Name</div><div>Organisation</div><div>Priorities</div><div style={{textAlign:'right'}}>Actions</div>
+        </div>
+        {filtered.map((fw,i)=>(
+          <div key={fw.id} style={{display:'grid', gridTemplateColumns:'1.6fr 1fr 2fr 160px', padding:'20px', borderBottom: i<filtered.length-1 ? `1px solid ${C.border}` : 'none', alignItems:'center', transition:'background-color 0.15s ease', cursor:'default'}}
+            onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+            onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+          >
+            <div style={{fontSize:'15px', color:C.dark, fontWeight:500, paddingRight:'16px'}}>{fw.name}</div>
+            <div>
+              <span style={{display:'inline-block', padding:'4px 10px', backgroundColor: fw.isGlobal ? `${C.olive}15` : `${C.gold}15`, color: fw.isGlobal ? C.olive : C.gold, borderRadius:'6px', fontSize:'13px', fontWeight:500}}>
+                {fw.isGlobal ? 'Global' : fw.organisation}
+              </span>
+            </div>
+            <div style={{display:'flex', alignItems:'center'}}>
+              {fw.priorities.slice(0,12).map((p,pi)=>(
+                <div key={pi} title={p.name} style={{width:'24px', height:'24px', borderRadius:'50%', backgroundColor:p.color, border:'2px solid #fff', marginLeft:pi>0 ? '-6px' : '0', position:'relative', zIndex:fw.priorities.length-pi, transition:'transform 0.15s ease', cursor:'pointer'}}
+                  onMouseOver={e=>e.currentTarget.style.transform='scale(1.2)'}
+                  onMouseOut={e=>e.currentTarget.style.transform='scale(1)'}
+                />
+              ))}
+              {fw.priorities.length>12 && <span style={{fontSize:'12px', color:C.gray, marginLeft:'8px'}}>+{fw.priorities.length-12}</span>}
+            </div>
+            <div style={{display:'flex', gap:'2px', justifyContent:'flex-end'}}>
+              {!fw.isGlobal && (<>
+                <button title="Share" style={{padding:'8px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'6px', color:C.gray}}
+                  onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.teal;}}
+                  onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.gray;}}
+                ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+                <button title="Edit" style={{padding:'8px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'6px', color:C.gray}}
+                  onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.teal;}}
+                  onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.gray;}}
+                ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              </>)}
+              <button title="View" onClick={()=>setSelectedFramework(fw)} style={{padding:'8px', border:'none', background:'transparent', cursor:'pointer', borderRadius:'6px', color:C.gray}}
+                onMouseOver={e=>{e.currentTarget.style.backgroundColor=C.bg; e.currentTarget.style.color=C.teal;}}
+                onMouseOut={e=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color=C.gray;}}
+              ><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Framework modal */}
+      {selectedFramework && (
+        <div onClick={()=>setSelectedFramework(null)} style={{position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600}}>
+          <div onClick={e=>e.stopPropagation()} style={{backgroundColor:'#fff', borderRadius:'14px', width:'560px', maxHeight:'80vh', overflow:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)', animation:'fadeIn 0.2s ease'}}>
+            <div style={{padding:'20px 24px', borderBottom:`1px solid ${C.border}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+              <div>
+                <h2 style={{margin:'0 0 8px 0', fontSize:'19px', fontWeight:600, color:C.dark}}>{selectedFramework.name}</h2>
+                <span style={{display:'inline-block', padding:'4px 10px', backgroundColor: selectedFramework.isGlobal ? `${C.olive}15` : `${C.gold}15`, color: selectedFramework.isGlobal ? C.olive : C.gold, borderRadius:'6px', fontSize:'13px', fontWeight:500}}>
+                  {selectedFramework.isGlobal ? 'Global' : selectedFramework.organisation}
+                </span>
+              </div>
+              <button onClick={()=>setSelectedFramework(null)} style={{padding:'4px', border:'none', background:'transparent', cursor:'pointer', color:C.gray}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div style={{padding:'16px 24px'}}>
+              <div style={{fontSize:'13px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px'}}>{selectedFramework.priorities.length} Priorities</div>
+              <div style={{display:'flex', flexDirection:'column', gap:'0'}}>
+                {selectedFramework.priorities.map((p,i)=>(
+                  <div key={i} style={{display:'flex', alignItems:'center', gap:'12px', padding:'14px 0', borderBottom: i<selectedFramework.priorities.length-1 ? `1px solid ${C.border}` : 'none'}}>
+                    <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor:p.color, flexShrink:0}}/>
+                    <div style={{fontSize:'15px', fontWeight:500, color:C.dark}}>{p.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{padding:'16px 24px', borderTop:`1px solid ${C.border}`, display:'flex', justifyContent:'flex-end'}}>
+              <button onClick={()=>setSelectedFramework(null)} style={{padding:'10px 20px', backgroundColor:C.teal, color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ROOT APP
+══════════════════════════════════════════ */
+function App() {
+  const [activePage, setActivePage] = useState('Projects');
+  const [wizardMode, setWizardMode] = useState('Expert');
+  const [sidekickOpen, setSidekickOpen] = useState(false);
+
+  const pr = sidekickOpen ? '396px' : '64px';
+
+  return (
+    <div style={{minHeight:'100vh', backgroundColor:C.bg, fontFamily:"'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif"}}>
+      <Header activePage={activePage} setActivePage={setActivePage} wizardMode={wizardMode} setWizardMode={setWizardMode} sidekickOpen={sidekickOpen}/>
+      <div style={{paddingRight:pr, transition:'padding-right 0.3s ease'}}>
+        {activePage==='Projects'   && <ProjectsPage/>}
+        {activePage==='Reports'    && <ReportsPage/>}
+        {activePage==='Proxies'    && <ProxiesPage/>}
+        {activePage==='Frameworks' && <FrameworksPage/>}
+      </div>
+      <SidekickPanel activePage={activePage} open={sidekickOpen} setOpen={setSidekickOpen}/>
+    </div>
+  );
+}
+
+function ReportsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedReports, setSelectedReports] = useState(['18-february']);
+  const [selectedLabels, setSelectedLabels] = useState([]);
+  const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [expandedKpi, setExpandedKpi] = useState(null);
+
+  const availableReports = [
+    { id:'18-february', name:'18 February', project:'18 February project', labels:['Youth','Arts'] },
+    { id:'nen-q1', name:'NEN Q1 2024', project:'NEN', labels:['Education','Youth'] },
+    { id:'sparrows-annual', name:'Sparrows Annual', project:'Sparrows', labels:['Justice'] },
+    { id:'georgias-voice', name:"Georgia's Voice 2024", project:"Georgia's Voice", labels:['Mental Health'] },
+    { id:'open-up-music', name:'Open Up Music', project:'Open up Music', labels:['Arts','Community'] },
+    { id:'hdc-active', name:'HDC Active for Health', project:'HDC Active for health', labels:['Health'] },
+  ];
+  const allLabels = ['Youth','Arts','Education','Justice','Mental Health','Community','Health','Food Security'];
+
+  const toggleReport = (id) => setSelectedReports(prev => prev.includes(id) ? prev.filter(r=>r!==id) : [...prev, id]);
+  const toggleLabel = (l) => setSelectedLabels(prev => prev.includes(l) ? prev.filter(x=>x!==l) : [...prev, l]);
+
+  const filteredReports = availableReports.filter(r => {
+    const matchSearch = !searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.project.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchLabel = selectedLabels.length === 0 || selectedLabels.some(l => r.labels.includes(l));
+    return matchSearch && matchLabel;
+  });
+
+  const activeReport = availableReports.find(r => r.id === selectedReports[0]) || availableReports[0];
+
+  const outcomes = [
+    {
+      id:1, name:'Enhanced Physical Skills',
+      desc:'Participants develop better coordination, strength, and physical fitness through circus activities.',
+      proxy:'Annual wellbeing value for active children (aged 11-16)',
+      source:'Sport England - Social value research summary (Active Lives data)',
+      qty:'500 x', unit:'Per child per year', stakeholder:'Young People',
+      deflators:{ Leakage:18, Deadweight:65, Attribution:28, Dropoff:12, Displacement:8 },
+      impact:'\u00a31,004,500.00', years:'1 years', color:'#f9a8b8'
+    },
+    {
+      id:2, name:'Improved Teamwork Skills',
+      desc:'Young people enhance their ability to work collaboratively with others during group activities and performances.',
+      proxy:'Social value of young people accessing a youth club',
+      source:'Cross Keys Homes SROI Report 2024/25 (HACT Social Value Bank)',
+      qty:'600 x', unit:'Per young person per year', stakeholder:'Young People',
+      deflators:{ Leakage:15, Deadweight:72, Attribution:22, Dropoff:18, Displacement:5 },
+      impact:'\u00a369,000.00', years:'1 years', color:'#a8c97a'
+    },
+    {
+      id:3, name:'Increased Confidence Among Young People',
+      desc:'Participants develop greater self-esteem and belief in their abilities as a result of engaging in circus workshops and performances.',
+      proxy:'Self-esteem gain from frequent arts engagement (children aged 10-14)',
+      source:'UK Government',
+      qty:'200 x', unit:'Annual per child', stakeholder:'Young People',
+      deflators:{ Leakage:20, Deadweight:58, Attribution:35, Dropoff:10, Displacement:6 },
+      impact:'\u00a312,864.00', years:'1 years', color:'#93c5fd'
+    },
+  ];
+
+  function polarToCartesian(cx, cy, r, angleDeg) {
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+  function donutArc(cx, cy, r, startAng, endAng) {
+    if (endAng - startAng >= 359.99) endAng = startAng + 359.99;
+    const s = polarToCartesian(cx, cy, r, startAng);
+    const e = polarToCartesian(cx, cy, r, endAng);
+    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${endAng-startAng>180?1:0} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+  }
+  function DonutChart({ segments, size, sw }) {
+    const r = (size - sw) / 2;
+    const cx = size/2, cy = size/2;
+    const total = segments.reduce((s,g)=>s+g.value, 0);
+    let cum = 0;
+    return (
+      <svg width={size} height={size} style={{display:'block'}}>
+        {segments.map((seg,i)=>{
+          const ang = (seg.value/total)*360;
+          const start = cum; cum += ang;
+          return <path key={i} d={donutArc(cx,cy,r,start,cum)} fill="none" stroke={seg.color} strokeWidth={sw} strokeLinecap="butt"/>;
+        })}
+      </svg>
+    );
+  }
+  function DeflatorBar({ label, pct, active }) {
+    return (
+      <div style={{display:'flex', alignItems:'center', gap:'6px', marginBottom:'4px'}}>
+        <span style={{fontSize:'11px', color:'#94a3b8', width:'82px', textAlign:'right', flexShrink:0}}>{label}</span>
+        <div style={{flex:1, height:'5px', backgroundColor:'#e2e8f0', borderRadius:'3px', overflow:'hidden', minWidth:'60px'}}>
+          <div style={{width:`${pct}%`, height:'100%', backgroundColor: active ? C.teal : '#cbd5e1', borderRadius:'3px', transition:'width 0.3s ease'}}/>
+        </div>
+      </div>
+    );
+  }
+
+  const checkboxStyle = (on) => ({
+    width:'16px', height:'16px', borderRadius:'4px',
+    border:`2px solid ${on ? C.teal : C.border}`,
+    backgroundColor: on ? C.teal : 'transparent',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    flexShrink:0, transition:'all 0.15s ease'
+  });
+
+  return (
+    <main onClick={()=>{setReportDropdownOpen(false); setLabelDropdownOpen(false); setProjectDropdownOpen(false);}}
+      style={{minHeight:'calc(100vh - 56px)', backgroundColor:C.bg}}>
+
+      {/* ── Filter bar — matches Proxies/Frameworks design: white card on teal bg ── */}
+      <div style={{padding:'20px 32px'}}>
+        <div style={{backgroundColor:'#fff', borderRadius:'12px', padding:'16px 20px', border:`1px solid ${C.border}`,
+          display:'flex', justifyContent:'space-between', alignItems:'center', gap:'16px'}}>
+
+          {/* Left: Reports toggle + Labels dropdown */}
+          <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
+
+            {/* Reports pill — styled like "Inc. Global" */}
+            <div style={{position:'relative'}} onClick={e=>e.stopPropagation()}>
+              <label onClick={()=>{setReportDropdownOpen(v=>!v); setLabelDropdownOpen(false);}}
+                style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', borderRadius:'8px',
+                  backgroundColor: selectedReports.length>0 ? `${C.teal}10` : 'transparent',
+                  border:`1px solid ${selectedReports.length>0 ? C.teal : C.border}`,
+                  cursor:'pointer', fontSize:'14px', fontWeight:500,
+                  color: selectedReports.length>0 ? C.teal : C.gray, userSelect:'none'}}>
+                <div style={{width:'17px', height:'17px', borderRadius:'4px', flexShrink:0,
+                  border:`2px solid ${selectedReports.length>0 ? C.teal : C.border}`,
+                  backgroundColor: selectedReports.length>0 ? C.teal : 'transparent',
+                  display:'flex', alignItems:'center', justifyContent:'center'}}>
+                  {selectedReports.length>0 && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+                Reports
+                <span style={{backgroundColor: selectedReports.length>0 ? C.teal : C.border,
+                  color: selectedReports.length>0 ? '#fff' : C.gray,
+                  padding:'2px 8px', borderRadius:'10px', fontSize:'12px', fontWeight:600}}>
+                  {selectedReports.length || availableReports.length}
+                </span>
+              </label>
+              {reportDropdownOpen && (
+                <div style={{position:'absolute', top:'calc(100% + 6px)', left:0, minWidth:'300px', backgroundColor:'#fff',
+                  borderRadius:'12px', border:`1px solid ${C.border}`, boxShadow:'0 4px 20px rgba(0,0,0,0.12)', zIndex:400, overflow:'hidden'}}>
+                  <div style={{padding:'8px 14px', borderBottom:`1px solid ${C.border}`, fontSize:'11px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>Select Reports</div>
+                  {availableReports.map(r=>(
+                    <div key={r.id} onClick={()=>toggleReport(r.id)}
+                      style={{padding:'10px 14px', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer',
+                        backgroundColor:selectedReports.includes(r.id)?`${C.teal}08`:'transparent'}}
+                      onMouseOver={e=>{if(!selectedReports.includes(r.id)) e.currentTarget.style.backgroundColor='#f8fafc';}}
+                      onMouseOut={e=>{if(!selectedReports.includes(r.id)) e.currentTarget.style.backgroundColor='transparent';}}
+                    >
+                      <div style={{width:'16px', height:'16px', borderRadius:'4px', flexShrink:0,
+                        border:`2px solid ${selectedReports.includes(r.id)?C.teal:C.border}`,
+                        backgroundColor:selectedReports.includes(r.id)?C.teal:'transparent',
+                        display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s'}}>
+                        {selectedReports.includes(r.id) && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:'14px', color:C.dark, fontWeight:500}}>{r.name}</div>
+                        <div style={{fontSize:'12px', color:C.gray}}>{r.project}</div>
+                      </div>
+                      <div style={{display:'flex', gap:'4px', flexWrap:'wrap'}}>
+                        {r.labels.map(l=><span key={l} style={{fontSize:'11px', padding:'2px 6px', backgroundColor:`${C.teal}12`, color:C.teal, borderRadius:'8px'}}>{l}</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Labels dropdown — styled like org dropdown */}
+            <div style={{position:'relative'}} onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>{setLabelDropdownOpen(v=>!v); setReportDropdownOpen(false);}}
+                style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', borderRadius:'8px',
+                  border:`1px solid ${C.border}`, backgroundColor:'#fff', fontSize:'14px', fontWeight:500,
+                  color:C.dark, cursor:'pointer', minWidth:'180px', justifyContent:'space-between', fontFamily:'inherit'}}>
+                <span style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                  </svg>
+                  {selectedLabels.length===0 ? 'All Labels' : selectedLabels.length===1 ? selectedLabels[0] : `${selectedLabels.length} labels`}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {labelDropdownOpen && (
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute', top:'calc(100% + 4px)', left:0,
+                  minWidth:'200px', maxHeight:'280px', overflowY:'auto', backgroundColor:'#fff',
+                  borderRadius:'12px', border:`1px solid ${C.border}`, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:400}}>
+                  {allLabels.map(l=>(
+                    <div key={l} onClick={()=>toggleLabel(l)}
+                      style={{padding:'10px 14px', cursor:'pointer', fontSize:'14px',
+                        backgroundColor: selectedLabels.includes(l) ? '#e8f4f4' : 'transparent',
+                        color: selectedLabels.includes(l) ? C.teal : C.dark,
+                        display:'flex', alignItems:'center', gap:'8px'}}
+                      onMouseOver={e=>{if(!selectedLabels.includes(l)) e.currentTarget.style.backgroundColor='#f8fafc';}}
+                      onMouseOut={e=>{if(!selectedLabels.includes(l)) e.currentTarget.style.backgroundColor='transparent';}}
+                    >
+                      {selectedLabels.includes(l) && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                      <span style={{marginLeft: selectedLabels.includes(l) ? 0 : '22px'}}>{l}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Active label chips */}
+            {selectedLabels.map(l=>(
+              <span key={l} style={{display:'flex', alignItems:'center', gap:'4px', padding:'5px 10px',
+                backgroundColor:`${C.teal}12`, color:C.teal, borderRadius:'20px', fontSize:'13px', fontWeight:500}}>
+                {l}
+                <button onClick={e=>{e.stopPropagation();toggleLabel(l);}} style={{background:'none',border:'none',cursor:'pointer',color:C.teal,display:'flex',padding:0,marginLeft:'2px'}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Right: Search */}
+          <div style={{position:'relative', flex:'0 0 320px'}} onClick={e=>e.stopPropagation()}>
+            <svg style={{position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}
+              width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+              placeholder="Search report, project or label..."
+              style={{width:'100%', padding:'9px 12px 9px 36px', borderRadius:'8px', border:`1px solid ${C.border}`,
+                fontSize:'14px', fontFamily:'inherit', outline:'none', boxSizing:'border-box', color:C.dark, backgroundColor:'#fff'}}
+              onFocus={e=>e.target.style.borderColor=C.teal}
+              onBlur={e=>e.target.style.borderColor=C.border}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Report content ── */}
+      <div style={{padding:'0 32px 32px'}}>
+      <div style={{backgroundColor:'#fff', borderRadius:'12px', border:`1px solid ${C.border}`, overflow:'hidden'}}>
+
+        {/* Project selector + Print/Export */}
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 32px', borderBottom:`1px solid ${C.border}`}}
+          onClick={e=>e.stopPropagation()}>
+          <div style={{position:'relative'}}>
+            <button onClick={()=>setProjectDropdownOpen(v=>!v)}
+              style={{display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none',
+                cursor:'pointer', fontFamily:'inherit', fontSize:'15px', fontWeight:500, color:C.dark, padding:0}}>
+              {activeReport.project}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {projectDropdownOpen && selectedReports.length > 0 && (
+              <div style={{position:'absolute', top:'calc(100%+6px)', left:0, minWidth:'220px', backgroundColor:'#fff',
+                borderRadius:'10px', border:`1px solid ${C.border}`, boxShadow:'0 4px 20px rgba(0,0,0,0.12)', zIndex:300, overflow:'hidden', marginTop:'6px'}}>
+                {availableReports.filter(r=>selectedReports.includes(r.id)).map(r=>(
+                  <div key={r.id} style={{padding:'10px 14px', fontSize:'14px', color:C.dark, cursor:'pointer'}}
+                    onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                    onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}>
+                    {r.project}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{display:'flex', gap:'8px'}}>
+            {[
+              { label:'Print', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> },
+              { label:'Export', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> },
+            ].map(btn=>(
+              <button key={btn.label} style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', borderRadius:'7px',
+                border:`1px solid ${C.border}`, backgroundColor:'#fff', color:C.dark, fontSize:'14px', fontWeight:500, cursor:'pointer', fontFamily:'inherit'}}
+                onMouseOver={e=>e.currentTarget.style.backgroundColor='#f8fafc'}
+                onMouseOut={e=>e.currentTarget.style.backgroundColor='#fff'}>
+                {btn.icon}{btn.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Report title */}
+        <div style={{textAlign:'center', padding:'28px 32px 20px', borderBottom:`1px solid ${C.border}`}}>
+          <h1 style={{fontSize:'22px', fontWeight:500, color:C.dark, margin:0, letterSpacing:'-0.2px'}}>{activeReport.name}</h1>
+        </div>
+
+        {/* ── KPI Cards ── */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:`1px solid ${C.border}`}}>
+          {[
+            { label:'Social Return on Investment', value:'\u00a31.74', sub:'Net SRoI: \u00a30.74',
+              icon:<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="1.5"><path d="M12 22V2"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
+            { label:'Present Value', value:'\u00a31,049,627.05', sub:'Discount Rate: 3.5%',
+              icon:<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+            { label:'Impact', value:'\u00a31,086,364.00', sub:'Based on 1 year', valueColor:C.teal,
+              icon:<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
+            { label:'Input', value:'\u00a3600,000.00', sub:'Largest category: Money',
+              icon:<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> },
+          ].map((kpi,i)=>(
+            <div key={i} style={{padding:'20px 24px', borderRight: i<3?`1px solid ${C.border}`:'none'}}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                <div style={{flex:1}}>
+                  <p style={{fontSize:'13px', color:C.gray, margin:'0 0 8px 0'}}>{kpi.label}</p>
+                  <p style={{fontSize:'26px', fontWeight:700, color:kpi.valueColor||C.dark, margin:'0 0 5px 0', letterSpacing:'-0.5px', lineHeight:1}}>{kpi.value}</p>
+                  <p style={{fontSize:'13px', color:C.gray, margin:0}}>{kpi.sub}</p>
+                </div>
+                <div style={{opacity:0.65, flexShrink:0, marginLeft:'8px', marginTop:'2px'}}>{kpi.icon}</div>
+              </div>
+              <div style={{display:'flex', justifyContent:'center', marginTop:'14px'}}>
+                <button onClick={()=>setExpandedKpi(expandedKpi===i?null:i)}
+                  style={{background:'none', border:'none', cursor:'pointer', color:C.gray, display:'flex', padding:'4px', borderRadius:'4px'}}
+                  onMouseOver={e=>e.currentTarget.style.backgroundColor='#f1f5f9'}
+                  onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {expandedKpi===i ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Donut Charts ── */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', borderBottom:`1px solid ${C.border}`, backgroundColor:'#fafbfc'}}>
+          {[
+            { title:'Present Value by Stakeholder',
+              segments:[{value:100, color:'#d1d5db'}],
+              legend:[{label:'Young People', color:'#d1d5db'}] },
+            { title:'Present Value by Outcome',
+              segments:[{value:92.5,color:'#f9a8b8'},{value:6.35,color:'#a8c97a'},{value:1.15,color:'#93c5fd'}],
+              legend:[
+                {label:'Enhanced Physical Skills', color:'#f9a8b8'},
+                {label:'Improved Teamwork Skills', color:'#a8c97a'},
+                {label:'Increased Confidence Among Young People', color:'#93c5fd'},
+              ] },
+            { title:'Present Value by Priority',
+              segments:[{value:100, color:'#d1d5db'}],
+              legend:[{label:'Unclassified', color:'#d1d5db'}] },
+          ].map((chart,i)=>(
+            <div key={i} style={{padding:'24px 28px', borderRight: i<2?`1px solid ${C.border}`:'none', backgroundColor:'#fff', margin: i===0?'0':undefined}}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px'}}>
+                <h3 style={{fontSize:'14px', fontWeight:500, color:C.dark, margin:0}}>{chart.title}</h3>
+                <button style={{background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:'2px', display:'flex', flexShrink:0}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                </button>
+              </div>
+              <div style={{marginBottom:'16px'}}>
+                {chart.legend.map((l,li)=>(
+                  <div key={li} style={{display:'flex', alignItems:'center', gap:'7px', marginBottom:'5px'}}>
+                    <span style={{width:'22px', height:'11px', borderRadius:'2px', backgroundColor:l.color, flexShrink:0, border:'1px solid rgba(0,0,0,0.07)'}}/>
+                    <span style={{fontSize:'12px', color:C.gray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{l.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:'flex', justifyContent:'center', paddingTop:'8px'}}>
+                <DonutChart segments={chart.segments} size={200} sw={46}/>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Outcomes Table ── */}
+        <div>
+          <div style={{display:'grid', gridTemplateColumns:'2.6fr 2fr 1fr 0.9fr 1.4fr 1fr',
+            padding:'13px 24px', backgroundColor:'#f8fafc', borderBottom:`1px solid ${C.border}`, gap:'16px'}}>
+            {['Outcome','Proxy','Quantity','Stakeholders','Deflators','Impact'].map(h=>(
+              <span key={h} style={{fontSize:'12px', fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.5px'}}>{h}</span>
+            ))}
+          </div>
+          {outcomes.map((o,i)=>(
+            <div key={o.id} style={{display:'grid', gridTemplateColumns:'2.6fr 2fr 1fr 0.9fr 1.4fr 1fr',
+              padding:'24px', borderBottom: i<outcomes.length-1?`1px solid ${C.border}`:'none',
+              gap:'16px', alignItems:'start'}}
+              onMouseOver={e=>e.currentTarget.style.backgroundColor='#fafbfc'}
+              onMouseOut={e=>e.currentTarget.style.backgroundColor='transparent'}
+            >
+              {/* Outcome */}
+              <div>
+                <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+                  <span style={{width:'10px', height:'10px', borderRadius:'50%', backgroundColor:o.color, flexShrink:0}}/>
+                  <p style={{fontSize:'15px', fontWeight:600, color:C.dark, margin:0}}>{o.name}</p>
+                </div>
+                <p style={{fontSize:'13px', color:C.gray, margin:'0 0 0 18px', lineHeight:1.55}}>{o.desc}</p>
+              </div>
+              {/* Proxy */}
+              <div>
+                <p style={{fontSize:'14px', color:C.dark, margin:'0 0 5px 0', lineHeight:1.4}}>{o.proxy}</p>
+                <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                  <p style={{fontSize:'12px', color:C.gray, margin:0, lineHeight:1.4}}>{o.source}</p>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" style={{flexShrink:0}}>
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </div>
+              </div>
+              {/* Quantity */}
+              <div>
+                <p style={{fontSize:'15px', fontWeight:600, color:C.dark, margin:'0 0 3px 0'}}>{o.qty}</p>
+                <p style={{fontSize:'13px', color:C.gray, margin:0}}>{o.unit}</p>
+              </div>
+              {/* Stakeholders */}
+              <p style={{fontSize:'14px', color:C.gray, margin:0}}>{o.stakeholder}</p>
+              {/* Deflators */}
+              <div>
+                {Object.entries(o.deflators).map(([key,pct])=>(
+                  <DeflatorBar key={key} label={key} pct={pct} active={key==='Deadweight'}/>
+                ))}
+              </div>
+              {/* Impact */}
+              <div style={{textAlign:'right'}}>
+                <p style={{fontSize:'15px', fontWeight:600, color:C.dark, margin:'0 0 3px 0'}}>{o.impact}</p>
+                <p style={{fontSize:'13px', color:C.gray, margin:'0 0 8px 0'}}>{o.years}</p>
+                <button style={{background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:0, display:'inline-flex'}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      </div>
+    </main>
+  );
+}
+
+
+ReactDOM.render(React.createElement(App), document.getElementById('root'));
+</script>
+</body>
+</html>
