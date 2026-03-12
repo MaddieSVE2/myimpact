@@ -279,7 +279,7 @@ export default function Intro() {
               },
               {
                 name: "Ben",
-                age: "19, Hull",
+                age: "36, Hull",
                 quote: "I'm not in work right now and people make assumptions. But I run a tech drop-in for older people every week. I'm reducing isolation, building digital skills, bringing people together. MyImpact shows that what I do has real, measurable worth.",
                 value: "£7,860",
                 what: "Weekly tech hub, 12 months",
