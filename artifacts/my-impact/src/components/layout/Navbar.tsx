@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award, Building2, Menu, X } from "lucide-react";
+import { Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award, Menu, X } from "lucide-react";
 
 export function Navbar() {
   const [location] = useLocation();
@@ -14,7 +14,6 @@ export function Navbar() {
     { href: "/badges", label: "Badges", icon: Award },
     { href: "/journal", label: "Journal", icon: BookOpen },
     { href: "/suggestions", label: "Ideas", icon: Lightbulb },
-    { href: "/org", label: "For Orgs", icon: Building2 },
   ];
 
   return (
