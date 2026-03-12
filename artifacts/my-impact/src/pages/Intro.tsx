@@ -445,7 +445,7 @@ export default function Intro() {
           alt="My Impact"
           style={{ height: 40, marginBottom: 16, display: "inline-block" }}
         />
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>Your impact, counted.</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>The difference I make.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
           {["About", "Privacy", "Contact"].map(l => (
             <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
