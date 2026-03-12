@@ -5,57 +5,54 @@ const router = Router();
 
 router.post("/suggest", async (req, res) => {
   try {
-    const { location, interests } = req.body as {
+    const { location, activityName } = req.body as {
       location: string;
-      interests: string[];
+      activityName: string;
     };
 
-    if (!location?.trim()) {
-      res.status(400).json({ error: "location is required" });
+    if (!location?.trim() || !activityName?.trim()) {
+      res.status(400).json({ error: "location and activityName are required" });
       return;
     }
 
-    const interestList = (interests ?? []).join(", ") || "general volunteering";
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_completion_tokens: 600,
+      max_completion_tokens: 500,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `You are a UK volunteering and charity expert. Given a UK location and a list of interest areas, suggest 3 real, active local charities or volunteer organisations in or very near that location that are genuinely relevant to those interests.
+          content: `You are a UK volunteering expert. Given a location and a specific volunteering activity, suggest up to 3 real local organisations, groups, or charities where someone could do that specific activity near that location.
 
-Return a JSON object with a "charities" array. Each charity has:
-- name (string): the real charity name
-- description (string): one sentence about what they do, 15 words max, UK English
-- category (string): one of Environment, Education, Health, Community
-- url (string): the real website URL if you know it with confidence, otherwise an empty string — do NOT make up URLs
-- howToGet involved (string): one brief sentence on how to start, 12 words max
+Return a JSON object with a "places" array. Each item has:
+- name (string): the real name of the organisation or group
+- description (string): one sentence, max 15 words, explaining what they do — specific to the activity
+- url (string): real website URL if you know it with high confidence, otherwise empty string — never invent URLs
+- howToJoin (string): one concrete action to get started, max 12 words
 
-Important rules:
-- Only suggest charities that genuinely operate in or very near the stated location
-- If you are not confident a charity exists at that location, skip it
-- Prioritise interests that match the user's stated areas
-- If location is vague (e.g. "UK", "England"), suggest well-known national organisations instead
-- Use British English throughout
-- Return exactly 3 charities`,
+Rules:
+- Only suggest groups that genuinely operate near the stated location
+- Be specific — e.g. for "community garden" suggest actual named community gardens, not generic charities
+- If the location is vague (e.g. "England"), suggest well-known national networks for that activity
+- Skip any entry you are not reasonably confident about — quality over quantity
+- Use British English
+- Return 2 to 3 entries`,
         },
         {
           role: "user",
-          content: `Location: ${location.trim()}\nInterests: ${interestList}`,
+          content: `Location: ${location.trim()}\nActivity: ${activityName.trim()}`,
         },
       ],
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(raw);
-    const charities = Array.isArray(parsed.charities) ? parsed.charities : [];
+    const places = Array.isArray(parsed.places) ? parsed.places : [];
 
-    res.json({ charities, location: location.trim() });
+    res.json({ places });
   } catch (err) {
     console.error("Local charities error:", err);
-    res.status(500).json({ error: "Failed to find local charities" });
+    res.status(500).json({ error: "Failed to find local organisations" });
   }
 });
 
