@@ -143,6 +143,26 @@ export default function Intro() {
       `}</style>
       {/* ── HERO ── */}
       <section className="mi-hero">
+        {/* Faces image — blended into right side of hero */}
+        <div style={{
+          position: "absolute", top: 0, right: 0, bottom: 0,
+          width: "55%", zIndex: 1, pointerEvents: "none",
+          maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
+          WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
+        }}>
+          <img
+            src={`${import.meta.env.BASE_URL}images/faces.png`}
+            alt=""
+            aria-hidden="true"
+            style={{
+              width: "100%", height: "100%",
+              objectFit: "cover", objectPosition: "center top",
+              opacity: 0.18,
+              mixBlendMode: "luminosity",
+            }}
+          />
+        </div>
+
         <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
