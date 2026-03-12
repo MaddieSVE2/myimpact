@@ -1,20 +1,39 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { useGetSuggestions } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
+interface LocalCharity {
+  name: string;
+  description: string;
+  category: string;
+  url: string;
+  howToGetInvolved: string;
+}
+
+const CATEGORY_COLOURS: Record<string, string> = {
+  Environment: "#B5BE2E",
+  Education:   "#7E8FAD",
+  Health:      "#E8633A",
+  Community:   "#A8C8DA",
+};
+
 export default function Suggestions() {
-  const { input, interests } = useWizard();
+  const { input, interests, location } = useWizard();
   const suggestionsMutation = useGetSuggestions();
 
-  useEffect(() => {
-    const interestLabels = interests
-      .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
-      .filter(Boolean) as string[];
+  const [localCharities, setLocalCharities] = useState<LocalCharity[]>([]);
+  const [charitiesLoading, setCharitiesLoading] = useState(false);
+  const [charitiesError, setCharitiesError] = useState(false);
 
+  const interestLabels = interests
+    .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
+    .filter(Boolean) as string[];
+
+  useEffect(() => {
     suggestionsMutation.mutate({
       data: {
         currentActivities: input.activities.map(a => a.activityId),
@@ -22,14 +41,26 @@ export default function Suggestions() {
         interests: interestLabels,
       }
     });
+
+    // Fetch local charities if we have a location
+    if (location?.trim()) {
+      setCharitiesLoading(true);
+      setCharitiesError(false);
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      fetch(`${base}/api/local-charities/suggest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location: location.trim(), interests: interestLabels }),
+      })
+        .then(r => r.json())
+        .then(data => setLocalCharities(data.charities ?? []))
+        .catch(() => setCharitiesError(true))
+        .finally(() => setCharitiesLoading(false));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { data, isPending } = suggestionsMutation;
-
-  const interestLabels = interests
-    .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
-    .filter(Boolean);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -49,7 +80,7 @@ export default function Suggestions() {
         </p>
       </div>
 
-      {/* Suggestions list */}
+      {/* Activity suggestions */}
       {isPending ? (
         <div className="space-y-4">
           {[1, 2, 3, 4].map(i => (
@@ -66,10 +97,8 @@ export default function Suggestions() {
               transition={{ delay: idx * 0.07 }}
               className="bg-white border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group"
             >
-              {/* Coloured SDG stripe */}
               <div className="flex items-stretch">
                 <div className="w-1 shrink-0" style={{ backgroundColor: sug.sdgColor }} />
-
                 <div className="flex items-center justify-between gap-4 px-5 py-4 flex-1 min-w-0">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -80,7 +109,6 @@ export default function Suggestions() {
                     </h3>
                     <p className="text-xs text-muted-foreground leading-relaxed">{sug.reason}</p>
                   </div>
-
                   <div className="shrink-0 text-right">
                     <p className="text-base font-display font-semibold text-foreground whitespace-nowrap">
                       +{formatCurrency(sug.estimatedImpactPerYear)}
@@ -96,6 +124,91 @@ export default function Suggestions() {
             </motion.div>
           ))}
         </div>
+      )}
+
+      {/* Local charities section */}
+      {location?.trim() && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-10"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="w-4 h-4" style={{ color: "#E8633A" }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#E8633A" }}>
+              Near {location}
+            </span>
+          </div>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-1">
+            Local organisations to get involved with
+          </h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            These organisations are active in your area and aligned with your interests.
+            <span className="ml-1 text-[11px]">AI-suggested — always verify before contacting.</span>
+          </p>
+
+          {charitiesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-20 bg-white border border-border rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : charitiesError ? (
+            <div className="flex items-center gap-2 p-4 bg-muted/40 rounded-lg text-sm text-muted-foreground">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Couldn't load local suggestions right now — try again later.
+            </div>
+          ) : localCharities.length === 0 ? null : (
+            <div className="space-y-3">
+              {localCharities.map((c, idx) => {
+                const colour = CATEGORY_COLOURS[c.category] ?? "#7E8FAD";
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + idx * 0.08 }}
+                    className="bg-white border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-colors"
+                  >
+                    <div className="flex items-stretch">
+                      <div className="w-1 shrink-0" style={{ backgroundColor: colour }} />
+                      <div className="px-5 py-4 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded"
+                                style={{ background: `${colour}22`, color: colour }}
+                              >
+                                {c.category}
+                              </span>
+                            </div>
+                            <h3 className="text-sm font-semibold text-foreground leading-snug mb-1">
+                              {c.name}
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed mb-2">{c.description}</p>
+                            <p className="text-xs text-foreground/70 italic">{c.howToGetInvolved}</p>
+                          </div>
+                          {c.url && (
+                            <a
+                              href={c.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md border border-border hover:border-foreground/30 hover:bg-muted/30 transition-all text-muted-foreground hover:text-foreground"
+                            >
+                              Visit <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
       )}
 
       {/* Recalculate prompt */}
