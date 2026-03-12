@@ -14,7 +14,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem("mi_logged_in") === "true";
+    const stored = localStorage.getItem("mi_logged_in");
+    return stored === null ? true : stored === "true";
   });
 
   const login = () => {
@@ -23,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("mi_logged_in");
+    localStorage.setItem("mi_logged_in", "false");
     setIsLoggedIn(false);
   };
 
