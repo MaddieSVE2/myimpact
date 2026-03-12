@@ -9,6 +9,15 @@ export const INTEREST_OPTIONS = [
   { id: 'physical_health', label: 'Physical health', emoji: '❤️', category: 'Health' },
   { id: 'fairness', label: 'Fairness & equality', emoji: '⚖️', category: 'Community' },
   { id: 'animal_welfare', label: 'Animal welfare', emoji: '🐾', category: 'Environment' },
+  { id: 'children', label: 'Children & young people', emoji: '👦', category: 'Education' },
+  { id: 'older_people', label: 'Older people', emoji: '👴', category: 'Community' },
+  { id: 'poverty', label: 'Poverty & hunger', emoji: '🍽️', category: 'Community' },
+  { id: 'arts', label: 'Arts & culture', emoji: '🎨', category: 'Community' },
+  { id: 'sport', label: 'Sport & fitness', emoji: '🏃', category: 'Health' },
+  { id: 'homelessness', label: 'Housing & homelessness', emoji: '🏠', category: 'Community' },
+  { id: 'digital', label: 'Digital skills', emoji: '💻', category: 'Education' },
+  { id: 'disability', label: 'Disability & accessibility', emoji: '♿', category: 'Community' },
+  { id: 'international', label: 'International development', emoji: '🌐', category: 'Community' },
 ];
 
 interface WizardState {

@@ -39,6 +39,15 @@ router.post("/suggestions", (req, res) => {
     "Physical health": "Health",
     "Fairness & equality": "Community",
     "Animal welfare": "Environment",
+    "Children & young people": "Education",
+    "Older people": "Community",
+    "Poverty & hunger": "Community",
+    "Arts & culture": "Community",
+    "Sport & fitness": "Health",
+    "Housing & homelessness": "Community",
+    "Digital skills": "Education",
+    "Disability & accessibility": "Community",
+    "International development": "Community",
   };
 
   const preferredCategories = new Set(
