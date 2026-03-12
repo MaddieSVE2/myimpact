@@ -321,7 +321,7 @@ export default function Intro() {
                     <p style={{ fontSize: 15, color: "#4A5568", lineHeight: 1.65, marginTop: 12, fontStyle: "italic" }}>"{s.quote}"</p>
                   </div>
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <p className="mi-fraunces text-[#f06127]" style={{ fontSize: 26, fontWeight: 900, color: C.olive }}>{s.value}</p>
+                    <p className="mi-fraunces text-[#f06127] border-t-[#f06127] border-r-[#f06127] border-b-[#f06127] border-l-[#f06127]" style={{ fontSize: 26, fontWeight: 900, color: C.olive }}>{s.value}</p>
                     <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4 }}>{s.what}</p>
                   </div>
                 </div>
