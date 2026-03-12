@@ -204,19 +204,12 @@ export default function ActivitiesStep() {
                           <input
                             value={customName}
                             onChange={e => setCustomName(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && handleAddCustom()}
                             placeholder="e.g. Litter picking, befriending scheme, peer support…"
                             className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
                             autoFocus
                           />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-foreground mb-1">Hours per year</label>
-                          <input
-                            type="number" min="1"
-                            value={customHours}
-                            onChange={e => setCustomHours(Number(e.target.value))}
-                            className="w-full p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                          />
+                          <p className="text-xs text-muted-foreground mt-1.5">Hours will default to 10 — you can adjust this on your results page.</p>
                         </div>
                         <div className="flex gap-2">
                           <button
