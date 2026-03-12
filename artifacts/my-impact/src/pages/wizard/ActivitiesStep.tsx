@@ -188,10 +188,10 @@ export default function ActivitiesStep() {
                     {!showCustom ? (
                       <button
                         onClick={() => setShowCustom(true)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/4 transition-all"
                       >
-                        <PenLine className="w-3.5 h-3.5" />
-                        Do something else? Add it here
+                        <PenLine className="w-4 h-4" />
+                        Do something that isn't listed? Add it here
                       </button>
                     ) : (
                       <motion.div

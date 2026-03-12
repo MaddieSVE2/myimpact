@@ -71,7 +71,7 @@ export default function ActionsStep() {
         {/* Interest chips */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-foreground mb-1">
-            I am most conscious about&hellip;
+            Things I care about&hellip;
           </label>
           <p className="text-xs text-muted-foreground mb-4">
             Select all that apply — we'll use this to personalise your activities and suggestions.

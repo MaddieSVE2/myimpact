@@ -6,46 +6,51 @@ import { computeBadges, getNextMilestone } from "@/lib/badges";
 import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
-  ArrowRight, ChevronDown, Download, Share2, Twitter, Linkedin, Check,
+  ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
   BookOpen, Award
 } from "lucide-react";
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
 
-// Tile with integrated explanation
+// Metric tile — styled to match original My Impact design
 function MetricTile({
   icon: Icon,
   iconColour,
-  borderColour,
   label,
   value,
+  subtitle,
   explanation,
 }: {
   icon: any;
   iconColour: string;
-  borderColour: string;
   label: string;
   value: number;
+  subtitle: string;
   explanation: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`bg-white border border-border rounded-xl overflow-hidden border-t-2 ${borderColour}`}>
-      <div className="p-5">
-        <div className={`mb-3 ${iconColour}`}><Icon className="w-4 h-4" /></div>
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(value)}</p>
+    <div className="bg-white border border-border rounded-xl p-5">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <Icon className="w-5 h-5 shrink-0" style={{ color: iconColour }} />
       </div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-2 text-[11px] text-muted-foreground border-t border-border hover:bg-muted/30 transition-colors"
-      >
-        What's this?
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
+      <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
+        {formatCurrency(value)}
+      </p>
+      <div className="flex items-center gap-1 mt-1">
+        <p className="text-xs text-muted-foreground leading-snug">{subtitle}</p>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          title="What's this?"
+        >
+          <Info className="w-3 h-3" />
+        </button>
+      </div>
       {open && (
-        <div className="px-5 pb-4 pt-2 text-xs text-muted-foreground leading-relaxed bg-muted/20 border-t border-border">
+        <div className="mt-3 text-xs text-muted-foreground leading-relaxed border-t border-border pt-3">
           {explanation}
         </div>
       )}
@@ -223,22 +228,23 @@ export default function Results() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Badges earned</p>
             <Link href="/badges" className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Award className="w-3 h-3" /> View all
+              <Award className="w-3 h-3" /> All badges
             </Link>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {earnedBadges.map(badge => (
               <div
                 key={badge.id}
-                className="flex items-center gap-2 bg-white border border-border rounded-full pl-2.5 pr-3.5 py-1.5"
-                style={{ borderLeftColor: badge.colour, borderLeftWidth: 3 }}
-                title={badge.description}
+                className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
               >
-                <span className="text-base">{badge.emoji}</span>
-                <span className="text-xs font-semibold text-foreground">{badge.name}</span>
+                <span className="text-xl shrink-0 mt-0.5">{badge.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -307,23 +313,27 @@ export default function Results() {
         transition={{ delay: 0.15 }}
       >
         <MetricTile
-          icon={TrendingUp} iconColour="text-primary" borderColour="border-t-primary"
-          label="Direct Impact" value={result.impactValue}
+          icon={TrendingUp} iconColour="#F06127"
+          label="Impact" value={result.impactValue}
+          subtitle="The impact of your activities"
           explanation={result.explanations.impact}
         />
         <MetricTile
-          icon={UserPlus} iconColour="text-blue-500" borderColour="border-t-blue-500"
+          icon={UserPlus} iconColour="#3b82f6"
           label="Contribution" value={result.contributionValue}
+          subtitle={`Value of ${Math.round(result.totalHours)} hours contributed`}
           explanation={result.explanations.contribution}
         />
         <MetricTile
-          icon={HandCoins} iconColour="text-green-500" borderColour="border-t-green-500"
+          icon={HandCoins} iconColour="#22c55e"
           label="Donations" value={result.donationsValue}
+          subtitle="Money donated to good causes"
           explanation={result.explanations.donations}
         />
         <MetricTile
-          icon={Trophy} iconColour="text-amber-500" borderColour="border-t-amber-500"
+          icon={Trophy} iconColour="#f59e0b"
           label="Personal Development" value={result.personalDevelopmentValue}
+          subtitle={`Skill development from ${Math.round(result.totalHours)} hours`}
           explanation={result.explanations.personalDevelopment}
         />
       </motion.div>
