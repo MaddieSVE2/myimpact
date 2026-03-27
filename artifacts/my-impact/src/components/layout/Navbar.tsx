@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
-  Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share, MoreVertical,
+  Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
+  MoreVertical, User, ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -14,10 +15,7 @@ function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
@@ -56,7 +54,7 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#F06127" }}>
-              <Smartphone className="w-4.5 h-4.5 text-white w-5 h-5" />
+              <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Add to home screen</p>
@@ -78,9 +76,7 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
                 { step: "3", icon: <span className="text-base leading-none">✓</span>, text: <>Tap <strong>Add</strong> in the top right corner</> },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">
-                    {step}
-                  </div>
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">{step}</div>
                   <div className="flex items-start gap-2 flex-1">
                     <span className="shrink-0 mt-0.5">{icon}</span>
                     <p className="text-xs text-foreground leading-relaxed">{text}</p>
@@ -104,9 +100,7 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
                 { step: "3", icon: <span className="text-base leading-none">✓</span>, text: <>Tap <strong>Add</strong> to confirm</> },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">
-                    {step}
-                  </div>
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">{step}</div>
                   <div className="flex items-start gap-2 flex-1">
                     <span className="shrink-0 mt-0.5">{icon}</span>
                     <p className="text-xs text-foreground leading-relaxed">{text}</p>
@@ -127,15 +121,13 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
                 { step: "3", text: <>Check <strong>Open as window</strong> and click <strong>Create</strong></> },
               ].map(({ step, text }) => (
                 <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">
-                    {step}
-                  </div>
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">{step}</div>
                   <p className="text-xs text-foreground leading-relaxed">{text}</p>
                 </div>
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
-              For mobile: open this site on your phone's browser and follow the Add to Home Screen option there.
+              For mobile: open this site on your phone's browser and use the Add to Home Screen option there.
             </p>
           </div>
         )}
@@ -154,7 +146,9 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
 export function Navbar() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, login, logout } = useAuth();
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
@@ -168,7 +162,19 @@ export function Navbar() {
     { href: "/suggestions", label: "Ideas", icon: Lightbulb },
   ];
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleAddToHome = async () => {
+    setUserMenuOpen(false);
+    setMobileOpen(false);
     if (canInstall) {
       const installed = await triggerInstall();
       if (installed) return;
@@ -186,7 +192,7 @@ export function Navbar() {
             <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-14" />
           </Link>
 
-          {/* Desktop nav — lg+ only, logged-in only */}
+          {/* Desktop nav */}
           {isLoggedIn && (
             <div className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => {
@@ -197,9 +203,7 @@ export function Navbar() {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-                      isActive
-                        ? "text-white bg-white/10"
-                        : "text-white/60 hover:text-white hover:bg-white/8"
+                      isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
                     )}
                   >
                     <item.icon className="w-3.5 h-3.5 shrink-0" />
@@ -214,7 +218,7 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
               <>
-                {/* CTA — lg+ only */}
+                {/* CTA — desktop only */}
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
@@ -222,27 +226,52 @@ export function Navbar() {
                 >
                   Calculate my impact →
                 </Link>
-                {/* Add to home screen — lg+ only */}
-                <button
-                  onClick={handleAddToHome}
-                  className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
-                  title="Add to home screen"
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  Add to phone
-                </button>
-                {/* Log out — lg+ only */}
-                <button
-                  onClick={logout}
-                  className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Log out
-                </button>
+
+                {/* User menu — desktop only */}
+                <div className="relative hidden lg:block" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(o => !o)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors",
+                      userMenuOpen ? "bg-white/15" : "hover:bg-white/10"
+                    )}
+                  >
+                    <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <ChevronDown
+                      className={cn("w-3 h-3 text-white/60 transition-transform", userMenuOpen && "rotate-180")}
+                    />
+                  </button>
+
+                  {userMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-border overflow-hidden z-50">
+                      <div className="px-4 py-3 border-b border-border">
+                        <p className="text-xs font-semibold text-foreground">My account</p>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={handleAddToHome}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" />
+                          Add to home screen
+                        </button>
+                        <div className="my-1 border-t border-border" />
+                        <button
+                          onClick={() => { setUserMenuOpen(false); logout(); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
+                          Log out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
-                {/* Log in — lg+ only */}
                 <button
                   onClick={login}
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
@@ -251,7 +280,6 @@ export function Navbar() {
                   <LogIn className="w-3.5 h-3.5" />
                   Log in
                 </button>
-                {/* CTA — lg+ only */}
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
@@ -262,7 +290,7 @@ export function Navbar() {
               </>
             )}
 
-            {/* Sidekick icon — below lg only */}
+            {/* Sidekick icon — mobile only */}
             <button
               className="lg:hidden p-2"
               style={{ color: "rgba(255,255,255,0.7)" }}
@@ -272,7 +300,7 @@ export function Navbar() {
               <MessageCircle className="w-5 h-5" />
             </button>
 
-            {/* Hamburger — below lg only */}
+            {/* Hamburger — mobile only */}
             <button
               className="lg:hidden p-2"
               style={{ color: "rgba(255,255,255,0.7)" }}
@@ -283,13 +311,9 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Mobile / tablet dropdown — below lg */}
+        {/* Mobile dropdown */}
         {mobileOpen && (
-          <div
-            className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1"
-            style={{ background: DARK }}
-          >
-            {/* Nav links — logged-in only */}
+          <div className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1" style={{ background: DARK }}>
             {isLoggedIn && navItems.map((item) => {
               const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
               return (
@@ -299,9 +323,7 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-white bg-white/10"
-                      : "text-white/60 hover:text-white hover:bg-white/8"
+                    isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -310,7 +332,6 @@ export function Navbar() {
               );
             })}
 
-            {/* CTA */}
             <Link
               href="/wizard/actions"
               onClick={() => setMobileOpen(false)}
@@ -320,20 +341,21 @@ export function Navbar() {
               Calculate my impact →
             </Link>
 
-            {/* Add to home screen */}
+            {/* Divider before account actions */}
+            <div className="my-1 border-t border-white/10" />
+
             <button
-              onClick={() => { setMobileOpen(false); handleAddToHome(); }}
-              className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+              onClick={handleAddToHome}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
             >
               <Smartphone className="w-4 h-4" />
               Add to home screen
             </button>
 
-            {/* Login / logout */}
             {isLoggedIn ? (
               <button
                 onClick={() => { logout(); setMobileOpen(false); }}
-                className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Log out
@@ -341,7 +363,7 @@ export function Navbar() {
             ) : (
               <button
                 onClick={() => { login(); setMobileOpen(false); }}
-                className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 Log in
@@ -351,7 +373,6 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* Add to home screen modal */}
       {showInstall && <AddToHomeModal onClose={() => setShowInstall(false)} />}
     </>
   );
