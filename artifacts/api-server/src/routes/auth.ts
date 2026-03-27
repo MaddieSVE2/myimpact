@@ -61,7 +61,7 @@ router.post("/request", async (req, res) => {
 
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    await client.emails.send({
+    const { error: sendError } = await client.emails.send({
       from: fromEmail,
       to: normalizedEmail,
       subject: "Your My Impact sign-in link",
@@ -81,6 +81,11 @@ router.post("/request", async (req, res) => {
         </div>
       `,
     });
+    if (sendError) {
+      console.error("Resend delivery error:", sendError);
+      res.status(500).json({ error: "Failed to send email. Please try again." });
+      return;
+    }
   } catch (err) {
     console.error("Failed to send magic link email:", err);
     res.status(500).json({ error: "Failed to send email. Please try again." });
