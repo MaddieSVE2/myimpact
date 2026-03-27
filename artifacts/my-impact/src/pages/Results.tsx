@@ -725,7 +725,7 @@ export default function Results() {
           {/* Ideas CTA — grows to fill remaining space */}
           <Link
             href="/suggestions"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-px"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
             style={{ background: "#E8633A", boxShadow: "0 2px 12px #E8633A40" }}
           >
             Get personalised ideas <ArrowRight className="w-3.5 h-3.5" />
