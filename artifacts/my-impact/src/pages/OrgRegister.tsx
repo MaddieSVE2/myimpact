@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft } from "lucide-react";
+import { OrgDemoButton } from "@/components/OrgDemoModal";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -141,6 +142,10 @@ export default function OrgRegister() {
             >
               Register your organisation →
             </button>
+
+            <div className="flex justify-center pt-1">
+              <OrgDemoButton className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" />
+            </div>
           </>
         )}
 

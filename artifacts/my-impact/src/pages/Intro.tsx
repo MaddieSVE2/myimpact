@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { OrgDemoButton } from "@/components/OrgDemoModal";
 
 const C = {
   dark: "#213547",      // primary dark — hero/proof/orgs background
@@ -443,18 +444,19 @@ export default function Intro() {
               >
                 Register your organisation →
               </Link>
+              <OrgDemoButton className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: "rgba(255,255,255,0.7)" } as React.CSSProperties} />
               <Link
                 href="/org"
                 style={{
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 14,
+                  color: "rgba(255,255,255,0.4)",
+                  fontSize: 13,
                   fontWeight: 600,
                   textDecoration: "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.2)",
+                  borderBottom: "1px solid rgba(255,255,255,0.15)",
                   paddingBottom: 2,
                 }}
               >
-                Already registered? View dashboard
+                Already registered?
               </Link>
             </div>
           </FadeIn>

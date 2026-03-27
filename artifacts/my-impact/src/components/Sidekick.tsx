@@ -37,8 +37,8 @@ export function Sidekick() {
   const buildContext = () => {
     const ctx: Record<string, unknown> = {};
     if (result?.totalValue) ctx.totalValue = result.totalValue;
-    if (result?.breakdown?.length) ctx.activities = result.breakdown.map((b) => b.name);
-    if (result?.sdgs?.length) ctx.sdgs = result.sdgs.map((s) => s.name);
+    if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b) => b.activityName);
+    if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s) => s.sdg);
     return Object.keys(ctx).length ? ctx : undefined;
   };
 

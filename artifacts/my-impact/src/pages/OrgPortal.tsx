@@ -4,6 +4,7 @@ import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock } from "lucide-react";
 import { Link } from "wouter";
+import { OrgDemoButton } from "@/components/OrgDemoModal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -211,12 +212,15 @@ function JoinOrgPanel() {
       <div className="bg-muted/30 border border-border rounded-xl p-5">
         <p className="text-sm font-medium text-foreground mb-1">Is your organisation not on My Impact yet?</p>
         <p className="text-xs text-muted-foreground mb-3">Register your organisation to get a dashboard and invite code for your members.</p>
-        <Link
-          href="/org/register"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          Register your organisation <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href="/org/register"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+          >
+            Register your organisation <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <OrgDemoButton className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors" />
+        </div>
       </div>
     </motion.div>
   );
