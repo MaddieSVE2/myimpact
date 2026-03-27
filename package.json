@@ -15,5 +15,11 @@
   },
   "dependencies": {
     "xlsx": "^0.18.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "picomatch@2": "2.3.2",
+      "picomatch@4": "4.0.4"
+    }
   }
 }
