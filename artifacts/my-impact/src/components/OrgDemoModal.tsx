@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, TrendingUp, Users, BarChart2, Clock, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -85,10 +86,10 @@ interface OrgDemoModalProps {
 export function OrgDemoModal({ open, onClose }: OrgDemoModalProps) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
@@ -111,7 +112,8 @@ export function OrgDemoModal({ open, onClose }: OrgDemoModalProps) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
