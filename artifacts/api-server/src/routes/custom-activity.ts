@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import proxiesData from "../lib/proxyData.json";
 
 interface ProxyEntry {
   title: string;
@@ -10,11 +8,7 @@ interface ProxyEntry {
   unit: string;
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const proxies: ProxyEntry[] = JSON.parse(
-  readFileSync(join(__dirname, "../lib/proxyData.json"), "utf-8")
-);
+const proxies: ProxyEntry[] = proxiesData as ProxyEntry[];
 
 const STOP_WORDS = new Set([
   "a","an","the","and","or","of","in","at","to","for","is","are","by","with",
