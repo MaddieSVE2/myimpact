@@ -8,7 +8,7 @@ import { useCalculateImpact } from "@workspace/api-client-react";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
-  const { input, updateInput, setResult } = useWizard();
+  const { input, updateInput, setResult, customActivities } = useWizard();
   
   const [donations, setDonations] = useState<number>(input.donationsGBP || 0);
   const [hours, setHours] = useState<number>(input.additionalVolunteerHours || 0);
@@ -19,12 +19,13 @@ export default function ContributionsStep() {
     const finalInput = {
       ...input,
       donationsGBP: donations,
-      additionalVolunteerHours: hours
+      additionalVolunteerHours: hours,
+      customActivities,
     };
     updateInput({ donationsGBP: donations, additionalVolunteerHours: hours });
     
     try {
-      const res = await calculateMutation.mutateAsync({ data: finalInput });
+      const res = await calculateMutation.mutateAsync({ data: finalInput as any });
       setResult(res);
       setLocation("/results");
     } catch (e) {

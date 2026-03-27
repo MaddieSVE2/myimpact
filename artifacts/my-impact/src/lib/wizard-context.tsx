@@ -20,11 +20,25 @@ export const INTEREST_OPTIONS = [
   { id: 'international', label: 'International development', emoji: '🌐', category: 'Community' },
 ];
 
+export interface CustomActivityDetail {
+  activityId: string;
+  name: string;
+  quantity: number;
+  hoursPerYear: number;
+  valuePerUnit: number;
+  unit: string;
+  proxy: string;
+  proxyYear: string;
+  sdg: string;
+  sdgColor: string;
+}
+
 interface WizardState {
   location: string;
   interests: string[];
   customInterest: string;
   input: ImpactInput;
+  customActivities: CustomActivityDetail[];
   result: ImpactResult | null;
 }
 
@@ -35,6 +49,8 @@ interface WizardContextType extends WizardState {
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
   removeActivity: (index: number) => void;
+  addCustomActivity: (detail: CustomActivityDetail) => void;
+  removeCustomActivity: (activityId: string) => void;
   setResult: (result: ImpactResult) => void;
   reset: () => void;
 }
@@ -53,6 +69,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterest, setCustomInterestState] = useState('');
   const [input, setInput] = useState<ImpactInput>(defaultInput);
+  const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>([]);
   const [result, setResult] = useState<ImpactResult | null>(null);
 
   const setLocation = (loc: string) => setLocationState(loc);
@@ -76,19 +93,28 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setInput(prev => ({ ...prev, activities: prev.activities.filter((_, i) => i !== index) }));
   };
 
+  const addCustomActivity = (detail: CustomActivityDetail) => {
+    setCustomActivities(prev => [...prev, detail]);
+  };
+
+  const removeCustomActivity = (activityId: string) => {
+    setCustomActivities(prev => prev.filter(a => a.activityId !== activityId));
+  };
+
   const reset = () => {
     setLocationState('');
     setInterests([]);
     setCustomInterestState('');
     setInput(defaultInput);
+    setCustomActivities([]);
     setResult(null);
   };
 
   return (
     <WizardContext.Provider value={{
-      location, interests, customInterest, input, result,
+      location, interests, customInterest, input, customActivities, result,
       setLocation, setCustomInterest, toggleInterest, updateInput,
-      addActivity, removeActivity, setResult, reset
+      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset
     }}>
       {children}
     </WizardContext.Provider>

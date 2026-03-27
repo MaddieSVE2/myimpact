@@ -18,6 +18,19 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Calculate personal social value
  */
+export const CustomActivityItem = zod.object({
+  activityId: zod.string(),
+  name: zod.string(),
+  quantity: zod.number(),
+  hoursPerYear: zod.number(),
+  valuePerUnit: zod.number(),
+  unit: zod.string(),
+  proxy: zod.string(),
+  proxyYear: zod.string(),
+  sdg: zod.string(),
+  sdgColor: zod.string(),
+});
+
 export const CalculateImpactBody = zod.object({
   description: zod.string(),
   activities: zod.array(
@@ -28,6 +41,7 @@ export const CalculateImpactBody = zod.object({
       description: zod.string().optional(),
     }),
   ),
+  customActivities: zod.array(CustomActivityItem).optional(),
   donationsGBP: zod.number(),
   additionalVolunteerHours: zod.number(),
 });

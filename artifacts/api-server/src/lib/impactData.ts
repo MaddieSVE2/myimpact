@@ -420,10 +420,24 @@ export const ACTIVITIES: Activity[] = [
 
 export const CATEGORIES = [...new Set(ACTIVITIES.map((a) => a.category))].sort();
 
+interface CustomActivityInput {
+  activityId: string;
+  name: string;
+  quantity: number;
+  hoursPerYear: number;
+  valuePerUnit: number;
+  unit: string;
+  proxy: string;
+  proxyYear: string;
+  sdg: string;
+  sdgColor: string;
+}
+
 export function calculateImpact(
   activities: Array<{ activityId: string; quantity: number; hoursPerYear: number }>,
   donationsGBP: number,
-  additionalVolunteerHours: number
+  additionalVolunteerHours: number,
+  customActivities: CustomActivityInput[] = []
 ) {
   const VOLUNTEER_RATE = 12.21;
   const PERSONAL_DEV_RATE_PERCENT = 0.001333;
@@ -464,7 +478,28 @@ export function calculateImpact(
     hours: number;
   }>;
 
-  const totalActivityHours = activities.reduce((sum, a) => sum + a.hoursPerYear, 0);
+  // Process custom activities (user-typed, with SVE proxy matched by AI)
+  for (const ca of customActivities) {
+    const impactValue =
+      ca.unit === "hour"
+        ? ca.hoursPerYear * ca.valuePerUnit
+        : ca.quantity * ca.valuePerUnit;
+    activityBreakdowns.push({
+      activityId: ca.activityId,
+      activityName: ca.name,
+      category: "Custom",
+      proxy: ca.proxy,
+      proxyYear: ca.proxyYear,
+      sdg: ca.sdg || "Good Health and Well-Being",
+      sdgColor: ca.sdgColor || "#4C9F38",
+      impactValue: Math.round(impactValue * 100) / 100,
+      hours: ca.hoursPerYear,
+    });
+  }
+
+  const totalActivityHours =
+    activities.reduce((sum, a) => sum + a.hoursPerYear, 0) +
+    customActivities.reduce((sum, a) => sum + a.hoursPerYear, 0);
   const totalHours = totalActivityHours + additionalVolunteerHours;
 
   const impactValue = activityBreakdowns.reduce((sum, a) => sum + a.impactValue, 0);

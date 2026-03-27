@@ -1,11 +1,35 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Standard SDG colours (1-indexed by SDG number)
+const SDG_COLORS: Record<number, string> = {
+  1: "#E5243B", 2: "#DDA63A", 3: "#4C9F38", 4: "#C5192D", 5: "#FF3A21",
+  6: "#26BDE2", 7: "#FCC30B", 8: "#A21942", 9: "#FD6925", 10: "#DD1367",
+  11: "#FD9D24", 12: "#BF8B2E", 13: "#3F7E44", 14: "#0A97D9", 15: "#56C02B",
+  16: "#00689D", 17: "#19486A",
+};
+
+function sdgFromHint(hint: string): { sdg: string; sdgColor: string } {
+  const m = hint.match(/SDG\s*(\d+)[:\s]+(.+)/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    return { sdg: m[2].trim(), sdgColor: SDG_COLORS[num] ?? "#4C9F38" };
+  }
+  return { sdg: hint || "Good Health and Well-Being", sdgColor: "#4C9F38" };
+}
+
+interface ProxyMatch {
+  title: string;
+  proxyYear: string;
+  valuePerUnit: number;
+  unit: string;
+}
 
 interface AnalysedActivity {
   friendlyQuestion: string;
@@ -13,13 +37,14 @@ interface AnalysedActivity {
   unitLabel: string;
   defaultQuantity: number;
   sdgHint: string;
+  proxyMatch: ProxyMatch | null;
 }
 
 type Phase = "select" | "quantify";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, addActivity, removeActivity } = useWizard();
+  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity } = useWizard();
   const { data, isLoading } = useGetActivities();
 
   const [phase, setPhase] = useState<Phase>("select");
@@ -55,7 +80,6 @@ export default function ActivitiesStep() {
 
   const primaryActivities = sortedActivities.slice(0, 8);
   const moreActivities = sortedActivities.slice(8);
-
   const displayedActivities = showAll ? sortedActivities : primaryActivities;
 
   const toggleSelect = (id: string) => {
@@ -65,7 +89,6 @@ export default function ActivitiesStep() {
         next.delete(id);
       } else {
         next.add(id);
-        // Set defaults
         const activity = data?.activities.find(a => a.id === id);
         if (activity && quantities[id] === undefined) {
           setQuantities(q => ({ ...q, [id]: activity.defaultQuantity ?? 1 }));
@@ -76,7 +99,6 @@ export default function ActivitiesStep() {
     });
   };
 
-  // The ordered list of selected activities for the quantify phase
   const selectedList = useMemo(() => {
     return (data?.activities ?? []).filter(a => selectedIds.has(a.id));
   }, [data, selectedIds]);
@@ -84,7 +106,13 @@ export default function ActivitiesStep() {
   const currentActivity = selectedList[quantifyIndex];
 
   const handleStartQuantify = () => {
+    if (selectedIds.size === 0 && customActivities.length === 0) {
+      setLocation("/wizard/contributions");
+      return;
+    }
     if (selectedIds.size === 0) {
+      // Only custom activities — skip standard quantify
+      input.activities.forEach((_, i) => removeActivity(0));
       setLocation("/wizard/contributions");
       return;
     }
@@ -96,8 +124,6 @@ export default function ActivitiesStep() {
     if (quantifyIndex < selectedList.length - 1) {
       setQuantifyIndex(i => i + 1);
     } else {
-      // Commit all to wizard context
-      // Clear existing
       input.activities.forEach((_, i) => removeActivity(0));
       selectedList.forEach(a => {
         const qty = quantities[a.id] ?? (a.defaultQuantity ?? 1);
@@ -133,11 +159,26 @@ export default function ActivitiesStep() {
   };
 
   const handleAddCustom = () => {
-    if (!customName.trim()) return;
-    const hrs = analysed
-      ? analysed.unit === "hour" ? customQuantity : customHours
-      : customHours;
-    addActivity({ activityId: `custom_${Date.now()}`, quantity: 1, hoursPerYear: hrs });
+    if (!customName.trim() || !analysed) return;
+    const activityId = `custom_${Date.now()}`;
+    const { sdg, sdgColor } = sdgFromHint(analysed.sdgHint);
+    const hrs = analysed.unit === "hour" ? customQuantity : customHours;
+    const qty = analysed.unit === "hour" ? 1 : customQuantity;
+
+    const detail: CustomActivityDetail = {
+      activityId,
+      name: customName.trim(),
+      quantity: qty,
+      hoursPerYear: hrs,
+      valuePerUnit: analysed.proxyMatch?.valuePerUnit ?? 0,
+      unit: analysed.unit,
+      proxy: analysed.proxyMatch?.title ?? "",
+      proxyYear: analysed.proxyMatch?.proxyYear ?? "",
+      sdg,
+      sdgColor,
+    };
+
+    addCustomActivity(detail);
     setCustomName("");
     setCustomHours(10);
     setAnalysed(null);
@@ -145,7 +186,6 @@ export default function ActivitiesStep() {
     setShowCustom(false);
   };
 
-  // Helper: is unit-based (not hours)
   const isQuantityUnit = (a: ActivityItem) => a.unit !== "hour";
 
   return (
@@ -239,7 +279,6 @@ export default function ActivitiesStep() {
                         animate={{ opacity: 1 }}
                         className="space-y-3"
                       >
-                        {/* Step 1: name */}
                         <div>
                           <label className="block text-xs font-medium text-foreground mb-1">What do you do?</label>
                           <div className="flex gap-2">
@@ -272,7 +311,6 @@ export default function ActivitiesStep() {
                           )}
                         </div>
 
-                        {/* Step 2: AI-generated question + quantity */}
                         {analysed && (
                           <motion.div
                             initial={{ opacity: 0, y: 8 }}
@@ -293,6 +331,26 @@ export default function ActivitiesStep() {
                               />
                               <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
                             </div>
+
+                            {/* Proxy match badge */}
+                            {analysed.proxyMatch && (
+                              <div className="flex items-start gap-2 bg-white border border-border rounded-md p-3">
+                                <div className="shrink-0 w-1.5 h-full min-h-[1.5rem] rounded-full mt-0.5" style={{ backgroundColor: sdgFromHint(analysed.sdgHint).sdgColor }} />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Social Value Match</p>
+                                  <p className="text-xs text-foreground font-medium leading-snug">{analysed.proxyMatch.title}</p>
+                                  <p className="text-xs text-primary font-bold mt-1">
+                                    £{analysed.proxyMatch.valuePerUnit.toLocaleString()} per {analysed.proxyMatch.unit}
+                                    {analysed.proxyMatch.proxyYear && <span className="text-muted-foreground font-normal"> · {analysed.proxyMatch.proxyYear}</span>}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {!analysed.proxyMatch && (
+                              <p className="text-xs text-muted-foreground italic">No proxy match found — this activity will count towards your volunteer hours.</p>
+                            )}
+
                             {analysed.sdgHint && (
                               <p className="text-xs text-muted-foreground">Aligns with {analysed.sdgHint}</p>
                             )}
@@ -323,14 +381,27 @@ export default function ActivitiesStep() {
             </div>
 
             {/* Custom activities already added */}
-            {input.activities.filter(a => a.activityId.startsWith("custom_")).length > 0 && (
+            {customActivities.length > 0 && (
               <div className="bg-white border border-border rounded-xl p-4 mb-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Custom activities added</p>
-                <div className="space-y-1.5">
-                  {input.activities.filter(a => a.activityId.startsWith("custom_")).map((act, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground font-medium">Custom activity · {act.hoursPerYear} hrs/yr</span>
-                      <button onClick={() => removeActivity(input.activities.indexOf(act))} className="text-muted-foreground hover:text-destructive">
+                <div className="space-y-2">
+                  {customActivities.map(act => (
+                    <div key={act.activityId} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: act.sdgColor }} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{act.name}</p>
+                          {act.valuePerUnit > 0 ? (
+                            <p className="text-xs text-primary">£{act.valuePerUnit.toLocaleString()}/{act.unit} · {act.hoursPerYear} hrs/yr</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{act.hoursPerYear} hrs/yr</p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeCustomActivity(act.activityId)}
+                        className="text-muted-foreground hover:text-destructive shrink-0 ml-3"
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -350,7 +421,9 @@ export default function ActivitiesStep() {
                 onClick={handleStartQuantify}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
               >
-                {selectedIds.size === 0 ? "Skip" : `Next — ${selectedIds.size} selected`}
+                {selectedIds.size === 0 && customActivities.length === 0
+                  ? "Skip"
+                  : `Next — ${selectedIds.size + customActivities.length} selected`}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -365,14 +438,13 @@ export default function ActivitiesStep() {
           >
             {currentActivity && (
               <>
-                {/* Progress indicator */}
                 <div className="flex items-center gap-1.5 mb-5">
                   {selectedList.map((_, i) => (
                     <div
                       key={i}
                       className={cn(
                         "h-1 rounded-full flex-1 transition-all",
-                        i < quantifyIndex ? "bg-primary" : i === quantifyIndex ? "bg-primary" : "bg-muted"
+                        i <= quantifyIndex ? "bg-primary" : "bg-muted"
                       )}
                     />
                   ))}
@@ -402,7 +474,6 @@ export default function ActivitiesStep() {
                       {currentActivity.friendlyQuestion}
                     </p>
 
-                    {/* For household-based activities, just show a confirm toggle */}
                     {currentActivity.unit === "household" ? (
                       <div className="flex items-center gap-3 p-3 bg-white rounded-md border border-border">
                         <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
@@ -440,7 +511,6 @@ export default function ActivitiesStep() {
                     )}
                   </div>
 
-                  {/* SDG note */}
                   <div className="flex items-center gap-2 mt-4">
                     <span
                       className="text-[10px] font-bold text-white px-2 py-0.5 rounded"

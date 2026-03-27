@@ -22,7 +22,12 @@ router.get("/activities", (_req, res) => {
 
 router.post("/calculate", (req, res) => {
   const body = CalculateImpactBody.parse(req.body);
-  const result = calculateImpact(body.activities, body.donationsGBP, body.additionalVolunteerHours);
+  const result = calculateImpact(
+    body.activities,
+    body.donationsGBP,
+    body.additionalVolunteerHours,
+    body.customActivities ?? []
+  );
   res.json(result);
 });
 
