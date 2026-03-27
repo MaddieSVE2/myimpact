@@ -266,7 +266,7 @@ function PersonalDevelopmentDetail({
               </div>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Source: adapted from the <strong>HACT Social Value Bank</strong> model for informal learning and skill acquisition through volunteering.
+              Source: based on peer-reviewed research into informal learning and skill acquisition through volunteering.
             </p>
           </div>
         )}
@@ -325,7 +325,7 @@ function ProxyMethodology({ breakdowns }: {
         <div className="border-t border-border">
           <div className="px-5 py-3 bg-muted/10">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Each activity is matched to a Social Value Engine proxy — a peer-reviewed financial value representing the societal benefit of that outcome. Values are sourced from government data, academic research, and the HACT UK Cost of Finance Model.
+              Each activity is matched to a Social Value Engine proxy — a peer-reviewed financial value representing the societal benefit of that outcome. Values are sourced from government data and peer-reviewed academic research.
             </p>
           </div>
           <div className="divide-y divide-border">
