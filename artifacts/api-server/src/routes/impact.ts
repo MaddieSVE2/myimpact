@@ -229,6 +229,31 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   res.json({ records: formatted });
 });
 
+interface StoredActivityBreakdown {
+  category: string;
+  impactValue: number;
+}
+
+interface StoredResultJson {
+  totalValue: number;
+  totalHours: number;
+  activityBreakdowns: StoredActivityBreakdown[];
+}
+
+function parseResultJson(raw: unknown): StoredResultJson {
+  if (raw === null || typeof raw !== "object") return { totalValue: 0, totalHours: 0, activityBreakdowns: [] };
+  const r = raw as Record<string, unknown>;
+  return {
+    totalValue: typeof r.totalValue === "number" ? r.totalValue : 0,
+    totalHours: typeof r.totalHours === "number" ? r.totalHours : 0,
+    activityBreakdowns: Array.isArray(r.activityBreakdowns)
+      ? (r.activityBreakdowns as StoredActivityBreakdown[]).filter(
+          b => typeof b.category === "string" && typeof b.impactValue === "number"
+        )
+      : [],
+  };
+}
+
 router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -260,11 +285,11 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
     const categoryValueMap: Record<string, number> = {};
 
     for (const r of records) {
-      const result = r.resultJson as any;
-      totalSocialValue += result.totalValue ?? 0;
-      totalHours += result.totalHours ?? 0;
-      for (const breakdown of result.activityBreakdowns ?? []) {
-        categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + (breakdown.impactValue ?? 0);
+      const result = parseResultJson(r.resultJson);
+      totalSocialValue += result.totalValue;
+      totalHours += result.totalHours;
+      for (const breakdown of result.activityBreakdowns) {
+        categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
       }
     }
 
