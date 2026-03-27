@@ -423,6 +423,41 @@ export default function Intro() {
               </FadeIn>
             ))}
           </div>
+          <FadeIn delay={0.2}>
+            <div style={{ marginTop: 40, display: "flex", gap: 16, flexWrap: "wrap" as const, alignItems: "center" }}>
+              <Link
+                href="/org/register"
+                style={{
+                  background: C.orange,
+                  color: "white",
+                  padding: "14px 28px",
+                  borderRadius: 100,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  transition: "all 0.25s",
+                }}
+              >
+                Register your organisation →
+              </Link>
+              <Link
+                href="/org"
+                style={{
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(255,255,255,0.2)",
+                  paddingBottom: 2,
+                }}
+              >
+                Already registered? View dashboard
+              </Link>
+            </div>
+          </FadeIn>
         </div>
       </section>
       {/* ── CTA ── */}
@@ -453,7 +488,8 @@ export default function Intro() {
           {["About", "Privacy", "Contact"].map(l => (
             <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
           ))}
-          <Link href="/org" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>For organisations</Link>
+          <Link href="/org/register" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Register your organisation</Link>
+          <Link href="/org" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Organisation dashboard</Link>
         </div>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
           Powered by Social Value Engine methodology · UK data centres

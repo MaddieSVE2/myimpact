@@ -5,8 +5,8 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
+import { eq, desc, inArray } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 
@@ -229,9 +229,28 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   res.json({ records: formatted });
 });
 
-router.get("/org-stats", async (_req, res) => {
+router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const records = await db.select().from(impactRecordsTable);
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+
+    if (!membership) {
+      res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    const members = await db.query.orgMembersTable.findMany({
+      where: eq(orgMembersTable.orgId, membership.orgId),
+    });
+
+    const memberIds = members.map(m => m.userId);
+
+    const records = memberIds.length > 0
+      ? await db.select().from(impactRecordsTable).where(inArray(impactRecordsTable.userId, memberIds))
+      : [];
 
     const totalRecords = records.length;
     const totalUsers = new Set(records.map(r => r.userId)).size;
@@ -256,6 +275,7 @@ router.get("/org-stats", async (_req, res) => {
     res.json({
       totalRecords,
       totalUsers,
+      totalMemberCount: memberIds.length,
       totalSocialValue: Math.round(totalSocialValue * 100) / 100,
       totalHours: Math.round(totalHours * 100) / 100,
       averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
