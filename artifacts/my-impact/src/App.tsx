@@ -25,7 +25,7 @@ const queryClient = new QueryClient();
 
 function AppRouter() {
   return (
-    <div className="min-h-screen flex flex-col md:pr-12">
+    <div className="min-h-screen flex flex-col lg:pr-12">
       <Navbar />
       <main className="flex-grow">
         <Switch>

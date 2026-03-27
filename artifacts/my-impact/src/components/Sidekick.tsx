@@ -245,7 +245,7 @@ export function Sidekick() {
     <>
       {/* ── Desktop: right sidebar (hidden on mobile) ── */}
       <div
-        className="hidden md:flex fixed top-0 right-0 h-screen z-50 flex-col bg-white transition-all duration-300 ease-in-out"
+        className="hidden lg:flex fixed top-0 right-0 h-screen z-50 flex-col bg-white transition-all duration-300 ease-in-out"
         style={{
           width: open ? 380 : 48,
           borderLeft: "1px solid #e5e7eb",
@@ -272,7 +272,7 @@ export function Sidekick() {
 
       {/* ── Mobile: full-screen overlay (hidden on md+) ── */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-white flex flex-col">
+        <div className="lg:hidden fixed inset-0 z-[60] bg-white flex flex-col">
           {chatBody}
         </div>
       )}

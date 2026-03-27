@@ -24,14 +24,16 @@ export function Navbar() {
 
   return (
     <nav style={{ background: DARK }} className="sticky top-0 z-50 w-full border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between pl-[10px] pr-[10px]">
-        <Link href="/" className="flex items-center gap-2 group">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-14" />
         </Link>
 
-        {/* Desktop nav — only when logged in */}
+        {/* Desktop nav — lg+ only, logged-in only */}
         {isLoggedIn && (
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
               return (
@@ -39,13 +41,13 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
                     isActive
                       ? "text-white bg-white/10"
                       : "text-white/60 hover:text-white hover:bg-white/8"
                   )}
                 >
-                  <item.icon className="w-3.5 h-3.5" />
+                  <item.icon className="w-3.5 h-3.5 shrink-0" />
                   {item.label}
                 </Link>
               );
@@ -54,21 +56,21 @@ export function Navbar() {
         )}
 
         {/* Right-side controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isLoggedIn ? (
             <>
-              {/* CTA — desktop only */}
+              {/* CTA — lg+ only */}
               <Link
                 href="/wizard/actions"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px"
+                className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
                 style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
               >
                 Calculate my impact →
               </Link>
-              {/* Log out */}
+              {/* Log out — lg+ only */}
               <button
                 onClick={logout}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Log out
@@ -76,19 +78,19 @@ export function Navbar() {
             </>
           ) : (
             <>
-              {/* Log in */}
+              {/* Log in — lg+ only */}
               <button
                 onClick={login}
-                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
+                className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
                 style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
               >
                 <LogIn className="w-3.5 h-3.5" />
                 Log in
               </button>
-              {/* CTA */}
+              {/* CTA — lg+ only */}
               <Link
                 href="/wizard/actions"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px"
+                className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
                 style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
               >
                 Calculate my impact →
@@ -96,9 +98,9 @@ export function Navbar() {
             </>
           )}
 
-          {/* Sidekick icon — mobile only */}
+          {/* Sidekick icon — below lg only */}
           <button
-            className="md:hidden p-2"
+            className="lg:hidden p-2"
             style={{ color: "rgba(255,255,255,0.7)" }}
             onClick={() => { setMobileOpen(false); openSidekick(true); }}
             title="Open Sidekick AI"
@@ -106,9 +108,9 @@ export function Navbar() {
             <MessageCircle className="w-5 h-5" />
           </button>
 
-          {/* Mobile hamburger */}
+          {/* Hamburger — below lg only */}
           <button
-            className="md:hidden p-2"
+            className="lg:hidden p-2"
             style={{ color: "rgba(255,255,255,0.7)" }}
             onClick={() => setMobileOpen(o => !o)}
           >
@@ -116,13 +118,14 @@ export function Navbar() {
           </button>
         </div>
       </div>
-      {/* Mobile dropdown */}
+
+      {/* Mobile / tablet dropdown — below lg */}
       {mobileOpen && (
         <div
-          className="md:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1"
+          className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1"
           style={{ background: DARK }}
         >
-          {/* Nav links — only when logged in */}
+          {/* Nav links — logged-in only */}
           {isLoggedIn && navItems.map((item) => {
             const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
             return (
@@ -143,7 +146,7 @@ export function Navbar() {
             );
           })}
 
-          {/* CTA always visible */}
+          {/* CTA */}
           <Link
             href="/wizard/actions"
             onClick={() => setMobileOpen(false)}
@@ -153,7 +156,7 @@ export function Navbar() {
             Calculate my impact →
           </Link>
 
-          {/* Login / logout in mobile menu */}
+          {/* Login / logout */}
           {isLoggedIn ? (
             <button
               onClick={() => { logout(); setMobileOpen(false); }}
