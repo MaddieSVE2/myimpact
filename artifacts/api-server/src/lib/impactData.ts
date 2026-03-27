@@ -364,6 +364,8 @@ export function calculateImpact(
         activityId: activity.id,
         activityName: activity.name,
         category: activity.category,
+        proxy: activity.proxy,
+        proxyYear: activity.proxyYear,
         sdg: activity.sdg,
         sdgColor: activity.sdgColor,
         impactValue: Math.round(impactValue * 100) / 100,
@@ -374,6 +376,8 @@ export function calculateImpact(
     activityId: string;
     activityName: string;
     category: string;
+    proxy: string;
+    proxyYear: string;
     sdg: string;
     sdgColor: string;
     impactValue: number;
