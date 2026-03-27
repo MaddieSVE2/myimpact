@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WizardProvider } from "@/lib/wizard-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { SidekickProvider } from "@/lib/sidekick-context";
 
 // Layout & Pages
 import { Navbar } from "@/components/layout/Navbar";
@@ -24,7 +25,7 @@ const queryClient = new QueryClient();
 
 function AppRouter() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ paddingRight: 48 }}>
+    <div className="min-h-screen flex flex-col md:pr-12">
       <Navbar />
       <main className="flex-grow">
         <Switch>
@@ -56,11 +57,13 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
+          <SidekickProvider>
           <WizardProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <AppRouter />
             </WouterRouter>
           </WizardProvider>
+          </SidekickProvider>
         </AuthProvider>
         <Toaster />
       </TooltipProvider>

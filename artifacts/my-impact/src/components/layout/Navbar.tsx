@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award, Menu, X, LogIn, LogOut } from "lucide-react";
+import { Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award, Menu, X, LogIn, LogOut, MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useSidekick } from "@/lib/sidekick-context";
 
 const DARK = "#213547";
 
@@ -10,6 +11,7 @@ export function Navbar() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isLoggedIn, login, logout } = useAuth();
+  const { setOpen: openSidekick } = useSidekick();
 
   const navItems = [
     { href: "/wizard/actions", label: "Calculate", icon: PlusCircle },
@@ -93,6 +95,16 @@ export function Navbar() {
               </Link>
             </>
           )}
+
+          {/* Sidekick icon — mobile only */}
+          <button
+            className="md:hidden p-2"
+            style={{ color: "rgba(255,255,255,0.7)" }}
+            onClick={() => { setMobileOpen(false); openSidekick(true); }}
+            title="Open Sidekick AI"
+          >
+            <MessageCircle className="w-5 h-5" />
+          </button>
 
           {/* Mobile hamburger */}
           <button
