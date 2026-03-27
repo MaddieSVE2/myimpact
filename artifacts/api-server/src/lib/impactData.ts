@@ -488,7 +488,7 @@ export function calculateImpact(
   customActivities: CustomActivityInput[] = []
 ) {
   const VOLUNTEER_RATE = 12.21;
-  const PERSONAL_DEV_RATE_PERCENT = 0.001333;
+  const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr — employer-valued skills premium, NCVO Time Well Spent 2023
 
   const activityBreakdowns = activities
     .map((sel) => {
@@ -553,7 +553,7 @@ export function calculateImpact(
   const impactValue = activityBreakdowns.reduce((sum, a) => sum + a.impactValue, 0);
   const contributionValue = totalHours * VOLUNTEER_RATE;
   const donationsValue = donationsGBP;
-  const personalDevelopmentValue = totalHours * (totalHours * PERSONAL_DEV_RATE_PERCENT * VOLUNTEER_RATE);
+  const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
   const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
 
   const sdgMap = new Map<string, { sdg: string; sdgColor: string; value: number }>();
@@ -585,7 +585,7 @@ export function calculateImpact(
       donations:
         "The direct monetary value of the money you've donated to good causes over the last year. Every pound donated creates real change for charities and communities.",
       personalDevelopment:
-        "Volunteering doesn't just help others — it builds your skills too. This reflects the learning value gained through your volunteering hours, including communication, leadership, and teamwork skills.",
+        "Volunteering doesn't just help others — it builds your skills too. This reflects the employer-valued skills premium from your volunteering hours, based on NCVO's Time Well Spent research (2023), which found employers value volunteering experience at an average £1,500/year — equivalent to £15 per hour.",
     },
   };
 }

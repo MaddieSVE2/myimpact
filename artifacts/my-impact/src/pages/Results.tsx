@@ -188,10 +188,7 @@ function PersonalDevelopmentDetail({
   const [open, setOpen] = useState(false);
   const skills = deriveSkills(breakdowns);
 
-  const VOLUNTEER_RATE = 12.21;
-  const PERSONAL_DEV_RATE = 0.001333;
-  const hourlySkillRate = totalHours * PERSONAL_DEV_RATE * VOLUNTEER_RATE;
-  const roundedRate = Math.round(hourlySkillRate * 100) / 100;
+  const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr — NCVO Time Well Spent 2023
 
   return (
     <motion.div
@@ -250,7 +247,7 @@ function PersonalDevelopmentDetail({
         {open && (
           <div className="px-5 pb-5 space-y-3 border-t border-border bg-muted/10">
             <p className="text-xs text-muted-foreground leading-relaxed pt-3">
-              Skill value compounds with experience — the more hours you volunteer, the faster skills develop. We apply a rate of <strong>0.13% of the National Living Wage (£{VOLUNTEER_RATE}/hr)</strong> per hour volunteered, scaled by total hours.
+              Employers value volunteering experience at an average of <strong>£1,500 per year</strong> in salary premium for active volunteers — equivalent to <strong>£{PERSONAL_DEV_RATE_PER_HOUR}/hr</strong>. This figure reflects the transferable skills (communication, leadership, teamwork) that volunteering develops and that employers recognise.
             </p>
             <div className="bg-white border border-border rounded-lg p-3 space-y-1.5 font-mono text-xs">
               <div className="flex justify-between text-muted-foreground">
@@ -258,8 +255,8 @@ function PersonalDevelopmentDetail({
                 <span className="font-semibold text-foreground">{Math.round(totalHours)} hrs</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>Skill rate at this level</span>
-                <span className="font-semibold text-foreground">£{roundedRate.toFixed(2)}/hr</span>
+                <span>Employer skills premium</span>
+                <span className="font-semibold text-foreground">£{PERSONAL_DEV_RATE_PER_HOUR}/hr</span>
               </div>
               <div className="border-t border-border pt-1.5 flex justify-between">
                 <span className="text-muted-foreground">Total skill value</span>
@@ -267,7 +264,7 @@ function PersonalDevelopmentDetail({
               </div>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Source: based on peer-reviewed research into informal learning and skill acquisition through volunteering.
+              Source: NCVO Time Well Spent (2023) — national survey of volunteering in England.
             </p>
           </div>
         )}
