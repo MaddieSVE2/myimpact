@@ -9,7 +9,6 @@ import { formatCurrency } from "@/lib/utils";
 interface LocalPlace {
   name: string;
   description: string;
-  url: string;
   howToJoin: string;
 }
 
@@ -209,16 +208,14 @@ export default function Suggestions() {
                                 <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{place.description}</p>
                                 <p className="text-[11px] text-foreground/60 mt-0.5 italic">{place.howToJoin}</p>
                               </div>
-                              {place.url && (
-                                <a
-                                  href={place.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
-                                >
-                                  Visit <ExternalLink className="w-2.5 h-2.5" />
-                                </a>
-                              )}
+                              <a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${location}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                              >
+                                Search online <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
                             </div>
                           ))
                         )}

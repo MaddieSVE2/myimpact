@@ -27,7 +27,6 @@ router.post("/suggest", async (req, res) => {
 Return a JSON object with a "places" array. Each item has:
 - name (string): the real name of the organisation or group
 - description (string): one sentence, max 15 words, explaining what they do — specific to the activity
-- url (string): real website URL if you know it with high confidence, otherwise empty string — never invent URLs
 - howToJoin (string): one concrete action to get started, max 12 words
 
 Rules:
@@ -47,7 +46,13 @@ Rules:
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(raw);
-    const places = Array.isArray(parsed.places) ? parsed.places : [];
+    const places = Array.isArray(parsed.places)
+      ? parsed.places.map(({ name, description, howToJoin }: { name: string; description: string; howToJoin: string }) => ({
+          name,
+          description,
+          howToJoin,
+        }))
+      : [];
 
     res.json({ places });
   } catch (err) {
