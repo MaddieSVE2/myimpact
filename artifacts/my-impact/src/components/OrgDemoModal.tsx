@@ -25,13 +25,13 @@ const DEMO_STATS = {
 
 function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white border border-border rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-3.5 h-3.5 text-primary" />
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+    <div className="bg-white border border-border rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className="w-4 h-4 text-primary" />
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
       </div>
-      <p className="text-xl font-display font-bold text-foreground">{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="text-2xl font-display font-bold text-foreground">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
@@ -58,7 +58,7 @@ function DashboardPreview() {
       <div className="bg-white border border-border rounded-xl p-4">
         <p className="text-xs font-semibold text-foreground mb-0.5">Social value by category</p>
         <p className="text-[11px] text-muted-foreground mb-3">All data is anonymised — no individual names shown.</p>
-        <div className="h-[160px]">
+        <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={DEMO_STATS.valueByCategory} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -88,7 +88,7 @@ export function OrgDemoModal({ open, onClose }: OrgDemoModalProps) {
       style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-white z-10 rounded-t-2xl">
           <div>
             <p className="text-sm font-semibold text-foreground">Example organisation dashboard</p>
