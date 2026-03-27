@@ -498,15 +498,22 @@ export default function ActivitiesStep() {
                         </p>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="1"
-                          value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1}
-                          onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
-                          className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                        />
-                        <span className="text-sm text-muted-foreground">{currentActivity.unitLabel}</span>
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            min="1"
+                            value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1}
+                            onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
+                            className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                          />
+                          <span className="text-sm text-muted-foreground">{currentActivity.unitLabel}</span>
+                        </div>
+                        {currentActivity.unit === "bin" && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Most households put out around 26 bins with recyclables per year (fortnightly collection)
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
