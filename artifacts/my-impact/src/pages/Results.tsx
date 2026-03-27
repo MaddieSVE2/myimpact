@@ -124,6 +124,159 @@ function ShareCard({ result, totalValue }: { result: any; totalValue: number }) 
   );
 }
 
+// ── Personal Development ──────────────────────────────────────────────────────
+
+const ACTIVITY_SKILLS: Record<string, { emoji: string; name: string }[]> = {
+  // Specific activities
+  food_bank:           [{ emoji: "📋", name: "Organisation" }, { emoji: "❤️", name: "Empathy" }, { emoji: "🤝", name: "Teamwork" }],
+  elderly_visiting:    [{ emoji: "👂", name: "Active listening" }, { emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Communication" }],
+  literacy_support:    [{ emoji: "📚", name: "Mentoring" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🎯", name: "Leadership" }],
+  digital_coaching:    [{ emoji: "💻", name: "Digital literacy" }, { emoji: "📚", name: "Mentoring" }, { emoji: "💡", name: "Problem-solving" }],
+  employability_coaching: [{ emoji: "🎯", name: "Leadership" }, { emoji: "🗣️", name: "Communication" }, { emoji: "📚", name: "Mentoring" }],
+  youth_mentoring:     [{ emoji: "🎯", name: "Leadership" }, { emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Communication" }],
+  community_garden:    [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "📋", name: "Organisation" }],
+  arts_volunteering:   [{ emoji: "✍️", name: "Creative thinking" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }],
+  tree_planting:       [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }, { emoji: "🏃", name: "Resilience" }],
+  recycling:           [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }],
+  food_waste:          [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }],
+  eco_transport:       [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🏃", name: "Resilience" }],
+  litter_picking:      [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }, { emoji: "🤝", name: "Teamwork" }],
+  blood_donation:      [{ emoji: "🏃", name: "Resilience" }, { emoji: "💡", name: "Initiative" }],
+  charity_books:       [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
+  charity_shop_bags:   [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
+  fundraising:         [{ emoji: "🗣️", name: "Communication" }, { emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }],
+  veterans_breakfast:  [{ emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }],
+  wildlife_trust:      [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🔬", name: "Research skills" }],
+  // By category fallbacks
+  Environment:  [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }, { emoji: "🏃", name: "Resilience" }],
+  Health:       [{ emoji: "❤️", name: "Empathy" }, { emoji: "👂", name: "Active listening" }, { emoji: "🤝", name: "Teamwork" }],
+  Community:    [{ emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "🌍", name: "Cultural awareness" }],
+  Education:    [{ emoji: "📚", name: "Mentoring" }, { emoji: "🎯", name: "Leadership" }, { emoji: "🗣️", name: "Communication" }],
+  Custom:       [{ emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "💡", name: "Initiative" }],
+};
+
+const DEFAULT_SKILLS: { emoji: string; name: string }[] = [
+  { emoji: "🗣️", name: "Communication" },
+  { emoji: "🤝", name: "Teamwork" },
+  { emoji: "💡", name: "Initiative" },
+];
+
+function deriveSkills(breakdowns: any[]): { emoji: string; name: string }[] {
+  const seen = new Map<string, { emoji: string; name: string }>();
+  for (const b of breakdowns) {
+    const skills = ACTIVITY_SKILLS[b.activityId] ?? ACTIVITY_SKILLS[b.category] ?? [];
+    for (const s of skills) {
+      if (!seen.has(s.name)) seen.set(s.name, s);
+    }
+  }
+  for (const d of DEFAULT_SKILLS) {
+    if (!seen.has(d.name)) seen.set(d.name, d);
+  }
+  return Array.from(seen.values()).slice(0, 9);
+}
+
+function PersonalDevelopmentDetail({
+  value,
+  totalHours,
+  breakdowns,
+}: {
+  value: number;
+  totalHours: number;
+  breakdowns: any[];
+}) {
+  const [open, setOpen] = useState(false);
+  const skills = deriveSkills(breakdowns);
+
+  const VOLUNTEER_RATE = 12.21;
+  const PERSONAL_DEV_RATE = 0.001333;
+  const hourlySkillRate = totalHours * PERSONAL_DEV_RATE * VOLUNTEER_RATE;
+  const roundedRate = Math.round(hourlySkillRate * 100) / 100;
+
+  return (
+    <motion.div
+      className="mb-6 bg-white border border-border rounded-xl overflow-hidden"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.17 }}
+    >
+      {/* Header row */}
+      <div className="flex items-start justify-between px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Trophy className="w-4 h-4 shrink-0" style={{ color: "#f59e0b" }} />
+            <p className="text-xs text-muted-foreground font-medium">Personal Development</p>
+          </div>
+          <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
+            {formatCurrency(value)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Skill value gained from {Math.round(totalHours)} volunteer hours
+          </p>
+        </div>
+      </div>
+
+      {/* Skills developed */}
+      <div className="border-t border-border px-5 py-4">
+        <p className="text-xs font-semibold text-foreground mb-3">Skills you're developing</p>
+        <div className="flex flex-wrap gap-2">
+          {skills.map(s => (
+            <span
+              key={s.name}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+              style={{ backgroundColor: "#fefce8", border: "1px solid #fde68a", color: "#92400e" }}
+            >
+              {s.emoji} {s.name}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+          Based on the activities you do — these are transferable skills recognised by employers, universities, and training providers.
+        </p>
+      </div>
+
+      {/* How it's calculated */}
+      <div className="border-t border-border">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-muted/20 transition-colors"
+        >
+          <span className="text-xs font-medium text-muted-foreground">How this is calculated</span>
+          {open
+            ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+            : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          }
+        </button>
+        {open && (
+          <div className="px-5 pb-5 space-y-3 border-t border-border bg-muted/10">
+            <p className="text-xs text-muted-foreground leading-relaxed pt-3">
+              Skill value compounds with experience — the more hours you volunteer, the faster skills develop. We apply a rate of <strong>0.13% of the National Living Wage (£{VOLUNTEER_RATE}/hr)</strong> per hour volunteered, scaled by total hours.
+            </p>
+            <div className="bg-white border border-border rounded-lg p-3 space-y-1.5 font-mono text-xs">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Hours volunteered</span>
+                <span className="font-semibold text-foreground">{Math.round(totalHours)} hrs</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Skill rate at this level</span>
+                <span className="font-semibold text-foreground">£{roundedRate.toFixed(2)}/hr</span>
+              </div>
+              <div className="border-t border-border pt-1.5 flex justify-between">
+                <span className="text-muted-foreground">Total skill value</span>
+                <span className="font-bold" style={{ color: "#F06127" }}>{formatCurrency(value)}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Source: adapted from the <strong>HACT Social Value Bank</strong> model for informal learning and skill acquisition through volunteering.
+            </p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Proxy methodology ─────────────────────────────────────────────────────────
+
 function ProxyMethodology({ breakdowns }: {
   breakdowns: Array<{
     activityId: string;
@@ -485,11 +638,17 @@ export default function Results() {
         <MetricTile
           icon={Trophy} iconColour="#f59e0b"
           label="Personal Development" value={result.personalDevelopmentValue}
-          subtitle={`Skill development from ${Math.round(result.totalHours)} hours`}
+          subtitle={`Skill development from ${Math.round(result.totalHours)} hrs`}
           explanation={result.explanations.personalDevelopment}
         />
       </motion.div>
 
+      {/* Personal development detail */}
+      <PersonalDevelopmentDetail
+        value={result.personalDevelopmentValue}
+        totalHours={result.totalHours}
+        breakdowns={result.activityBreakdowns}
+      />
 
       {/* Proxy methodology */}
       {result.activityBreakdowns.length > 0 && (
