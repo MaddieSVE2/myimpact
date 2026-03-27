@@ -119,7 +119,7 @@ function ShareCard({ result, totalValue }: { result: any; totalValue: number }) 
         ))}
       </div>
       <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 36, letterSpacing: 1 }}>
-        Calculate yours at my-impact.org
+        Calculate yours at myimpact.replit.com
       </p>
     </div>
   );
@@ -439,7 +439,7 @@ export default function Results() {
   };
 
   const shareText = `I generated ${formatCurrency(result.totalValue)} in social value this year. Find out what yours is:`;
-  const shareUrl = "https://my-impact.org";
+  const shareUrl = "https://myimpact.replit.com";
 
   const handleNativeShare = async () => {
     if (navigator.share) {
