@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
-  BookOpen, Award
+  BookOpen, Award, ChevronDown, ChevronUp, FlaskConical
 } from "lucide-react";
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -121,6 +121,95 @@ function ShareCard({ result, totalValue }: { result: any; totalValue: number }) 
         Calculate yours at my-impact.org
       </p>
     </div>
+  );
+}
+
+function ProxyMethodology({ breakdowns }: {
+  breakdowns: Array<{
+    activityId: string;
+    activityName: string;
+    category: string;
+    proxy: string;
+    proxyYear: string;
+    sdgColor: string;
+    impactValue: number;
+    hours: number;
+  }>
+}) {
+  const [open, setOpen] = useState(false);
+  const withProxy = breakdowns.filter(b => b.proxy);
+
+  if (withProxy.length === 0) return null;
+
+  return (
+    <motion.div
+      className="mb-8 bg-white border border-border rounded-xl overflow-hidden"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18 }}
+    >
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/20 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <FlaskConical className="w-4 h-4 shrink-0" style={{ color: "#7E8FAD" }} />
+          <div>
+            <p className="text-sm font-semibold text-foreground">How we calculated this</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {withProxy.length} SVE {withProxy.length === 1 ? "proxy" : "proxies"} used
+            </p>
+          </div>
+        </div>
+        {open ? (
+          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+        )}
+      </button>
+
+      {open && (
+        <div className="border-t border-border">
+          <div className="px-5 py-3 bg-muted/10">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Each activity is matched to a Social Value Engine proxy — a peer-reviewed financial value representing the societal benefit of that outcome. Values are sourced from government data, academic research, and the HACT UK Cost of Finance Model.
+            </p>
+          </div>
+          <div className="divide-y divide-border">
+            {withProxy.map(b => (
+              <div key={b.activityId} className="flex items-start gap-3 px-5 py-3.5">
+                <div
+                  className="w-0.5 self-stretch rounded-full shrink-0 mt-0.5"
+                  style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground leading-snug">{b.activityName}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                        <span className="font-medium text-foreground/70">Proxy: </span>
+                        {b.proxy}
+                        {b.proxyYear && (
+                          <span className="text-muted-foreground/60"> ({b.proxyYear})</span>
+                        )}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold shrink-0" style={{ color: "#F06127" }}>
+                      {formatCurrency(b.impactValue)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-5 py-3 bg-muted/10 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Source: <span className="font-medium">Social Value Engine proxy library</span> · Values reflect wellbeing-adjusted social return on investment
+            </p>
+          </div>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -401,6 +490,11 @@ export default function Results() {
         />
       </motion.div>
 
+
+      {/* Proxy methodology */}
+      {result.activityBreakdowns.length > 0 && (
+        <ProxyMethodology breakdowns={result.activityBreakdowns} />
+      )}
 
       {/* Fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border" style={{ background: "white", boxShadow: "0 -4px 24px rgba(0,0,0,0.10)" }}>
