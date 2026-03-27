@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import html2canvas from "html2canvas";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
@@ -371,6 +372,7 @@ export default function Results() {
   const { result, input } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
+  const { isLoggedIn, user } = useAuth();
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -398,10 +400,14 @@ export default function Results() {
   if (!result) return null;
 
   const handleSave = async (period: string) => {
+    if (!isLoggedIn) {
+      setLocation("/login");
+      return;
+    }
     try {
       await saveMutation.mutateAsync({
         data: {
-          userId: "user_demo_123",
+          userId: user?.id ?? "",
           name: "My Impact Record",
           period: period || undefined,
           impactResult: result,
@@ -414,7 +420,7 @@ export default function Results() {
       setShowSaveDialog(false);
       toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
     } catch {
-      toast({ title: "Unable to save", description: "Something went wrong.", variant: "destructive" });
+      toast({ title: "Unable to save", description: "Something went wrong. Are you logged in?", variant: "destructive" });
     }
   };
 

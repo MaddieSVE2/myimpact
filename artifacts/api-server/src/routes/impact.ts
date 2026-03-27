@@ -4,11 +4,11 @@ import {
   GetActivitiesResponse,
   GetSuggestionsBody,
   SaveImpactBody,
-  GetImpactHistoryQueryParams,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
+import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 
 const router: IRouter = Router();
 
@@ -177,13 +177,14 @@ router.post("/suggestions", (req, res) => {
   res.json({ suggestions: output });
 });
 
-router.post("/save", async (req, res) => {
+router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const body = SaveImpactBody.parse(req.body);
+  const userId = req.user!.id;
 
   const [record] = await db
     .insert(impactRecordsTable)
     .values({
-      userId: body.userId,
+      userId,
       name: body.name,
       periodLabel: body.period ?? null,
       totalValue: String(body.impactResult.totalValue),
@@ -207,13 +208,13 @@ router.post("/save", async (req, res) => {
   });
 });
 
-router.get("/history", async (req, res) => {
-  const query = GetImpactHistoryQueryParams.parse(req.query);
+router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
 
   const records = await db
     .select()
     .from(impactRecordsTable)
-    .where(eq(impactRecordsTable.userId, query.userId))
+    .where(eq(impactRecordsTable.userId, userId))
     .orderBy(desc(impactRecordsTable.createdAt));
 
   const formatted = records.map((r) => ({

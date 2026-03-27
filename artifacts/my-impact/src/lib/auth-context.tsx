@@ -1,35 +1,60 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface User {
+  id: string;
+  email: string;
+}
+
 interface AuthContextType {
   isLoggedIn: boolean;
-  login: () => void;
-  logout: () => void;
+  user: User | null;
+  isLoading: boolean;
+  requestMagicLink: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
-  login: () => {},
-  logout: () => {},
+  user: null,
+  isLoading: true,
+  requestMagicLink: async () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    const stored = localStorage.getItem("mi_logged_in");
-    return stored === null ? false : stored === "true";
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = () => {
-    localStorage.setItem("mi_logged_in", "true");
-    setIsLoggedIn(true);
+  useEffect(() => {
+    fetch(`${BASE}/api/auth/me`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setUser(data.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const requestMagicLink = async (email: string) => {
+    const res = await fetch(`${BASE}/api/auth/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error ?? "Failed to send magic link");
+    }
   };
 
-  const logout = () => {
-    localStorage.setItem("mi_logged_in", "false");
-    setIsLoggedIn(false);
+  const logout = async () => {
+    await fetch(`${BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, logout }}>
       {children}
     </AuthContext.Provider>
   );

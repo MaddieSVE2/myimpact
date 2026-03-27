@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGetImpactHistory } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -93,7 +94,8 @@ function RecordDetail({ result }: { result: any }) {
 }
 
 export default function History() {
-  const { data, isLoading } = useGetImpactHistory({ userId: "user_demo_123" });
+  const { user } = useAuth();
+  const { data, isLoading } = useGetImpactHistory({ userId: user?.id ?? "" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (isLoading) {

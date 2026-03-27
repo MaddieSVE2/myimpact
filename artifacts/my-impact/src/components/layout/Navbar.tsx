@@ -149,7 +149,7 @@ export function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, login, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
 
@@ -248,6 +248,9 @@ export function Navbar() {
                     <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-border overflow-hidden z-50">
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-xs font-semibold text-foreground">My account</p>
+                        {user?.email && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{user.email}</p>
+                        )}
                       </div>
                       <div className="py-1">
                         <button
@@ -272,14 +275,14 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <button
-                  onClick={login}
+                <Link
+                  href="/login"
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
                   style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   Log in
-                </button>
+                </Link>
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
@@ -361,13 +364,14 @@ export function Navbar() {
                 Log out
               </button>
             ) : (
-              <button
-                onClick={() => { login(); setMobileOpen(false); }}
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 Log in
-              </button>
+              </Link>
             )}
           </div>
         )}

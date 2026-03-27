@@ -75,13 +75,32 @@ artifacts-monorepo/
 └── scripts/
 ```
 
+## Authentication
+
+Magic link authentication via Resend (no passwords):
+
+- **Flow**: User enters email → receives magic link → clicks link → lands on confirm page → clicks button → session issued
+- **Two-step token design**: Token is validated on page load (`/api/auth/verify`) but only consumed on button click (`/api/auth/confirm`), preventing email pre-fetcher bots from burning the token
+- **Session**: JWT stored in an `httpOnly` cookie (`mi_session`), 30-day expiry
+- **DB tables**: `users` (id, email, created_at), `magic_tokens` (token, user_id, expires_at, used_at, confirmed)
+- **Protected routes** (frontend): `/history`, `/journal`, `/badges`, `/org` — unauthenticated users redirected to `/login`
+- **Protected routes** (backend): `POST /api/impact/save`, `GET /api/impact/history` — require valid session cookie, use `req.user.id` as userId
+- **Auth context** (`lib/auth-context.tsx`): calls `/api/auth/me` on load to restore session; provides `isLoggedIn`, `user`, `isLoading`, `requestMagicLink()`, `logout()`
+- **Frontend pages**: `/login` (email form), `/auth/confirm?token=...` (confirm button)
+- **Resend integration**: connected via Replit connector; client created fresh per request via `getUncachableResendClient()`
+
 ## API Endpoints
 
+- `GET /api/auth/me` — returns current user from JWT cookie (or `{user: null}`)
+- `POST /api/auth/request` — send magic link email to given address
+- `GET /api/auth/verify?token=...` — validate token (does not consume it)
+- `POST /api/auth/confirm` — consume token, issue session cookie
+- `POST /api/auth/logout` — clear session cookie
 - `GET /api/impact/activities` — list of 20+ SVE activities with proxy metadata
 - `POST /api/impact/calculate` — calculate social value from activities + donations
 - `POST /api/impact/suggestions` — get recommended activities based on current activities
-- `POST /api/impact/save` — save impact record to database
-- `GET /api/impact/history?userId=xxx` — retrieve historical records
+- `POST /api/impact/save` — save impact record to database (requires auth)
+- `GET /api/impact/history` — retrieve historical records for authenticated user
 - `GET /api/impact/org-stats` — aggregate stats for org portal
 - `POST /api/sidekick/chat` — streaming AI chat endpoint (SSE), uses OpenAI via Replit AI Integrations
 

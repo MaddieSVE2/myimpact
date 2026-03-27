@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WizardProvider } from "@/lib/wizard-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SidekickProvider } from "@/lib/sidekick-context";
+import { PrivateRoute } from "@/components/PrivateRoute";
 
 // Layout & Pages
 import { Navbar } from "@/components/layout/Navbar";
@@ -19,6 +20,8 @@ import History from "@/pages/History";
 import Journal from "@/pages/Journal";
 import Badges from "@/pages/Badges";
 import OrgPortal from "@/pages/OrgPortal";
+import Login from "@/pages/Login";
+import AuthConfirm from "@/pages/AuthConfirm";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -31,18 +34,30 @@ function AppRouter() {
         <Switch>
           <Route path="/" component={Intro} />
 
-          {/* Wizard Routes */}
+          {/* Auth routes — no navbar chrome needed */}
+          <Route path="/login" component={Login} />
+          <Route path="/auth/confirm" component={AuthConfirm} />
+
+          {/* Wizard routes — open to all */}
           <Route path="/wizard/actions" component={ActionsStep} />
           <Route path="/wizard/activities" component={ActivitiesStep} />
           <Route path="/wizard/contributions" component={ContributionsStep} />
-
-          {/* Post-Wizard Routes */}
           <Route path="/results" component={Results} />
           <Route path="/suggestions" component={Suggestions} />
-          <Route path="/history" component={History} />
-          <Route path="/journal" component={Journal} />
-          <Route path="/badges" component={Badges} />
-          <Route path="/org" component={OrgPortal} />
+
+          {/* Protected routes */}
+          <Route path="/history">
+            {() => <PrivateRoute component={History} />}
+          </Route>
+          <Route path="/journal">
+            {() => <PrivateRoute component={Journal} />}
+          </Route>
+          <Route path="/badges">
+            {() => <PrivateRoute component={Badges} />}
+          </Route>
+          <Route path="/org">
+            {() => <PrivateRoute component={OrgPortal} />}
+          </Route>
 
           <Route component={NotFound} />
         </Switch>
