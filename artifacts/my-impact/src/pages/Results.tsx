@@ -374,6 +374,22 @@ export default function Results() {
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [chosenPeriod, setChosenPeriod] = useState("");
+  const [customPeriod, setCustomPeriod] = useState("");
+
+  // Compute period presets from today's date
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1–12
+  const year = now.getFullYear();
+  const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const termLabel = month >= 9 ? `Autumn Term ${year}` : month >= 5 ? `Summer Term ${year}` : `Spring Term ${year}`;
+  const academicYear = month >= 9 ? `${year}/${String(year + 1).slice(2)}` : `${year - 1}/${String(year).slice(2)}`;
+  const PERIOD_PRESETS = [
+    { label: "This month", value: monthLabel },
+    { label: "Current term", value: termLabel },
+    { label: "Academic year", value: `Academic Year ${academicYear}` },
+  ];
 
   useEffect(() => {
     if (!result) setLocation("/wizard/actions");
@@ -381,12 +397,13 @@ export default function Results() {
 
   if (!result) return null;
 
-  const handleSave = async () => {
+  const handleSave = async (period: string) => {
     try {
       await saveMutation.mutateAsync({
         data: {
           userId: "user_demo_123",
           name: "My Impact Record",
+          period: period || undefined,
           impactResult: result,
           activities: input.activities,
           donationsGBP: input.donationsGBP,
@@ -394,7 +411,8 @@ export default function Results() {
         },
       });
       setSaved(true);
-      toast({ title: "Saved!", description: "Your impact record has been added to your history." });
+      setShowSaveDialog(false);
+      toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
     } catch {
       toast({ title: "Unable to save", description: "Something went wrong.", variant: "destructive" });
     }
@@ -661,7 +679,7 @@ export default function Results() {
 
           {/* Save — primary action, always prominent */}
           <button
-            onClick={handleSave}
+            onClick={() => !saved && setShowSaveDialog(true)}
             disabled={saveMutation.isPending || saved}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
             style={{
@@ -733,6 +751,79 @@ export default function Results() {
 
         </div>
       </div>
+
+      {/* Period picker dialog */}
+      {showSaveDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => setShowSaveDialog(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-foreground mb-1">What period does this cover?</h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              Label this record so you can track progress across different periods over time.
+            </p>
+
+            {/* Preset chips */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {PERIOD_PRESETS.map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => { setChosenPeriod(p.value); setCustomPeriod(""); }}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                  style={chosenPeriod === p.value
+                    ? { background: "#213547", color: "white", borderColor: "#213547" }
+                    : { background: "white", color: "hsl(var(--foreground))", borderColor: "hsl(var(--border))" }
+                  }
+                >
+                  <span className="text-muted-foreground text-[10px] mr-1">{p.label}</span>
+                  {p.value}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom input */}
+            <div className="mb-5">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                Or enter a custom label
+              </label>
+              <input
+                type="text"
+                value={customPeriod}
+                onChange={e => { setCustomPeriod(e.target.value); setChosenPeriod(""); }}
+                placeholder='e.g. "Summer holiday 2026" or "Year 12"'
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSave(customPeriod || chosenPeriod)}
+                disabled={saveMutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: "#213547" }}
+              >
+                {saveMutation.isPending ? "Saving…" : "Save record"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

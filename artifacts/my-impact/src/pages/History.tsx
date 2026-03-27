@@ -107,8 +107,8 @@ export default function History() {
   const records = data?.records || [];
 
   const chartData = [...records].reverse().map(r => ({
-    date: new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
-    fullDate: new Date(r.createdAt).toLocaleDateString("en-GB"),
+    date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+    fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
     value: r.impactResult.totalValue,
   }));
 
@@ -117,6 +117,7 @@ export default function History() {
   const changeVsLast = latest && previous
     ? latest.impactResult.totalValue - previous.impactResult.totalValue
     : null;
+  const allTimeTotal = records.reduce((sum, r) => sum + r.impactResult.totalValue, 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -147,21 +148,30 @@ export default function History() {
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="bg-white border border-border rounded-xl p-5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Latest record</p>
-                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult.totalValue)}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">All-time total</p>
+                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(allTimeTotal)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                  Across {records.length} {records.length === 1 ? "record" : "records"}
                 </p>
               </div>
-              {changeVsLast !== null && (
-                <div className="bg-white border border-border rounded-xl p-5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Change vs previous</p>
-                  <p className={`text-2xl font-display font-bold ${changeVsLast >= 0 ? "text-green-600" : "text-destructive"}`}>
-                    {changeVsLast >= 0 ? "+" : ""}{formatCurrency(changeVsLast)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">{changeVsLast >= 0 ? "↑ Growing!" : "↓ Room to improve"}</p>
-                </div>
-              )}
+              <div className="bg-white border border-border rounded-xl p-5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                  {changeVsLast !== null ? "Change vs previous" : "Latest period"}
+                </p>
+                {changeVsLast !== null ? (
+                  <>
+                    <p className={`text-2xl font-display font-bold ${changeVsLast >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      {changeVsLast >= 0 ? "+" : ""}{formatCurrency(changeVsLast)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{changeVsLast >= 0 ? "↑ Growing!" : "↓ Room to improve"}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult.totalValue)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{latest.period || new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
+                  </>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -250,8 +260,20 @@ export default function History() {
                         <Calendar className="w-3.5 h-3.5" style={{ color: isOpen ? "white" : "hsl(var(--muted-foreground))" }} />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{record.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {record.period && (
+                            <span
+                              className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: "#213547", color: "white" }}
+                            >
+                              {record.period}
+                            </span>
+                          )}
+                          {!record.period && (
+                            <p className="text-sm font-semibold text-foreground">{record.name}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(record.createdAt).toLocaleDateString("en-GB", {
                             weekday: "short", year: "numeric", month: "long", day: "numeric",
                           })}

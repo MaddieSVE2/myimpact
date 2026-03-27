@@ -185,6 +185,7 @@ router.post("/save", async (req, res) => {
     .values({
       userId: body.userId,
       name: body.name,
+      periodLabel: body.period ?? null,
       totalValue: String(body.impactResult.totalValue),
       impactValue: String(body.impactResult.impactValue),
       contributionValue: String(body.impactResult.contributionValue),
@@ -200,6 +201,7 @@ router.post("/save", async (req, res) => {
     id: String(record.id),
     userId: record.userId,
     name: record.name,
+    period: record.periodLabel ?? null,
     createdAt: record.createdAt.toISOString(),
     impactResult: body.impactResult,
   });
@@ -218,6 +220,7 @@ router.get("/history", async (req, res) => {
     id: String(r.id),
     userId: r.userId,
     name: r.name,
+    period: r.periodLabel ?? null,
     createdAt: r.createdAt.toISOString(),
     impactResult: r.resultJson,
   }));

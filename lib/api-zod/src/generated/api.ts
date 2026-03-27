@@ -135,6 +135,7 @@ export const GetSuggestionsResponse = zod.object({
 export const SaveImpactBody = zod.object({
   userId: zod.string(),
   name: zod.string(),
+  period: zod.string().optional(),
   impactResult: zod.object({
     totalValue: zod.number(),
     impactValue: zod.number(),
@@ -185,6 +186,7 @@ export const SaveImpactResponse = zod.object({
   id: zod.string(),
   userId: zod.string(),
   name: zod.string(),
+  period: zod.string().nullable(),
   createdAt: zod.string(),
   impactResult: zod.object({
     totalValue: zod.number(),
@@ -235,6 +237,7 @@ export const GetImpactHistoryResponse = zod.object({
       id: zod.string(),
       userId: zod.string(),
       name: zod.string(),
+      period: zod.string().nullable(),
       createdAt: zod.string(),
       impactResult: zod.object({
         totalValue: zod.number(),

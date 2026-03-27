@@ -6,6 +6,7 @@ export const impactRecordsTable = pgTable("impact_records", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
+  periodLabel: text("period_label"),
   totalValue: numeric("total_value", { precision: 12, scale: 2 }).notNull(),
   impactValue: numeric("impact_value", { precision: 12, scale: 2 }).notNull(),
   contributionValue: numeric("contribution_value", { precision: 12, scale: 2 }).notNull(),
