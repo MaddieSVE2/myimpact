@@ -39,31 +39,34 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string;
 function DashboardPreview() {
   return (
     <div className="bg-muted/20 rounded-xl p-5 space-y-4">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-primary font-semibold mb-0.5 uppercase tracking-wide">Example · charity</p>
+          <p className="text-xs text-primary font-semibold mb-0.5 uppercase tracking-wide">Example · Charity</p>
           <h3 className="text-lg font-display font-semibold text-foreground">{DEMO_STATS.orgName}</h3>
           <p className="text-xs text-muted-foreground">Anonymous aggregate impact across your members.</p>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">Demo</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* Stats row — 4 across */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <StatCard icon={TrendingUp} label="Total social value" value={formatCurrency(DEMO_STATS.totalSocialValue)} />
-        <StatCard icon={Users} label="Members" value={String(DEMO_STATS.totalMemberCount)} sub={`${DEMO_STATS.totalUsers} with saved records`} />
+        <StatCard icon={Users} label="Members" value={String(DEMO_STATS.totalMemberCount)} sub={`${DEMO_STATS.totalUsers} with records`} />
         <StatCard icon={BarChart2} label="Avg per person" value={formatCurrency(DEMO_STATS.averageValuePerPerson)} />
-        <StatCard icon={Clock} label="Total hours" value={DEMO_STATS.totalHours.toLocaleString("en-GB")} sub="volunteering hours" />
+        <StatCard icon={Clock} label="Total hours" value={DEMO_STATS.totalHours.toLocaleString("en-GB")} sub="volunteering" />
       </div>
 
+      {/* Chart */}
       <div className="bg-white border border-border rounded-xl p-4">
         <p className="text-xs font-semibold text-foreground mb-0.5">Social value by category</p>
         <p className="text-[11px] text-muted-foreground mb-3">All data is anonymised — no individual names shown.</p>
-        <div className="h-[200px]">
+        <div className="h-[180px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={DEMO_STATS.valueByCategory} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+            <BarChart data={DEMO_STATS.valueByCategory} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={36} />
               <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="value" fill="#F06127" radius={[3, 3, 0, 0]} />
             </BarChart>
