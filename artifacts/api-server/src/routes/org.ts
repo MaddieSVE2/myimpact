@@ -49,6 +49,35 @@ router.post("/register", async (req, res) => {
   res.json({ ok: true });
 });
 
+router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, res) => {
+  const { inviteCode } = req.body;
+  if (!inviteCode || typeof inviteCode !== "string") {
+    res.status(400).json({ error: "Invite code is required" });
+    return;
+  }
+
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+  });
+
+  if (!org) {
+    res.status(404).json({ error: "Invalid invite code. Please check with your organisation and try again." });
+    return;
+  }
+
+  const userId = req.user!.id;
+
+  const otherMembership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+  if (otherMembership) {
+    res.status(409).json({ error: "You're already a member of an organisation." });
+    return;
+  }
+
+  res.json({ ok: true, orgName: org.name, orgId: org.id });
+});
+
 router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   const { inviteCode } = req.body;
   if (!inviteCode || typeof inviteCode !== "string") {

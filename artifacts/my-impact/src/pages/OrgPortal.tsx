@@ -70,7 +70,28 @@ function JoinOrgPanel() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const verifyMutation = useMutation({
+  const validateMutation = useMutation({
+    mutationFn: async (inviteCode: string) => {
+      const res = await fetch(`${BASE}/api/org/validate-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ inviteCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
+      return data as { ok: boolean; orgName: string };
+    },
+    onSuccess: (data) => {
+      setOrgName(data.orgName);
+      setStep("consent");
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const joinMutation = useMutation({
     mutationFn: async (inviteCode: string) => {
       const res = await fetch(`${BASE}/api/org/join`, {
         method: "POST",
@@ -82,15 +103,10 @@ function JoinOrgPanel() {
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
       return data as { ok: boolean; orgName: string; alreadyMember: boolean };
     },
-    onSuccess: (data) => {
-      if (step === "consent") {
-        queryClient.invalidateQueries({ queryKey: ["my-org"] });
-        queryClient.invalidateQueries({ queryKey: ["org-stats"] });
-        setStep("joined");
-      } else {
-        setOrgName(data.orgName);
-        setStep("consent");
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-org"] });
+      queryClient.invalidateQueries({ queryKey: ["org-stats"] });
+      setStep("joined");
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -146,19 +162,20 @@ function JoinOrgPanel() {
           <p className="text-xs text-muted-foreground mb-4">Your data is anonymised — the organisation sees totals and categories, never individual names or accounts.</p>
           <div className="flex gap-3">
             <button
-              onClick={() => setStep("entry")}
+              onClick={() => { setStep("entry"); setError(null); }}
               className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted/30 transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={() => verifyMutation.mutate(code)}
-              disabled={verifyMutation.isPending}
+              onClick={() => joinMutation.mutate(code)}
+              disabled={joinMutation.isPending}
               className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {verifyMutation.isPending ? "Joining..." : "Yes, join organisation"}
+              {joinMutation.isPending ? "Joining..." : "Yes, join organisation"}
             </button>
           </div>
+          {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
         </div>
       </motion.div>
     );
@@ -181,11 +198,11 @@ function JoinOrgPanel() {
             className="flex-1 px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary"
           />
           <button
-            onClick={() => { if (code.trim()) verifyMutation.mutate(code); }}
-            disabled={!code.trim() || verifyMutation.isPending}
+            onClick={() => { if (code.trim()) validateMutation.mutate(code); }}
+            disabled={!code.trim() || validateMutation.isPending}
             className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {verifyMutation.isPending ? "Checking..." : "Join"}
+            {validateMutation.isPending ? "Checking..." : "Next"}
           </button>
         </div>
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
