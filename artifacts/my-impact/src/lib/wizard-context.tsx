@@ -20,7 +20,6 @@ export const INTEREST_OPTIONS = [
   { id: 'international', label: 'International development', emoji: '🌐', category: 'Community' },
   { id: 'caring', label: 'Caring for family', emoji: '🤲', category: 'Health' },
   { id: 'military', label: 'Military / Forces service', emoji: '🎖️', category: 'Community' },
-  { id: 'career_break', label: 'Career break / Returning to work', emoji: '🔄', category: 'Community' },
 ];
 
 export interface CustomActivityDetail {
@@ -56,6 +55,7 @@ interface WizardState {
   locationMeta: LocationMeta | null;
   interests: string[];
   customInterest: string;
+  careerBreak: boolean;
   input: ImpactInput;
   customActivities: CustomActivityDetail[];
   result: ImpactResult | null;
@@ -67,6 +67,7 @@ interface WizardContextType extends WizardState {
   setLocationMeta: (meta: LocationMeta | null) => void;
   setCustomInterest: (val: string) => void;
   toggleInterest: (interestId: string) => void;
+  setCareerBreak: (val: boolean) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
   removeActivity: (index: number) => void;
@@ -99,6 +100,7 @@ const defaultState: WizardState = {
   locationMeta: null,
   interests: [],
   customInterest: '',
+  careerBreak: false,
   input: defaultInput,
   customActivities: [],
   result: null,
@@ -140,12 +142,18 @@ const WizardContext = createContext<WizardContextType | undefined>(undefined);
 function getInitialState(): { state: WizardState; hasDraft: boolean } {
   const draft = loadDraft();
   if (draft) {
+    const legacyInterests: string[] = draft.interests ?? [];
+    const hadLegacyCareerBreak = legacyInterests.includes('career_break');
+    const sanitizedInterests = legacyInterests.filter(id =>
+      INTEREST_OPTIONS.some(o => o.id === id)
+    );
     return {
       state: {
         location: draft.location ?? '',
         locationMeta: draft.locationMeta ?? null,
-        interests: draft.interests ?? [],
+        interests: sanitizedInterests,
         customInterest: draft.customInterest ?? '',
+        careerBreak: draft.careerBreak ?? hadLegacyCareerBreak,
         input: draft.input ?? defaultInput,
         customActivities: draft.customActivities ?? [],
         result: null,
@@ -165,6 +173,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [locationMeta, setLocationMetaState] = useState<LocationMeta | null>(initialState.locationMeta);
   const [interests, setInterests] = useState<string[]>(initialState.interests);
   const [customInterest, setCustomInterestState] = useState(initialState.customInterest);
+  const [careerBreak, setCareerBreakState] = useState<boolean>(initialState.careerBreak);
   const [input, setInput] = useState<ImpactInput>(initialState.input);
   const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>(initialState.customActivities);
   const [result, setResultState] = useState<ImpactResult | null>(null);
@@ -176,21 +185,22 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (result !== null) return;
-    const hasProgress = !!(location || interests.length > 0 || customInterest ||
+    const hasProgress = !!(location || interests.length > 0 || customInterest || careerBreak ||
       input.activities.length > 0 || input.donationsGBP > 0 ||
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection });
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection });
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
   const setCustomInterest = (val: string) => setCustomInterestState(val);
+  const setCareerBreak = (val: boolean) => setCareerBreakState(val);
 
   const toggleInterest = (interestId: string) => {
     setInterests(prev =>
@@ -230,6 +240,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setLocationMetaState(null);
     setInterests([]);
     setCustomInterestState('');
+    setCareerBreakState(false);
     setInput(defaultInput);
     setCustomActivities([]);
     setResultState(null);
@@ -243,6 +254,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setLocationMetaState(null);
     setInterests([]);
     setCustomInterestState('');
+    setCareerBreakState(false);
     setInput(defaultInput);
     setCustomActivities([]);
     setResultState(null);
@@ -253,8 +265,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection,
-      setLocation, setLocationMeta, setCustomInterest, toggleInterest, updateInput,
+      location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection,
+      setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset,
       clearDraft, hasDraft, setActivitySelection,
     }}>

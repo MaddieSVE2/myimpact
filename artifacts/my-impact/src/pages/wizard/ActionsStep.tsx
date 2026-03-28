@@ -26,9 +26,9 @@ async function lookupPostcode(raw: string) {
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterest,
+    location, interests, customInterest, careerBreak,
     setLocation: setWizardLocation, toggleInterest,
-    setCustomInterest, updateInput, setLocationMeta,
+    setCustomInterest, setCareerBreak, updateInput, setLocationMeta,
     hasDraft, clearDraft,
   } = useWizard();
 
@@ -83,7 +83,7 @@ export default function ActionsStep() {
     setLocation("/wizard/activities");
   };
 
-  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0;
+  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -217,6 +217,42 @@ export default function ActionsStep() {
               />
             </motion.div>
           )}
+        </div>
+
+        {/* Career break checkbox */}
+        <div className="pt-4 border-t border-border">
+          <label className="flex items-start gap-3 cursor-pointer select-none group">
+            <div className="relative mt-0.5 shrink-0">
+              <input
+                type="checkbox"
+                checked={careerBreak}
+                onChange={e => setCareerBreak(e.target.checked)}
+                className="sr-only"
+              />
+              <div
+                className={cn(
+                  "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+                  careerBreak
+                    ? "bg-primary border-primary"
+                    : "bg-white border-border group-hover:border-primary/50"
+                )}
+              >
+                {careerBreak && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground leading-snug">
+                I'm currently on a career break / returning to work
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                We'll highlight how your activities build transferable skills and help you frame this period on your CV.
+              </p>
+            </div>
+          </label>
         </div>
 
         <div className="flex justify-end pt-6">

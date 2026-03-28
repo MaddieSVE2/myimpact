@@ -727,7 +727,7 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
   );
 }
 
-function generateCVText(result: any, interests: string[] = []): string {
+function generateCVText(result: any, interests: string[] = [], careerBreak = false): string {
   const skills = deriveSkills(result.activityBreakdowns);
   const activityNames: string[] = result.activityBreakdowns.map((b: any) => b.activityName);
   const hoursRounded = Math.round(result.totalHours);
@@ -758,7 +758,7 @@ function generateCVText(result: any, interests: string[] = []): string {
     skillText = `${restSkills.join(", ")} and ${lastSkill}`;
   }
 
-  const isCareerBreak = interests.includes('career_break');
+  const isCareerBreak = careerBreak;
   const isMilitary = interests.includes('military');
 
   if (isCareerBreak) {
@@ -790,9 +790,9 @@ const CAREER_BREAK_TRANSFERABLE_SKILLS = [
   { emoji: "🏃", name: "Resilience" },
 ];
 
-function PersonaTransferableSkills({ interests }: { interests: string[] }) {
+function PersonaTransferableSkills({ interests, careerBreak }: { interests: string[]; careerBreak: boolean }) {
   const isMilitary = interests.includes('military');
-  const isCareerBreak = interests.includes('career_break');
+  const isCareerBreak = careerBreak;
   if (!isMilitary && !isCareerBreak) return null;
 
   return (
@@ -867,7 +867,7 @@ function PersonaTransferableSkills({ interests }: { interests: string[] }) {
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta, interests } = useWizard();
+  const { result, input, locationMeta, interests, careerBreak } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
@@ -1288,7 +1288,7 @@ export default function Results() {
       )}
 
       {/* Persona-specific transferable skills */}
-      <PersonaTransferableSkills interests={interests} />
+      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} />
 
       {/* Duke of Edinburgh panel */}
       <DofEPanel breakdowns={result.activityBreakdowns} />
@@ -1314,13 +1314,13 @@ export default function Results() {
             </p>
             <textarea
               readOnly
-              value={generateCVText(result, interests)}
+              value={generateCVText(result, interests, careerBreak)}
               rows={5}
               className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
             />
             <button
               onClick={() => {
-                navigator.clipboard.writeText(generateCVText(result, interests)).then(() => {
+                navigator.clipboard.writeText(generateCVText(result, interests, careerBreak)).then(() => {
                   setStatementCopied(true);
                   setTimeout(() => setStatementCopied(false), 2500);
                 }).catch(() => {

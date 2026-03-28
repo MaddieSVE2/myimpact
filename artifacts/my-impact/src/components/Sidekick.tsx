@@ -94,7 +94,7 @@ export function Sidekick() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { result, interests } = useWizard();
+  const { result, interests, careerBreak } = useWizard();
   const [location] = useLocation();
 
   const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
@@ -105,7 +105,7 @@ export function Sidekick() {
         extras.push("Help me translate my forces service into CV bullet points");
         extras.push("How do I explain my military background to a civilian employer?");
       }
-      if (interests.includes("career_break")) {
+      if (careerBreak) {
         extras.push("Help me write about my career break on my CV positively");
         extras.push("Draft an interview answer about my gap in employment");
       }

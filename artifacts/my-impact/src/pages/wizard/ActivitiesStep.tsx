@@ -52,7 +52,7 @@ type ActivityMode = "pick" | "describe";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
+  const { input, interests, careerBreak, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -167,7 +167,7 @@ export default function ActivitiesStep() {
       boosted.add('employability_coaching');
       boosted.add('job_club');
     }
-    if (interests.includes('career_break')) {
+    if (careerBreak) {
       boosted.add('career_break_childcare');
       boosted.add('career_break_eldercare');
       boosted.add('career_break_school_liaison');
@@ -178,7 +178,7 @@ export default function ActivitiesStep() {
       boosted.add('helping_neighbours');
     }
     return boosted;
-  }, [interests]);
+  }, [interests, careerBreak]);
 
   const sortedActivities = useMemo(() => {
     if (!data) return [];
