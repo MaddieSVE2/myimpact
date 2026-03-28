@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, MapPin, Lightbulb, GraduationCap } from "lucide-react";
+import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, MapPin, Lightbulb, GraduationCap, Briefcase } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -67,6 +67,18 @@ const DEMO = {
     "The top 10% of contributors generate 34% of total social value, typical for a youth charity of this size.",
     "Member engagement has grown 38% since January, driven largely by the new community garden programme.",
   ],
+  volunteerProgression: {
+    membersWithEmployabilitySkills: 34,
+    pctWithEmployabilitySkills: 72,
+    topEmployabilitySkills: [
+      { skill: "Teamwork", pct: 72 },
+      { skill: "Communication", pct: 65 },
+      { skill: "Leadership", pct: 31 },
+      { skill: "Problem solving", pct: 48 },
+    ],
+    membersWithMultipleRoles: 18,
+    avgMonthsActive: 14,
+  },
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -294,6 +306,60 @@ export default function OrgDemoDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Volunteer Progression */}
+        <div className="bg-white border border-border rounded-xl p-6">
+          <SectionLabel>Volunteer progression</SectionLabel>
+          <SectionTitle>Employability evidence your members are building</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">
+            Beyond the collective social value figure, every volunteer is building a personal My Impact record — portable proof of their contribution that goes far beyond what any reference letter can say.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 text-center">
+              <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-1">With employment-relevant skills</p>
+              <p className="text-3xl font-display font-bold text-primary">{DEMO.volunteerProgression.pctWithEmployabilitySkills}%</p>
+              <p className="text-xs text-muted-foreground mt-1">{DEMO.volunteerProgression.membersWithEmployabilitySkills} of {DEMO.headline.activeMembers} active members</p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-4 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">With multiple roles</p>
+              <p className="text-3xl font-display font-bold text-foreground">{DEMO.volunteerProgression.membersWithMultipleRoles}</p>
+              <p className="text-xs text-muted-foreground mt-1">members evidencing 2+ activity types</p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-4 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Avg. months active</p>
+              <p className="text-3xl font-display font-bold text-foreground">{DEMO.volunteerProgression.avgMonthsActive}</p>
+              <p className="text-xs text-muted-foreground mt-1">sustained engagement per member</p>
+            </div>
+          </div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Top employment-relevant skills evidenced</p>
+          <div className="grid sm:grid-cols-2 gap-3 mb-5">
+            {DEMO.volunteerProgression.topEmployabilitySkills.map(s => (
+              <div key={s.skill} className="flex items-center gap-3">
+                <div className="shrink-0">
+                  <Briefcase className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium text-foreground">{s.skill}</p>
+                    <p className="text-sm font-bold text-primary">{s.pct}%</p>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/60" style={{ width: `${s.pct}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+            <Briefcase className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 mb-1">Better than a reference letter</p>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                Each volunteer's My Impact record shows calculated social value, logged hours, and evidenced skills — something they can share directly with employers or include in applications. Your organisation's investment in their development becomes visible, measurable proof rather than an unsupported claim.
+              </p>
+            </div>
           </div>
         </div>
 
