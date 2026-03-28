@@ -11,7 +11,6 @@ const DEMO = {
   org: { name: "Riverside Youth Trust", type: "Charity", location: "North West, England" },
   headline: {
     totalSocialValue: 184320,
-    sroi: 6.3,
     members: 47,
     activeMembers: 32,
     totalHours: 2340,
@@ -100,6 +99,8 @@ function StatCard({ icon: Icon, label, value, sub, highlight }: {
 export default function OrgDemoDashboard() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
+  const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
+  const socialValuePerHourFormatted = `£${socialValuePerHour.toLocaleString("en-GB")} per hour`;
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -137,7 +138,7 @@ export default function OrgDemoDashboard() {
         {/* Headline stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard icon={TrendingUp} label="Total social value" value={formatCurrency(DEMO.headline.totalSocialValue)} highlight />
-          <StatCard icon={BarChart2} label="SROI ratio" value={`${DEMO.headline.sroi}:1`} sub="£ returned per £1 of time" />
+          <StatCard icon={BarChart2} label="Social value per hour" value={socialValuePerHourFormatted} sub="of volunteer time invested" />
           <StatCard icon={Users} label="Members" value={String(DEMO.headline.members)} sub={`${DEMO.headline.activeMembers} with saved records`} />
           <StatCard icon={Clock} label="Total hours given" value={DEMO.headline.totalHours.toLocaleString("en-GB")} sub="volunteering hours" />
         </div>
@@ -151,13 +152,13 @@ export default function OrgDemoDashboard() {
                 Social Return on Investment (SROI) measures how much social value is created relative to the resources invested. For Riverside Youth Trust, members contributed a combined <strong className="text-foreground">{DEMO.headline.totalHours.toLocaleString("en-GB")} volunteer hours</strong> over the year. Valued at the Real Living Wage (£12.60/hr), this represents an input of around <strong className="text-foreground">£29,500</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Against a total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong>, that gives an SROI ratio of <strong className="text-foreground">{DEMO.headline.sroi}:1</strong> — meaning for every £1 of member time, <strong className="text-foreground">£{DEMO.headline.sroi} of social value</strong> is created in the community.
+                Against a total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong>, that works out to <strong className="text-foreground">£{socialValuePerHour.toLocaleString("en-GB")} of social value for every volunteer hour</strong> — a powerful way to show funders and stakeholders the real-world impact of member time.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/30 rounded-xl p-4 text-center">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Per volunteer hour</p>
-                <p className="text-3xl font-display font-bold text-primary">£79</p>
+                <p className="text-3xl font-display font-bold text-primary">£{socialValuePerHour.toLocaleString("en-GB")}</p>
                 <p className="text-xs text-muted-foreground mt-1">social value created</p>
               </div>
               <div className="bg-muted/30 rounded-xl p-4 text-center">
@@ -172,8 +173,8 @@ export default function OrgDemoDashboard() {
               </div>
               <div className="bg-primary/10 rounded-xl p-4 text-center">
                 <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-1">SROI</p>
-                <p className="text-3xl font-display font-bold text-primary">{DEMO.headline.sroi}:1</p>
-                <p className="text-xs text-primary/70 mt-1">return on time invested</p>
+                <p className="text-3xl font-display font-bold text-primary">£{socialValuePerHour.toLocaleString("en-GB")}<span className="text-lg font-semibold">/hr</span></p>
+                <p className="text-xs text-primary/70 mt-1">social value per hour</p>
               </div>
             </div>
           </div>
