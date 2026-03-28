@@ -122,31 +122,25 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
   );
 }
 
-const triSlideVariants = {
-  enter: (d: number) => ({ x: d > 0 ? "105%" : "-105%", opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (d: number) => ({ x: d > 0 ? "-105%" : "105%", opacity: 0 }),
-};
-
 function TestimonialsCarousel() {
   const [current, setCurrent] = useState(0);
-  const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
   const n = TESTIMONIALS.length;
 
-  const go = (dir: 1 | -1) => {
-    setDirection(dir);
-    setCurrent(c => (c + dir + n) % n);
-  };
+  const go = (dir: 1 | -1) => setCurrent(c => (c + dir + n) % n);
 
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => { setDirection(1); setCurrent(c => (c + 1) % n); }, 5500);
+    const t = setInterval(() => go(1), 5500);
     return () => clearInterval(t);
   }, [paused]);
 
-  const prevIdx = (current - 1 + n) % n;
-  const nextIdx = (current + 1) % n;
+  // Compute each card's offset from the center, normalised to [-floor(n/2), floor(n/2)]
+  const getOffset = (i: number): number => {
+    let off = ((i - current) % n + n) % n;
+    if (off > Math.floor(n / 2)) off -= n;
+    return off;
+  };
 
   const arrowStyle: React.CSSProperties = {
     position: "absolute", top: "50%", transform: "translateY(-50%)",
@@ -163,49 +157,43 @@ function TestimonialsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Clipping container — hides the slide animation overflow */}
-      <div style={{ overflow: "hidden", borderRadius: 20 }}>
-        <AnimatePresence custom={direction} mode="wait">
-          <motion.div
-            key={current}
-            custom={direction}
-            variants={triSlideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
-            style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: 16, alignItems: "stretch" }}
-          >
-            {/* Left faded preview — click to go back */}
-            <div
-              style={{ opacity: 0.28, cursor: "pointer", transition: "opacity 0.2s" }}
-              onClick={() => go(-1)}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.45"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.28"; }}
-            >
-              <TestimonialCard s={TESTIMONIALS[prevIdx]} />
-            </div>
+      {/* Overflow clip — cards slide individually, not as a group */}
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        {/* Phantom centre card — establishes container height, never seen */}
+        <div style={{ visibility: "hidden", width: "33.33%", margin: "0 33.33%", pointerEvents: "none" }} aria-hidden="true">
+          <TestimonialCard s={TESTIMONIALS[current]} />
+        </div>
 
-            {/* Centre card — full opacity */}
-            <TestimonialCard s={TESTIMONIALS[current]} />
-
-            {/* Right faded preview — click to go forward */}
-            <div
-              style={{ opacity: 0.28, cursor: "pointer", transition: "opacity 0.2s" }}
-              onClick={() => go(1)}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.45"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.28"; }}
+        {/* Each card has a stable key = its data index.
+            It animates its own x/opacity when current changes. */}
+        {TESTIMONIALS.map((s, i) => {
+          const offset = getOffset(i);
+          const isCenter = offset === 0;
+          const isSide   = Math.abs(offset) === 1;
+          return (
+            <motion.div
+              key={i}
+              animate={{
+                x: `${offset * 100}%`,
+                opacity: isCenter ? 1 : isSide ? 0.28 : 0,
+              }}
+              transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
+              onClick={() => { if (offset === 1) go(1); if (offset === -1) go(-1); }}
+              style={{
+                position: "absolute", top: 0, height: "100%",
+                left: "33.33%", width: "33.33%",
+                cursor: isSide ? "pointer" : "default",
+              }}
             >
-              <TestimonialCard s={TESTIMONIALS[nextIdx]} />
-            </div>
-          </motion.div>
-        </AnimatePresence>
+              <TestimonialCard s={s} />
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Arrows */}
       <button
-        onClick={() => go(-1)}
-        aria-label="Previous"
+        onClick={() => go(-1)} aria-label="Previous"
         style={{ ...arrowStyle, left: -18 }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
@@ -213,8 +201,7 @@ function TestimonialsCarousel() {
         <ChevronLeft size={17} />
       </button>
       <button
-        onClick={() => go(1)}
-        aria-label="Next"
+        onClick={() => go(1)} aria-label="Next"
         style={{ ...arrowStyle, right: -18 }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
@@ -227,7 +214,7 @@ function TestimonialsCarousel() {
         {TESTIMONIALS.map((_, i) => (
           <button
             key={i}
-            onClick={() => { setDirection(i > current ? 1 : -1); setCurrent(i); }}
+            onClick={() => setCurrent(i)}
             aria-label={`Go to story ${i + 1}`}
             style={{
               width: i === current ? 20 : 6, height: 6, borderRadius: 3,
