@@ -289,15 +289,20 @@ export function Navbar() {
             ) : (
               <>
                 {/* High contrast toggle — desktop, logged-out (icon only) */}
-                <button
-                  onClick={toggleTheme}
-                  className="hidden lg:flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10"
-                  style={{ color: "white" }}
-                  aria-pressed={isHighContrast}
-                  aria-label={isHighContrast ? "Switch to standard contrast" : "Switch to high contrast"}
-                >
-                  <Eye className="w-4 h-4" aria-hidden="true" />
-                </button>
+                <div className="relative hidden lg:block group">
+                  <button
+                    onClick={toggleTheme}
+                    className="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10"
+                    style={{ color: "white" }}
+                    aria-pressed={isHighContrast}
+                    aria-label={isHighContrast ? "Switch to standard contrast" : "Switch to high contrast"}
+                  >
+                    <Eye className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background shadow-md">
+                    {isHighContrast ? "Standard contrast" : "High contrast mode"}
+                  </div>
+                </div>
                 <Link
                   href="/login"
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
