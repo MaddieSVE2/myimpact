@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { useGetSuggestions } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface LocalPlace {
@@ -20,7 +20,7 @@ interface TileLocalState {
 }
 
 export default function Suggestions() {
-  const { input, interests, location } = useWizard();
+  const { input, interests, location, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
 
   // Per-tile local state: activityId → TileLocalState
@@ -91,13 +91,13 @@ export default function Suggestions() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium text-primary uppercase tracking-widest">Personalised for you</span>
+          <span className="text-xs font-medium text-primary uppercase tracking-widest">Ideas for you</span>
         </div>
-        <h1 className="text-2xl font-display font-semibold text-foreground mb-2">Ideas to boost your impact</h1>
+        <h1 className="text-2xl font-display font-semibold text-foreground mb-2">What difference could you make?</h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {interestLabels.length > 0
-            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering next year.</>
-            : <>Here are some of the most impactful activities you could add next year.</>
+            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering — each with an estimated social value.</>
+            : <>Not sure where to start? Here are some of the most impactful things you could do, with the social value each one creates.</>
           }
         </p>
       </div>
@@ -250,12 +250,27 @@ export default function Suggestions() {
         </motion.div>
       )}
 
-      <div className="mt-6 flex justify-start">
+      <div className="mt-6 flex items-center gap-4">
+        {result ? (
+          <Link
+            href="/results"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to my impact
+          </Link>
+        ) : (
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Home className="w-3.5 h-3.5" /> Back to home
+          </Link>
+        )}
         <Link
-          href="/results"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          href="/wizard/actions"
+          className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to my impact
+          Calculate my actual impact <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
     </div>

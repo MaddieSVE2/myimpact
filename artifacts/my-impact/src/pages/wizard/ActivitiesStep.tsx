@@ -89,6 +89,8 @@ export default function ActivitiesStep() {
     if (interests.includes('older_people') || interests.includes('caring')) {
       boosted.add('family_caring');
       boosted.add('elderly_visiting');
+      boosted.add('helping_neighbours');
+      boosted.add('befriending');
     }
     if (interests.includes('sport')) {
       boosted.add('sports_coaching');
@@ -96,6 +98,16 @@ export default function ActivitiesStep() {
     if (interests.includes('community')) {
       boosted.add('community_garden');
       boosted.add('food_bank');
+      boosted.add('helping_neighbours');
+    }
+    if (interests.includes('young_people') || interests.includes('education')) {
+      boosted.add('dofe_bronze');
+      boosted.add('dofe_silver');
+      boosted.add('dofe_gold');
+      boosted.add('school_fundraising');
+    }
+    if (interests.includes('community') || interests.includes('employment') || interests.includes('education')) {
+      boosted.add('job_club');
     }
     return boosted;
   }, [interests]);
@@ -294,6 +306,16 @@ export default function ActivitiesStep() {
                     </button>
                   )}
 
+                  {/* Zero-state encouragement */}
+                  {selectedIds.size === 0 && customActivities.length === 0 && !isLoading && (
+                    <div className="mb-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/15">
+                      <p className="text-sm text-foreground font-medium mb-0.5">Nothing ticked yet? That's okay.</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        You can still see your potential impact and find ideas near you. Or use the custom builder below to describe what you do.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Custom activity */}
                   <div className="border-t border-border pt-4 mt-2">
                     {!showCustom ? (
@@ -302,7 +324,7 @@ export default function ActivitiesStep() {
                         className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/4 transition-all"
                       >
                         <PenLine className="w-4 h-4" />
-                        Do something that isn't listed? Add it here
+                        Don't see yours? Describe it here
                       </button>
                     ) : (
                       <motion.div

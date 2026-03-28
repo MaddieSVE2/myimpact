@@ -107,7 +107,7 @@ export default function Intro() {
             style={{
               fontSize: "clamp(42px, 7vw, 78px)",
               fontWeight: 900, color: "white",
-              lineHeight: 1.05, marginBottom: 24, letterSpacing: -2,
+              lineHeight: 1.05, marginBottom: 16, letterSpacing: -2,
             }}
           >
             You already make a difference.<br />
@@ -115,15 +115,35 @@ export default function Intro() {
             <span style={{ color: C.orange, fontStyle: "italic" }}>prove it.</span>
           </h1>
 
+          <p style={{ fontSize: "clamp(15px, 1.5vw, 17px)", color: "rgba(255,255,255,0.5)", lineHeight: 1.5, maxWidth: 480, marginBottom: 24, fontStyle: "italic" }}>
+            Or find out what difference you <em>could</em> make.
+          </p>
+
           <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 40 }}>
             Every time you volunteer, help someone, or show up for your community, you create{" "}
             <strong style={{ color: "rgba(255,255,255,0.9)" }}>real social value</strong>. My Impact calculates what that's worth —{" "}
             <strong style={{ color: "rgba(255,255,255,0.9)" }}>in pounds</strong> — so you can finally see the difference you make.
           </p>
 
-          <Link href="/wizard/actions" className="mi-btn-hero">
-            Calculate my impact →
-          </Link>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
+            <Link href="/wizard/actions" className="mi-btn-hero">
+              Calculate my impact →
+            </Link>
+            <Link
+              href="/suggestions"
+              style={{
+                color: "rgba(255,255,255,0.75)",
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: "none",
+                borderBottom: "1px solid rgba(255,255,255,0.3)",
+                paddingBottom: 2,
+                transition: "color 0.2s",
+              }}
+            >
+              Not sure where to start? See what you could do →
+            </Link>
+          </div>
         </div>
 
         <div className="mi-scroll-hint">

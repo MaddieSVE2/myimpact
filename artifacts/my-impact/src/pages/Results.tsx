@@ -150,6 +150,13 @@ const ACTIVITY_SKILLS: Record<string, { emoji: string; name: string }[]> = {
   charity_books:       [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
   charity_shop_bags:   [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
   fundraising:         [{ emoji: "🗣️", name: "Communication" }, { emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }],
+  helping_neighbours:  [{ emoji: "❤️", name: "Empathy" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "🏃", name: "Resilience" }],
+  befriending:         [{ emoji: "❤️", name: "Empathy" }, { emoji: "👂", name: "Active listening" }, { emoji: "🗣️", name: "Communication" }],
+  dofe_bronze:         [{ emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "🏃", name: "Resilience" }, { emoji: "💡", name: "Initiative" }],
+  dofe_silver:         [{ emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "🏃", name: "Resilience" }, { emoji: "💡", name: "Initiative" }],
+  dofe_gold:           [{ emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "🏃", name: "Resilience" }, { emoji: "💡", name: "Initiative" }, { emoji: "🗣️", name: "Communication" }],
+  school_fundraising:  [{ emoji: "🗣️", name: "Communication" }, { emoji: "🎯", name: "Leadership" }, { emoji: "📋", name: "Organisation" }],
+  job_club:            [{ emoji: "🎯", name: "Leadership" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "💡", name: "Problem-solving" }],
   veterans_breakfast:  [{ emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }],
   wildlife_trust:      [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🔬", name: "Research skills" }],
   // By category fallbacks
@@ -416,6 +423,7 @@ export default function Results() {
   const [chosenPeriod, setChosenPeriod] = useState("");
   const [customPeriod, setCustomPeriod] = useState("");
   const [cvCopied, setCvCopied] = useState(false);
+  const [ucasCopied, setUcasCopied] = useState(false);
 
   // Compute period presets from today's date
   const now = new Date();
@@ -726,43 +734,126 @@ export default function Results() {
         <ProxyMethodology breakdowns={result.activityBreakdowns} />
       )}
 
-      {/* CV & applications statement */}
+      {/* Use case sections */}
       <motion.div
-        className="mb-4 bg-white border border-border rounded-xl overflow-hidden"
+        className="mb-4 space-y-3"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.22 }}
       >
-        <div className="px-5 pt-5 pb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Clipboard className="w-4 h-4 shrink-0" style={{ color: "#3b82f6" }} aria-hidden="true" />
-            <p className="text-xs text-muted-foreground font-medium">Use this in your CV or application</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Use your impact</p>
+
+        {/* UCAS Personal Statement */}
+        <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-4 h-4 shrink-0" style={{ color: "#C5192D" }} aria-hidden="true" />
+              <p className="text-sm font-semibold text-foreground">UCAS Personal Statement</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              Use this paragraph in your UCAS application to show universities the real-world difference you make. Copy it and adapt it to fit your statement.
+            </p>
+            <textarea
+              readOnly
+              value={generateCVText(result)}
+              rows={5}
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(generateCVText(result)).then(() => {
+                  setUcasCopied(true);
+                  setTimeout(() => setUcasCopied(false), 2500);
+                }).catch(() => {
+                  toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
+                });
+              }}
+              className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
+            >
+              {ucasCopied
+                ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
+                : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy for UCAS</>
+              }
+            </button>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-            A ready-to-use paragraph for job applications, university personal statements, or cover letters — based on your actual impact.
-          </p>
-          <textarea
-            readOnly
-            value={generateCVText(result)}
-            rows={5}
-            className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
-          />
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(generateCVText(result)).then(() => {
-                setCvCopied(true);
-                setTimeout(() => setCvCopied(false), 2500);
-              }).catch(() => {
-                toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
-              });
-            }}
-            className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
-          >
-            {cvCopied
-              ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
-              : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy paragraph</>
-            }
-          </button>
+        </div>
+
+        {/* CV / Job Application */}
+        <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clipboard className="w-4 h-4 shrink-0" style={{ color: "#3b82f6" }} aria-hidden="true" />
+              <p className="text-sm font-semibold text-foreground">CV / Job Application</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              Add this to your CV or covering letter. Employers value quantified impact — this gives you a verified, specific number to stand behind.
+            </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(generateCVText(result)).then(() => {
+                  setCvCopied(true);
+                  setTimeout(() => setCvCopied(false), 2500);
+                }).catch(() => {
+                  toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
+                });
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
+            >
+              {cvCopied
+                ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
+                : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy for CV</>
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* Share Your Impact */}
+        <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Share2 className="w-4 h-4 shrink-0" style={{ color: "#E8633A" }} aria-hidden="true" />
+              <p className="text-sm font-semibold text-foreground">Share Your Impact</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              Download a shareable impact card or post to social media — show the world what your time and effort is worth.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleExportPNG}
+                disabled={exporting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                {exporting ? "Exporting…" : "Download PNG card"}
+              </button>
+              <button
+                onClick={handleNativeShare}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
+              >
+                <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> Share
+              </button>
+            </div>
+            {shareOpen && (
+              <div className="mt-2 bg-white border border-border rounded-lg shadow-sm py-1 min-w-[160px] z-50 inline-block">
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+                >
+                  <Twitter className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" /> Share on X
+                </a>
+                <a
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+                >
+                  <Linkedin className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" /> Share on LinkedIn
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 
