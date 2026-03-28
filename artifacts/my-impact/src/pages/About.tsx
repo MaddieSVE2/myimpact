@@ -157,7 +157,7 @@ export default function About() {
                 >
                   Social Value Engine
                 </a>
-                {" "}, the UK's leading platform for SROI-accredited social value data. Their values are research-backed, regularly updated, and used by charities, government bodies, and businesses across the UK.
+                {" "}, the UK's accredited platform for social value measurement. Their values are research-backed, regularly updated, and used by charities, government bodies, and businesses across the UK.
               </p>
               <a
                 href="https://www.socialvalueengine.com"
@@ -243,38 +243,6 @@ export default function About() {
         </FadeIn>
       </section>
 
-      {/* ── WHO IT'S FOR ── */}
-      <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <FadeIn>
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>Who it's for</p>
-            <h2
-              className="mi-fraunces"
-              style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 28, letterSpacing: -0.5 }}
-            >
-              Anyone who gives more than they're given credit for.
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
-              {[
-                { title: "Volunteers", detail: "See the monetary equivalent of the time you give to causes you care about." },
-                { title: "Carers", detail: "Recognise the true value of the support you provide to family or others." },
-                { title: "Community leaders", detail: "Quantify the collective impact of your groups and initiatives." },
-                { title: "Environmentally conscious citizens", detail: "Measure the value of your sustainable choices and everyday green actions." },
-              ].map(({ title, detail }) => (
-                <div key={title} style={{
-                  background: "white",
-                  borderRadius: 12,
-                  padding: "clamp(18px, 2.5vw, 28px)",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-                }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{title}</p>
-                  <p style={{ fontSize: 14, color: "var(--brand-muted-text)", lineHeight: 1.6 }}>{detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeIn>
-      </section>
 
       {/* ── CTA ── */}
       <section style={{
