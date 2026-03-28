@@ -500,7 +500,7 @@ export default function Intro() {
               </Link>
               <OrgDemoButton className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: "rgba(255,255,255,0.7)" } as React.CSSProperties} />
               <Link
-                href="/org"
+                href="/login?next=%2Forg"
                 style={{
                   color: "rgba(255,255,255,0.4)",
                   fontSize: 13,
@@ -546,7 +546,7 @@ export default function Intro() {
             <a key={l} href="#" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>{l}</a>
           ))}
           <Link href="/org/register" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Register your organisation</Link>
-          <Link href="/org" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
+          <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
         </div>
         <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
           Powered by Social Value Engine methodology · UK data centres
