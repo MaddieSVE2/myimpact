@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, magicTokensTable } from "@workspace/db";
+import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
@@ -176,6 +176,11 @@ router.post("/confirm", async (req, res) => {
   res.json({ ok: true, user: { id: user.id, email: user.email } });
 });
 
+const DEMO_ORG_ID = "demo-org-0000000000000";
+const DEMO_ORG_NAME = "Demo Organisation";
+const DEMO_ORG_TYPE = "corporate";
+const DEMO_INVITE_CODE = "DEMO-0000";
+
 router.post("/demo-login", async (req, res) => {
   const { email } = req.body;
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -195,6 +200,27 @@ router.post("/demo-login", async (req, res) => {
       .values({ id: randomBytes(12).toString("hex"), email: normalizedEmail })
       .returning();
     user = created;
+  }
+
+  const existingOrg = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, DEMO_ORG_ID),
+  });
+
+  if (!existingOrg) {
+    await db.insert(organisationsTable).values({
+      id: DEMO_ORG_ID,
+      name: DEMO_ORG_NAME,
+      type: DEMO_ORG_TYPE,
+      inviteCode: DEMO_INVITE_CODE,
+    }).onConflictDoNothing();
+  }
+
+  const existingMembership = await db.query.orgMembersTable.findFirst({
+    where: (t, { and }) => and(eq(t.orgId, DEMO_ORG_ID), eq(t.userId, user!.id)),
+  });
+
+  if (!existingMembership) {
+    await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id }).onConflictDoNothing();
   }
 
   issueSession(res, user);

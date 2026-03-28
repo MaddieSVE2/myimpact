@@ -38,7 +38,7 @@ export default function Login() {
     try {
       if (normalizedEmail === DEMO_EMAIL) {
         await demoLogin(normalizedEmail);
-        navigate(postLoginTo ?? "/");
+        navigate(postLoginTo ?? "/org");
       } else {
         await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
         setSent(true);
