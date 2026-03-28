@@ -235,11 +235,14 @@ export function Sidekick() {
         ) : (
           <div
             onClick={() => setOpen(true)}
-            className="flex-1 flex items-center justify-center cursor-pointer hover:bg-[#E8633A] transition-colors pt-16 select-none group"
+            className="flex-1 flex items-center justify-center cursor-pointer transition-colors pt-16 select-none group"
+            style={{ backgroundColor: "#F06127" }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#fff")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#F06127")}
             title="Open Sidekick AI"
           >
             <span
-              className="text-[11px] font-semibold text-muted-foreground group-hover:text-white tracking-[1.5px] uppercase transition-colors"
+              className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[#F06127]"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
             >
               SIDEKICK
