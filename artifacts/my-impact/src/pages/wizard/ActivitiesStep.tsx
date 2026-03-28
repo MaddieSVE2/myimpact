@@ -216,7 +216,7 @@ export default function ActivitiesStep() {
       setAnalysed(data);
       setCustomQuantity(data.defaultQuantity);
     } catch {
-      setAnalyseError("Couldn't analyse that activity — try a different description.");
+      setAnalyseError("Couldn't analyse that activity. Try a different description.");
     } finally {
       setAnalysing(false);
     }
@@ -270,7 +270,7 @@ export default function ActivitiesStep() {
                 Which of these do you already do?
               </h2>
               <p className="text-sm text-muted-foreground mb-5">
-                Tick everything that applies — don't worry about the details yet.
+                Tick everything that applies. Don't worry about the details yet.
                 {preferredCategories.size > 0 && (
                   <span className="text-primary"> Your interests are shown first.</span>
                 )}
@@ -435,7 +435,7 @@ export default function ActivitiesStep() {
                             )}
 
                             {!analysed.proxyMatch && (
-                              <p className="text-xs text-muted-foreground italic">No proxy match found — this activity will count towards your volunteer hours.</p>
+                              <p className="text-xs text-muted-foreground italic">No proxy match found. This activity will count towards your volunteer hours.</p>
                             )}
 
                             {analysed.sdgHint && (
@@ -510,7 +510,7 @@ export default function ActivitiesStep() {
               >
                 {selectedIds.size === 0 && customActivities.length === 0
                   ? "Skip"
-                  : `Next — ${selectedIds.size + customActivities.length} selected`}
+                  : `Next: ${selectedIds.size + customActivities.length} selected`}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

@@ -96,7 +96,7 @@ export default function Suggestions() {
         <h1 className="text-2xl font-display font-semibold text-foreground mb-2">What difference could you make?</h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {interestLabels.length > 0
-            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering — each with an estimated social value.</>
+            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering, each with an estimated social value.</>
             : <>Not sure where to start? Here are some of the most impactful things you could do, with the social value each one creates.</>
           }
         </p>
@@ -198,7 +198,7 @@ export default function Suggestions() {
                           </div>
                         ) : local?.places.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">
-                            No specific local groups found — try searching online for "{sug.activityName} {location}".
+                            No specific local groups found. Try searching online for "{sug.activityName} {location}".
                           </p>
                         ) : (
                           local.places.map((place, pi) => (
@@ -220,7 +220,7 @@ export default function Suggestions() {
                           ))
                         )}
 
-                        <p className="text-[10px] text-muted-foreground/60 pt-1">AI-suggested — always verify before contacting.</p>
+                        <p className="text-[10px] text-muted-foreground/60 pt-1">AI-suggested. Always verify before contacting.</p>
                       </div>
                     </motion.div>
                   )}

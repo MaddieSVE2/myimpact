@@ -117,8 +117,7 @@ export default function Intro() {
 
           <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 40 }}>
             Every time you volunteer, help someone, or show up for your community, you create{" "}
-            <strong style={{ color: "rgba(255,255,255,0.9)" }}>real social value</strong>. My Impact calculates what that's worth —{" "}
-            <strong style={{ color: "rgba(255,255,255,0.9)" }}>in pounds</strong> — so you can finally see the difference you make.
+            <strong style={{ color: "rgba(255,255,255,0.9)" }}>real social value</strong>. My Impact calculates what that's worth, in pounds, so you can finally see the difference you make.
           </p>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
@@ -231,7 +230,7 @@ export default function Intro() {
               {
                 name: "Aisha",
                 age: "21, Glasgow",
-                quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that — I could finally put a number on the pride, engagement, and connection we were creating.",
+                quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that. I could finally put a number on the pride, engagement, and connection we were creating.",
                 value: "£4,230",
                 what: "Community art project, 6 months",
               },
@@ -252,14 +251,14 @@ export default function Intro() {
               {
                 name: "Marcus",
                 age: "38, Catterick",
-                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
+                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact helped me put it in plain language: not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
                 value: "£11,240",
                 what: "Forces leaver, 14 years' service",
               },
               {
                 name: "Priya",
                 age: "44, Bristol",
-                quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent — I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
+                quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent. I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
                 value: "£9,610",
                 what: "Career break returner, 8 years",
               },
@@ -344,7 +343,7 @@ export default function Intro() {
               See the value your people create.
             </h2>
             <p className="mi-orgs-intro-text" style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
-              Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data — ready for reporting, funding bids, and programme evaluation.
+              Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data, ready for reporting, funding bids, and programme evaluation.
             </p>
           </FadeIn>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, alignItems: "stretch" }}>

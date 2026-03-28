@@ -62,9 +62,9 @@ const DEMO = {
     { skill: "Digital skills", pct: 18 },
   ],
   insights: [
-    "68% of members recycle or compost regularly — the highest-participation activity across the group.",
+    "68% of members recycle or compost regularly, the highest-participation activity across the group.",
     "Youth mentoring produces the highest social value per hour at £97.50, making it the most impactful use of member time.",
-    "The top 10% of contributors generate 34% of total social value — typical for a youth charity of this size.",
+    "The top 10% of contributors generate 34% of total social value, typical for a youth charity of this size.",
     "Member engagement has grown 38% since January, driven largely by the new community garden programme.",
   ],
 };
@@ -127,7 +127,7 @@ export default function OrgDemoDashboard() {
               <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold uppercase tracking-wide">Example · {DEMO.org.type}</span>
               <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[11px] font-semibold">Demo data</span>
             </div>
-            <h1 className="text-3xl font-display font-bold text-foreground leading-tight">{DEMO.org.name} — Example Dashboard</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground leading-tight">{DEMO.org.name}: Example Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" /> {DEMO.org.location}
             </p>
@@ -152,10 +152,10 @@ export default function OrgDemoDashboard() {
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Riverside Youth Trust, the estimated organisational investment — covering volunteer finding, onboarding, ongoing support, and administrative overhead — is around <strong className="text-foreground">£{orgCostPerVolunteer} per volunteer</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
+                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Riverside Youth Trust, the estimated organisational investment (covering volunteer finding, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per volunteer</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong> — meaning for every <strong className="text-foreground">£1</strong> Riverside Youth Trust invested in its volunteers, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
+                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Riverside Youth Trust invested in its volunteers, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -255,7 +255,7 @@ export default function OrgDemoDashboard() {
         <div className="bg-white border border-border rounded-xl p-6">
           <SectionLabel>Geographic spread</SectionLabel>
           <SectionTitle>Where your members are</SectionTitle>
-          <p className="text-sm text-muted-foreground -mt-4 mb-6">Member activity by region. No exact location data is stored — regions are derived from member-supplied postcodes, shown in aggregate only.</p>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Member activity by region. No exact location data is stored. Regions are derived from member-supplied postcodes, shown in aggregate only.</p>
           <div className="space-y-3">
             {DEMO.regions.map((r) => (
               <div key={r.region} className="flex items-center gap-3">

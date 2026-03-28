@@ -72,7 +72,7 @@ export default function ContributionsStep() {
             <label className="block text-sm font-medium text-foreground mb-1">
               General Volunteering Hours (Annual)
             </label>
-            <p className="text-xs text-muted-foreground mb-3">Any extra hours spent helping others not captured above — including unpaid caring, befriending, or informal support for a neighbour or family member.</p>
+            <p className="text-xs text-muted-foreground mb-3">Any extra hours spent helping others not captured above, including unpaid caring, befriending, or informal support for a neighbour or family member.</p>
             <div className="relative">
               <input 
                 type="number" min="0"

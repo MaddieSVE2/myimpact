@@ -84,7 +84,7 @@ export default function Login() {
             <>
               <h2 className="text-xl font-bold text-foreground mb-1">Sign in</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                We'll email you a magic link — no password needed.
+                We'll email you a magic link, no password needed.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">

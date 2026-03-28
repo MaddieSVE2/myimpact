@@ -104,7 +104,7 @@ export default function Journal() {
             <textarea
               value={draft}
               onChange={e => setDraft(e.target.value)}
-              placeholder="Write freely — this is just for you…"
+              placeholder="Write freely. This is just for you…"
               rows={4}
               className="w-full p-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
               autoFocus

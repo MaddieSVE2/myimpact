@@ -160,7 +160,7 @@ function JoinOrgPanel() {
           ))}
         </div>
         <div className="border-t border-border px-6 py-4 bg-muted/20">
-          <p className="text-xs text-muted-foreground mb-4">Your data is anonymised — the organisation sees totals and categories, never individual names or accounts.</p>
+          <p className="text-xs text-muted-foreground mb-4">Your data is anonymised: the organisation sees totals and categories, never individual names or accounts.</p>
           <div className="flex gap-3">
             <button
               onClick={() => { setStep("entry"); setError(null); }}
@@ -290,7 +290,7 @@ export default function OrgPortal() {
               transition={{ delay: 0.1 }}
             >
               <h3 className="text-sm font-semibold text-foreground mb-1">Social value by category</h3>
-              <p className="text-xs text-muted-foreground mb-4">All data is anonymised — no individual names are shown.</p>
+              <p className="text-xs text-muted-foreground mb-4">All data is anonymised: no individual names are shown.</p>
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.valueByCategory} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -325,7 +325,7 @@ export default function OrgPortal() {
           >
             <div>
               <p className="text-sm font-semibold text-foreground mb-1">Want the full Organisation tier?</p>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">Cohort analytics, challenge tools, branded reports, data export, and multi-programme views — from £2,500/year.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">Cohort analytics, challenge tools, branded reports, data export, and multi-programme views, from £2,500/year.</p>
             </div>
             <a
               href="mailto:maddie@socialvalueengine.com?subject=MyImpact Organisation tier"

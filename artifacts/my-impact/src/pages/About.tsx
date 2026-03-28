@@ -54,7 +54,7 @@ const IMPACT_CATEGORIES = [
   {
     icon: "❤️",
     title: "Health",
-    description: "Activities that support physical and mental wellbeing — for yourself, your family, or others in your community.",
+    description: "Activities that support physical and mental wellbeing, for yourself, your family, or others in your community.",
     color: "#c0392b",
   },
   {
@@ -109,7 +109,7 @@ export default function About() {
           </h1>
 
           <p style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.7)", lineHeight: 1.7, maxWidth: 620 }}>
-            Millions of people volunteer, care for others, and act for the environment every single day — and none of it shows up anywhere. My Impact gives that work a number, so you can finally see the difference you make.
+            Millions of people volunteer, care for others, and act for the environment every single day, and none of it shows up anywhere. My Impact gives that work a number, so you can finally see the difference you make.
           </p>
         </div>
       </section>
@@ -126,7 +126,7 @@ export default function About() {
               Every act of goodness has a value. We think you deserve to know what yours is.
             </p>
             <p style={{ fontSize: 18, color: "var(--brand-muted-text)", lineHeight: 1.8, maxWidth: 700 }}>
-              My Impact is a free tool for anyone who contributes to society but has never had a way to measure it. Whether you give a few hours a week or devote your life to others, you create real social value — and this platform helps you understand, track, and share it.
+              My Impact is a free tool for anyone who contributes to society but has never had a way to measure it. Whether you give a few hours a week or devote your life to others, you create real social value. This platform helps you understand, track, and share it.
             </p>
           </div>
         </FadeIn>
@@ -145,7 +145,7 @@ export default function About() {
                 Powered by accredited SROI methodology
               </h2>
               <p style={{ fontSize: 16, color: "var(--brand-muted-text)", lineHeight: 1.8, marginBottom: 20 }}>
-                Every monetary value in My Impact is calculated using the <strong>Social Return on Investment (SROI)</strong> framework — a globally recognised, evidence-based approach to measuring social, environmental, and economic value.
+                Every monetary value in My Impact is calculated using the <strong>Social Return on Investment (SROI)</strong> framework, a globally recognised, evidence-based approach to measuring social, environmental, and economic value.
               </p>
               <p style={{ fontSize: 16, color: "var(--brand-muted-text)", lineHeight: 1.8, marginBottom: 28 }}>
                 Our impact values are provided by the{" "}
@@ -157,7 +157,7 @@ export default function About() {
                 >
                   Social Value Engine
                 </a>
-                {" "}— the UK's leading platform for SROI-accredited social value data. Their values are research-backed, regularly updated, and used by charities, government bodies, and businesses across the UK.
+                {" "}, the UK's leading platform for SROI-accredited social value data. Their values are research-backed, regularly updated, and used by charities, government bodies, and businesses across the UK.
               </p>
               <a
                 href="https://www.socialvalueengine.com"

@@ -129,7 +129,7 @@ export default function ActionsStep() {
               </span>
             )}
             {lookupState === 'error' && (
-              <span className="text-xs text-muted-foreground">Postcode not found — try a town or city name instead.</span>
+              <span className="text-xs text-muted-foreground">Postcode not found. Try a town or city name instead.</span>
             )}
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function ActionsStep() {
             Things I care about&hellip;
           </label>
           <p className="text-xs text-muted-foreground mb-4">
-            Select all that apply — we'll use this to personalise your activities and suggestions.
+            Select all that apply. We'll use this to personalise your activities and suggestions.
           </p>
           <div className="flex flex-wrap gap-2 mb-3">
             {INTEREST_OPTIONS.map(option => {

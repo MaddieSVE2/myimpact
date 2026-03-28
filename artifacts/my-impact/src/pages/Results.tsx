@@ -250,7 +250,7 @@ function PersonalDevelopmentDetail({
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-          Based on the activities you do — these are transferable skills recognised by employers, universities, and training providers.
+          Based on the activities you do. These are transferable skills recognised by employers, universities, and training providers.
         </p>
       </div>
 
@@ -269,7 +269,7 @@ function PersonalDevelopmentDetail({
         {open && (
           <div className="px-5 pb-5 space-y-3 border-t border-border bg-muted/10">
             <p className="text-xs text-muted-foreground leading-relaxed pt-3">
-              Employers value volunteering experience at an average of <strong>£1,500 per year</strong> in salary premium for active volunteers — equivalent to <strong>£{PERSONAL_DEV_RATE_PER_HOUR}/hr</strong>. This figure reflects the transferable skills (communication, leadership, teamwork) that volunteering develops and that employers recognise.
+              Employers value volunteering experience at an average of <strong>£1,500 per year</strong> in salary premium for active volunteers, equivalent to <strong>£{PERSONAL_DEV_RATE_PER_HOUR}/hr</strong>. This figure reflects the transferable skills (communication, leadership, teamwork) that volunteering develops and that employers recognise.
             </p>
             <div className="bg-white border border-border rounded-lg p-3 space-y-1.5 font-mono text-xs">
               <div className="flex justify-between text-muted-foreground">
@@ -286,7 +286,7 @@ function PersonalDevelopmentDetail({
               </div>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Source: NCVO Time Well Spent (2023) — national survey of volunteering in England.
+              Source: NCVO Time Well Spent (2023), national survey of volunteering in England.
             </p>
           </div>
         )}
@@ -345,7 +345,7 @@ function ProxyMethodology({ breakdowns }: {
         <div className="border-t border-border">
           <div className="px-5 py-3 bg-muted/10">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Each activity is matched to a Social Value Engine proxy — a peer-reviewed financial value representing the societal benefit of that outcome. Values are sourced from government data and peer-reviewed academic research.
+              Each activity is matched to a Social Value Engine proxy, a peer-reviewed financial value representing the societal benefit of that outcome. Values are sourced from government data and peer-reviewed academic research.
             </p>
           </div>
           <div className="divide-y divide-border">
@@ -421,7 +421,7 @@ function generateCVText(result: any, interests: string[] = []): string {
   const isMilitary = interests.includes('military');
 
   if (isCareerBreak) {
-    return `During my career break, I contributed ${hoursRounded} hours of unpaid time to ${actText}. This period of active contribution generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics. The skills I developed — including ${skillText} — are directly transferable and reflect real, substantive work that I carried out to a high standard throughout this period.`;
+    return `During my career break, I contributed ${hoursRounded} hours of unpaid time to ${actText}. This period of active contribution generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics. The skills I developed, including ${skillText}, are directly transferable and reflect real, substantive work that I carried out to a high standard throughout this period.`;
   }
 
   if (isMilitary) {
@@ -466,13 +466,13 @@ function PersonaTransferableSkills({ interests }: { interests: string[] }) {
           <div className="px-5 pt-5 pb-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base" aria-hidden="true">🎖️</span>
-              <p className="text-xs text-muted-foreground font-medium">Forces service — transferable skills</p>
+              <p className="text-xs text-muted-foreground font-medium">Forces service: transferable skills</p>
             </div>
             <p className="text-sm text-foreground font-medium mb-1">
               Your military experience builds skills that civilian employers value highly.
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-              The leadership, operational planning, and cross-cultural experience you gained in service translates directly into roles in management, logistics, emergency services, training, and public sector work — even if employers don't know military context.
+              The leadership, operational planning, and cross-cultural experience you gained in service translates directly into roles in management, logistics, emergency services, training, and public sector work, even if employers don't know military context.
             </p>
             <div className="flex flex-wrap gap-2">
               {MILITARY_TRANSFERABLE_SKILLS.map(s => (
@@ -498,7 +498,7 @@ function PersonaTransferableSkills({ interests }: { interests: string[] }) {
           <div className="px-5 pt-5 pb-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base" aria-hidden="true">🔄</span>
-              <p className="text-xs text-muted-foreground font-medium">Career break — transferable skills</p>
+              <p className="text-xs text-muted-foreground font-medium">Career break: transferable skills</p>
             </div>
             <p className="text-sm text-foreground font-medium mb-1">
               Your career break was a period of active contribution, not absence.
@@ -868,7 +868,7 @@ export default function Results() {
               <p className="text-sm font-semibold text-foreground">Your Impact Statement</p>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Use this in your UCAS personal statement, CV, or job application. Copy and adapt it to fit your context — it gives you a verified, specific number to stand behind.
+              Use this in your UCAS personal statement, CV, or job application. Copy and adapt it to fit your context. It gives you a verified, specific number to stand behind.
             </p>
             <textarea
               readOnly
@@ -903,7 +903,7 @@ export default function Results() {
               <p className="text-sm font-semibold text-foreground">Share Your Impact</p>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Download a shareable impact card or post to social media — show the world what your time and effort is worth.
+              Download a shareable impact card or post to social media and show the world what your time and effort is worth.
             </p>
             <div className="flex gap-2 flex-wrap">
               <button
