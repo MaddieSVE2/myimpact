@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
@@ -103,10 +103,29 @@ const TESTIMONIALS = [
   },
 ];
 
-const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
+  return (
+    <div style={{
+      borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
+      display: "flex", flexDirection: "column", height: "100%",
+    }}>
+      <div style={{ padding: "24px 24px 16px", flex: 1 }}>
+        <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
+        <p style={{ fontSize: 12, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
+        <p style={{ fontSize: 14, color: "var(--brand-muted-text)", lineHeight: 1.65, marginTop: 10, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
+      </div>
+      <div style={{ padding: "12px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
+        <p style={{ fontSize: 12, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 130, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
+      </div>
+    </div>
+  );
+}
+
+const triSlideVariants = {
+  enter: (d: number) => ({ x: d > 0 ? "105%" : "-105%", opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+  exit: (d: number) => ({ x: d > 0 ? "-105%" : "105%", opacity: 0 }),
 };
 
 function TestimonialsCarousel() {
@@ -122,87 +141,89 @@ function TestimonialsCarousel() {
 
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => {
-      setDirection(1);
-      setCurrent(c => (c + 1) % n);
-    }, 5000);
+    const t = setInterval(() => { setDirection(1); setCurrent(c => (c + 1) % n); }, 5500);
     return () => clearInterval(t);
   }, [paused]);
 
-  const s = TESTIMONIALS[current];
+  const prevIdx = (current - 1 + n) % n;
+  const nextIdx = (current + 1) % n;
+
+  const arrowStyle: React.CSSProperties = {
+    position: "absolute", top: "50%", transform: "translateY(-50%)",
+    zIndex: 10, width: 36, height: 36, borderRadius: "50%",
+    border: "1.5px solid rgba(0,0,0,0.13)", background: "white",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", color: C.dark, boxShadow: "0 1px 6px rgba(0,0,0,0.10)",
+    transition: "background 0.18s",
+  };
 
   return (
     <div
-      style={{ position: "relative", display: "flex", alignItems: "center", gap: 16 }}
+      style={{ position: "relative" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Prev arrow */}
-      <button
-        onClick={() => go(-1)}
-        aria-label="Previous"
-        style={{
-          flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
-          border: "1.5px solid rgba(0,0,0,0.12)", background: "white",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: C.dark, transition: "all 0.2s",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
-      >
-        <ChevronLeft size={18} />
-      </button>
-
-      {/* Card viewport — clips the sliding card */}
-      <div style={{ flex: 1, overflow: "hidden", borderRadius: 20 }}>
+      {/* Clipping container — hides the slide animation overflow */}
+      <div style={{ overflow: "hidden", borderRadius: 20 }}>
         <AnimatePresence custom={direction} mode="wait">
           <motion.div
             key={current}
             custom={direction}
-            variants={slideVariants}
+            variants={triSlideVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.38, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
+            style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: 16, alignItems: "stretch" }}
           >
-            <div style={{
-              borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
-              display: "flex", flexDirection: "column",
-            }}>
-              <div style={{ padding: "28px 28px 20px" }}>
-                <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
-                <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
-                <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.7, marginTop: 14, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
-              </div>
-              <div style={{ padding: "14px 28px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
-                <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 160, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
-              </div>
+            {/* Left faded preview — click to go back */}
+            <div
+              style={{ opacity: 0.28, cursor: "pointer", transition: "opacity 0.2s" }}
+              onClick={() => go(-1)}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.45"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.28"; }}
+            >
+              <TestimonialCard s={TESTIMONIALS[prevIdx]} />
+            </div>
+
+            {/* Centre card — full opacity */}
+            <TestimonialCard s={TESTIMONIALS[current]} />
+
+            {/* Right faded preview — click to go forward */}
+            <div
+              style={{ opacity: 0.28, cursor: "pointer", transition: "opacity 0.2s" }}
+              onClick={() => go(1)}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.45"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0.28"; }}
+            >
+              <TestimonialCard s={TESTIMONIALS[nextIdx]} />
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Next arrow */}
+      {/* Arrows */}
       <button
-        onClick={() => go(1)}
-        aria-label="Next"
-        style={{
-          flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
-          border: "1.5px solid rgba(0,0,0,0.12)", background: "white",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: C.dark, transition: "all 0.2s",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        }}
+        onClick={() => go(-1)}
+        aria-label="Previous"
+        style={{ ...arrowStyle, left: -18 }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
       >
-        <ChevronRight size={18} />
+        <ChevronLeft size={17} />
+      </button>
+      <button
+        onClick={() => go(1)}
+        aria-label="Next"
+        style={{ ...arrowStyle, right: -18 }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
+      >
+        <ChevronRight size={17} />
       </button>
 
       {/* Dot indicators */}
-      <div style={{ position: "absolute", bottom: -28, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
         {TESTIMONIALS.map((_, i) => (
           <button
             key={i}
