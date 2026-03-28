@@ -34,8 +34,16 @@ export interface CustomActivityDetail {
   sdgColor: string;
 }
 
+export interface LocationMeta {
+  region: string;
+  outwardCode: string;
+  lat: number;
+  lng: number;
+}
+
 interface WizardState {
   location: string;
+  locationMeta: LocationMeta | null;
   interests: string[];
   customInterest: string;
   input: ImpactInput;
@@ -45,6 +53,7 @@ interface WizardState {
 
 interface WizardContextType extends WizardState {
   setLocation: (location: string) => void;
+  setLocationMeta: (meta: LocationMeta | null) => void;
   setCustomInterest: (val: string) => void;
   toggleInterest: (interestId: string) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
@@ -67,6 +76,7 @@ const WizardContext = createContext<WizardContextType | undefined>(undefined);
 
 export function WizardProvider({ children }: { children: ReactNode }) {
   const [location, setLocationState] = useState('');
+  const [locationMeta, setLocationMetaState] = useState<LocationMeta | null>(null);
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterest, setCustomInterestState] = useState('');
   const [input, setInput] = useState<ImpactInput>(defaultInput);
@@ -74,6 +84,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<ImpactResult | null>(null);
 
   const setLocation = (loc: string) => setLocationState(loc);
+  const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
   const setCustomInterest = (val: string) => setCustomInterestState(val);
 
   const toggleInterest = (interestId: string) => {
@@ -104,6 +115,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   const reset = () => {
     setLocationState('');
+    setLocationMetaState(null);
     setInterests([]);
     setCustomInterestState('');
     setInput(defaultInput);
@@ -113,8 +125,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, interests, customInterest, input, customActivities, result,
-      setLocation, setCustomInterest, toggleInterest, updateInput,
+      location, locationMeta, interests, customInterest, input, customActivities, result,
+      setLocation, setLocationMeta, setCustomInterest, toggleInterest, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset
     }}>
       {children}

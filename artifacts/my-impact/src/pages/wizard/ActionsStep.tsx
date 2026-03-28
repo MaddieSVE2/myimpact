@@ -3,20 +3,64 @@ import { useLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Plus } from "lucide-react";
+import { ArrowRight, MapPin, Plus, CheckCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
+
+async function lookupPostcode(raw: string) {
+  const postcode = raw.replace(/\s+/g, "").toUpperCase();
+  const res = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  if (json.status !== 200 || !json.result) return null;
+  const r = json.result;
+  return {
+    region: (r.region ?? r.nuts ?? r.admin_county ?? r.parliamentary_constituency ?? "") as string,
+    outwardCode: (r.outcode ?? postcode.slice(0, postcode.length - 3)) as string,
+    lat: r.latitude as number,
+    lng: r.longitude as number,
+  };
+}
 
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
     location, interests, customInterest,
     setLocation: setWizardLocation, toggleInterest,
-    setCustomInterest, updateInput,
+    setCustomInterest, updateInput, setLocationMeta,
   } = useWizard();
 
   const [localLocation, setLocalLocation] = useState(location);
   const [localCustom, setLocalCustom] = useState(customInterest);
   const [showCustom, setShowCustom] = useState(false);
+  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
+  const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
+
+  const handleLocationBlur = async () => {
+    const val = localLocation.trim();
+    if (!val || !UK_POSTCODE_RE.test(val)) {
+      setLookupState('idle');
+      setResolvedRegion(null);
+      setLocationMeta(null);
+      return;
+    }
+    setLookupState('loading');
+    try {
+      const meta = await lookupPostcode(val);
+      if (meta && meta.region) {
+        setResolvedRegion(meta.region);
+        setLocationMeta(meta);
+        setLookupState('found');
+      } else {
+        setLookupState('error');
+        setLocationMeta(null);
+      }
+    } catch {
+      setLookupState('error');
+      setLocationMeta(null);
+    }
+  };
 
   const handleNext = () => {
     setWizardLocation(localLocation);
@@ -62,10 +106,31 @@ export default function ActionsStep() {
             <input
               type="text"
               value={localLocation}
-              onChange={e => setLocalLocation(e.target.value)}
-              placeholder="e.g. Manchester, London…"
+              onChange={e => {
+                setLocalLocation(e.target.value);
+                setLookupState('idle');
+                setResolvedRegion(null);
+                setLocationMeta(null);
+              }}
+              onBlur={handleLocationBlur}
+              placeholder="e.g. Manchester, M1, SW1A 2AA…"
               className="w-full pl-9 pr-4 py-2.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
+          </div>
+          <div className="mt-1.5 h-5">
+            {lookupState === 'loading' && (
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Looking up postcode…
+              </span>
+            )}
+            {lookupState === 'found' && resolvedRegion && (
+              <span className="flex items-center gap-1.5 text-xs text-green-600">
+                <CheckCircle className="w-3.5 h-3.5" /> {resolvedRegion}
+              </span>
+            )}
+            {lookupState === 'error' && (
+              <span className="text-xs text-muted-foreground">Postcode not found — try a town or city name instead.</span>
+            )}
           </div>
         </div>
 

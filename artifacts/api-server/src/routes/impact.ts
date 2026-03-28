@@ -195,6 +195,10 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       totalHours: body.impactResult.totalHours,
       activitiesJson: body.activities,
       resultJson: body.impactResult,
+      region: body.region ?? null,
+      outwardCode: body.outwardCode ?? null,
+      lat: body.lat != null ? String(body.lat) : null,
+      lng: body.lng != null ? String(body.lng) : null,
     })
     .returning();
 

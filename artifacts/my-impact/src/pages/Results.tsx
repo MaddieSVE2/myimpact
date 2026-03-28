@@ -404,7 +404,7 @@ function generateCVText(result: any): string {
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input } = useWizard();
+  const { result, input, locationMeta } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
@@ -451,6 +451,12 @@ export default function Results() {
           activities: input.activities,
           donationsGBP: input.donationsGBP,
           additionalVolunteerHours: input.additionalVolunteerHours,
+          ...(locationMeta ? {
+            region: locationMeta.region,
+            outwardCode: locationMeta.outwardCode,
+            lat: locationMeta.lat,
+            lng: locationMeta.lng,
+          } : {}),
         },
       });
       setSaved(true);

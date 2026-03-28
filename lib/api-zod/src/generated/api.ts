@@ -180,6 +180,10 @@ export const SaveImpactBody = zod.object({
   ),
   donationsGBP: zod.number(),
   additionalVolunteerHours: zod.number(),
+  region: zod.string().optional(),
+  outwardCode: zod.string().optional(),
+  lat: zod.number().optional(),
+  lng: zod.number().optional(),
 });
 
 export const SaveImpactResponse = zod.object({

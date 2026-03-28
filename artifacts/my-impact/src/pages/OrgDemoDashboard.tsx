@@ -100,6 +100,7 @@ export default function OrgDemoDashboard() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
   const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
+  const socialValuePerHourFormatted = `£${socialValuePerHour.toLocaleString("en-GB")}`;
   const orgCostPerVolunteer = 475;
   const totalOrgCost = DEMO.headline.members * orgCostPerVolunteer;
   const sroiRatio = (DEMO.headline.totalSocialValue / totalOrgCost).toFixed(2);

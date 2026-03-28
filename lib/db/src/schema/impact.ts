@@ -15,6 +15,10 @@ export const impactRecordsTable = pgTable("impact_records", {
   totalHours: integer("total_hours").notNull(),
   activitiesJson: jsonb("activities_json").notNull(),
   resultJson: jsonb("result_json").notNull(),
+  region: text("region"),
+  outwardCode: text("outward_code"),
+  lat: numeric("lat", { precision: 10, scale: 6 }),
+  lng: numeric("lng", { precision: 10, scale: 6 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
