@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
 
 export const INTEREST_OPTIONS = [
@@ -43,6 +43,14 @@ export interface LocationMeta {
   lng: number;
 }
 
+export interface ActivitySelectionDraft {
+  selectedIds: string[];
+  quantities: Record<string, number>;
+  hours: Record<string, number>;
+  phase: 'select' | 'quantify';
+  quantifyIndex: number;
+}
+
 interface WizardState {
   location: string;
   locationMeta: LocationMeta | null;
@@ -51,6 +59,7 @@ interface WizardState {
   input: ImpactInput;
   customActivities: CustomActivityDetail[];
   result: ImpactResult | null;
+  activitySelection: ActivitySelectionDraft;
 }
 
 interface WizardContextType extends WizardState {
@@ -65,6 +74,9 @@ interface WizardContextType extends WizardState {
   removeCustomActivity: (activityId: string) => void;
   setResult: (result: ImpactResult) => void;
   reset: () => void;
+  clearDraft: () => void;
+  hasDraft: boolean;
+  setActivitySelection: (sel: Partial<ActivitySelectionDraft>) => void;
 }
 
 const defaultInput: ImpactInput = {
@@ -74,16 +86,107 @@ const defaultInput: ImpactInput = {
   additionalVolunteerHours: 0,
 };
 
+const defaultActivitySelection: ActivitySelectionDraft = {
+  selectedIds: [],
+  quantities: {},
+  hours: {},
+  phase: 'select',
+  quantifyIndex: 0,
+};
+
+const defaultState: WizardState = {
+  location: '',
+  locationMeta: null,
+  interests: [],
+  customInterest: '',
+  input: defaultInput,
+  customActivities: [],
+  result: null,
+  activitySelection: defaultActivitySelection,
+};
+
+const DRAFT_KEY = 'wizard_draft_v1';
+
+function loadDraft(): WizardState | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    return parsed as WizardState;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(state: WizardState) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function removeDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 const WizardContext = createContext<WizardContextType | undefined>(undefined);
 
+function getInitialState(): { state: WizardState; hasDraft: boolean } {
+  const draft = loadDraft();
+  if (draft) {
+    return {
+      state: {
+        location: draft.location ?? '',
+        locationMeta: draft.locationMeta ?? null,
+        interests: draft.interests ?? [],
+        customInterest: draft.customInterest ?? '',
+        input: draft.input ?? defaultInput,
+        customActivities: draft.customActivities ?? [],
+        result: null,
+        activitySelection: draft.activitySelection ?? defaultActivitySelection,
+      },
+      hasDraft: true,
+    };
+  }
+  return { state: defaultState, hasDraft: false };
+}
+
 export function WizardProvider({ children }: { children: ReactNode }) {
-  const [location, setLocationState] = useState('');
-  const [locationMeta, setLocationMetaState] = useState<LocationMeta | null>(null);
-  const [interests, setInterests] = useState<string[]>([]);
-  const [customInterest, setCustomInterestState] = useState('');
-  const [input, setInput] = useState<ImpactInput>(defaultInput);
-  const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>([]);
-  const [result, setResult] = useState<ImpactResult | null>(null);
+  const [{ state: initialState, hasDraft: initialHasDraft }] = useState(getInitialState);
+
+  const [hasDraft, setHasDraft] = useState(initialHasDraft);
+  const [location, setLocationState] = useState(initialState.location);
+  const [locationMeta, setLocationMetaState] = useState<LocationMeta | null>(initialState.locationMeta);
+  const [interests, setInterests] = useState<string[]>(initialState.interests);
+  const [customInterest, setCustomInterestState] = useState(initialState.customInterest);
+  const [input, setInput] = useState<ImpactInput>(initialState.input);
+  const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>(initialState.customActivities);
+  const [result, setResultState] = useState<ImpactResult | null>(null);
+  const [activitySelection, setActivitySelectionState] = useState<ActivitySelectionDraft>(initialState.activitySelection);
+
+  const setActivitySelection = useCallback((sel: Partial<ActivitySelectionDraft>) => {
+    setActivitySelectionState(prev => ({ ...prev, ...sel }));
+  }, []);
+
+  useEffect(() => {
+    if (result !== null) return;
+    const hasProgress = !!(location || interests.length > 0 || customInterest ||
+      input.activities.length > 0 || input.donationsGBP > 0 ||
+      input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
+      activitySelection.selectedIds.length > 0);
+    if (hasProgress) {
+      saveDraft({ location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection });
+    } else {
+      removeDraft();
+      setHasDraft(false);
+    }
+  }, [location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -115,6 +218,13 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setCustomActivities(prev => prev.filter(a => a.activityId !== activityId));
   };
 
+  const setResult = (r: ImpactResult) => {
+    setResultState(r);
+    setActivitySelectionState(defaultActivitySelection);
+    removeDraft();
+    setHasDraft(false);
+  };
+
   const reset = () => {
     setLocationState('');
     setLocationMetaState(null);
@@ -122,14 +232,31 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setCustomInterestState('');
     setInput(defaultInput);
     setCustomActivities([]);
-    setResult(null);
+    setResultState(null);
+    setActivitySelectionState(defaultActivitySelection);
+    removeDraft();
+    setHasDraft(false);
   };
+
+  const clearDraft = useCallback(() => {
+    setLocationState('');
+    setLocationMetaState(null);
+    setInterests([]);
+    setCustomInterestState('');
+    setInput(defaultInput);
+    setCustomActivities([]);
+    setResultState(null);
+    setActivitySelectionState(defaultActivitySelection);
+    removeDraft();
+    setHasDraft(false);
+  }, []);
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, input, customActivities, result,
+      location, locationMeta, interests, customInterest, input, customActivities, result, activitySelection,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, updateInput,
-      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset
+      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset,
+      clearDraft, hasDraft, setActivitySelection,
     }}>
       {children}
     </WizardContext.Provider>

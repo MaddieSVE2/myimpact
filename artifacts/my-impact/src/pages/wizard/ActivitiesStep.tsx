@@ -4,8 +4,15 @@ import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wi
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare, Search } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare, Search, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+
+interface PreviousActivity {
+  activityId: string;
+  quantity: number;
+  hoursPerYear: number;
+}
 
 // Standard SDG colours (1-indexed by SDG number)
 const SDG_COLORS: Record<number, string> = {
@@ -45,17 +52,21 @@ type ActivityMode = "pick" | "describe";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity } = useWizard();
+  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
   const { data, isLoading } = useGetActivities();
+  const { isLoggedIn } = useAuth();
 
-  const [phase, setPhase] = useState<Phase>("select");
+  const [previousActivities, setPreviousActivities] = useState<PreviousActivity[] | null>(null);
+  const [prefillDismissed, setPrefillDismissed] = useState(false);
+
+  const phase = activitySelection.phase;
+  const quantifyIndex = activitySelection.quantifyIndex;
   const [activityMode, setActivityMode] = useState<ActivityMode>("pick");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(input.activities.map(a => a.activityId))
+    new Set(activitySelection.selectedIds)
   );
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [hours, setHours] = useState<Record<string, number>>({});
-  const [quantifyIndex, setQuantifyIndex] = useState(0);
+  const [quantities, setQuantities] = useState<Record<string, number>>(activitySelection.quantities);
+  const [hours, setHours] = useState<Record<string, number>>(activitySelection.hours);
   const [showAll, setShowAll] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState("");
@@ -86,6 +97,32 @@ export default function ActivitiesStep() {
     setSessionsPerWeek(1);
     setWeeksPerYear(40);
   }, [quantifyIndex]);
+
+  // Sync selection state back to context for draft persistence
+  useEffect(() => {
+    setActivitySelection({
+      selectedIds: Array.from(selectedIds),
+      quantities,
+      hours,
+    });
+  }, [selectedIds, quantities, hours, setActivitySelection]);
+
+  // Fetch previous activities for logged-in returning users
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    fetch(`${base}/api/impact/history`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then((data) => {
+        if (!data || !data.records || data.records.length === 0) return;
+        const mostRecent = data.records[0];
+        const acts = mostRecent.activities;
+        if (Array.isArray(acts) && acts.length > 0) {
+          setPreviousActivities(acts as PreviousActivity[]);
+        }
+      });
+  }, [isLoggedIn]);
 
   const preferredCategories = useMemo(() => {
     return new Set(
@@ -190,13 +227,12 @@ export default function ActivitiesStep() {
       setLocation("/wizard/contributions");
       return;
     }
-    setQuantifyIndex(0);
-    setPhase("quantify");
+    setActivitySelection({ quantifyIndex: 0, phase: "quantify" });
   };
 
   const handleQuantifyNext = () => {
     if (quantifyIndex < selectedList.length - 1) {
-      setQuantifyIndex(i => i + 1);
+      setActivitySelection({ quantifyIndex: quantifyIndex + 1 });
     } else {
       input.activities.forEach((_, i) => removeActivity(0));
       selectedList.forEach(a => {
@@ -207,6 +243,22 @@ export default function ActivitiesStep() {
       });
       setLocation("/wizard/contributions");
     }
+  };
+
+  const handlePrefill = () => {
+    if (!previousActivities || !data) return;
+    const knownIds = new Set(data.activities.map(a => a.id));
+    previousActivities.forEach(prev => {
+      if (!knownIds.has(prev.activityId)) return;
+      setSelectedIds(ids => {
+        const next = new Set(ids);
+        next.add(prev.activityId);
+        return next;
+      });
+      setQuantities(q => ({ ...q, [prev.activityId]: prev.quantity }));
+      setHours(h => ({ ...h, [prev.activityId]: prev.hoursPerYear }));
+    });
+    setPrefillDismissed(true);
   };
 
   const analyseActivity = async () => {
@@ -349,8 +401,7 @@ export default function ActivitiesStep() {
       }
 
       if (matchedIds.length > 0) {
-        setQuantifyIndex(0);
-        setPhase("quantify");
+        setActivitySelection({ quantifyIndex: 0, phase: "quantify" });
       } else {
         // Only custom activities — skip quantify
         input.activities.forEach((_, i) => removeActivity(0));
@@ -492,6 +543,42 @@ export default function ActivitiesStep() {
                         <span className="text-primary"> Your interests are shown first.</span>
                       )}
                     </p>
+
+                    {/* Pre-fill prompt for returning users */}
+                    {previousActivities && previousActivities.length > 0 && !prefillDismissed && (
+                      <AnimatePresence>
+                        <motion.div
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.25 }}
+                          className="mb-4 flex items-start justify-between gap-3 px-4 py-3 rounded-lg bg-primary/8 border border-primary/20"
+                        >
+                          <div className="flex items-start gap-2 min-w-0">
+                            <RefreshCw className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground leading-snug">Use your activities from last time?</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Pre-fill with your {previousActivities.length} {previousActivities.length === 1 ? 'activity' : 'activities'} from your most recent record. You can adjust the quantities afterwards.</p>
+                              <button
+                                type="button"
+                                onClick={handlePrefill}
+                                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+                              >
+                                <Check className="w-3 h-3" /> Yes, pre-fill
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPrefillDismissed(true)}
+                            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                            aria-label="Dismiss"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
 
                     {/* Search filter */}
                     <div className="relative mb-4">
@@ -907,7 +994,7 @@ export default function ActivitiesStep() {
 
                 <div className="flex justify-between">
                   <button
-                    onClick={() => quantifyIndex === 0 ? setPhase("select") : setQuantifyIndex(i => i - 1)}
+                    onClick={() => quantifyIndex === 0 ? setActivitySelection({ phase: "select" }) : setActivitySelection({ quantifyIndex: quantifyIndex - 1 })}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
                   >
                     <ArrowLeft className="w-4 h-4" /> Back

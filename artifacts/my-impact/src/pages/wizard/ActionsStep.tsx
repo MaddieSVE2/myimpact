@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Plus, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
@@ -29,16 +29,24 @@ export default function ActionsStep() {
     location, interests, customInterest,
     setLocation: setWizardLocation, toggleInterest,
     setCustomInterest, updateInput, setLocationMeta,
+    hasDraft, clearDraft,
   } = useWizard();
 
-  const [localLocation, setLocalLocation] = useState(location);
-  const [localCustom, setLocalCustom] = useState(customInterest);
-  const [showCustom, setShowCustom] = useState(false);
+  const [showCustom, setShowCustom] = useState(!!customInterest);
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
   const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
 
+  // When draft is cleared, reset UI-only state
+  useEffect(() => {
+    if (!hasDraft) {
+      setShowCustom(false);
+      setLookupState('idle');
+      setResolvedRegion(null);
+    }
+  }, [hasDraft]);
+
   const handleLocationBlur = async () => {
-    const val = localLocation.trim();
+    const val = location.trim();
     if (!val || !UK_POSTCODE_RE.test(val)) {
       setLookupState('idle');
       setResolvedRegion(null);
@@ -63,26 +71,45 @@ export default function ActionsStep() {
   };
 
   const handleNext = () => {
-    setWizardLocation(localLocation);
-    setCustomInterest(localCustom);
-
     const interestLabels = interests
       .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
       .filter(Boolean)
       .join(', ');
-    const allInterests = [interestLabels, localCustom].filter(Boolean).join(', ');
-    const description = localLocation
-      ? `I live in ${localLocation} and care most about: ${allInterests || 'making a positive difference'}.`
+    const allInterests = [interestLabels, customInterest].filter(Boolean).join(', ');
+    const description = location
+      ? `I live in ${location} and care most about: ${allInterests || 'making a positive difference'}.`
       : `I care most about: ${allInterests || 'making a positive difference'}.`;
     updateInput({ description });
     setLocation("/wizard/activities");
   };
 
-  const canProceed = localLocation.trim().length > 0 || interests.length > 0 || localCustom.trim().length > 0;
+  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <StepProgress currentStep={1} />
+
+      {hasDraft && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-primary/8 border border-primary/20"
+        >
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <History className="w-4 h-4 text-primary shrink-0" />
+            <span>Resuming your last session</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearDraft}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Start fresh
+          </button>
+        </motion.div>
+      )}
 
       <motion.div
         className="bg-white border border-border rounded-xl p-6 md:p-8"
@@ -105,9 +132,9 @@ export default function ActionsStep() {
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
-              value={localLocation}
+              value={location}
               onChange={e => {
-                setLocalLocation(e.target.value);
+                setWizardLocation(e.target.value);
                 setLookupState('idle');
                 setResolvedRegion(null);
                 setLocationMeta(null);
@@ -182,8 +209,8 @@ export default function ActionsStep() {
             >
               <input
                 type="text"
-                value={localCustom}
-                onChange={e => setLocalCustom(e.target.value)}
+                value={customInterest}
+                onChange={e => setCustomInterest(e.target.value)}
                 placeholder="e.g. Refugee support, domestic violence, prison reform…"
                 className="w-full px-4 py-2.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 autoFocus

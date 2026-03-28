@@ -258,6 +258,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     period: r.periodLabel ?? null,
     createdAt: r.createdAt.toISOString(),
     impactResult: r.resultJson,
+    activities: r.activitiesJson,
   }));
 
   res.json({ records: formatted });
