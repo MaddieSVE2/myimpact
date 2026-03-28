@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   requestMagicLink: (email: string, returnTo?: string) => Promise<void>;
+  demoLogin: (email: string) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   requestMagicLink: async () => {},
+  demoLogin: async () => { throw new Error("Not implemented"); },
   logout: async () => {},
 });
 
@@ -48,13 +50,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const demoLogin = async (email: string): Promise<User> => {
+    const res = await fetch(`${BASE}/api/auth/demo-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Demo login failed");
+    }
+    setUser(data.user);
+    return data.user as User;
+  };
+
   const logout = async () => {
     await fetch(`${BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

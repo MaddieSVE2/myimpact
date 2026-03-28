@@ -3,8 +3,10 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, ArrowRight, CheckCircle, X } from "lucide-react";
 
+const DEMO_EMAIL = "demo@demo.org";
+
 export default function Login() {
-  const { requestMagicLink } = useAuth();
+  const { requestMagicLink, demoLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -32,9 +34,15 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
     try {
-      await requestMagicLink(email.trim().toLowerCase(), postLoginTo ?? undefined);
-      setSent(true);
+      if (normalizedEmail === DEMO_EMAIL) {
+        await demoLogin(normalizedEmail);
+        navigate(postLoginTo ?? "/");
+      } else {
+        await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
+        setSent(true);
+      }
     } catch (err: any) {
       setError(err.message ?? "Something went wrong. Please try again.");
     } finally {

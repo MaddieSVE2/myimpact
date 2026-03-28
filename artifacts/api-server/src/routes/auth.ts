@@ -176,6 +176,31 @@ router.post("/confirm", async (req, res) => {
   res.json({ ok: true, user: { id: user.id, email: user.email } });
 });
 
+router.post("/demo-login", async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (normalizedEmail !== "demo@demo.org") {
+    res.status(403).json({ error: "Demo login is only available for demo@demo.org" });
+    return;
+  }
+
+  let user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, normalizedEmail),
+  });
+
+  if (!user) {
+    const [created] = await db
+      .insert(usersTable)
+      .values({ id: randomBytes(12).toString("hex"), email: normalizedEmail })
+      .returning();
+    user = created;
+  }
+
+  issueSession(res, user);
+  res.json({ ok: true, user: { id: user.id, email: user.email } });
+});
+
 router.get("/me", async (req: any, res) => {
   const token = req.cookies?.mi_session;
   if (!token) {
