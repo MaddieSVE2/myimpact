@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
@@ -63,6 +63,20 @@ export default function ActivitiesStep() {
   const [customQuantity, setCustomQuantity] = useState(20);
   const [analyseError, setAnalyseError] = useState("");
 
+  // Session calculator (gap 2 fix)
+  const [showSessionCalc, setShowSessionCalc] = useState(false);
+  const [sessionHrs, setSessionHrs] = useState(2);
+  const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
+  const [weeksPerYear, setWeeksPerYear] = useState(40);
+
+  // Reset session calc when moving to a new activity
+  useEffect(() => {
+    setShowSessionCalc(false);
+    setSessionHrs(2);
+    setSessionsPerWeek(1);
+    setWeeksPerYear(40);
+  }, [quantifyIndex]);
+
   const preferredCategories = useMemo(() => {
     return new Set(
       interests.map(id => INTEREST_OPTIONS.find(o => o.id === id)?.category).filter(Boolean) as string[]
@@ -75,6 +89,13 @@ export default function ActivitiesStep() {
     if (interests.includes('older_people') || interests.includes('caring')) {
       boosted.add('family_caring');
       boosted.add('elderly_visiting');
+    }
+    if (interests.includes('sport')) {
+      boosted.add('sports_coaching');
+    }
+    if (interests.includes('community')) {
+      boosted.add('community_garden');
+      boosted.add('food_bank');
     }
     return boosted;
   }, [interests]);
@@ -506,6 +527,57 @@ export default function ActivitiesStep() {
                         <p className="text-xs text-muted-foreground mt-2">
                           That's roughly {Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20) / 52 * 10) / 10} hours a week
                         </p>
+                        {!showSessionCalc ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowSessionCalc(true)}
+                            className="mt-2 text-xs text-primary/70 hover:text-primary underline underline-offset-2 transition-colors"
+                          >
+                            Calculate from sessions instead
+                          </button>
+                        ) : (
+                          <div className="mt-3 bg-white border border-border rounded-md p-3 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Sessions per year</p>
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <input
+                                type="number" min="0.5" step="0.5"
+                                value={sessionHrs}
+                                onChange={e => {
+                                  const v = Number(e.target.value);
+                                  setSessionHrs(v);
+                                  setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(v * sessionsPerWeek * weeksPerYear) }));
+                                }}
+                                className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              />
+                              <span className="text-muted-foreground text-xs">hrs/session ×</span>
+                              <input
+                                type="number" min="1"
+                                value={sessionsPerWeek}
+                                onChange={e => {
+                                  const v = Number(e.target.value);
+                                  setSessionsPerWeek(v);
+                                  setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * v * weeksPerYear) }));
+                                }}
+                                className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              />
+                              <span className="text-muted-foreground text-xs">×</span>
+                              <input
+                                type="number" min="1" max="52"
+                                value={weeksPerYear}
+                                onChange={e => {
+                                  const v = Number(e.target.value);
+                                  setWeeksPerYear(v);
+                                  setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * sessionsPerWeek * v) }));
+                                }}
+                                className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              />
+                              <span className="text-muted-foreground text-xs">weeks =</span>
+                              <span className="font-bold text-foreground text-sm">
+                                {Math.round(sessionHrs * sessionsPerWeek * weeksPerYear)} hrs/yr
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div>
