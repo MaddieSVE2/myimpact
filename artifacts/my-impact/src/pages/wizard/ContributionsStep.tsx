@@ -97,7 +97,7 @@ export default function ContributionsStep() {
         <button
           onClick={handleFinish}
           disabled={calculateMutation.isPending}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-md bg-foreground text-white text-sm font-medium hover:bg-foreground/90 transition-all shadow-sm disabled:opacity-70"
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-70"
         >
           {calculateMutation.isPending ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Calculating...</>

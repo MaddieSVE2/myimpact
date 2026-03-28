@@ -4,7 +4,7 @@ import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wi
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Standard SDG colours (1-indexed by SDG number)
@@ -69,6 +69,9 @@ export default function ActivitiesStep() {
   const [describeText, setDescribeText] = useState("");
   const [describeLoading, setDescribeLoading] = useState(false);
   const [describeError, setDescribeError] = useState("");
+
+  // Pick mode search filter (pre-filled when switching from describe mode)
+  const [pickSearch, setPickSearch] = useState("");
 
   // Session calculator (gap 2 fix)
   const [showSessionCalc, setShowSessionCalc] = useState(false);
@@ -377,7 +380,12 @@ export default function ActivitiesStep() {
             {/* Mode toggle */}
             <div className="flex gap-1 p-1 bg-muted rounded-lg mb-5 w-fit">
               <button
-                onClick={() => setActivityMode("pick")}
+                onClick={() => {
+                  if (activityMode === "describe" && describeText.trim()) {
+                    setPickSearch(describeText.trim());
+                  }
+                  setActivityMode("pick");
+                }}
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all",
                   activityMode === "pick"
@@ -432,7 +440,10 @@ export default function ActivitiesStep() {
                       <div className="mt-3 px-4 py-3 rounded-lg bg-destructive/8 border border-destructive/20">
                         <p className="text-sm text-destructive">{describeError}</p>
                         <button
-                          onClick={() => setActivityMode("pick")}
+                          onClick={() => {
+                            if (describeText.trim()) setPickSearch(describeText.trim());
+                            setActivityMode("pick");
+                          }}
                           className="mt-1.5 text-xs text-destructive/80 underline underline-offset-2 hover:text-destructive"
                         >
                           Switch to picking activities manually
@@ -475,12 +486,24 @@ export default function ActivitiesStep() {
                     <h2 className="text-xl font-display font-semibold text-foreground mb-1">
                       Which of these do you already do?
                     </h2>
-                    <p className="text-sm text-muted-foreground mb-5">
+                    <p className="text-sm text-muted-foreground mb-4">
                       Tick everything that applies. Don't worry about the details yet.
                       {preferredCategories.size > 0 && (
                         <span className="text-primary"> Your interests are shown first.</span>
                       )}
                     </p>
+
+                    {/* Search filter */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        value={pickSearch}
+                        onChange={e => setPickSearch(e.target.value)}
+                        placeholder="Search activities…"
+                        className="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                      />
+                    </div>
 
                     {isLoading ? (
                       <div className="py-8 flex justify-center">
@@ -489,7 +512,13 @@ export default function ActivitiesStep() {
                     ) : (
                       <>
                         <div className="space-y-2 mb-3">
-                          {displayedActivities.map(a => {
+                          {(pickSearch.trim()
+                            ? sortedActivities.filter(a =>
+                                a.shortName.toLowerCase().includes(pickSearch.toLowerCase()) ||
+                                a.category.toLowerCase().includes(pickSearch.toLowerCase())
+                              )
+                            : displayedActivities
+                          ).map(a => {
                             const selected = selectedIds.has(a.id);
                             const isPreferred = preferredCategories.has(a.category);
                             return (
@@ -523,7 +552,7 @@ export default function ActivitiesStep() {
                           })}
                         </div>
 
-                        {moreActivities.length > 0 && !showAll && (
+                        {moreActivities.length > 0 && !showAll && !pickSearch.trim() && (
                           <button
                             onClick={() => setShowAll(true)}
                             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4"

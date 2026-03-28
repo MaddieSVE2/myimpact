@@ -75,7 +75,7 @@ function ShareCard({ result, totalValue }: { result: any; totalValue: number }) 
         width: 600,
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
         padding: "48px",
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Outfit', 'DM Sans', sans-serif",
         position: "absolute",
         left: "-9999px",
         top: 0,
@@ -396,7 +396,7 @@ function generateCVText(result: any, interests: string[] = []): string {
 
   let actText = "";
   if (activityNames.length === 0) {
-    actText = "a range of voluntary activities";
+    actText = "caring for others, supporting my community, and contributing to environmental and social causes";
   } else if (activityNames.length === 1) {
     actText = activityNames[0].toLowerCase();
   } else if (activityNames.length === 2) {

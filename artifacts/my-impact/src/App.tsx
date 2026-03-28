@@ -10,7 +10,7 @@ import { SidekickProvider } from "@/lib/sidekick-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
-import { X, LogIn } from "lucide-react";
+import { X, LogIn, Building2 } from "lucide-react";
 
 // Layout & Pages
 import { Navbar } from "@/components/layout/Navbar";
@@ -35,7 +35,7 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/"];
+const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/", "/results"];
 
 function GuestBanner() {
   const { isLoggedIn, isLoading } = useAuth();
@@ -66,6 +66,40 @@ function GuestBanner() {
       >
         <X className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
+    </div>
+  );
+}
+
+function OrgGuestRoute() {
+  const { isLoggedIn, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (isLoggedIn) return <OrgPortal />;
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ background: "rgba(232,99,58,0.10)" }}>
+        <Building2 className="w-8 h-8 text-primary" />
+      </div>
+      <h1 className="text-2xl font-display font-bold text-foreground mb-3">Organisation portal</h1>
+      <p className="text-muted-foreground mb-2 leading-relaxed">
+        The organisation portal lets schools, charities, and local authorities view aggregated impact data for their members.
+      </p>
+      <p className="text-muted-foreground mb-8 leading-relaxed">
+        To access the portal you need to register your organisation first.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Link
+          href="/org/register"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Register your organisation →
+        </Link>
+        <Link
+          href="/org/demo"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md border border-border bg-white text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+        >
+          See a demo first
+        </Link>
+      </div>
     </div>
   );
 }
@@ -112,7 +146,7 @@ function AppRouter() {
           <Route path="/org/demo" component={OrgDemoDashboard} />
           <Route path="/org/register" component={OrgRegister} />
           <Route path="/org">
-            {() => <PrivateRoute component={OrgPortal} />}
+            {() => <OrgGuestRoute />}
           </Route>
 
           <Route component={NotFound} />

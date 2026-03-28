@@ -110,12 +110,12 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
       display: "flex", flexDirection: "column", height: "100%",
     }}>
       <div style={{ padding: "24px 24px 16px", flex: 1 }}>
-        <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
+        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
         <p style={{ fontSize: 12, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
         <p style={{ fontSize: 14, color: "var(--brand-muted-text)", lineHeight: 1.65, marginTop: 10, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
       </div>
       <div style={{ padding: "12px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 24, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
+        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 24, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
         <p style={{ fontSize: 12, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 130, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
       </div>
     </div>
@@ -292,26 +292,7 @@ export default function Intro() {
             </Link>
             <Link
               href="/suggestions"
-              style={{
-                display: "inline-block",
-                padding: "12px 24px",
-                fontSize: 16,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.9)",
-                textDecoration: "none",
-                border: "2px solid rgba(255,255,255,0.5)",
-                borderRadius: 8,
-                transition: "border-color 0.2s, color 0.2s, background 0.2s",
-                background: "transparent",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.9)";
-                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.5)";
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-              }}
+              className="mi-btn-ghost-hero"
             >
               Inspire me
             </Link>
@@ -324,7 +305,7 @@ export default function Intro() {
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <FadeIn>
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
-            <p className="mi-fraunces" style={{ fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 24, letterSpacing: -1 }}>
+            <p style={{ fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 24, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}>
               Your worth isn't measured in{" "}
               <span style={{ color: C.orange, fontStyle: "italic" }}>GDP.</span>
             </p>
@@ -355,7 +336,7 @@ export default function Intro() {
                   <div style={{ width: 48, height: 48, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>
                     {c.icon}
                   </div>
-                  <h3 className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{c.title}</h3>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.dark, marginBottom: 8, fontFamily: "'Outfit', sans-serif" }}>{c.title}</h3>
                   <p style={{ fontSize: 15, color: "var(--brand-subtle-text)", lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               </FadeIn>
@@ -369,7 +350,7 @@ export default function Intro() {
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 56 }}>
               <p className="mi-section-label" style={{ color: C.orange }}>The difference we make</p>
-              <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1 }}>
+              <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}>
                 It adds up faster than you think.
               </h2>
             </div>
@@ -385,7 +366,7 @@ export default function Intro() {
             ].map((s, i) => (
               <FadeIn key={i} delay={i * 0.12}>
                 <div>
-                  <div className="mi-fraunces" style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.orange, letterSpacing: -2 }}>
+                  <div style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.orange, letterSpacing: -2, fontFamily: "'Outfit', sans-serif" }}>
                     {s.end === 0 ? `${s.prefix}0${s.suffix}` : <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />}
                   </div>
                   <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.5, maxWidth: 220, margin: "10px auto 0" }}>{s.label}</p>
@@ -412,7 +393,7 @@ export default function Intro() {
         <div className="mi-cv-grid" style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
           <FadeIn>
             <div>
-              <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15 }}>
+              <h2 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
                 Your impact is your proof.
               </h2>
               <p style={{ fontSize: 17, color: "var(--brand-muted-text)", lineHeight: 1.7, marginBottom: 16 }}>
@@ -437,16 +418,16 @@ export default function Intro() {
           <FadeIn delay={0.15}>
             <div style={{ background: C.cream, borderRadius: 20, padding: "36px 32px", border: "1px solid rgba(0,0,0,0.04)" }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
-              <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.dark, marginBottom: 4 }}>Chloe M.</p>
+              <p style={{ fontSize: 24, fontWeight: 800, color: C.dark, marginBottom: 4, fontFamily: "'Outfit', sans-serif" }}>Chloe M.</p>
               <p style={{ fontSize: 14, color: "var(--brand-subtle-text)", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
                   <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", marginBottom: 4 }}>Total social value</p>
-                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.olive }}>£3,150</p>
+                  <p style={{ fontSize: 28, fontWeight: 900, color: C.olive, fontFamily: "'Outfit', sans-serif" }}>£3,150</p>
                 </div>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
                   <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", marginBottom: 4 }}>Hours contributed</p>
-                  <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.slate }}>187</p>
+                  <p style={{ fontSize: 28, fontWeight: 900, color: C.slate, fontFamily: "'Outfit', sans-serif" }}>187</p>
                 </div>
               </div>
               <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
@@ -463,7 +444,7 @@ export default function Intro() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label" style={{ color: C.orange }}>For organisations</p>
-            <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15 }}>
+            <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
               See the value your people create.
             </h2>
             <p className="mi-orgs-intro-text" style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
@@ -480,7 +461,7 @@ export default function Intro() {
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-org-card">
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                    <h3 className="mi-fraunces" style={{ color: C.orange, fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
+                    <h3 style={{ color: C.orange, fontSize: 17, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>{c.title}</h3>
                     {c.comingSoon && (
                       <span style={{
                         flexShrink: 0,
@@ -539,7 +520,7 @@ export default function Intro() {
       <section className="mi-cta-section">
         <FadeIn>
           <div style={{ maxWidth: 600, margin: "0 auto", position: "relative", zIndex: 2 }}>
-            <h2 className="mi-fraunces" style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 }}>
+            <h2 style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
               Ready to see the difference you make?
             </h2>
             <p style={{ fontSize: 18, color: "rgba(255,255,255,0.85)", marginBottom: 36, lineHeight: 1.6 }}>

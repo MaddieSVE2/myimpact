@@ -190,8 +190,8 @@
   color: var(--brand-orange); margin-bottom: 12px;
 }
 .mi-section-title {
-  font-family: 'Fraunces', Georgia, serif; font-size: clamp(26px, 4vw, 42px);
-  font-weight: 700; color: var(--brand-dark); letter-spacing: -1px;
+  font-family: 'Outfit', sans-serif; font-size: clamp(26px, 4vw, 42px);
+  font-weight: 700; color: var(--brand-dark); letter-spacing: -0.5px;
   margin-bottom: 48px; max-width: 500px; line-height: 1.15;
 }
 .mi-btn-hero {
@@ -202,6 +202,16 @@
   display: inline-flex; align-items: center; gap: 8px; transition: all 0.25s;
 }
 .mi-btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 28px color-mix(in srgb, var(--brand-orange) 31%, transparent); }
+.mi-btn-ghost-hero {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 28px; border-radius: 100px; font-weight: 600; font-size: 15px;
+  text-decoration: none; cursor: pointer;
+  color: rgba(255,255,255,0.9);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  background: transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+.mi-btn-ghost-hero:hover { border-color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.08); }
 .mi-scroll-hint {
   position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 5;
@@ -227,6 +237,7 @@
   .mi-cv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
   .mi-how-step { flex-direction: column; gap: 12px; }
   .mi-counts-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .mi-about-stat-panel { display: none !important; }
 }
 
 /* ── High-contrast supplementary overrides ─────────────────────────────────── */

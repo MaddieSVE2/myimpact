@@ -81,36 +81,69 @@ export default function About() {
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
-        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: 860 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.13)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 18px", borderRadius: 100,
-            color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700,
-            letterSpacing: 1.5, textTransform: "uppercase" as const,
-            marginBottom: 28,
-          }}>
-            <span className="mi-dot" /> About My Impact
+        <div style={{
+          position: "relative", zIndex: 2, padding: "0 5%",
+          maxWidth: 1100, width: "100%",
+          display: "grid", gridTemplateColumns: "1fr auto",
+          gap: "clamp(40px, 6vw, 80px)", alignItems: "center",
+        }}>
+          <div style={{ maxWidth: 620 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.13)",
+              backdropFilter: "blur(8px)",
+              padding: "8px 18px", borderRadius: 100,
+              color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700,
+              letterSpacing: 1.5, textTransform: "uppercase" as const,
+              marginBottom: 28,
+            }}>
+              <span className="mi-dot" /> About My Impact
+            </div>
+
+            <h1
+              className="mi-fraunces"
+              style={{
+                fontSize: "clamp(38px, 6vw, 68px)",
+                fontWeight: 900, color: "white",
+                lineHeight: 1.05, marginBottom: 20, letterSpacing: -2,
+              }}
+            >
+              Built to make the{" "}
+              <span style={{ color: C.orange, fontStyle: "italic" }}>invisible</span>{" "}
+              visible.
+            </h1>
+
+            <p style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
+              Millions of people volunteer, care for others, and act for the environment every single day, and none of it shows up anywhere. My Impact gives that work a number, so you can finally see the difference you make.
+            </p>
           </div>
 
-          <h1
-            className="mi-fraunces"
-            style={{
-              fontSize: "clamp(38px, 6vw, 68px)",
-              fontWeight: 900, color: "white",
-              lineHeight: 1.05, marginBottom: 20, letterSpacing: -2,
-            }}
-          >
-            Built to make the{" "}
-            <span style={{ color: C.orange, fontStyle: "italic" }}>invisible</span>{" "}
-            visible.
-          </h1>
-
-          <p style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.7)", lineHeight: 1.7, maxWidth: 620 }}>
-            Millions of people volunteer, care for others, and act for the environment every single day, and none of it shows up anywhere. My Impact gives that work a number, so you can finally see the difference you make.
-          </p>
+          {/* Stat callout panel */}
+          <div className="mi-about-stat-panel" style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(12px)",
+            borderRadius: 20,
+            padding: "clamp(24px, 3vw, 40px)",
+            minWidth: 220,
+            display: "flex", flexDirection: "column", gap: 24,
+          }}>
+            {[
+              { value: "£2,847", label: "Average social value created per volunteer per year", colour: C.orange },
+              { value: "900m", label: "Hours volunteered across the UK annually", colour: "rgba(255,255,255,0.85)" },
+              { value: "0%", label: "Of that value is currently tracked by the people who create it", colour: C.olive },
+            ].map(stat => (
+              <div key={stat.label}>
+                <p style={{ fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 900, color: stat.colour, margin: 0, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
+                  {stat.value}
+                </p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.45, marginTop: 6, maxWidth: 200 }}>
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -120,8 +153,7 @@ export default function About() {
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>Our mission</p>
             <p
-              className="mi-fraunces"
-              style={{ fontSize: "clamp(26px, 4vw, 48px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 28, letterSpacing: -1 }}
+              style={{ fontSize: "clamp(26px, 4vw, 48px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 28, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}
             >
               Every act of goodness has a value. We think you deserve to know what yours is.
             </p>
@@ -139,8 +171,7 @@ export default function About() {
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>Methodology</p>
               <h2
-                className="mi-fraunces"
-                style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 20, letterSpacing: -0.5 }}
+                style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 20, letterSpacing: -0.5, fontFamily: "'Outfit', sans-serif" }}
               >
                 Powered by accredited SROI methodology
               </h2>
@@ -213,8 +244,7 @@ export default function About() {
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>What counts as impact</p>
             <h2
-              className="mi-fraunces"
-              style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: "white", lineHeight: 1.2, marginBottom: 16, letterSpacing: -0.5 }}
+              style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: "white", lineHeight: 1.2, marginBottom: 16, letterSpacing: -0.5, fontFamily: "'Outfit', sans-serif" }}
             >
               Four categories. Hundreds of actions.
             </h2>
@@ -252,7 +282,7 @@ export default function About() {
       }}>
         <FadeIn>
           <div style={{ maxWidth: 600, margin: "0 auto" }}>
-            <h2 className="mi-fraunces" style={{ fontSize: "clamp(28px, 4.5vw, 48px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 }}>
+            <h2 style={{ fontSize: "clamp(28px, 4.5vw, 48px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
               Start measuring your impact
             </h2>
             <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", marginBottom: 36, lineHeight: 1.6 }}>
