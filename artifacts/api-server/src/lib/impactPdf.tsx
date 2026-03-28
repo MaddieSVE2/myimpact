@@ -275,13 +275,6 @@ const styles = StyleSheet.create({
     width: 40,
     textAlign: "right",
   },
-  barBg: {
-    height: 4,
-    backgroundColor: CREAM_BORDER,
-    borderRadius: 2,
-    marginTop: 6,
-    overflow: "hidden",
-  },
   sdgCard: {
     backgroundColor: WHITE,
     borderRadius: 10,
@@ -634,16 +627,6 @@ function ActivitiesPage({ data }: { data: PdfData }) {
                   <Text style={styles.activityName}>
                     {a.activityName}
                   </Text>
-                  <View style={styles.barBg}>
-                    <View
-                      style={{
-                        height: 4,
-                        backgroundColor: a.sdgColor || ORANGE,
-                        borderRadius: 2,
-                        width: `${Math.min(pct, 100)}%`,
-                      }}
-                    />
-                  </View>
                 </View>
                 <Text style={styles.activityValue}>{formatCurrency(a.impactValue)}</Text>
                 <Text style={styles.activityPct}>{pct}%</Text>
@@ -695,16 +678,6 @@ function SdgPage({ data }: { data: PdfData }) {
                   <Text style={styles.sdgName}>
                     {s.sdg}
                   </Text>
-                  <View style={styles.barBg}>
-                    <View
-                      style={{
-                        height: 4,
-                        backgroundColor: s.sdgColor || ORANGE,
-                        borderRadius: 2,
-                        width: `${Math.min(pct, 100)}%`,
-                      }}
-                    />
-                  </View>
                 </View>
                 <Text style={styles.sdgValue}>{formatCurrency(s.value)}</Text>
                 <Text style={styles.sdgPct}>{pct}%</Text>

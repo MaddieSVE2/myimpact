@@ -73,57 +73,60 @@ function ShareCard({ result, totalValue }: { result: any; totalValue: number }) 
       id="impact-share-card"
       style={{
         width: 600,
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
-        padding: "48px",
+        background: "linear-gradient(160deg, #1b2b3a 0%, #213547 55%, #1a2d40 100%)",
+        padding: "44px 48px",
         fontFamily: "'Outfit', 'DM Sans', sans-serif",
         position: "absolute",
         left: "-9999px",
         top: 0,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 40 }}>
-        <div>
-          <span style={{ color: "#F06127", fontWeight: 800, fontSize: 18 }}>My</span>
-          <span style={{ color: "#ffffff", fontWeight: 800, fontSize: 18 }}>Impact</span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          <span style={{ color: "#E8633A", fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>My</span>
+          <span style={{ color: "#ffffff", fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>Impact</span>
         </div>
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, letterSpacing: 2 }}>
-          POWERED BY THE SOCIAL VALUE ENGINE
+        <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, letterSpacing: 2, fontWeight: 600 }}>
+          SOCIAL VALUE ENGINE
         </span>
       </div>
-      <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 8, letterSpacing: 1 }}>
+      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, marginBottom: 6, letterSpacing: 1.5, fontWeight: 600 }}>
         MY ANNUAL SOCIAL VALUE
       </p>
-      <p style={{ color: "#ffffff", fontSize: 56, fontWeight: 800, margin: 0, lineHeight: 1.1 }}>
+      <p style={{ color: "#E8633A", fontSize: 62, fontWeight: 800, margin: 0, lineHeight: 1.05, letterSpacing: -2 }}>
         {formatCurrency(totalValue)}
+      </p>
+      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "8px 0 0", fontWeight: 400 }}>
+        Total verified social impact
       </p>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: 16,
-          marginTop: 40,
-          paddingTop: 32,
-          borderTop: "1px solid rgba(255,255,255,0.15)",
+          gap: "16px 24px",
+          marginTop: 36,
+          paddingTop: 28,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
         }}
       >
         {[
-          { label: "Direct Impact", value: result.impactValue, colour: "#F06127" },
-          { label: "Contributions", value: result.contributionValue, colour: "#3b82f6" },
-          { label: "Donations", value: result.donationsValue, colour: "#22c55e" },
-          { label: "Personal Dev", value: result.personalDevelopmentValue, colour: "#f59e0b" },
+          { label: "Direct Impact", value: result.impactValue, colour: "#E8633A" },
+          { label: "Contributions", value: result.contributionValue, colour: "#60a5fa" },
+          { label: "Donations", value: result.donationsValue, colour: "#4ade80" },
+          { label: "Personal Dev", value: result.personalDevelopmentValue, colour: "#fbbf24" },
         ].map(item => (
-          <div key={item.label}>
-            <p style={{ color: item.colour, fontSize: 10, fontWeight: 700, letterSpacing: 1.5, marginBottom: 4 }}>
+          <div key={item.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <p style={{ color: item.colour, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, margin: 0 }}>
               {item.label.toUpperCase()}
             </p>
-            <p style={{ color: "#ffffff", fontSize: 22, fontWeight: 700, margin: 0 }}>
+            <p style={{ color: "#ffffff", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: -0.5 }}>
               {formatCurrency(item.value)}
             </p>
           </div>
         ))}
       </div>
-      <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 36, letterSpacing: 1 }}>
-        Calculate yours at myimpact.replit.com
+      <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 32, letterSpacing: 1.2, fontWeight: 500 }}>
+        myimpact.social
       </p>
     </div>
   );
