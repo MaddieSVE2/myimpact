@@ -3,13 +3,13 @@ import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 
 const C = {
-  dark: "#213547",      // primary dark — hero/proof/orgs background
-  orange: "#E8633A",    // main accent — CTAs, highlights, section labels, "prove it"
-  olive: "#B5BE2E",     // secondary — pound values, story values
-  slate: "#7E8FAD",     // tertiary — step numbers, hours
-  lightBlue: "#A8C8DA", // card icon backgrounds, soft fills
-  cream: "#F7F5EF",     // light section backgrounds
-  offBlack: "#0D1B1E",  // footer background
+  dark: "var(--brand-dark)",
+  orange: "var(--brand-orange)",
+  olive: "var(--brand-olive)",
+  slate: "var(--brand-slate)",
+  lightBlue: "var(--brand-light-blue)",
+  cream: "var(--brand-cream)",
+  offBlack: "var(--brand-off-black)",
 };
 
 function useInView(threshold = 0.15) {
@@ -65,84 +65,7 @@ function Counter({ end, prefix = "", suffix = "", duration = 1800 }: { end: numb
 
 export default function Intro() {
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
-      <style>{`
-        .mi-hero {
-          min-height: calc(100vh - 4rem);
-          background: ${C.dark};
-          position: relative;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-        }
-        .mi-hero::before {
-          content: '';
-          position: absolute;
-          top: -40%; right: -20%;
-          width: 80vw; height: 80vw;
-          border-radius: 50%;
-          background: radial-gradient(circle, ${C.orange}28 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .mi-hero::after {
-          content: '';
-          position: absolute;
-          bottom: -20%; left: -10%;
-          width: 50vw; height: 50vw;
-          border-radius: 50%;
-          background: radial-gradient(circle, ${C.lightBlue}22 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
-        .mi-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${C.orange}; margin-bottom: 12px; }
-        .mi-section-title { font-family: 'Fraunces', Georgia, serif; font-size: clamp(26px, 4vw, 42px); font-weight: 700; color: ${C.dark}; letter-spacing: -1px; margin-bottom: 48px; max-width: 500px; line-height: 1.15; }
-        .mi-btn-hero {
-          background: ${C.orange};
-          color: white;
-          padding: 14px 32px;
-          border-radius: 100px;
-          font-weight: 700;
-          font-size: 15px;
-          text-decoration: none;
-          border: none;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          transition: all 0.25s;
-        }
-        .mi-btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 28px ${C.orange}50; }
-        .mi-scroll-hint {
-          position: absolute;
-          bottom: 28px; left: 50%;
-          transform: translateX(-50%);
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
-          z-index: 5;
-        }
-        .mi-scroll-hint span { color: rgba(255,255,255,0.3); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
-        .mi-scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent); animation: miScrollDown 2s infinite; }
-        @keyframes miScrollDown { 0% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(0.3) translateY(20px); } }
-        @keyframes miPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .mi-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.olive}; animation: miPulse 2s infinite; display: inline-block; flex-shrink: 0; }
-        .mi-count-card { padding: 28px 24px; border-radius: 16px; background: ${C.cream}; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; height: 100%; box-sizing: border-box; }
-        .mi-count-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
-        .mi-story-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: all 0.3s; height: 100%; display: flex; flex-direction: column; }
-        .mi-story-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.08); }
-        .mi-how-step { display: flex; gap: 28px; padding: 36px 0; border-bottom: 1px solid rgba(0,0,0,0.07); }
-        .mi-how-step:last-child { border-bottom: none; }
-        .mi-org-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px 24px; height: 100%; box-sizing: border-box; position: relative; }
-        .mi-cta-section { background: ${C.orange}; padding: clamp(60px,8vw,100px) 5%; text-align: center; position: relative; overflow: hidden; }
-        .mi-cta-section::before { content: ''; position: absolute; top: -50%; right: -30%; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); }
-        .mi-btn-white { background: white; color: ${C.dark}; padding: 16px 40px; border-radius: 100px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.25s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
-        .mi-btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-        @media (max-width: 768px) {
-          .mi-proof-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
-          .mi-cv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .mi-how-step { flex-direction: column; gap: 12px; }
-          .mi-counts-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-      `}</style>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── HERO ── */}
       <section className="mi-hero">
         {/* Faces image — blended into right side of hero */}
@@ -216,7 +139,7 @@ export default function Intro() {
               Your worth isn't measured in{" "}
               <span style={{ color: C.orange, fontStyle: "italic" }}>GDP.</span>
             </p>
-            <p style={{ fontSize: 18, color: "#4A5568", lineHeight: 1.75, maxWidth: 680 }}>
+            <p style={{ fontSize: 18, color: "var(--brand-muted-text)", lineHeight: 1.75, maxWidth: 680 }}>
               The economy doesn't count the hours you spend mentoring someone, looking after a relative, picking litter off a riverbank, or running a community group. But that work matters. It holds communities together. And until now, there's been no way for you to see what it's actually worth. We built My Impact to change that.
             </p>
           </div>
@@ -231,12 +154,12 @@ export default function Intro() {
           </FadeIn>
           <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "stretch" }}>
             {[
-              { icon: "🤝", bg: `${C.lightBlue}55`, title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
-              { icon: "💚", bg: `${C.olive}28`, title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
-              { icon: "🌱", bg: `${C.olive}28`, title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
-              { icon: "🏘️", bg: `${C.orange}1A`, title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
-              { icon: "📢", bg: `${C.lightBlue}55`, title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
-              { icon: "🎓", bg: `${C.orange}1A`, title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
+              { icon: "🤝", bg: "var(--brand-light-blue-chip)", title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
+              { icon: "💚", bg: "var(--brand-olive-chip)", title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
+              { icon: "🌱", bg: "var(--brand-olive-chip)", title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
+              { icon: "🏘️", bg: "var(--brand-orange-chip)", title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
+              { icon: "📢", bg: "var(--brand-light-blue-chip)", title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
+              { icon: "🎓", bg: "var(--brand-orange-chip)", title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-count-card">
@@ -244,7 +167,7 @@ export default function Intro() {
                     {c.icon}
                   </div>
                   <h3 className="mi-fraunces" style={{ fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 8 }}>{c.title}</h3>
-                  <p style={{ fontSize: 15, color: "#5A6572", lineHeight: 1.6 }}>{c.desc}</p>
+                  <p style={{ fontSize: 15, color: "var(--brand-subtle-text)", lineHeight: 1.6 }}>{c.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -322,11 +245,11 @@ export default function Intro() {
                   <div style={{ padding: "28px 24px 20px", flex: 1 }}>
                     <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
                     <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
-                    <p style={{ fontSize: 15, color: "#4A5568", lineHeight: 1.65, marginTop: 12, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
+                    <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.65, marginTop: 12, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
                   </div>
                   <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                     <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 26, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
-                    <p style={{ fontSize: 13, color: "#5A6572", textAlign: "right", maxWidth: 150, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
+                    <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 150, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -342,16 +265,16 @@ export default function Intro() {
               <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15 }}>
                 Your impact is your proof.
               </h2>
-              <p style={{ fontSize: 17, color: "#4A5568", lineHeight: 1.7, marginBottom: 16 }}>
+              <p style={{ fontSize: 17, color: "var(--brand-muted-text)", lineHeight: 1.7, marginBottom: 16 }}>
                 Employers want evidence. Funders want outcomes. Commissioners want data. My Impact gives you something most people don't have: a verified, quantified record of the difference you make.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 10, marginTop: 28 }}>
                 {[
-                  { label: "CVs and job applications", bg: `${C.orange}18`, color: C.orange },
-                  { label: "Funding bids", bg: `${C.olive}28`, color: C.dark },
-                  { label: "UCAS & DofE", bg: `${C.lightBlue}55`, color: C.dark },
-                  { label: "Annual reports", bg: `${C.orange}18`, color: C.orange },
-                  { label: "Social media", bg: `${C.olive}28`, color: C.dark },
+                  { label: "CVs and job applications", bg: "var(--brand-orange-chip)", color: C.orange },
+                  { label: "Funding bids", bg: "var(--brand-olive-chip)", color: C.dark },
+                  { label: "UCAS & DofE", bg: "var(--brand-light-blue-chip)", color: C.dark },
+                  { label: "Annual reports", bg: "var(--brand-orange-chip)", color: C.orange },
+                  { label: "Social media", bg: "var(--brand-olive-chip)", color: C.dark },
                 ].map(t => (
                   <span key={t.label} style={{ padding: "7px 16px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: t.bg, color: t.color }}>
                     {t.label}
@@ -365,20 +288,20 @@ export default function Intro() {
             <div style={{ background: C.cream, borderRadius: 20, padding: "36px 32px", border: "1px solid rgba(0,0,0,0.04)" }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
               <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.dark, marginBottom: 4 }}>Chloe M.</p>
-              <p style={{ fontSize: 14, color: "#5A6572", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
+              <p style={{ fontSize: 14, color: "var(--brand-subtle-text)", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
-                  <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Total social value</p>
+                  <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", marginBottom: 4 }}>Total social value</p>
                   <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.olive }}>£3,150</p>
                 </div>
                 <div style={{ background: "white", borderRadius: 12, padding: "16px 18px" }}>
-                  <p style={{ fontSize: 13, color: "#5A6572", marginBottom: 4 }}>Hours contributed</p>
+                  <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", marginBottom: 4 }}>Hours contributed</p>
                   <p className="mi-fraunces" style={{ fontSize: 28, fontWeight: 900, color: C.slate }}>187</p>
                 </div>
               </div>
               <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.olive}28`, fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
-                <span style={{ padding: "4px 12px", borderRadius: 100, background: `${C.lightBlue}55`, fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: "var(--brand-olive-chip)", fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
+                <span style={{ padding: "4px 12px", borderRadius: 100, background: "var(--brand-light-blue-chip)", fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
               </div>
               <p style={{ marginTop: 16, fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Powered by Social Value Engine methodology</p>
             </div>
@@ -393,7 +316,7 @@ export default function Intro() {
             <h2 className="mi-fraunces" style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15 }}>
               See the value your people create.
             </h2>
-            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
+            <p className="mi-orgs-intro-text" style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
               Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data — ready for reporting, funding bids, and programme evaluation.
             </p>
           </FadeIn>
@@ -479,21 +402,21 @@ export default function Intro() {
         </FadeIn>
       </section>
       {/* ── FOOTER ── */}
-      <footer style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
+      <footer className="mi-footer" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <img
           src={`${import.meta.env.BASE_URL}images/myimpact.png`}
           alt="My Impact"
           style={{ height: 40, marginBottom: 16, display: "inline-block" }}
         />
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>The difference I make.</p>
+        <p className="mi-footer-tagline" style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 20 }}>The difference I make.</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
           {["About", "Privacy", "Contact"].map(l => (
-            <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>{l}</a>
+            <a key={l} href="#" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>{l}</a>
           ))}
-          <Link href="/org/register" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Register your organisation</Link>
-          <Link href="/org" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Organisation dashboard</Link>
+          <Link href="/org/register" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Register your organisation</Link>
+          <Link href="/org" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
         </div>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+        <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
           Powered by Social Value Engine methodology · UK data centres
         </p>
       </footer>

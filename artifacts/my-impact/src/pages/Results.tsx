@@ -40,7 +40,7 @@ function MetricTile({
     <div className="bg-white border border-border rounded-xl p-5">
       <div className="flex items-start justify-between mb-3">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <Icon className="w-5 h-5 shrink-0" style={{ color: iconColour }} />
+        <Icon className="w-5 h-5 shrink-0" style={{ color: iconColour }} aria-hidden="true" />
       </div>
       <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
         {formatCurrency(value)}
@@ -50,9 +50,10 @@ function MetricTile({
         <button
           onClick={() => setOpen(o => !o)}
           className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          title="What's this?"
+          aria-label="What's this?"
+          aria-expanded={open}
         >
-          <Info className="w-3 h-3" />
+          <Info className="w-3 h-3" aria-hidden="true" />
         </button>
       </div>
       {open && (
@@ -204,7 +205,7 @@ function PersonalDevelopmentDetail({
       <div className="flex items-start justify-between px-5 pt-5 pb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Trophy className="w-4 h-4 shrink-0" style={{ color: "#f59e0b" }} />
+            <Trophy className="w-4 h-4 shrink-0" style={{ color: "#f59e0b" }} aria-hidden="true" />
             <p className="text-xs text-muted-foreground font-medium">Personal Development</p>
           </div>
           <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
@@ -243,8 +244,8 @@ function PersonalDevelopmentDetail({
         >
           <span className="text-xs font-medium text-muted-foreground">How this is calculated</span>
           {open
-            ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-            : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+            : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
           }
         </button>
         {open && (
@@ -307,7 +308,7 @@ function ProxyMethodology({ breakdowns }: {
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/20 transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <FlaskConical className="w-4 h-4 shrink-0" style={{ color: "#7E8FAD" }} />
+          <FlaskConical className="w-4 h-4 shrink-0" style={{ color: "#7E8FAD" }} aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-foreground">How we calculated this</p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -316,9 +317,9 @@ function ProxyMethodology({ breakdowns }: {
           </div>
         </div>
         {open ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
         )}
       </button>
 
@@ -528,7 +529,7 @@ export default function Results() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Badges earned</p>
             <Link href="/badges" className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Award className="w-3 h-3" /> All badges
+              <Award className="w-3 h-3" aria-hidden="true" /> All badges
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -583,74 +584,78 @@ export default function Results() {
         >
           {/* Activity donut */}
           {result.activityBreakdowns.length > 0 && (
-            <div className="bg-white border border-border rounded-xl p-4">
-              <p className="text-xs font-semibold text-muted-foreground mb-3">By activity</p>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie
-                    data={result.activityBreakdowns.map((a: any) => ({
-                      name: a.activityName,
-                      value: a.impactValue,
-                      color: a.sdgColor || "#F06127",
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={42}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {result.activityBreakdowns.map((a: any, i: number) => (
-                      <Cell key={i} fill={a.sdgColor || "#F06127"} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: number) => formatCurrency(val)}
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <figure className="bg-white border border-border rounded-xl p-4 m-0">
+              <figcaption className="text-xs font-semibold text-muted-foreground mb-3">By activity</figcaption>
+              <div role="img" aria-label="Donut chart showing social value breakdown by activity">
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={result.activityBreakdowns.map((a: any) => ({
+                        name: a.activityName,
+                        value: a.impactValue,
+                        color: a.sdgColor || "#F06127",
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {result.activityBreakdowns.map((a: any, i: number) => (
+                        <Cell key={i} fill={a.sdgColor || "#F06127"} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val: number) => formatCurrency(val)}
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               <div className="space-y-1 mt-1">
                 {result.activityBreakdowns.map((a: any) => (
                   <div key={a.activityId} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "#F06127" }} />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "#F06127" }} aria-hidden="true" />
                     <span className="truncate flex-1">{a.activityName}</span>
                     <span className="font-medium text-foreground shrink-0">{formatCurrency(a.impactValue)}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </figure>
           )}
 
           {/* SDG donut */}
           {result.sdgBreakdowns.length > 0 && (
-            <div className="bg-white border border-border rounded-xl p-4">
-              <p className="text-xs font-semibold text-muted-foreground mb-3">By SDG</p>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie
-                    data={result.sdgBreakdowns.map((s: any) => ({
-                      name: `SDG ${s.sdg}`,
-                      value: s.value,
-                      color: s.sdgColor,
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={42}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {result.sdgBreakdowns.map((s: any, i: number) => (
-                      <Cell key={i} fill={s.sdgColor} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: number) => formatCurrency(val)}
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <figure className="bg-white border border-border rounded-xl p-4 m-0">
+              <figcaption className="text-xs font-semibold text-muted-foreground mb-3">By SDG</figcaption>
+              <div role="img" aria-label="Donut chart showing social value breakdown by Sustainable Development Goal">
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={result.sdgBreakdowns.map((s: any) => ({
+                        name: `SDG ${s.sdg}`,
+                        value: s.value,
+                        color: s.sdgColor,
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {result.sdgBreakdowns.map((s: any, i: number) => (
+                        <Cell key={i} fill={s.sdgColor} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val: number) => formatCurrency(val)}
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               <div className="space-y-1 mt-1">
                 {result.sdgBreakdowns.map((s: any) => (
                   <div key={s.sdg} className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -665,7 +670,7 @@ export default function Results() {
                   </div>
                 ))}
               </div>
-            </div>
+            </figure>
           )}
         </motion.div>
       )}
@@ -724,7 +729,7 @@ export default function Results() {
       >
         <div className="px-5 pt-5 pb-4">
           <div className="flex items-center gap-2 mb-1">
-            <Clipboard className="w-4 h-4 shrink-0" style={{ color: "#3b82f6" }} />
+            <Clipboard className="w-4 h-4 shrink-0" style={{ color: "#3b82f6" }} aria-hidden="true" />
             <p className="text-xs text-muted-foreground font-medium">Use this in your CV or application</p>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-3">
@@ -748,8 +753,8 @@ export default function Results() {
             className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
           >
             {cvCopied
-              ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" /> Copied!</>
-              : <><Clipboard className="w-3.5 h-3.5" /> Copy paragraph</>
+              ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
+              : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy paragraph</>
             }
           </button>
         </div>
@@ -765,7 +770,7 @@ export default function Results() {
       >
         <div className="px-5 py-4 flex items-center gap-4">
           <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "#F06127" }}>
-            <MessageSquare className="w-5 h-5 text-white" />
+            <MessageSquare className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground mb-0.5">Want help putting this into your own words?</p>
@@ -776,7 +781,7 @@ export default function Results() {
             className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
             style={{ background: "#F06127", boxShadow: "0 2px 8px #F0612730" }}
           >
-            Ask sidekick <ArrowRight className="w-3 h-3" />
+            Ask sidekick <ArrowRight className="w-3 h-3" aria-hidden="true" />
           </button>
         </div>
       </motion.div>
@@ -795,7 +800,7 @@ export default function Results() {
               boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
             }}
           >
-            {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
             {saveMutation.isPending ? "Saving…" : saved ? "Saved!" : "Save progress"}
           </button>
 
@@ -808,7 +813,7 @@ export default function Results() {
             disabled={exporting}
             className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
             {exporting ? "Exporting…" : "Download PNG"}
           </button>
 
@@ -817,7 +822,7 @@ export default function Results() {
               onClick={handleNativeShare}
               className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all"
             >
-              <Share2 className="w-3.5 h-3.5" /> Share
+              <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> Share
             </button>
             {shareOpen && (
               <div className="absolute bottom-full mb-2 left-0 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-50">
@@ -827,7 +832,7 @@ export default function Results() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
-                  <Twitter className="w-3.5 h-3.5 text-sky-500" /> Share on X
+                  <Twitter className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" /> Share on X
                 </a>
                 <a
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
@@ -835,7 +840,7 @@ export default function Results() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
-                  <Linkedin className="w-3.5 h-3.5 text-blue-600" /> Share on LinkedIn
+                  <Linkedin className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" /> Share on LinkedIn
                 </a>
               </div>
             )}
@@ -845,7 +850,7 @@ export default function Results() {
             href="/journal"
             className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all shrink-0"
           >
-            <BookOpen className="w-3.5 h-3.5" /> Journal
+            <BookOpen className="w-3.5 h-3.5" aria-hidden="true" /> Journal
           </Link>
 
           {/* Ideas CTA — grows to fill remaining space */}
@@ -854,7 +859,7 @@ export default function Results() {
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
             style={{ background: "#E8633A", boxShadow: "0 2px 12px #E8633A40" }}
           >
-            Get personalised ideas <ArrowRight className="w-3.5 h-3.5" />
+            Get personalised ideas <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>
 
         </div>

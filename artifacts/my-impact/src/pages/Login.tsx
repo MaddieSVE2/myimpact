@@ -42,7 +42,7 @@ export default function Login() {
           {sent ? (
             <div className="text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
-                <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} />
+                <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} aria-hidden="true" />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">Check your inbox</h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
@@ -68,7 +68,7 @@ export default function Login() {
                     Email address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     <input
                       id="email"
                       type="email"
@@ -91,7 +91,7 @@ export default function Login() {
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
                   style={{ background: "#F06127" }}
                 >
-                  {loading ? "Sending..." : <>Send sign-in link <ArrowRight className="w-4 h-4" /></>}
+                  {loading ? "Sending..." : <>Send sign-in link <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}
                 </button>
               </form>
 

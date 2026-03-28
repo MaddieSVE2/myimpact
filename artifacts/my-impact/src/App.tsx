@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WizardProvider } from "@/lib/wizard-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SidekickProvider } from "@/lib/sidekick-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
 import { X, LogIn } from "lucide-react";
@@ -44,7 +45,7 @@ function GuestBanner() {
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between gap-4">
       <p className="text-xs text-amber-800 flex items-center gap-1.5 flex-wrap">
-        <LogIn className="w-3.5 h-3.5 shrink-0" />
+        <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
         <span>
           You're browsing as a guest.{" "}
           <Link href="/login" className="font-semibold underline underline-offset-2 hover:text-amber-900">
@@ -58,7 +59,7 @@ function GuestBanner() {
         className="shrink-0 p-0.5 rounded text-amber-500 hover:text-amber-800 hover:bg-amber-100 transition-colors"
         aria-label="Dismiss"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
     </div>
   );
@@ -112,16 +113,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <SidekickProvider>
-          <WizardProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AppRouter />
-            </WouterRouter>
-          </WizardProvider>
-          </SidekickProvider>
-        </AuthProvider>
-        <Toaster />
+        <ThemeProvider>
+          <AuthProvider>
+            <SidekickProvider>
+              <WizardProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <AppRouter />
+                </WouterRouter>
+              </WizardProvider>
+            </SidekickProvider>
+          </AuthProvider>
+          <Toaster />
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

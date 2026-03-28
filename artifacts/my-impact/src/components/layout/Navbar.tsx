@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown,
+  MoreVertical, User, ChevronDown, Eye,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
+import { useTheme } from "@/lib/theme-context";
 
 const DARK = "#213547";
 
@@ -54,15 +55,15 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#F06127" }}>
-              <Smartphone className="w-5 h-5 text-white" />
+              <Smartphone className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Add to home screen</p>
               <p className="text-xs text-muted-foreground">Quick access from your phone</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted/40 transition-colors">
-            <X className="w-4 h-4 text-muted-foreground" />
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted/40 transition-colors" aria-label="Close">
+            <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 
@@ -71,9 +72,9 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-muted-foreground">Follow these steps in Safari:</p>
             <div className="space-y-2.5">
               {[
-                { step: "1", icon: <Share className="w-4 h-4" style={{ color: "#007AFF" }} />, text: <>Tap the <strong>Share</strong> button at the bottom of your screen</> },
-                { step: "2", icon: <span className="text-base leading-none">＋</span>, text: <>Scroll down and tap <strong>Add to Home Screen</strong></> },
-                { step: "3", icon: <span className="text-base leading-none">✓</span>, text: <>Tap <strong>Add</strong> in the top right corner</> },
+                { step: "1", icon: <Share className="w-4 h-4" style={{ color: "#007AFF" }} aria-hidden="true" />, text: <>Tap the <strong>Share</strong> button at the bottom of your screen</> },
+                { step: "2", icon: <span className="text-base leading-none" aria-hidden="true">＋</span>, text: <>Scroll down and tap <strong>Add to Home Screen</strong></> },
+                { step: "3", icon: <span className="text-base leading-none" aria-hidden="true">✓</span>, text: <>Tap <strong>Add</strong> in the top right corner</> },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">{step}</div>
@@ -95,9 +96,9 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-muted-foreground">Follow these steps in Chrome:</p>
             <div className="space-y-2.5">
               {[
-                { step: "1", icon: <MoreVertical className="w-4 h-4 text-muted-foreground" />, text: <>Tap the <strong>⋮ menu</strong> in the top-right corner of Chrome</> },
-                { step: "2", icon: <span className="text-base leading-none">＋</span>, text: <>Tap <strong>Add to Home screen</strong></> },
-                { step: "3", icon: <span className="text-base leading-none">✓</span>, text: <>Tap <strong>Add</strong> to confirm</> },
+                { step: "1", icon: <MoreVertical className="w-4 h-4 text-muted-foreground" aria-hidden="true" />, text: <>Tap the <strong>⋮ menu</strong> in the top-right corner of Chrome</> },
+                { step: "2", icon: <span className="text-base leading-none" aria-hidden="true">＋</span>, text: <>Tap <strong>Add to Home screen</strong></> },
+                { step: "3", icon: <span className="text-base leading-none" aria-hidden="true">✓</span>, text: <>Tap <strong>Add</strong> to confirm</> },
               ].map(({ step, icon, text }) => (
                 <div key={step} className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground mt-0.5">{step}</div>
@@ -152,6 +153,7 @@ export function Navbar() {
   const { isLoggedIn, user, logout } = useAuth();
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
+  const { isHighContrast, toggleTheme } = useTheme();
 
   const navItems = [
     { href: "/wizard/actions", label: "Calculate", icon: PlusCircle },
@@ -206,7 +208,7 @@ export function Navbar() {
                       isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
                     )}
                   >
-                    <item.icon className="w-3.5 h-3.5 shrink-0" />
+                    <item.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     {item.label}
                   </Link>
                 );
@@ -235,12 +237,15 @@ export function Navbar() {
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors",
                       userMenuOpen ? "bg-white/15" : "hover:bg-white/10"
                     )}
+                    aria-label="My account menu"
+                    aria-expanded={userMenuOpen}
                   >
                     <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                      <User className="w-3.5 h-3.5 text-white" />
+                      <User className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                     </div>
                     <ChevronDown
                       className={cn("w-3 h-3 text-white/60 transition-transform", userMenuOpen && "rotate-180")}
+                      aria-hidden="true"
                     />
                   </button>
 
@@ -254,10 +259,18 @@ export function Navbar() {
                       </div>
                       <div className="py-1">
                         <button
+                          onClick={() => { setUserMenuOpen(false); toggleTheme(); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                          aria-pressed={isHighContrast}
+                        >
+                          <Eye className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          {isHighContrast ? "Standard contrast" : "High contrast"}
+                        </button>
+                        <button
                           onClick={handleAddToHome}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
-                          <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Add to home screen
                         </button>
                         <div className="my-1 border-t border-border" />
@@ -265,7 +278,7 @@ export function Navbar() {
                           onClick={() => { setUserMenuOpen(false); logout(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
-                          <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <LogOut className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Log out
                         </button>
                       </div>
@@ -275,12 +288,23 @@ export function Navbar() {
               </>
             ) : (
               <>
+                {/* High contrast toggle — desktop, logged-out */}
+                <button
+                  onClick={toggleTheme}
+                  className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all hover:-translate-y-px"
+                  style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
+                  aria-pressed={isHighContrast}
+                  aria-label={isHighContrast ? "Switch to standard contrast" : "Switch to high contrast"}
+                >
+                  <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                  {isHighContrast ? "Standard" : "High contrast"}
+                </button>
                 <Link
                   href="/login"
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
                   style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
                 >
-                  <LogIn className="w-3.5 h-3.5" />
+                  <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
                   Log in
                 </Link>
                 <Link
@@ -298,9 +322,9 @@ export function Navbar() {
               className="lg:hidden p-2"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => { setMobileOpen(false); openSidekick(true); }}
-              title="Open Sidekick AI"
+              aria-label="Open Sidekick AI"
             >
-              <MessageCircle className="w-5 h-5" />
+              <MessageCircle className="w-5 h-5" aria-hidden="true" />
             </button>
 
             {/* Hamburger — mobile only */}
@@ -308,8 +332,10 @@ export function Navbar() {
               className="lg:hidden p-2"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => setMobileOpen(o => !o)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
             >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
           </div>
         </div>
@@ -329,7 +355,7 @@ export function Navbar() {
                     isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
                   )}
                 >
-                  <item.icon className="w-4 h-4" />
+                  <item.icon className="w-4 h-4" aria-hidden="true" />
                   {item.label}
                 </Link>
               );
@@ -348,10 +374,19 @@ export function Navbar() {
             <div className="my-1 border-t border-white/10" />
 
             <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+              aria-pressed={isHighContrast}
+            >
+              <Eye className="w-4 h-4" aria-hidden="true" />
+              {isHighContrast ? "Standard contrast" : "High contrast"}
+            </button>
+
+            <button
               onClick={handleAddToHome}
               className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
             >
-              <Smartphone className="w-4 h-4" />
+              <Smartphone className="w-4 h-4" aria-hidden="true" />
               Add to home screen
             </button>
 
@@ -360,7 +395,7 @@ export function Navbar() {
                 onClick={() => { logout(); setMobileOpen(false); }}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4" aria-hidden="true" />
                 Log out
               </button>
             ) : (
@@ -369,7 +404,7 @@ export function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >
-                <LogIn className="w-4 h-4" />
+                <LogIn className="w-4 h-4" aria-hidden="true" />
                 Log in
               </Link>
             )}

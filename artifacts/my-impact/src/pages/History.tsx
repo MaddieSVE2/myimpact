@@ -65,7 +65,7 @@ function RecordDetail({ result }: { result: any }) {
                     <>
                       <span className="text-[10px] text-muted-foreground/40">·</span>
                       <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                        <Clock className="w-2.5 h-2.5" /> {b.hours} hrs
+                        <Clock className="w-2.5 h-2.5" aria-hidden="true" /> {b.hours} hrs
                       </span>
                     </>
                   )}
@@ -84,7 +84,7 @@ function RecordDetail({ result }: { result: any }) {
       {/* Totals footer */}
       <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Clock className="w-3 h-3" />
+          <Clock className="w-3 h-3" aria-hidden="true" />
           {Math.round(result.totalHours)} volunteer hours total
         </div>
         <p className="text-xs font-bold text-foreground">{formatCurrency(result.totalValue)} total value</p>
@@ -101,7 +101,11 @@ export default function History() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" />
+        <div
+          className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"
+          role="status"
+          aria-label="Loading"
+        />
       </div>
     );
   }
@@ -130,14 +134,14 @@ export default function History() {
 
       {records.length === 0 ? (
         <div className="bg-white border border-dashed border-border rounded-xl py-16 text-center">
-          <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+          <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm font-medium text-foreground mb-1">No records yet</p>
           <p className="text-xs text-muted-foreground mb-5">Complete the calculator and save a record to start tracking your impact.</p>
           <Link
             href="/wizard/actions"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
           >
-            Calculate my impact <ArrowRight className="w-3.5 h-3.5" />
+            Calculate my impact <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>
         </div>
       ) : (
@@ -184,8 +188,9 @@ export default function History() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <h3 className="text-sm font-semibold text-foreground mb-4">Social value over time</h3>
-            <div className="h-[240px] w-full">
+            <figure className="m-0">
+            <figcaption className="text-sm font-semibold text-foreground mb-4">Social value over time</figcaption>
+            <div className="h-[240px] w-full" role="img" aria-label="Area chart showing your cumulative social value over time">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -232,6 +237,7 @@ export default function History() {
                 Save more records to see your impact trend over time.
               </p>
             )}
+            </figure>
           </motion.div>
 
           {/* Record list */}
@@ -259,7 +265,7 @@ export default function History() {
                         className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors"
                         style={{ backgroundColor: isOpen ? "#F06127" : "hsl(var(--muted))" }}
                       >
-                        <Calendar className="w-3.5 h-3.5" style={{ color: isOpen ? "white" : "hsl(var(--muted-foreground))" }} />
+                        <Calendar className="w-3.5 h-3.5" style={{ color: isOpen ? "white" : "hsl(var(--muted-foreground))" }} aria-hidden="true" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -290,8 +296,8 @@ export default function History() {
                         {formatCurrency(record.impactResult.totalValue)}
                       </p>
                       {isOpen
-                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                        : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                        : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       }
                     </div>
                   </button>
