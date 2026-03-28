@@ -236,7 +236,7 @@ export default function Intro() {
             <p className="mi-section-label">Real stories</p>
             <p className="mi-section-title">What does social value look like?</p>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 24, alignItems: "stretch" }}>
+          <div style={{ display: "flex", flexDirection: "row", gap: 24, overflowX: "auto", paddingBottom: 12, scrollSnapType: "x mandatory" }}>
             {[
               {
                 name: "Aisha",
@@ -262,7 +262,7 @@ export default function Intro() {
               {
                 name: "Marcus",
                 age: "38, Catterick",
-                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact helped me put it in plain language: not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
+                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
                 value: "£11,240",
                 what: "Forces leaver, 14 years' service",
               },
@@ -274,7 +274,8 @@ export default function Intro() {
                 what: "Career break returner, 8 years",
               },
             ].map((s, i) => (
-              <FadeIn key={s.name} delay={i * 0.12}>
+              <div key={s.name} style={{ flexShrink: 0, width: 320, scrollSnapAlign: "start" }}>
+              <FadeIn delay={i * 0.12}>
                 <div style={{
                   borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
                   transition: "all 0.3s", height: "100%", display: "flex", flexDirection: "column",
@@ -290,6 +291,7 @@ export default function Intro() {
                   </div>
                 </div>
               </FadeIn>
+              </div>
             ))}
           </div>
         </div>
