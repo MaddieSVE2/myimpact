@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, ChevronRight, Sparkles, X, Bot } from "lucide-react";
+import { useLocation } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { cn } from "@/lib/utils";
@@ -9,11 +10,80 @@ interface Message {
   content: string;
 }
 
-const QUICK_ACTIONS = [
-  "What does my social value score mean?",
+const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
+  "/wizard/actions": [
+    "What counts as a meaningful action?",
+    "How are these activities converted to social value?",
+    "What's the difference between volunteering and paid work?",
+    "Which activities have the biggest impact?",
+  ],
+  "/wizard/activities": [
+    "Which activities create the most social value?",
+    "How is volunteering valued in pounds?",
+    "What if my activity isn't on the list?",
+    "How do environmental activities get measured?",
+  ],
+  "/wizard/contributions": [
+    "How are donations valued?",
+    "Is giving time worth more than donating money?",
+    "Which SDGs do contributions link to?",
+    "What counts as a financial contribution here?",
+  ],
+  "/results": [
+    "What does my score actually mean?",
+    "How can I increase my social value?",
+    "Help me write a UCAS paragraph about my impact",
+    "Which SDGs am I contributing to?",
+  ],
+  "/suggestions": [
+    "How do I find volunteering near me?",
+    "What is DofE and how do I get involved?",
+    "Help me explain my impact on my CV",
+    "Which causes might suit my interests?",
+  ],
+  "/history": [
+    "How do I grow my impact over time?",
+    "Help me summarise my impact history for a job application",
+    "What trends should I look for in my history?",
+    "How do I use this for a UCAS personal statement?",
+  ],
+  "/journal": [
+    "What makes a good impact reflection?",
+    "Help me write a reflection on my volunteering",
+    "What should I include in an impact journal entry?",
+    "How can I use my journal for a UCAS statement?",
+  ],
+  "/badges": [
+    "What do these badges mean for employers?",
+    "Help me write a LinkedIn post about my impact",
+    "How do I earn more badges?",
+    "Can I use my badges in a personal statement?",
+  ],
+  "/org": [
+    "How does an organisation dashboard work?",
+    "What metrics matter most for a funding bid?",
+    "How do we grow our organisation's social value?",
+    "How should we present this data to trustees?",
+  ],
+  "/org/register": [
+    "What are the benefits of registering an organisation?",
+    "How does the invite code system work?",
+    "What data does the dashboard show?",
+    "Is the data anonymous?",
+  ],
+  "/": [
+    "What is social value?",
+    "How do charities measure their impact?",
+    "How can I get into charity or purpose-led work?",
+    "What is SROI?",
+  ],
+};
+
+const DEFAULT_QUICK_ACTIONS = [
+  "What is social value?",
   "How can I increase my impact?",
-  "Which SDGs am I helping?",
-  "Help me write about my impact for my UCAS personal statement",
+  "Help me write a UCAS paragraph about my impact",
+  "What SDGs am I helping?",
 ];
 
 export function Sidekick() {
@@ -25,6 +95,9 @@ export function Sidekick() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { result } = useWizard();
+  const [location] = useLocation();
+
+  const quickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -153,7 +226,7 @@ export function Sidekick() {
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Quick questions</p>
-              {QUICK_ACTIONS.map((action) => (
+              {quickActions.map((action) => (
                 <button
                   key={action}
                   onClick={() => sendMessage(action)}
