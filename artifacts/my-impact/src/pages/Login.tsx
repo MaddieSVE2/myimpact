@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
-import { Mail, ArrowRight, CheckCircle } from "lucide-react";
+import { Mail, ArrowRight, CheckCircle, X } from "lucide-react";
 
 export default function Login() {
   const { requestMagicLink } = useAuth();
@@ -9,6 +9,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, navigate] = useLocation();
+
+  const handleClose = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate("/");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +47,14 @@ export default function Login() {
           />
         </Link>
 
-        <div className="bg-white rounded-2xl p-8 shadow-2xl">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl relative">
+          <button
+            onClick={handleClose}
+            aria-label="Close and go back"
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-[#F06127]/40"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
           {sent ? (
             <div className="text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
