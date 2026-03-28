@@ -44,6 +44,42 @@ router.post("/register", async (req, res) => {
       res.status(500).json({ error: "Failed to send registration. Please try again." });
       return;
     }
+
+    // Send confirmation email to the registrant
+    const { error: confirmError } = await client.emails.send({
+      from: fromEmail,
+      to: contactEmail,
+      subject: `We've received your registration request — My Impact`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+          <h2 style="color:#213547;margin-top:0;">Thanks for registering, ${escHtml(contactName)}!</h2>
+          <p style="color:#444;line-height:1.6;margin-top:0;">We've received your registration request for <strong>${escHtml(orgName)}</strong> and our team will review it shortly.</p>
+          <div style="background:white;border-radius:8px;padding:20px 24px;margin:24px 0;">
+            <h3 style="color:#213547;margin-top:0;font-size:15px;">Your submission details</h3>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr style="background:#f7f5ef;"><td style="padding:10px 14px;color:#555;width:140px;font-size:13px;border-radius:4px 0 0 4px;"><strong>Organisation</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;">${escHtml(orgName)}</td></tr>
+              <tr><td style="padding:10px 14px;color:#555;font-size:13px;"><strong>Type</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;">${escHtml(type)}</td></tr>
+              <tr style="background:#f7f5ef;"><td style="padding:10px 14px;color:#555;font-size:13px;"><strong>Contact name</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;">${escHtml(contactName)}</td></tr>
+              <tr><td style="padding:10px 14px;color:#555;font-size:13px;"><strong>Contact email</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;">${escHtml(contactEmail)}</td></tr>
+              ${size ? `<tr style="background:#f7f5ef;"><td style="padding:10px 14px;color:#555;font-size:13px;"><strong>Approx size</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;">${escHtml(size)}</td></tr>` : ""}
+              ${purpose ? `<tr><td style="padding:10px 14px;color:#555;font-size:13px;vertical-align:top;"><strong>Purpose</strong></td><td style="padding:10px 14px;color:#213547;font-size:14px;line-height:1.5;">${escHtml(purpose)}</td></tr>` : ""}
+            </table>
+          </div>
+          <h3 style="color:#213547;font-size:15px;margin-bottom:8px;">What happens next?</h3>
+          <ul style="color:#444;line-height:1.8;padding-left:20px;margin-top:0;">
+            <li>Our team will review your request within <strong>2 working days</strong>.</li>
+            <li>Once approved, we'll send you an <strong>invite code</strong> so your organisation can get started on My Impact.</li>
+            <li>If we need any additional information, we'll reach out to you at this email address.</li>
+          </ul>
+          <p style="color:#444;line-height:1.6;">If you have any questions in the meantime, feel free to reply to this email.</p>
+          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="https://myimpact.replit.app" style="color:#aaa;">myimpact.replit.app</a></p>
+        </div>
+      `,
+    });
+    if (confirmError) {
+      console.error("Resend error sending org registration confirmation to registrant:", confirmError);
+      // Don't fail the request — the admin notification was sent successfully
+    }
   } catch (err) {
     console.error("Org registration email error:", err);
     res.status(500).json({ error: "Failed to send registration. Please try again." });
