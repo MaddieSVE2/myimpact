@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search } from "lucide-react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import {
@@ -64,20 +64,110 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string;
   );
 }
 
+interface OrgListItem {
+  id: string;
+  name: string;
+}
+
+function useOrgList() {
+  return useQuery<{ orgs: OrgListItem[] }>({
+    queryKey: ["org-list"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/list`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load organisations");
+      return res.json();
+    },
+  });
+}
+
+function OrgSelector({ selected, onSelect }: { selected: OrgListItem | null; onSelect: (org: OrgListItem) => void }) {
+  const { data, isLoading } = useOrgList();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus();
+  }, [open]);
+
+  const orgs = data?.orgs ?? [];
+  const filtered = search.trim()
+    ? orgs.filter(o => o.name.toLowerCase().includes(search.toLowerCase()))
+    : orgs;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary transition-colors"
+      >
+        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
+          {isLoading ? "Loading organisations…" : selected ? selected.name : "Search for your organisation…"}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-border rounded-lg shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-border flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Type to filter…"
+              className="flex-1 text-sm outline-none bg-transparent"
+            />
+          </div>
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-4 py-2.5 text-sm text-muted-foreground">No organisations found</li>
+            ) : (
+              filtered.map(org => (
+                <li key={org.id}>
+                  <button
+                    type="button"
+                    onClick={() => { onSelect(org); setOpen(false); setSearch(""); }}
+                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-muted/40 transition-colors ${selected?.id === org.id ? "text-primary font-semibold" : "text-foreground"}`}
+                  >
+                    {org.name}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JoinOrgPanel() {
   const [code, setCode] = useState("");
+  const [selectedOrg, setSelectedOrg] = useState<OrgListItem | null>(null);
   const [step, setStep] = useState<"entry" | "consent" | "joined">("entry");
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const validateMutation = useMutation({
-    mutationFn: async (inviteCode: string) => {
+    mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
       const res = await fetch(`${BASE}/api/org/validate-invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ inviteCode }),
+        body: JSON.stringify({ inviteCode, orgId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
@@ -93,12 +183,12 @@ function JoinOrgPanel() {
   });
 
   const joinMutation = useMutation({
-    mutationFn: async (inviteCode: string) => {
+    mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
       const res = await fetch(`${BASE}/api/org/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ inviteCode }),
+        body: JSON.stringify({ inviteCode, orgId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
@@ -169,7 +259,7 @@ function JoinOrgPanel() {
               Cancel
             </button>
             <button
-              onClick={() => joinMutation.mutate(code)}
+              onClick={() => joinMutation.mutate({ inviteCode: code, orgId: selectedOrg!.id })}
               disabled={joinMutation.isPending}
               className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
@@ -182,6 +272,8 @@ function JoinOrgPanel() {
     );
   }
 
+  const canSubmit = !!selectedOrg && code.trim().length > 0 && !validateMutation.isPending;
+
   return (
     <motion.div className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="bg-white border border-border rounded-xl p-6">
@@ -189,23 +281,40 @@ function JoinOrgPanel() {
           <KeyRound className="w-4 h-4 text-primary" />
           <h2 className="text-base font-display font-semibold text-foreground">Join your organisation</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">Enter the invite code provided by your organisation to connect your impact data to their dashboard.</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={code}
-            onChange={e => { setCode(e.target.value.toUpperCase()); setError(null); }}
-            placeholder="e.g. CHARITY-ABC123"
-            className="flex-1 px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary"
-          />
-          <button
-            onClick={() => { if (code.trim()) validateMutation.mutate(code); }}
-            disabled={!code.trim() || validateMutation.isPending}
-            className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {validateMutation.isPending ? "Checking..." : "Next"}
-          </button>
+        <p className="text-sm text-muted-foreground mb-4">Select your organisation and then enter the invite code provided by your admin.</p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Your organisation</label>
+            <OrgSelector
+              selected={selectedOrg}
+              onSelect={(org) => { setSelectedOrg(org); setError(null); }}
+            />
+          </div>
+
+          {selectedOrg && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Invite code</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={code}
+                  onChange={e => { setCode(e.target.value.toUpperCase()); setError(null); }}
+                  placeholder="e.g. CHARITY-ABC123"
+                  className="flex-1 px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary"
+                />
+                <button
+                  onClick={() => { if (canSubmit) validateMutation.mutate({ inviteCode: code, orgId: selectedOrg.id }); }}
+                  disabled={!canSubmit}
+                  className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {validateMutation.isPending ? "Checking..." : "Next"}
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
+
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
       </div>
 

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, organisationsTable, orgMembersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 
@@ -89,19 +89,34 @@ router.post("/register", async (req, res) => {
   res.json({ ok: true });
 });
 
+router.get("/list", authenticate, async (_req: AuthenticatedRequest, res) => {
+  const orgs = await db.query.organisationsTable.findMany({
+    columns: { id: true, name: true },
+    orderBy: (t, { asc }) => [asc(t.name)],
+  });
+  res.json({ orgs });
+});
+
 router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, res) => {
-  const { inviteCode } = req.body;
+  const { inviteCode, orgId } = req.body;
   if (!inviteCode || typeof inviteCode !== "string") {
     res.status(400).json({ error: "Invite code is required" });
     return;
   }
+  if (!orgId || typeof orgId !== "string") {
+    res.status(400).json({ error: "Organisation selection is required" });
+    return;
+  }
 
   const org = await db.query.organisationsTable.findFirst({
-    where: eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+    where: and(
+      eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+      eq(organisationsTable.id, orgId),
+    ),
   });
 
   if (!org) {
-    res.status(404).json({ error: "Invalid invite code. Please check with your organisation and try again." });
+    res.status(400).json({ error: "That code does not match the selected organisation. Please check with your admin and try again." });
     return;
   }
 
@@ -119,18 +134,25 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
 });
 
 router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
-  const { inviteCode } = req.body;
+  const { inviteCode, orgId } = req.body;
   if (!inviteCode || typeof inviteCode !== "string") {
     res.status(400).json({ error: "Invite code is required" });
     return;
   }
+  if (!orgId || typeof orgId !== "string") {
+    res.status(400).json({ error: "Organisation selection is required" });
+    return;
+  }
 
   const org = await db.query.organisationsTable.findFirst({
-    where: eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+    where: and(
+      eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+      eq(organisationsTable.id, orgId),
+    ),
   });
 
   if (!org) {
-    res.status(404).json({ error: "Invalid invite code. Please check with your organisation and try again." });
+    res.status(400).json({ error: "That code does not match the selected organisation. Please check with your admin and try again." });
     return;
   }
 

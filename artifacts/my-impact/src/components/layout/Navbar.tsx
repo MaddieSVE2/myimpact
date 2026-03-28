@@ -4,11 +4,27 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye,
+  MoreVertical, User, ChevronDown, Eye, Building2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useTheme } from "@/lib/theme-context";
+import { useQuery } from "@tanstack/react-query";
+
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function useMyOrgMembership(enabled: boolean) {
+  return useQuery<{ org: { id: string; name: string; type: string } | null }>({
+    queryKey: ["my-org"],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/org/my`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
 
 const DARK = "#213547";
 
@@ -154,6 +170,8 @@ export function Navbar() {
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
   const { isHighContrast, toggleTheme } = useTheme();
+  const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
+  const inOrg = !orgLoading && !!orgData?.org;
 
   const navItems = [
     { href: "/wizard/actions", label: "Calculate", icon: PlusCircle },
@@ -277,6 +295,16 @@ export function Navbar() {
                           <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Add to home screen
                         </button>
+                        {!orgLoading && (
+                          <Link
+                            href="/org"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                          >
+                            <Building2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                            {inOrg ? "My organisation" : "Join my organisation"}
+                          </Link>
+                        )}
                         <div className="my-1 border-t border-border" />
                         <button
                           onClick={() => { setUserMenuOpen(false); logout(); }}
@@ -397,6 +425,17 @@ export function Navbar() {
               <Smartphone className="w-4 h-4" aria-hidden="true" />
               Add to home screen
             </button>
+
+            {isLoggedIn && !orgLoading && (
+              <Link
+                href="/org"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+              >
+                <Building2 className="w-4 h-4" aria-hidden="true" />
+                {inOrg ? "My organisation" : "Join my organisation"}
+              </Link>
+            )}
 
             {isLoggedIn ? (
               <button
