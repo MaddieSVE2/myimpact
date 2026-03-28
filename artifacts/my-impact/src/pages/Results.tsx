@@ -8,7 +8,7 @@ import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
   BookOpen, Award, ChevronDown, ChevronUp, FlaskConical,
-  Clipboard, ClipboardCheck, MessageSquare, FileText
+  Clipboard, ClipboardCheck, MessageSquare, FileText, Mountain
 } from "lucide-react";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useSaveImpact } from "@workspace/api-client-react";
@@ -380,6 +380,343 @@ function ProxyMethodology({ breakdowns }: {
             <p className="text-xs text-muted-foreground">
               Source: <span className="font-medium">Social Value Engine proxy library</span> · Values reflect wellbeing-adjusted social return on investment
             </p>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Duke of Edinburgh mapping ──────────────────────────────────────────────────
+
+type DofESection = "Volunteering" | "Physical" | "Skill" | "Expedition";
+
+interface DofESectionConfig {
+  section: DofESection;
+  emoji: string;
+  colour: string;
+  description: string;
+  thresholds: { Bronze: number; Silver: number; Gold: number };
+}
+
+const DOFE_SECTIONS: DofESectionConfig[] = [
+  {
+    section: "Volunteering",
+    emoji: "🤝",
+    colour: "#22c55e",
+    description: "Helping others or the wider community",
+    thresholds: { Bronze: 13, Silver: 26, Gold: 52 },
+  },
+  {
+    section: "Physical",
+    emoji: "🏃",
+    colour: "#3b82f6",
+    description: "Sport, fitness, or a physical activity",
+    thresholds: { Bronze: 13, Silver: 26, Gold: 52 },
+  },
+  {
+    section: "Skill",
+    emoji: "🎯",
+    colour: "#f59e0b",
+    description: "Developing a practical or creative skill",
+    thresholds: { Bronze: 13, Silver: 26, Gold: 52 },
+  },
+  {
+    section: "Expedition",
+    emoji: "🗺️",
+    colour: "#8b5cf6",
+    description: "Planning and completing a journey in the outdoors",
+    thresholds: { Bronze: 0, Silver: 0, Gold: 0 },
+  },
+];
+
+/** A single mapping of an activity to a DofE section, with an optional note. */
+interface DofEActivityMapping {
+  section: DofESection;
+  /** Shown to the user when the activity only partially qualifies or needs context. */
+  note?: string;
+}
+
+/**
+ * Maps wizard activity IDs to the DofE section(s) they can count toward.
+ * Activities not listed here don't qualify for any DofE section.
+ * Where an activity partially qualifies (e.g. needs assessor confirmation),
+ * a note is included to surface that to the user.
+ */
+const DOFE_ACTIVITY_MAP: Record<string, DofEActivityMapping[]> = {
+  // Volunteering
+  food_bank:              [{ section: "Volunteering" }],
+  elderly_visiting:       [{ section: "Volunteering" }],
+  youth_mentoring:        [{ section: "Volunteering" }],
+  litter_picking:         [{ section: "Volunteering" }],
+  tree_planting:          [{ section: "Volunteering" }],
+  community_garden:       [{ section: "Volunteering" }],
+  wildlife_conservation:  [{ section: "Volunteering" }],
+  disaster_relief:        [{ section: "Volunteering" }],
+  charity_volunteering:   [{ section: "Volunteering" }],
+  helping_neighbours:     [{ section: "Volunteering" }],
+  befriending:            [{ section: "Volunteering" }],
+  blood_donation:         [{ section: "Volunteering" }],
+  mental_health_support:  [{ section: "Volunteering" }],
+  veterans_breakfast:     [{ section: "Volunteering" }],
+  school_fundraising:     [{ section: "Volunteering" }],
+  fundraising:            [{ section: "Volunteering" }],
+
+  // Volunteering + Skill (teaching/coaching activities qualify for both)
+  literacy_support:       [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if you are developing a sustained reading or tutoring practice" }],
+  digital_coaching:       [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if you are building digital coaching as an ongoing practice" }],
+  employability_coaching: [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if developing coaching or facilitation as a regular competence" }],
+  arts_volunteering:      [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if you are actively developing a creative discipline (music, art, drama)" }],
+  sports_coaching:        [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if coaching or officiating builds a sustained new competence" }],
+  tutoring:               [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if you are developing subject knowledge or teaching technique over time" }],
+  coding_education_child: [{ section: "Volunteering" }, { section: "Skill", note: "Counts as Skill if building programming or pedagogy competence through repeated sessions" }],
+
+  // Physical
+  eco_transport:          [{ section: "Physical", note: "Counts as Physical if cycling or walking regularly as a structured fitness activity" }],
+
+  // Skill only
+  coding_camp_week:       [{ section: "Skill" }],
+  stem_workshop:          [{ section: "Skill" }],
+
+  // DofE award activities span all four sections by definition
+  dofe_bronze:            [{ section: "Volunteering" }, { section: "Physical" }, { section: "Skill" }, { section: "Expedition" }],
+  dofe_silver:            [{ section: "Volunteering" }, { section: "Physical" }, { section: "Skill" }, { section: "Expedition" }],
+  dofe_gold:              [{ section: "Volunteering" }, { section: "Physical" }, { section: "Skill" }, { section: "Expedition" }],
+};
+
+interface DofEActivityEntry {
+  name: string;
+  hours: number;
+  note?: string;
+}
+
+interface DofESectionResult {
+  section: DofESection;
+  emoji: string;
+  colour: string;
+  description: string;
+  activities: DofEActivityEntry[];
+  totalHours: number;
+  thresholds: { Bronze: number; Silver: number; Gold: number };
+}
+
+function buildDofEResults(breakdowns: Array<{ activityId: string; activityName: string; hours: number }>): DofESectionResult[] {
+  const sectionMap = new Map<DofESection, DofESectionResult>(
+    DOFE_SECTIONS.map(cfg => [
+      cfg.section,
+      {
+        section: cfg.section,
+        emoji: cfg.emoji,
+        colour: cfg.colour,
+        description: cfg.description,
+        activities: [],
+        totalHours: 0,
+        thresholds: cfg.thresholds,
+      },
+    ])
+  );
+
+  for (const b of breakdowns) {
+    const mappings = DOFE_ACTIVITY_MAP[b.activityId];
+    if (!mappings) continue;
+    for (const mapping of mappings) {
+      const sectionEntry = sectionMap.get(mapping.section);
+      if (!sectionEntry) continue;
+      sectionEntry.activities.push({ name: b.activityName, hours: b.hours ?? 0, note: mapping.note });
+      sectionEntry.totalHours += b.hours ?? 0;
+    }
+  }
+
+  return DOFE_SECTIONS.map(cfg => sectionMap.get(cfg.section)!);
+}
+
+function dofeBadgeLevel(hours: number, thresholds: { Bronze: number; Silver: number; Gold: number }): "Gold" | "Silver" | "Bronze" | null {
+  if (thresholds.Gold > 0 && hours >= thresholds.Gold) return "Gold";
+  if (thresholds.Silver > 0 && hours >= thresholds.Silver) return "Silver";
+  if (thresholds.Bronze > 0 && hours >= thresholds.Bronze) return "Bronze";
+  return null;
+}
+
+function generateDofEPortfolioText(results: DofESectionResult[]): string {
+  const populated = results.filter(r => r.activities.length > 0);
+  if (populated.length === 0) return "";
+
+  const sectionPhrases = populated.map(r => {
+    const hrs = Math.round(r.totalHours);
+    const level = dofeBadgeLevel(r.totalHours, r.thresholds);
+    const actNames = r.activities.map(a => a.name.toLowerCase());
+    let actText = "";
+    if (actNames.length === 1) actText = actNames[0];
+    else if (actNames.length === 2) actText = `${actNames[0]} and ${actNames[1]}`;
+    else actText = `${actNames.slice(0, -1).join(", ")}, and ${actNames[actNames.length - 1]}`;
+    const levelNote = level ? `, meeting the ${level} minimum` : "";
+    return `${r.section} (${actText}, ${hrs} hrs${levelNote})`;
+  });
+
+  const allSectionsText = sectionPhrases.length === 1
+    ? sectionPhrases[0]
+    : `${sectionPhrases.slice(0, -1).join("; ")}; and ${sectionPhrases[sectionPhrases.length - 1]}`;
+
+  const hasPartialNotes = populated.some(r => r.activities.some(a => a.note));
+  const notesCaveat = hasPartialNotes
+    ? " Some activities are flagged as partially qualifying — please confirm these with your DofE assessor."
+    : "";
+
+  return `During this period I logged activities across the following DofE sections: ${allSectionsText}. This summary was generated using My Impact as a guide and does not constitute an official DofE record, which I maintain separately through the eDofE system.${notesCaveat}`;
+}
+
+function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; activityName: string; hours: number }> }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const sectionResults = buildDofEResults(breakdowns);
+  const hasAny = sectionResults.some(r => r.activities.length > 0);
+
+  if (!hasAny) return null;
+
+  const portfolioText = generateDofEPortfolioText(sectionResults);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(portfolioText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {
+      toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
+    });
+  };
+
+  return (
+    <motion.div
+      className="mb-6 bg-white border border-border rounded-xl overflow-hidden"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.19 }}
+    >
+      {/* Header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-start justify-between px-5 py-4 text-left hover:bg-muted/20 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <Mountain className="w-4 h-4 shrink-0" style={{ color: "#8b5cf6" }} aria-hidden="true" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">Duke of Edinburgh</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {sectionResults.filter(r => r.activities.length > 0).length} of 4 sections covered by your activities
+            </p>
+          </div>
+        </div>
+        {open
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+        }
+      </button>
+
+      {open && (
+        <div className="border-t border-border">
+          {/* Section grid */}
+          <div className="divide-y divide-border">
+            {sectionResults.map(r => {
+              const level = r.activities.length > 0 ? dofeBadgeLevel(r.totalHours, r.thresholds) : null;
+              const hasActivities = r.activities.length > 0;
+              return (
+                <div key={r.section} className={`px-5 py-4 ${!hasActivities ? "opacity-40" : ""}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base" aria-hidden="true">{r.emoji}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{r.section}</p>
+                        <p className="text-xs text-muted-foreground">{r.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      {hasActivities ? (
+                        <>
+                          <p className="text-sm font-bold text-foreground">{Math.round(r.totalHours)} hrs</p>
+                          {r.thresholds.Bronze === 0 ? (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Assessor-confirmed</p>
+                          ) : level ? (
+                            <span
+                              className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold text-white mt-0.5"
+                              style={{ backgroundColor: level === "Gold" ? "#d97706" : level === "Silver" ? "#6b7280" : "#b45309" }}
+                            >
+                              {level}
+                            </span>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {Math.ceil(r.thresholds.Bronze - r.totalHours)} hrs to Bronze
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-foreground">0 hrs</p>
+                          {r.thresholds.Bronze > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{r.thresholds.Bronze} hrs to Bronze</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {hasActivities && (
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      {r.activities.map(a => (
+                        <div key={a.name} className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium"
+                              style={{ backgroundColor: `${r.colour}18`, border: `1px solid ${r.colour}40`, color: r.colour }}
+                            >
+                              {a.name}
+                            </span>
+                            {a.hours > 0 && (
+                              <span className="text-[11px] text-muted-foreground font-medium">
+                                {Math.round(a.hours)} hrs
+                              </span>
+                            )}
+                          </div>
+                          {a.note && (
+                            <p className="text-[10px] text-muted-foreground pl-1 leading-snug italic">{a.note}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bronze/Silver/Gold thresholds legend */}
+          <div className="px-5 py-3 bg-muted/10 border-t border-border">
+            <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">
+              <strong>Minimum hours:</strong> Bronze 13 hrs · Silver 26 hrs · Gold 52 hrs per section.
+              Hours shown are your total logged hours for activities that map to each section.
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              This is a guide only — your official DofE record must be maintained separately in the eDofE system. Activity boundaries may differ from your award assessor's judgement.
+            </p>
+          </div>
+
+          {/* Portfolio copy */}
+          <div className="px-5 py-4 border-t border-border">
+            <p className="text-xs font-semibold text-foreground mb-2">Copy for my DofE portfolio</p>
+            <textarea
+              readOnly
+              value={portfolioText}
+              rows={5}
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-xs text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
+            />
+            <button
+              onClick={handleCopy}
+              className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
+            >
+              {copied
+                ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
+                : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy for my portfolio</>
+              }
+            </button>
           </div>
         </div>
       )}
@@ -949,6 +1286,9 @@ export default function Results() {
 
       {/* Persona-specific transferable skills */}
       <PersonaTransferableSkills interests={interests} />
+
+      {/* Duke of Edinburgh panel */}
+      <DofEPanel breakdowns={result.activityBreakdowns} />
 
       {/* Use case sections */}
       <motion.div
