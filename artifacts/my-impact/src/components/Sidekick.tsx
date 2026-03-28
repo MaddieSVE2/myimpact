@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, ChevronRight, Sparkles, X } from "lucide-react";
+import { Send, ChevronRight, Sparkles, X, Bot } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { cn } from "@/lib/utils";
@@ -235,12 +235,13 @@ export function Sidekick() {
         ) : (
           <div
             onClick={() => setOpen(true)}
-            className="flex-1 flex items-center justify-center cursor-pointer transition-colors pt-16 select-none group"
+            className="flex-1 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors pt-16 select-none group"
             style={{ backgroundColor: "#F06127" }}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#fff")}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#F06127")}
             title="Open Sidekick AI"
           >
+            <Bot className="w-5 h-5 text-white group-hover:text-[#F06127] transition-colors" />
             <span
               className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[#F06127]"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
