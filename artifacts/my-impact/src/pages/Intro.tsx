@@ -127,16 +127,27 @@ export default function Intro() {
             <Link
               href="/suggestions"
               style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: 15,
+                display: "inline-block",
+                padding: "12px 24px",
+                fontSize: 16,
                 fontWeight: 600,
+                color: "rgba(255,255,255,0.9)",
                 textDecoration: "none",
-                borderBottom: "1px solid rgba(255,255,255,0.3)",
-                paddingBottom: 2,
-                transition: "color 0.2s",
+                border: "2px solid rgba(255,255,255,0.5)",
+                borderRadius: 8,
+                transition: "border-color 0.2s, color 0.2s, background 0.2s",
+                background: "transparent",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.9)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.5)";
+                (e.currentTarget as HTMLElement).style.background = "transparent";
               }}
             >
-              Not sure where to start? See what you could do →
+              Inspire me
             </Link>
           </div>
         </div>
