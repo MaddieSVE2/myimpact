@@ -540,7 +540,7 @@ export default function Intro() {
         <FadeIn>
           <div style={{ maxWidth: 600, margin: "0 auto", position: "relative", zIndex: 2 }}>
             <h2 className="mi-fraunces" style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 }}>
-              Ready to see what you're worth?
+              Ready to see the difference you make?
             </h2>
             <p style={{ fontSize: 18, color: "rgba(255,255,255,0.85)", marginBottom: 36, lineHeight: 1.6 }}>
               My Impact is live. Calculate your social value now and be one of the first to turn your positive actions into proof.
