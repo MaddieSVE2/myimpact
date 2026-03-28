@@ -35,10 +35,6 @@ router.post("/chat", async (req, res) => {
       return;
     }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-
     const systemMessages: { role: "system"; content: string }[] = [
       { role: "system", content: SYSTEM_PROMPT },
     ];
@@ -64,30 +60,18 @@ router.post("/chat", async (req, res) => {
       ...messages,
     ];
 
-    const stream = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       max_completion_tokens: 8192,
       messages: chatMessages,
-      stream: true,
+      stream: false,
     });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-    }
-
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
+    const content = completion.choices[0]?.message?.content ?? "";
+    res.json({ content });
   } catch (err) {
     console.error("Sidekick chat error:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to get response" });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: "Stream failed" })}\n\n`);
-      res.end();
-    }
+    res.status(500).json({ error: "Failed to get response" });
   }
 });
 

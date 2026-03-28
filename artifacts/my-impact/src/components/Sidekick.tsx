@@ -67,35 +67,13 @@ export function Sidekick() {
 
         if (!res.ok) throw new Error("Request failed");
 
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let assembled = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.content) {
-                assembled += data.content;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[assistantIndex] = { role: "assistant", content: assembled };
-                  return updated;
-                });
-              }
-              if (data.done) break;
-            } catch {
-              // ignore parse errors on partial chunks
-            }
-          }
-        }
+        const data = await res.json() as { content?: string; error?: string };
+        const content = data.content ?? "";
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: "assistant", content };
+          return updated;
+        });
       } catch (err: unknown) {
         if ((err as Error).name !== "AbortError") {
           setMessages((prev) => {
