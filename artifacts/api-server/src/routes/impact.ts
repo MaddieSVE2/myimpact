@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
-import { eq, desc, inArray, and } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -288,6 +288,52 @@ function parseResultJson(raw: unknown): StoredResultJson {
   };
 }
 
+async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
+  const members = await db.query.orgMembersTable.findMany({
+    where: eq(orgMembersTable.orgId, orgId),
+  });
+
+  const memberIds = members.map(m => m.userId);
+
+  let records: typeof impactRecordsTable.$inferSelect[] = [];
+  if (memberIds.length > 0) {
+    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
+    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+    records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+  }
+
+  const totalRecords = records.length;
+  const totalUsers = new Set(records.map(r => r.userId)).size;
+
+  let totalSocialValue = 0;
+  let totalHours = 0;
+  const categoryValueMap: Record<string, number> = {};
+
+  for (const r of records) {
+    const result = parseResultJson(r.resultJson);
+    totalSocialValue += result.totalValue;
+    totalHours += result.totalHours;
+    for (const breakdown of result.activityBreakdowns) {
+      categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
+    }
+  }
+
+  const valueByCategory = Object.entries(categoryValueMap)
+    .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => b.value - a.value);
+
+  return {
+    totalRecords,
+    totalUsers,
+    totalMemberCount: memberIds.length,
+    totalSocialValue: Math.round(totalSocialValue * 100) / 100,
+    totalHours: Math.round(totalHours * 100) / 100,
+    averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+    valueByCategory,
+  };
+}
+
 router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -301,46 +347,24 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
-    const members = await db.query.orgMembersTable.findMany({
-      where: eq(orgMembersTable.orgId, membership.orgId),
-    });
-
-    const memberIds = members.map(m => m.userId);
-
-    const records = memberIds.length > 0
-      ? await db.select().from(impactRecordsTable).where(inArray(impactRecordsTable.userId, memberIds))
-      : [];
-
-    const totalRecords = records.length;
-    const totalUsers = new Set(records.map(r => r.userId)).size;
-
-    let totalSocialValue = 0;
-    let totalHours = 0;
-    const categoryValueMap: Record<string, number> = {};
-
-    for (const r of records) {
-      const result = parseResultJson(r.resultJson);
-      totalSocialValue += result.totalValue;
-      totalHours += result.totalHours;
-      for (const breakdown of result.activityBreakdowns) {
-        categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
-      }
+    const fromParam = req.query.from;
+    const toParam = req.query.to;
+    const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
+    const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
+    if (fromRaw && isNaN(fromRaw.getTime())) {
+      res.status(400).json({ error: "Invalid 'from' date" });
+      return;
     }
+    if (toRaw && isNaN(toRaw.getTime())) {
+      res.status(400).json({ error: "Invalid 'to' date" });
+      return;
+    }
+    const from = fromRaw;
+    const to = toRaw ? (() => { const d = new Date(toRaw); d.setHours(23, 59, 59, 999); return d; })() : undefined;
 
-    const valueByCategory = Object.entries(categoryValueMap)
-      .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
-      .sort((a, b) => b.value - a.value);
+    const stats = await computeOrgStats(membership.orgId, from, to);
 
-    res.json({
-      totalRecords,
-      totalUsers,
-      totalMemberCount: memberIds.length,
-      totalSocialValue: Math.round(totalSocialValue * 100) / 100,
-      totalHours: Math.round(totalHours * 100) / 100,
-      averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
-      valueByCategory,
-      recentActivity: [],
-    });
+    res.json({ ...stats, recentActivity: [] });
   } catch (err) {
     res.status(500).json({ error: "Failed to compute org stats" });
   }

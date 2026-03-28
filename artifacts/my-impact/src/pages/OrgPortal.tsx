@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import {
@@ -28,6 +28,42 @@ interface OrgStats {
   valueByCategory: Array<{ category: string; value: number }>;
 }
 
+type PresetKey = "all" | "academic" | "calendar" | "last12";
+
+interface DateRange {
+  from: string;
+  to: string;
+}
+
+function getAcademicYearRange(): DateRange {
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed
+  const year = now.getFullYear();
+  const startYear = month >= 8 ? year : year - 1;
+  return {
+    from: `${startYear}-09-01`,
+    to: `${startYear + 1}-08-31`,
+  };
+}
+
+function getCalendarYearRange(): DateRange {
+  const year = new Date().getFullYear();
+  return {
+    from: `${year}-01-01`,
+    to: `${year}-12-31`,
+  };
+}
+
+function getLast12MonthsRange(): DateRange {
+  const to = new Date();
+  const from = new Date(to);
+  from.setFullYear(from.getFullYear() - 1);
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+  };
+}
+
 function useMyOrg() {
   return useQuery<{ org: OrgInfo | null }>({
     queryKey: ["my-org"],
@@ -39,12 +75,29 @@ function useMyOrg() {
   });
 }
 
-function useOrgStats(enabled: boolean) {
+function useOrgStats(enabled: boolean, from: string, to: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+
   return useQuery<OrgStats>({
-    queryKey: ["org-stats"],
+    queryKey: ["org-stats", from, to],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/impact/org-stats`, { credentials: "include" });
+      const res = await fetch(`${BASE}/api/impact/org-stats${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+  });
+}
+
+function useJoinLink(enabled: boolean) {
+  return useQuery<{ orgId: string; inviteCode: string; orgName: string }>({
+    queryKey: ["org-join-link"],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/my-join-link`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -159,7 +212,36 @@ function JoinOrgPanel() {
   const [step, setStep] = useState<"entry" | "consent" | "joined">("entry");
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fromInviteLink, setFromInviteLink] = useState(false);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlOrgId = params.get("orgId");
+    const urlCode = params.get("inviteCode");
+    if (urlCode && urlOrgId) {
+      setFromInviteLink(true);
+      setCode(urlCode.toUpperCase());
+      fetch(`${BASE}/api/org/list`, { credentials: "include" })
+        .then(r => r.json())
+        .then((data: { orgs: OrgListItem[] }) => {
+          const found = data.orgs.find(o => o.id === urlOrgId);
+          if (found) setSelectedOrg(found);
+        })
+        .catch(() => {});
+    } else {
+      if (urlCode) setCode(urlCode.toUpperCase());
+      if (urlOrgId) {
+        fetch(`${BASE}/api/org/list`, { credentials: "include" })
+          .then(r => r.json())
+          .then((data: { orgs: OrgListItem[] }) => {
+            const found = data.orgs.find(o => o.id === urlOrgId);
+            if (found) setSelectedOrg(found);
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
 
   const validateMutation = useMutation({
     mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
@@ -181,6 +263,12 @@ function JoinOrgPanel() {
       setError(err.message);
     },
   });
+
+  useEffect(() => {
+    if (fromInviteLink && selectedOrg && code && step === "entry" && !validateMutation.isPending) {
+      validateMutation.mutate({ inviteCode: code, orgId: selectedOrg.id });
+    }
+  }, [fromInviteLink, selectedOrg, code]);
 
   const joinMutation = useMutation({
     mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
@@ -335,10 +423,178 @@ function JoinOrgPanel() {
   );
 }
 
+function PeriodSelector({
+  preset,
+  from,
+  to,
+  onPresetChange,
+  onFromChange,
+  onToChange,
+}: {
+  preset: PresetKey;
+  from: string;
+  to: string;
+  onPresetChange: (key: PresetKey) => void;
+  onFromChange: (v: string) => void;
+  onToChange: (v: string) => void;
+}) {
+  const presets: Array<{ key: PresetKey; label: string }> = [
+    { key: "all", label: "All time" },
+    { key: "academic", label: "This academic year" },
+    { key: "calendar", label: "This calendar year" },
+    { key: "last12", label: "Last 12 months" },
+  ];
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Calendar className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold text-foreground">Reporting period</span>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {presets.map(p => (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => onPresetChange(p.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              preset === p.key
+                ? "bg-primary text-white border-primary"
+                : "bg-white text-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-2">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground w-8">From</label>
+          <input
+            type="date"
+            value={from}
+            onChange={e => { onFromChange(e.target.value); }}
+            className="px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground w-8">To</label>
+          <input
+            type="date"
+            value={to}
+            onChange={e => { onToChange(e.target.value); }}
+            className="px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CopyJoinLinkButton({ orgId, inviteCode }: { orgId: string; inviteCode: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.searchParams.set("orgId", orgId);
+    url.searchParams.set("inviteCode", inviteCode);
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary transition-colors bg-white"
+    >
+      <Link2 className="w-3.5 h-3.5" />
+      {copied ? "Copied!" : "Copy join link"}
+    </button>
+  );
+}
+
+function DownloadPdfButton({ from, to }: { from: string; to: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const qs = params.toString();
+      const res = await fetch(`${BASE}/api/org/report-pdf${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) {
+        const data: unknown = await res.json().catch(() => ({}));
+        const errMsg = data !== null && typeof data === "object" && "error" in data && typeof (data as Record<string, unknown>).error === "string"
+          ? (data as Record<string, unknown>).error as string
+          : "Failed to generate report";
+        throw new Error(errMsg);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "org-impact-report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+      >
+        <Download className="w-3.5 h-3.5" />
+        {loading ? "Generating…" : "Download PDF"}
+      </button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 export default function OrgPortal() {
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const inOrg = !!orgData?.org;
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useOrgStats(inOrg);
+
+  const [preset, setPreset] = useState<PresetKey>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  function getDateRange(): { from: string; to: string } {
+    if (preset === "academic") return getAcademicYearRange();
+    if (preset === "calendar") return getCalendarYearRange();
+    if (preset === "last12") return getLast12MonthsRange();
+    return { from: customFrom, to: customTo };
+  }
+
+  const { from, to } = getDateRange();
+
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useOrgStats(inOrg, from, to);
+  const { data: joinLinkData } = useJoinLink(inOrg);
+
+  function handlePresetChange(key: PresetKey) {
+    setPreset(key);
+    if (key !== "all") {
+      setCustomFrom("");
+      setCustomTo("");
+    }
+  }
 
   if (orgLoading) {
     return (
@@ -350,7 +606,7 @@ export default function OrgPortal() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Building2 className="w-4 h-4 text-primary" />
@@ -362,9 +618,17 @@ export default function OrgPortal() {
             {inOrg ? "Anonymous aggregate impact across your members." : "Connect to your organisation or register a new one."}
           </p>
         </div>
-        {inOrg && (
-          <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold capitalize">{orgData!.org!.type}</span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {inOrg && (
+            <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold capitalize">{orgData!.org!.type}</span>
+          )}
+          {inOrg && joinLinkData && (
+            <CopyJoinLinkButton orgId={joinLinkData.orgId} inviteCode={joinLinkData.inviteCode} />
+          )}
+          {inOrg && (
+            <DownloadPdfButton from={from} to={to} />
+          )}
+        </div>
       </div>
 
       {!inOrg ? (
@@ -380,6 +644,15 @@ export default function OrgPortal() {
         </div>
       ) : stats ? (
         <>
+          <PeriodSelector
+            preset={preset}
+            from={preset === "all" ? customFrom : from}
+            to={preset === "all" ? customTo : to}
+            onPresetChange={handlePresetChange}
+            onFromChange={(v) => { setCustomFrom(v); setPreset("all"); }}
+            onToChange={(v) => { setCustomTo(v); setPreset("all"); }}
+          />
+
           <motion.div
             className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"
             initial={{ opacity: 0, y: 10 }}

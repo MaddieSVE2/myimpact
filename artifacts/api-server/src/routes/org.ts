@@ -1,8 +1,11 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { buildOrgDocument } from "../lib/orgPdf.js";
+import React from "react";
 
 const router: IRouter = Router();
 
@@ -202,6 +205,188 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   res.json({ org: { id: org.id, name: org.name, type: org.type } });
+});
+
+router.get("/my-join-link", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+
+  if (!membership) {
+    res.status(404).json({ error: "You are not a member of any organisation." });
+    return;
+  }
+
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+  });
+
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found." });
+    return;
+  }
+
+  res.json({ orgId: org.id, inviteCode: org.inviteCode, orgName: org.name });
+});
+
+interface StoredActivityBreakdownOrg {
+  category: string;
+  impactValue: number;
+}
+
+interface StoredSdgBreakdownOrg {
+  sdg: string;
+  sdgColor: string;
+  value: number;
+}
+
+interface StoredResultJsonOrg {
+  totalValue: number;
+  totalHours: number;
+  activityBreakdowns: StoredActivityBreakdownOrg[];
+  sdgBreakdowns: StoredSdgBreakdownOrg[];
+}
+
+function parseResultJsonOrg(raw: unknown): StoredResultJsonOrg {
+  if (raw === null || typeof raw !== "object") return { totalValue: 0, totalHours: 0, activityBreakdowns: [], sdgBreakdowns: [] };
+  const r = raw as Record<string, unknown>;
+  return {
+    totalValue: typeof r.totalValue === "number" ? r.totalValue : 0,
+    totalHours: typeof r.totalHours === "number" ? r.totalHours : 0,
+    activityBreakdowns: Array.isArray(r.activityBreakdowns)
+      ? (r.activityBreakdowns as StoredActivityBreakdownOrg[]).filter(
+          b => typeof b.category === "string" && typeof b.impactValue === "number"
+        )
+      : [],
+    sdgBreakdowns: Array.isArray(r.sdgBreakdowns)
+      ? (r.sdgBreakdowns as StoredSdgBreakdownOrg[]).filter(
+          b => typeof b.sdg === "string" && typeof b.value === "number"
+        )
+      : [],
+  };
+}
+
+function endOfDay(d: Date): Date {
+  const end = new Date(d);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+
+    if (!membership) {
+      res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    const org = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, membership.orgId),
+    });
+
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found." });
+      return;
+    }
+
+    const fromParam = req.query.from;
+    const toParam = req.query.to;
+    const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
+    const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
+    if (fromRaw && isNaN(fromRaw.getTime())) {
+      res.status(400).json({ error: "Invalid 'from' date" });
+      return;
+    }
+    if (toRaw && isNaN(toRaw.getTime())) {
+      res.status(400).json({ error: "Invalid 'to' date" });
+      return;
+    }
+    const from = fromRaw;
+    const to = toRaw ? endOfDay(toRaw) : undefined;
+
+    const members = await db.query.orgMembersTable.findMany({
+      where: eq(orgMembersTable.orgId, org.id),
+    });
+
+    const memberIds = members.map(m => m.userId);
+
+    let records: typeof impactRecordsTable.$inferSelect[] = [];
+    if (memberIds.length > 0) {
+      const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+      const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
+      const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+      records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+    }
+
+    let totalSocialValue = 0;
+    let totalHours = 0;
+    const categoryValueMap: Record<string, number> = {};
+    const sdgValueMap: Record<string, { sdg: string; sdgColor: string; value: number }> = {};
+
+    for (const r of records) {
+      const result = parseResultJsonOrg(r.resultJson);
+      totalSocialValue += result.totalValue;
+      totalHours += result.totalHours;
+      for (const breakdown of result.activityBreakdowns) {
+        categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
+      }
+      for (const s of result.sdgBreakdowns) {
+        if (!sdgValueMap[s.sdg]) {
+          sdgValueMap[s.sdg] = { sdg: s.sdg, sdgColor: s.sdgColor || "#4C9F38", value: 0 };
+        }
+        sdgValueMap[s.sdg].value += s.value;
+      }
+    }
+
+    const totalUsers = new Set(records.map(r => r.userId)).size;
+    const valueByCategory = Object.entries(categoryValueMap)
+      .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
+      .sort((a, b) => b.value - a.value);
+
+    const sdgBreakdowns = Object.values(sdgValueMap)
+      .map(s => ({ ...s, value: Math.round(s.value * 100) / 100 }))
+      .sort((a, b) => b.value - a.value);
+
+    let periodLabel = "All time";
+    if (from && to) {
+      periodLabel = `${from.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} – ${to.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+    } else if (from) {
+      periodLabel = `From ${from.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+    } else if (to) {
+      periodLabel = `Up to ${to.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+    }
+
+    const doc = buildOrgDocument({
+      orgName: org.name,
+      orgType: org.type,
+      period: periodLabel,
+      totalSocialValue: Math.round(totalSocialValue * 100) / 100,
+      totalHours: Math.round(totalHours * 100) / 100,
+      totalMemberCount: memberIds.length,
+      totalUsers,
+      averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+      valueByCategory,
+      sdgBreakdowns,
+    });
+
+    const buffer = await renderToBuffer(doc);
+
+    const safeName = org.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}-impact-report.pdf"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.end(buffer);
+  } catch (err) {
+    console.error("Org PDF generation error:", err);
+    res.status(500).json({ error: "Failed to generate report" });
+  }
 });
 
 export default router;

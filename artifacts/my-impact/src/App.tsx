@@ -74,6 +74,35 @@ function OrgGuestRoute() {
   const { isLoggedIn, isLoading } = useAuth();
   if (isLoading) return null;
   if (isLoggedIn) return <OrgPortal />;
+
+  const params = new URLSearchParams(window.location.search);
+  const hasInviteParams = params.has("orgId") && params.has("inviteCode");
+
+  if (hasInviteParams) {
+    const returnTo = encodeURIComponent(`/org${window.location.search}`);
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ background: "rgba(232,99,58,0.10)" }}>
+          <Building2 className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-2xl font-display font-bold text-foreground mb-3">You've been invited</h1>
+        <p className="text-muted-foreground mb-2 leading-relaxed">
+          Log in or create a free account to join your organisation on My Impact.
+        </p>
+        <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
+          Once you're signed in, you'll be taken straight to the join confirmation.
+        </p>
+        <Link
+          href={`/login?next=${returnTo}`}
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <LogIn className="w-4 h-4" />
+          Log in to join
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-20 text-center">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ background: "rgba(232,99,58,0.10)" }}>
