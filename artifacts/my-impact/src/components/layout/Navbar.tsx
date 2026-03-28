@@ -292,7 +292,7 @@ export function Navbar() {
                 <button
                   onClick={toggleTheme}
                   className="hidden lg:flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10"
-                  style={{ color: "rgba(255,255,255,0.45)" }}
+                  style={{ color: "rgba(255,255,255,0.6)" }}
                   aria-pressed={isHighContrast}
                   aria-label={isHighContrast ? "Switch to standard contrast" : "Switch to high contrast"}
                 >
