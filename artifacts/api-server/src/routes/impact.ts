@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 
@@ -183,27 +183,51 @@ router.post("/suggestions", (req, res) => {
 router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const body = SaveImpactBody.parse(req.body);
   const userId = req.user!.id;
+  const periodLabel = body.period ?? null;
 
-  const [record] = await db
-    .insert(impactRecordsTable)
-    .values({
-      userId,
-      name: body.name,
-      periodLabel: body.period ?? null,
-      totalValue: String(body.impactResult.totalValue),
-      impactValue: String(body.impactResult.impactValue),
-      contributionValue: String(body.impactResult.contributionValue),
-      donationsValue: String(body.impactResult.donationsValue),
-      personalDevelopmentValue: String(body.impactResult.personalDevelopmentValue),
-      totalHours: body.impactResult.totalHours,
-      activitiesJson: body.activities,
-      resultJson: body.impactResult,
-      region: body.region ?? null,
-      outwardCode: body.outwardCode ?? null,
-      lat: body.lat != null ? String(body.lat) : null,
-      lng: body.lng != null ? String(body.lng) : null,
-    })
-    .returning();
+  const newValues = {
+    name: body.name,
+    periodLabel,
+    totalValue: String(body.impactResult.totalValue),
+    impactValue: String(body.impactResult.impactValue),
+    contributionValue: String(body.impactResult.contributionValue),
+    donationsValue: String(body.impactResult.donationsValue),
+    personalDevelopmentValue: String(body.impactResult.personalDevelopmentValue),
+    totalHours: body.impactResult.totalHours,
+    activitiesJson: body.activities,
+    resultJson: body.impactResult,
+    region: body.region ?? null,
+    outwardCode: body.outwardCode ?? null,
+    lat: body.lat != null ? String(body.lat) : null,
+    lng: body.lng != null ? String(body.lng) : null,
+  };
+
+  let record;
+
+  if (periodLabel !== null) {
+    const existing = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(and(eq(impactRecordsTable.userId, userId), eq(impactRecordsTable.periodLabel, periodLabel)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(impactRecordsTable)
+        .set(newValues)
+        .where(eq(impactRecordsTable.id, existing[0].id))
+        .returning();
+      record = updated;
+    }
+  }
+
+  if (!record) {
+    const [inserted] = await db
+      .insert(impactRecordsTable)
+      .values({ userId, ...newValues })
+      .returning();
+    record = inserted;
+  }
 
   res.json({
     id: String(record.id),

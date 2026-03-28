@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceDot,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
 
 type Breakdown = {
@@ -118,9 +118,18 @@ export default function History() {
     value: r.impactResult.totalValue,
   }));
 
+  function inferPeriodType(label: string | null | undefined): string {
+    if (!label) return "unknown";
+    if (/academic year/i.test(label)) return "academic";
+    const months = /January|February|March|April|May|June|July|August|September|October|November|December/i;
+    if (months.test(label)) return "monthly";
+    return "custom";
+  }
+
   const latest = records[0];
   const previous = records[1];
-  const changeVsLast = latest && previous
+  const sameType = latest && previous && inferPeriodType(latest.period) === inferPeriodType(previous.period);
+  const changeVsLast = sameType
     ? latest.impactResult.totalValue - previous.impactResult.totalValue
     : null;
   const allTimeTotal = records.reduce((sum, r) => sum + r.impactResult.totalValue, 0);
@@ -190,15 +199,9 @@ export default function History() {
           >
             <figure className="m-0">
             <figcaption className="text-sm font-semibold text-foreground mb-4">Social value over time</figcaption>
-            <div className="h-[240px] w-full" role="img" aria-label="Area chart showing your cumulative social value over time">
+            <div className="h-[240px] w-full" role="img" aria-label="Bar chart showing your social value per saved period">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F06127" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#F06127" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
@@ -216,27 +219,10 @@ export default function History() {
                     formatter={(value: number) => [formatCurrency(value), "Social Value"]}
                     contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                   />
-                  <Area
-                    type="monotone" dataKey="value"
-                    stroke="#F06127" strokeWidth={2.5}
-                    fillOpacity={1} fill="url(#colorValue)"
-                    dot={chartData.length === 1 ? { fill: "#F06127", r: 5 } : false}
-                    activeDot={{ r: 5, fill: "#F06127" }}
-                  />
-                  {chartData.length === 1 && (
-                    <ReferenceDot
-                      x={chartData[0].date} y={chartData[0].value}
-                      r={6} fill="#F06127" stroke="white" strokeWidth={2}
-                    />
-                  )}
-                </AreaChart>
+                  <Bar dataKey="value" fill="#F06127" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            {chartData.length === 1 && (
-              <p className="text-center text-xs text-muted-foreground mt-3">
-                Save more records to see your impact trend over time.
-              </p>
-            )}
             </figure>
           </motion.div>
 
