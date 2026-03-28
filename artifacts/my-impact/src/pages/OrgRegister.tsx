@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
@@ -6,6 +6,10 @@ import { OrgDemoButton } from "@/components/OrgDemoModal";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function OrgRegister() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [step, setStep] = useState<"info" | "form" | "done">("info");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
