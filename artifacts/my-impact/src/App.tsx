@@ -29,6 +29,7 @@ import OrgRegister from "@/pages/OrgRegister";
 import OrgDemoDashboard from "@/pages/OrgDemoDashboard";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
+import About from "@/pages/About";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ function AppRouter() {
           {/* Auth routes — no navbar chrome needed */}
           <Route path="/login" component={Login} />
           <Route path="/auth/confirm" component={AuthConfirm} />
+          <Route path="/about" component={About} />
 
           {/* Wizard routes — open to all */}
           <Route path="/wizard/actions" component={ActionsStep} />
