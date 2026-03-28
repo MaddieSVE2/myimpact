@@ -115,10 +115,6 @@ export default function Intro() {
             <span style={{ color: C.orange, fontStyle: "italic" }}>prove it.</span>
           </h1>
 
-          <p style={{ fontSize: "clamp(15px, 1.5vw, 17px)", color: "rgba(255,255,255,0.5)", lineHeight: 1.5, maxWidth: 480, marginBottom: 24, fontStyle: "italic" }}>
-            Or find out what difference you <em>could</em> make.
-          </p>
-
           <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 40 }}>
             Every time you volunteer, help someone, or show up for your community, you create{" "}
             <strong style={{ color: "rgba(255,255,255,0.9)" }}>real social value</strong>. My Impact calculates what that's worth —{" "}
@@ -146,10 +142,7 @@ export default function Intro() {
           </div>
         </div>
 
-        <div className="mi-scroll-hint">
-          <span>Scroll</span>
-          <div className="mi-scroll-line" />
-        </div>
+
       </section>
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
