@@ -623,11 +623,32 @@ export default function Results() {
       };
 
       try {
-        const parsed: unknown = JSON.parse(localStorage.getItem("myimpact_journal") || "[]");
-        const existing = Array.isArray(parsed) ? parsed : [];
-        localStorage.setItem("myimpact_journal", JSON.stringify([activityCard, ...existing]));
+        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const journalRes = await fetch(`${BASE}/api/journal`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "activity",
+            impactRecordId: savedRecord.id,
+            periodLabel,
+            summary,
+            reflectionPrompt,
+            reflectionText: "",
+          }),
+        });
+        if (!journalRes.ok) {
+          const parsed: unknown = JSON.parse(localStorage.getItem("myimpact_journal") || "[]");
+          const existing = Array.isArray(parsed) ? parsed : [];
+          localStorage.setItem("myimpact_journal", JSON.stringify([activityCard, ...existing]));
+        }
       } catch {
-        // ignore localStorage errors
+        try {
+          const parsed: unknown = JSON.parse(localStorage.getItem("myimpact_journal") || "[]");
+          const existing = Array.isArray(parsed) ? parsed : [];
+          localStorage.setItem("myimpact_journal", JSON.stringify([activityCard, ...existing]));
+        } catch {
+        }
       }
 
       setSaved(true);

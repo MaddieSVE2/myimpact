@@ -6,6 +6,7 @@ import customActivityRouter from "./custom-activity";
 import localCharitiesRouter from "./local-charities";
 import authRouter from "./auth";
 import orgRouter from "./org";
+import journalRouter from "./journal";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/sidekick", sidekickRouter);
 router.use("/custom-activity", customActivityRouter);
 router.use("/local-charities", localCharitiesRouter);
 router.use("/org", orgRouter);
+router.use("/journal", journalRouter);
 
 export default router;

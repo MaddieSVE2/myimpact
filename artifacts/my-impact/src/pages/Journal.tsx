@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles } from "lucide-react";
+import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 
 interface JournalEntry {
   id: string;
@@ -23,6 +25,23 @@ interface ActivityCard {
 }
 
 type FeedItem = JournalEntry | ActivityCard;
+
+interface ApiEntryShape {
+  id: string;
+  type: string;
+  text?: string;
+  prompt?: string;
+  reflectionText?: string;
+  periodLabel?: string;
+  impactRecordId?: string;
+  summary?: string;
+  reflectionPrompt?: string;
+  createdAt: string;
+}
+
+interface MigrateResponse {
+  migrated: number;
+}
 
 const PROMPTS = [
   "What motivated you to get involved in this?",
@@ -74,7 +93,13 @@ function isJournalEntryLike(item: unknown): item is JournalEntryRaw {
   );
 }
 
-function loadEntries(): FeedItem[] {
+function isApiEntry(value: unknown): value is ApiEntryShape {
+  if (typeof value !== "object" || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return typeof obj.id === "string" && typeof obj.createdAt === "string";
+}
+
+function loadLocalEntries(): FeedItem[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     if (!Array.isArray(parsed)) return [];
@@ -98,8 +123,30 @@ function loadEntries(): FeedItem[] {
   }
 }
 
-function saveEntries(entries: FeedItem[]) {
+function saveLocalEntries(entries: FeedItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function apiEntryToFeedItem(e: ApiEntryShape): FeedItem {
+  if (e.type === "activity") {
+    return {
+      id: e.id,
+      type: "activity",
+      impactRecordId: e.impactRecordId ?? "",
+      periodLabel: e.periodLabel ?? "",
+      summary: e.summary ?? "",
+      reflectionPrompt: e.reflectionPrompt ?? "",
+      reflectionText: e.reflectionText ?? "",
+      createdAt: e.createdAt,
+    };
+  }
+  return {
+    id: e.id,
+    type: "entry",
+    text: e.text ?? "",
+    prompt: e.prompt ?? "",
+    createdAt: e.createdAt,
+  };
 }
 
 function ActivityCardItem({
@@ -204,44 +251,166 @@ function ActivityCardItem({
 }
 
 export default function Journal() {
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [entries, setEntries] = useState<FeedItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt] = useState(randomPrompt);
+  const [loadingEntries, setLoadingEntries] = useState(false);
+  const migrated = useRef(false);
+
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  async function fetchEntries() {
+    setLoadingEntries(true);
+    try {
+      const res = await fetch(`${BASE}/api/journal`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json() as { entries: unknown[] };
+      setEntries(
+        data.entries
+          .filter(isApiEntry)
+          .map(apiEntryToFeedItem)
+      );
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoadingEntries(false);
+    }
+  }
+
+  async function migrateLocalEntries() {
+    if (migrated.current) return;
+    migrated.current = true;
+    const local = loadLocalEntries();
+    if (local.length === 0) return;
+    try {
+      const res = await fetch(`${BASE}/api/journal/migrate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: local }),
+      });
+      if (!res.ok) {
+        migrated.current = false;
+        return;
+      }
+      const data = await res.json() as MigrateResponse;
+      if (typeof data.migrated === "number" && data.migrated >= 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        migrated.current = false;
+      }
+    } catch {
+      migrated.current = false;
+    }
+  }
 
   useEffect(() => {
-    setEntries(loadEntries());
-  }, []);
+    if (authLoading) return;
+    if (isLoggedIn) {
+      migrateLocalEntries().then(() => fetchEntries());
+    } else {
+      setEntries(loadLocalEntries());
+    }
+  }, [isLoggedIn, authLoading]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!draft.trim()) return;
-    const entry: JournalEntry = {
+    const newEntry: JournalEntry = {
       id: Date.now().toString(),
       type: "entry",
       text: draft.trim(),
       prompt,
       createdAt: new Date().toISOString(),
     };
-    const updated = [entry, ...entries];
-    setEntries(updated);
-    saveEntries(updated);
+
+    if (isLoggedIn) {
+      try {
+        const res = await fetch(`${BASE}/api/journal`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "entry", text: draft.trim(), prompt }),
+        });
+        if (!res.ok) {
+          toast({ title: "Could not save entry", description: "Please try again.", variant: "destructive" });
+          return;
+        }
+        const saved = await res.json() as unknown;
+        if (isApiEntry(saved)) {
+          setEntries(prev => [apiEntryToFeedItem(saved), ...prev]);
+        }
+      } catch {
+        toast({ title: "Could not save entry", description: "Check your connection and try again.", variant: "destructive" });
+        return;
+      }
+    } else {
+      const updated = [newEntry, ...entries];
+      setEntries(updated);
+      saveLocalEntries(updated);
+    }
+
     setDraft("");
     setIsAdding(false);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    saveEntries(updated);
+  const handleDelete = async (id: string) => {
+    if (isLoggedIn) {
+      const snapshot = entries;
+      setEntries(prev => prev.filter(e => e.id !== id));
+      try {
+        const res = await fetch(`${BASE}/api/journal/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) {
+          setEntries(snapshot);
+          toast({ title: "Could not delete entry", description: "Please try again.", variant: "destructive" });
+        }
+      } catch {
+        setEntries(snapshot);
+        toast({ title: "Could not delete entry", description: "Check your connection and try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = entries.filter(e => e.id !== id);
+      setEntries(updated);
+      saveLocalEntries(updated);
+    }
   };
 
-  const handleSaveReflection = (cardId: string, reflectionText: string) => {
-    const updated = entries.map(item =>
-      item.id === cardId ? { ...item, reflectionText } : item
-    );
-    setEntries(updated);
-    saveEntries(updated);
+  const handleSaveReflection = async (cardId: string, reflectionText: string) => {
+    if (isLoggedIn) {
+      const snapshot = entries;
+      setEntries(prev =>
+        prev.map(item => item.id === cardId ? { ...item, reflectionText } : item)
+      );
+      try {
+        const res = await fetch(`${BASE}/api/journal/${cardId}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reflectionText }),
+        });
+        if (!res.ok) {
+          setEntries(snapshot);
+          toast({ title: "Could not save reflection", description: "Please try again.", variant: "destructive" });
+        }
+      } catch {
+        setEntries(snapshot);
+        toast({ title: "Could not save reflection", description: "Check your connection and try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = entries.map(item =>
+        item.id === cardId ? { ...item, reflectionText } : item
+      );
+      setEntries(updated);
+      saveLocalEntries(updated);
+    }
   };
+
+  const isEmpty = entries.length === 0 && !isAdding;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -262,6 +431,17 @@ export default function Journal() {
           <Plus className="w-3.5 h-3.5" /> New entry
         </button>
       </div>
+
+      {!isLoggedIn && !authLoading && (
+        <div className="mb-5 rounded-lg border border-border bg-muted/30 px-4 py-3 flex items-center gap-3">
+          <LogIn className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Your entries are saved locally.{" "}
+            <Link href="/login?from=/journal" className="text-primary underline underline-offset-2">Sign in</Link>{" "}
+            to keep them safe across devices.
+          </p>
+        </div>
+      )}
 
       <AnimatePresence>
         {isAdding && (
@@ -303,7 +483,9 @@ export default function Journal() {
         )}
       </AnimatePresence>
 
-      {entries.length === 0 && !isAdding ? (
+      {loadingEntries ? (
+        <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : isEmpty ? (
         <div className="bg-white border border-dashed border-border rounded-xl py-14 text-center">
           <BookOpen className="w-7 h-7 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm font-medium text-foreground mb-1">No journal entries yet</p>
