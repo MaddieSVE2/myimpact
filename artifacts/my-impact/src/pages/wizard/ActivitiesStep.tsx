@@ -396,13 +396,26 @@ export default function ActivitiesStep() {
                               <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
                             </div>
                             <div className="flex items-center gap-3">
-                              <input
-                                type="number"
-                                min="1"
-                                value={customQuantity}
-                                onChange={e => setCustomQuantity(Number(e.target.value))}
-                                className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                              />
+                              {analysed.unit === "pound" ? (
+                                <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
+                                  <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={customQuantity}
+                                    onChange={e => setCustomQuantity(Number(e.target.value))}
+                                    className="w-20 py-2.5 pr-2.5 bg-transparent text-base font-semibold text-center focus:outline-none"
+                                  />
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={customQuantity}
+                                  onChange={e => setCustomQuantity(Number(e.target.value))}
+                                  className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                                />
+                              )}
                               <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
                             </div>
 

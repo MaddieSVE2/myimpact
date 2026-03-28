@@ -49,6 +49,8 @@ function candidateProxies(activityName: string, limit = 20): ProxyEntry[] {
     .map(s => s.proxy);
 }
 
+const FUNDRAISING_RE = /fund[\s-]?rais/i;
+
 const router = Router();
 
 router.post("/analyse", async (req, res) => {
@@ -57,6 +59,23 @@ router.post("/analyse", async (req, res) => {
 
     if (!name?.trim()) {
       res.status(400).json({ error: "activity name is required" });
+      return;
+    }
+
+    if (FUNDRAISING_RE.test(name.trim())) {
+      res.json({
+        friendlyQuestion: "How much do you raise for charity each year, in pounds?",
+        unit: "pound",
+        unitLabel: "pounds raised per year",
+        defaultQuantity: 500,
+        sdgHint: "SDG 17: Partnerships for the Goals",
+        proxyMatch: {
+          title: "Amount raised for charity",
+          proxyYear: "",
+          valuePerUnit: 1,
+          unit: "pound",
+        },
+      });
       return;
     }
 
