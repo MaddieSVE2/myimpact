@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, MapPin, Lightbulb, GraduationCap } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -97,6 +98,7 @@ function StatCard({ icon: Icon, label, value, sub, highlight }: {
 }
 
 export default function OrgDemoDashboard() {
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
 
   return (
