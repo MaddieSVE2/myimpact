@@ -69,14 +69,24 @@ export default function ActivitiesStep() {
     );
   }, [interests]);
 
+  // Certain interests should boost specific activities regardless of category
+  const boostedActivityIds = useMemo(() => {
+    const boosted = new Set<string>();
+    if (interests.includes('older_people') || interests.includes('caring')) {
+      boosted.add('family_caring');
+      boosted.add('elderly_visiting');
+    }
+    return boosted;
+  }, [interests]);
+
   const sortedActivities = useMemo(() => {
     if (!data) return [];
     return [...data.activities].sort((a, b) => {
-      const aP = preferredCategories.has(a.category) ? 0 : 1;
-      const bP = preferredCategories.has(b.category) ? 0 : 1;
-      return aP - bP;
+      const aScore = boostedActivityIds.has(a.id) ? 0 : preferredCategories.has(a.category) ? 1 : 2;
+      const bScore = boostedActivityIds.has(b.id) ? 0 : preferredCategories.has(b.category) ? 1 : 2;
+      return aScore - bScore;
     });
-  }, [data, preferredCategories]);
+  }, [data, preferredCategories, boostedActivityIds]);
 
   const primaryActivities = sortedActivities.slice(0, 8);
   const moreActivities = sortedActivities.slice(8);

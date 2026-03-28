@@ -741,6 +741,8 @@ export default function Results() {
               navigator.clipboard.writeText(generateCVText(result)).then(() => {
                 setCvCopied(true);
                 setTimeout(() => setCvCopied(false), 2500);
+              }).catch(() => {
+                toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
               });
             }}
             className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
