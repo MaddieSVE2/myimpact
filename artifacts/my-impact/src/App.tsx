@@ -21,6 +21,7 @@ import Journal from "@/pages/Journal";
 import Badges from "@/pages/Badges";
 import OrgPortal from "@/pages/OrgPortal";
 import OrgRegister from "@/pages/OrgRegister";
+import OrgDemoDashboard from "@/pages/OrgDemoDashboard";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import NotFound from "@/pages/not-found";
@@ -56,6 +57,7 @@ function AppRouter() {
           <Route path="/badges">
             {() => <PrivateRoute component={Badges} />}
           </Route>
+          <Route path="/org/demo" component={OrgDemoDashboard} />
           <Route path="/org/register" component={OrgRegister} />
           <Route path="/org">
             {() => <PrivateRoute component={OrgPortal} />}
