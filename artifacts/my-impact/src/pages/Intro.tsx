@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -61,6 +63,162 @@ function Counter({ end, prefix = "", suffix = "", duration = 1800 }: { end: numb
     return () => clearInterval(timer);
   }, [visible, end, duration]);
   return <span ref={ref}>{prefix}{count.toLocaleString()}{suffix}</span>;
+}
+
+const TESTIMONIALS = [
+  {
+    name: "Aisha",
+    age: "21, Glasgow",
+    quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that. I could finally put a number on the pride, engagement, and connection we were creating.",
+    value: "£4,230",
+    what: "Community art project, 6 months",
+  },
+  {
+    name: "Ben",
+    age: "36, Hull",
+    quote: "I'm not in work right now and people make assumptions. But I run a tech drop-in for older people every week. I'm reducing isolation, building digital skills, bringing people together. MyImpact shows that what I do has real, measurable worth.",
+    value: "£7,860",
+    what: "Weekly tech hub, 12 months",
+  },
+  {
+    name: "Chloe",
+    age: "17, Cardiff",
+    quote: "Call me a snowflake if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
+    value: "£3,150",
+    what: "River clean-up crew, 8 months",
+  },
+  {
+    name: "Marcus",
+    age: "38, Catterick",
+    quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
+    value: "£11,240",
+    what: "Forces leaver, 14 years' service",
+  },
+  {
+    name: "Priya",
+    age: "44, Bristol",
+    quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent. I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
+    value: "£9,610",
+    what: "Career break returner, 8 years",
+  },
+];
+
+const slideVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+};
+
+function TestimonialsCarousel() {
+  const [current, setCurrent] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [paused, setPaused] = useState(false);
+  const n = TESTIMONIALS.length;
+
+  const go = (dir: 1 | -1) => {
+    setDirection(dir);
+    setCurrent(c => (c + dir + n) % n);
+  };
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => {
+      setDirection(1);
+      setCurrent(c => (c + 1) % n);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [paused]);
+
+  const s = TESTIMONIALS[current];
+
+  return (
+    <div
+      style={{ position: "relative", display: "flex", alignItems: "center", gap: 16 }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Prev arrow */}
+      <button
+        onClick={() => go(-1)}
+        aria-label="Previous"
+        style={{
+          flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
+          border: "1.5px solid rgba(0,0,0,0.12)", background: "white",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", color: C.dark, transition: "all 0.2s",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
+      >
+        <ChevronLeft size={18} />
+      </button>
+
+      {/* Card viewport — clips the sliding card */}
+      <div style={{ flex: 1, overflow: "hidden", borderRadius: 20 }}>
+        <AnimatePresence custom={direction} mode="wait">
+          <motion.div
+            key={current}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.38, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <div style={{
+              borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
+              display: "flex", flexDirection: "column",
+            }}>
+              <div style={{ padding: "28px 28px 20px" }}>
+                <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
+                <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
+                <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.7, marginTop: 14, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
+              </div>
+              <div style={{ padding: "14px 28px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
+                <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 160, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Next arrow */}
+      <button
+        onClick={() => go(1)}
+        aria-label="Next"
+        style={{
+          flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
+          border: "1.5px solid rgba(0,0,0,0.12)", background: "white",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", color: C.dark, transition: "all 0.2s",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.cream; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "white"; }}
+      >
+        <ChevronRight size={18} />
+      </button>
+
+      {/* Dot indicators */}
+      <div style={{ position: "absolute", bottom: -28, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+        {TESTIMONIALS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { setDirection(i > current ? 1 : -1); setCurrent(i); }}
+            aria-label={`Go to story ${i + 1}`}
+            style={{
+              width: i === current ? 20 : 6, height: 6, borderRadius: 3,
+              border: "none", padding: 0, cursor: "pointer",
+              background: i === current ? C.orange : "rgba(0,0,0,0.15)",
+              transition: "all 0.3s",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Intro() {
@@ -236,63 +394,8 @@ export default function Intro() {
             <p className="mi-section-label">Real stories</p>
             <p className="mi-section-title">What does social value look like?</p>
           </FadeIn>
-          <div style={{ display: "flex", flexDirection: "row", gap: 24, overflowX: "auto", paddingBottom: 12, scrollSnapType: "x mandatory" }}>
-            {[
-              {
-                name: "Aisha",
-                age: "21, Glasgow",
-                quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that. I could finally put a number on the pride, engagement, and connection we were creating.",
-                value: "£4,230",
-                what: "Community art project, 6 months",
-              },
-              {
-                name: "Ben",
-                age: "36, Hull",
-                quote: "I'm not in work right now and people make assumptions. But I run a tech drop-in for older people every week. I'm reducing isolation, building digital skills, bringing people together. MyImpact shows that what I do has real, measurable worth.",
-                value: "£7,860",
-                what: "Weekly tech hub, 12 months",
-              },
-              {
-                name: "Chloe",
-                age: "17, Cardiff",
-                quote: "Call me a snowflake if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
-                value: "£3,150",
-                what: "River clean-up crew, 8 months",
-              },
-              {
-                name: "Marcus",
-                age: "38, Catterick",
-                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
-                value: "£11,240",
-                what: "Forces leaver, 14 years' service",
-              },
-              {
-                name: "Priya",
-                age: "44, Bristol",
-                quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent. I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
-                value: "£9,610",
-                what: "Career break returner, 8 years",
-              },
-            ].map((s, i) => (
-              <div key={s.name} style={{ flexShrink: 0, width: 320, scrollSnapAlign: "start" }}>
-              <FadeIn delay={i * 0.12}>
-                <div style={{
-                  borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
-                  transition: "all 0.3s", height: "100%", display: "flex", flexDirection: "column",
-                }}>
-                  <div style={{ padding: "28px 24px 20px", flex: 1 }}>
-                    <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
-                    <p style={{ fontSize: 13, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
-                    <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.65, marginTop: 12, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
-                  </div>
-                  <div style={{ padding: "14px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-                    <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 26, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
-                    <p style={{ fontSize: 13, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 150, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
-                  </div>
-                </div>
-              </FadeIn>
-              </div>
-            ))}
+          <div style={{ paddingBottom: 40 }}>
+            <TestimonialsCarousel />
           </div>
         </div>
       </section>
