@@ -14,7 +14,9 @@ export default function AuthConfirm() {
   const [email, setEmail] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const token = new URLSearchParams(window.location.search).get("token");
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get("token");
+  const returnToParam = urlParams.get("returnTo");
 
   useEffect(() => {
     if (!token) {
@@ -51,7 +53,12 @@ export default function AuthConfirm() {
       });
       const data = await res.json();
       if (data.ok) {
-        window.location.href = (import.meta.env.BASE_URL || "/") + "history";
+        const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+        const destination =
+          returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
+            ? base + returnToParam
+            : base + "/history";
+        window.location.href = destination;
       } else {
         setStatus("error");
         setErrorMsg(data.error ?? "Failed to confirm sign-in.");

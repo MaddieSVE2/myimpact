@@ -11,7 +11,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
-  requestMagicLink: (email: string) => Promise<void>;
+  requestMagicLink: (email: string, returnTo?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,12 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const requestMagicLink = async (email: string) => {
+  const requestMagicLink = async (email: string, returnTo?: string) => {
     const res = await fetch(`${BASE}/api/auth/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, returnTo: returnTo ?? null }),
     });
     if (!res.ok) {
       const data = await res.json();

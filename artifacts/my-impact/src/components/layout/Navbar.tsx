@@ -304,7 +304,7 @@ export function Navbar() {
                   </div>
                 </div>
                 <Link
-                  href="/login"
+                  href={`/login?from=${encodeURIComponent(location)}`}
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
                   style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
                 >
@@ -404,7 +404,7 @@ export function Navbar() {
               </button>
             ) : (
               <Link
-                href="/login"
+                href={`/login?from=${encodeURIComponent(location)}`}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
               >

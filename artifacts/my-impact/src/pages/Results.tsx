@@ -560,7 +560,7 @@ export default function Results() {
 
   const handleSave = async (period: string) => {
     if (!isLoggedIn) {
-      setLocation("/login");
+      setLocation("/login?from=/results");
       return;
     }
     try {

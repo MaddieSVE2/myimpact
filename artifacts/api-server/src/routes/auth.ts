@@ -26,13 +26,18 @@ function issueSession(res: any, user: { id: string; email: string }) {
 }
 
 router.post("/request", async (req, res) => {
-  const { email } = req.body;
+  const { email, returnTo } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required" });
     return;
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  const safeReturnTo =
+    typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : null;
 
   let user = await db.query.usersTable.findFirst({
     where: eq(usersTable.email, normalizedEmail),
@@ -57,7 +62,9 @@ router.post("/request", async (req, res) => {
   });
 
   const appUrl = getAppUrl(req);
-  const confirmUrl = `${appUrl}/auth/confirm?token=${token}`;
+  const confirmUrl = safeReturnTo
+    ? `${appUrl}/auth/confirm?token=${token}&returnTo=${encodeURIComponent(safeReturnTo)}`
+    : `${appUrl}/auth/confirm?token=${token}`;
 
   try {
     const { client, fromEmail } = await getUncachableResendClient();

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { getPreviousLocation } from "@/lib/nav-history";
 
 interface PrivateRouteProps {
   component: React.ComponentType;
@@ -8,13 +9,17 @@ interface PrivateRouteProps {
 
 export function PrivateRoute({ component: Component }: PrivateRouteProps) {
   const { isLoggedIn, isLoading } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
-      navigate("/login");
+      const next = encodeURIComponent(location);
+      const prev = getPreviousLocation();
+      const from = prev && prev !== location ? encodeURIComponent(prev) : null;
+      const query = from ? `?next=${next}&from=${from}` : `?next=${next}`;
+      navigate(`/login${query}`);
     }
-  }, [isLoading, isLoggedIn, navigate]);
+  }, [isLoading, isLoggedIn, navigate, location]);
 
   if (isLoading) {
     return (

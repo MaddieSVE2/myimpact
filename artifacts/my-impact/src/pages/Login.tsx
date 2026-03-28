@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, ArrowRight, CheckCircle, X } from "lucide-react";
 
@@ -10,13 +10,22 @@ export default function Login() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+
+  const fromParam = params.get("from");
+  const nextParam = params.get("next");
+
+  const isValidPath = (p: string | null): p is string =>
+    typeof p === "string" && p.startsWith("/") && !p.startsWith("//");
+
+  const closeTo = isValidPath(fromParam) ? fromParam : "/";
+  const postLoginTo = isValidPath(nextParam) ? nextParam
+    : isValidPath(fromParam) ? fromParam
+    : null;
 
   const handleClose = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      navigate("/");
-    }
+    navigate(closeTo);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +33,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await requestMagicLink(email.trim().toLowerCase());
+      await requestMagicLink(email.trim().toLowerCase(), postLoginTo ?? undefined);
       setSent(true);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong. Please try again.");

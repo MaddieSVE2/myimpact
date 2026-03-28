@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
+import { updateNavHistory } from "@/lib/nav-history";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,13 +43,15 @@ function GuestBanner() {
   if (isLoading || isLoggedIn || dismissed) return null;
   if (HIDE_BANNER_PATHS.some(p => location === p || location.startsWith(p + "/"))) return null;
 
+  const loginHref = `/login?from=${encodeURIComponent(location)}`;
+
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between gap-4">
       <p className="text-xs text-amber-800 flex items-center gap-1.5 flex-wrap">
         <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
         <span>
           You're browsing as a guest.{" "}
-          <Link href="/login" className="font-semibold underline underline-offset-2 hover:text-amber-900">
+          <Link href={loginHref} className="font-semibold underline underline-offset-2 hover:text-amber-900">
             Log in or create an account
           </Link>{" "}
           to save your history, write journal entries, and earn badges.
@@ -66,6 +69,13 @@ function GuestBanner() {
 }
 
 function AppRouter() {
+  const [location] = useLocation();
+  const locationRef = useRef<string | undefined>(undefined);
+  if (locationRef.current !== location) {
+    updateNavHistory(location);
+    locationRef.current = location;
+  }
+
   return (
     <div className="min-h-screen flex flex-col lg:pr-12">
       <Navbar />
