@@ -53,6 +53,9 @@ router.post("/suggestions", (req, res) => {
     "Digital skills": "Education",
     "Disability & accessibility": "Community",
     "International development": "Community",
+    "Caring for family": "Health",
+    "Military / Forces service": "Community",
+    "Career break / Returning to work": "Community",
   };
 
   const preferredCategories = new Set(

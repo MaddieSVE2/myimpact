@@ -159,6 +159,17 @@ const ACTIVITY_SKILLS: Record<string, { emoji: string; name: string }[]> = {
   job_club:            [{ emoji: "🎯", name: "Leadership" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }, { emoji: "💡", name: "Problem-solving" }],
   veterans_breakfast:  [{ emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Communication" }, { emoji: "🤝", name: "Teamwork" }],
   wildlife_trust:      [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🔬", name: "Research skills" }],
+  // Military / Forces service activities
+  military_community_reconstruction: [{ emoji: "🎯", name: "Leadership under pressure" }, { emoji: "🌍", name: "Cross-cultural communication" }, { emoji: "📋", name: "Logistics and planning" }],
+  military_population_liaison:       [{ emoji: "🌍", name: "Cross-cultural communication" }, { emoji: "🗣️", name: "Communication" }, { emoji: "❤️", name: "Empathy" }],
+  military_personnel_training:       [{ emoji: "📚", name: "Training and mentoring" }, { emoji: "🎯", name: "Leadership under pressure" }, { emoji: "🤝", name: "Teamwork" }],
+  military_first_aid:                [{ emoji: "🚨", name: "Crisis management" }, { emoji: "🏃", name: "Resilience" }, { emoji: "🧠", name: "Decision-making" }],
+  military_logistics:                [{ emoji: "📋", name: "Logistics and planning" }, { emoji: "🎯", name: "Leadership under pressure" }, { emoji: "💡", name: "Problem-solving" }],
+  // Career break / Returning to work activities
+  career_break_childcare:            [{ emoji: "📋", name: "Coordination" }, { emoji: "🗣️", name: "Negotiation" }, { emoji: "🏃", name: "Resilience" }],
+  career_break_eldercare:            [{ emoji: "🗣️", name: "Advocacy" }, { emoji: "📋", name: "Coordination" }, { emoji: "💰", name: "Budget management" }],
+  career_break_school_liaison:       [{ emoji: "🤝", name: "Multi-stakeholder management" }, { emoji: "🗣️", name: "Negotiation" }, { emoji: "📋", name: "Coordination" }],
+  career_break_medical_coordination: [{ emoji: "🗣️", name: "Advocacy" }, { emoji: "📋", name: "Coordination" }, { emoji: "💡", name: "Problem-solving" }],
   // By category fallbacks
   Environment:  [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }, { emoji: "🏃", name: "Resilience" }],
   Health:       [{ emoji: "❤️", name: "Empathy" }, { emoji: "👂", name: "Active listening" }, { emoji: "🤝", name: "Teamwork" }],
@@ -375,7 +386,7 @@ function ProxyMethodology({ breakdowns }: {
   );
 }
 
-function generateCVText(result: any): string {
+function generateCVText(result: any, interests: string[] = []): string {
   const skills = deriveSkills(result.activityBreakdowns);
   const activityNames: string[] = result.activityBreakdowns.map((b: any) => b.activityName);
   const hoursRounded = Math.round(result.totalHours);
@@ -406,12 +417,116 @@ function generateCVText(result: any): string {
     skillText = `${restSkills.join(", ")} and ${lastSkill}`;
   }
 
+  const isCareerBreak = interests.includes('career_break');
+  const isMilitary = interests.includes('military');
+
+  if (isCareerBreak) {
+    return `During my career break, I contributed ${hoursRounded} hours of unpaid time to ${actText}. This period of active contribution generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics. The skills I developed — including ${skillText} — are directly transferable and reflect real, substantive work that I carried out to a high standard throughout this period.`;
+  }
+
+  if (isMilitary) {
+    return `Through my service and subsequent community contributions, I have committed ${hoursRounded} hours to activities including ${actText}, generating an estimated ${valueFormatted} in social value based on Social Value Engine proxy metrics. This work has developed transferable skills including ${skillText}, which I apply in every environment I operate in.`;
+  }
+
   return `Over the past year, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}. This work has generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics based on peer-reviewed research and UK government data. Through this experience I have developed transferable skills including ${skillText}, which I bring to everything I do.`;
+}
+
+const MILITARY_TRANSFERABLE_SKILLS = [
+  { emoji: "🎯", name: "Leadership under pressure" },
+  { emoji: "🚨", name: "Crisis management" },
+  { emoji: "🌍", name: "Cross-cultural communication" },
+  { emoji: "📋", name: "Logistics and planning" },
+  { emoji: "📚", name: "Training and mentoring" },
+  { emoji: "🏃", name: "Resilience" },
+];
+
+const CAREER_BREAK_TRANSFERABLE_SKILLS = [
+  { emoji: "📋", name: "Coordination" },
+  { emoji: "🗣️", name: "Advocacy" },
+  { emoji: "💰", name: "Budget management" },
+  { emoji: "🤝", name: "Negotiation" },
+  { emoji: "👥", name: "Multi-stakeholder management" },
+  { emoji: "🏃", name: "Resilience" },
+];
+
+function PersonaTransferableSkills({ interests }: { interests: string[] }) {
+  const isMilitary = interests.includes('military');
+  const isCareerBreak = interests.includes('career_break');
+  if (!isMilitary && !isCareerBreak) return null;
+
+  return (
+    <>
+      {isMilitary && (
+        <motion.div
+          className="mb-6 bg-white border border-border rounded-xl overflow-hidden"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.19 }}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">🎖️</span>
+              <p className="text-xs text-muted-foreground font-medium">Forces service — transferable skills</p>
+            </div>
+            <p className="text-sm text-foreground font-medium mb-1">
+              Your military experience builds skills that civilian employers value highly.
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              The leadership, operational planning, and cross-cultural experience you gained in service translates directly into roles in management, logistics, emergency services, training, and public sector work — even if employers don't know military context.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {MILITARY_TRANSFERABLE_SKILLS.map(s => (
+                <span
+                  key={s.name}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af" }}
+                >
+                  {s.emoji} {s.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+      {isCareerBreak && (
+        <motion.div
+          className="mb-6 bg-white border border-border rounded-xl overflow-hidden"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">🔄</span>
+              <p className="text-xs text-muted-foreground font-medium">Career break — transferable skills</p>
+            </div>
+            <p className="text-sm text-foreground font-medium mb-1">
+              Your career break was a period of active contribution, not absence.
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              Managing care, coordinating with schools and health services, and advocating for dependants builds real, employer-recognised skills. The Sidekick can help you frame this period on your CV and prepare answers to interview questions about the gap.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CAREER_BREAK_TRANSFERABLE_SKILLS.map(s => (
+                <span
+                  key={s.name}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }}
+                >
+                  {s.emoji} {s.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </>
+  );
 }
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta } = useWizard();
+  const { result, input, locationMeta, interests } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
@@ -733,6 +848,9 @@ export default function Results() {
         <ProxyMethodology breakdowns={result.activityBreakdowns} />
       )}
 
+      {/* Persona-specific transferable skills */}
+      <PersonaTransferableSkills interests={interests} />
+
       {/* Use case sections */}
       <motion.div
         className="mb-4 space-y-3"
@@ -754,13 +872,13 @@ export default function Results() {
             </p>
             <textarea
               readOnly
-              value={generateCVText(result)}
+              value={generateCVText(result, interests)}
               rows={5}
               className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
             />
             <button
               onClick={() => {
-                navigator.clipboard.writeText(generateCVText(result)).then(() => {
+                navigator.clipboard.writeText(generateCVText(result, interests)).then(() => {
                   setStatementCopied(true);
                   setTimeout(() => setStatementCopied(false), 2500);
                 }).catch(() => {

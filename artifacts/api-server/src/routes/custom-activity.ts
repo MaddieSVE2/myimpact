@@ -74,12 +74,22 @@ router.post("/analyse", async (req, res) => {
           role: "system",
           content: `You are a social value measurement assistant. Given an activity name, return a JSON object with:
 
-- friendlyQuestion (string): A warm, simple question asking a young person about frequency or volume. Under 15 words. British English.
+- friendlyQuestion (string): A warm, simple question asking the user about frequency or volume. Under 15 words. British English. Use plain, accessible language — avoid jargon. If the activity is military-sounding, rephrase it in civilian-friendly terms (e.g. "patrol duties" -> "team leadership and safety responsibilities").
 - unit (string): one of "hour" | "session" | "person" | "item" | "household" — the most natural unit
 - unitLabel (string): human-readable label, e.g. "hours per year", "sessions per year", "people helped"
-- defaultQuantity (number): sensible default for a typical young person
+- defaultQuantity (number): sensible default for a typical volunteer or community contributor
 - sdgHint (string): most relevant UN SDG, e.g. "SDG 3: Good Health and Well-Being"
 - proxyIndex (number | null): 1-based index of the BEST matching proxy below, or null if none are a reasonable match. Prefer specific outcome matches over generic ones.
+
+MILITARY TERMINOLOGY GUIDE — map these to civilian proxies:
+- Patrol commander / section commander / platoon sergeant -> team leadership, supervision, community safety
+- CIMIC (Civil-Military Co-operation) -> community liaison, stakeholder engagement, local development support
+- QM / quartermaster / logistics NCO -> supply chain management, resource coordination
+- SNCO / senior non-commissioned officer -> senior team leadership, training, mentoring
+- Training wing / instruction role -> training delivery, mentoring, adult education
+- Emergency first aid / combat medical technician -> first aid provision, emergency response
+- Community reconstruction / stabilisation -> community development, infrastructure support
+- Population liaison / cultural advisor -> cross-cultural communication, community engagement
 
 Candidate proxies:
 ${candidateList || "No candidates found."}`,

@@ -249,6 +249,20 @@ export default function Intro() {
                 value: "£3,150",
                 what: "River clean-up crew, 8 months",
               },
+              {
+                name: "Marcus",
+                age: "38, Catterick",
+                quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
+                value: "£11,240",
+                what: "Forces leaver, 14 years' service",
+              },
+              {
+                name: "Priya",
+                age: "44, Bristol",
+                quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent — I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
+                value: "£9,610",
+                what: "Career break returner, 8 years",
+              },
             ].map((s, i) => (
               <FadeIn key={s.name} delay={i * 0.12}>
                 <div style={{

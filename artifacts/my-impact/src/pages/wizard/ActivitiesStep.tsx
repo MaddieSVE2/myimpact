@@ -109,6 +109,27 @@ export default function ActivitiesStep() {
     if (interests.includes('community') || interests.includes('employment') || interests.includes('education')) {
       boosted.add('job_club');
     }
+    if (interests.includes('military')) {
+      boosted.add('military_community_reconstruction');
+      boosted.add('military_population_liaison');
+      boosted.add('military_personnel_training');
+      boosted.add('military_first_aid');
+      boosted.add('military_logistics');
+      boosted.add('veterans_breakfast');
+      boosted.add('youth_mentoring');
+      boosted.add('employability_coaching');
+      boosted.add('job_club');
+    }
+    if (interests.includes('career_break')) {
+      boosted.add('career_break_childcare');
+      boosted.add('career_break_eldercare');
+      boosted.add('career_break_school_liaison');
+      boosted.add('career_break_medical_coordination');
+      boosted.add('family_caring');
+      boosted.add('elderly_visiting');
+      boosted.add('befriending');
+      boosted.add('helping_neighbours');
+    }
     return boosted;
   }, [interests]);
 

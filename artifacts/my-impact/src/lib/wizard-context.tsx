@@ -19,6 +19,8 @@ export const INTEREST_OPTIONS = [
   { id: 'disability', label: 'Disability & accessibility', emoji: '♿', category: 'Community' },
   { id: 'international', label: 'International development', emoji: '🌐', category: 'Community' },
   { id: 'caring', label: 'Caring for family', emoji: '🤲', category: 'Health' },
+  { id: 'military', label: 'Military / Forces service', emoji: '🎖️', category: 'Community' },
+  { id: 'career_break', label: 'Career break / Returning to work', emoji: '🔄', category: 'Community' },
 ];
 
 export interface CustomActivityDetail {

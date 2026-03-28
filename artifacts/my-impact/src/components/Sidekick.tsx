@@ -94,10 +94,25 @@ export function Sidekick() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { result } = useWizard();
+  const { result, interests } = useWizard();
   const [location] = useLocation();
 
-  const quickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
+  const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
+  const quickActions = (() => {
+    if (location === "/results") {
+      const extras: string[] = [];
+      if (interests.includes("military")) {
+        extras.push("Help me translate my forces service into CV bullet points");
+        extras.push("How do I explain my military background to a civilian employer?");
+      }
+      if (interests.includes("career_break")) {
+        extras.push("Help me write about my career break on my CV positively");
+        extras.push("Draft an interview answer about my gap in employment");
+      }
+      return [...extras, ...baseQuickActions].slice(0, 4);
+    }
+    return baseQuickActions;
+  })();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -112,6 +127,7 @@ export function Sidekick() {
     if (result?.totalValue) ctx.totalValue = result.totalValue;
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b) => b.activityName);
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s) => s.sdg);
+    if (interests.length) ctx.interests = interests;
     return Object.keys(ctx).length ? ctx : undefined;
   };
 
@@ -163,7 +179,7 @@ export function Sidekick() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, result]
+    [messages, streaming, result, interests]
   );
 
   const handleSubmit = () => sendMessage(input);
