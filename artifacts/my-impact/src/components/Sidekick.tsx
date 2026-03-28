@@ -72,10 +72,10 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
     "Is the data anonymous?",
   ],
   "/": [
-    "What is social value?",
-    "How do charities measure their impact?",
-    "How can I get into charity or purpose-led work?",
-    "What is SROI?",
+    "What is My Impact?",
+    "What do you do with my data?",
+    "How does the calculation work?",
+    "Is this free to use?",
   ],
 };
 
