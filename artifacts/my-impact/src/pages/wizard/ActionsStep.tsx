@@ -53,9 +53,10 @@ export default function ActionsStep() {
 
         {/* Location */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-foreground mb-3">
+          <label className="block text-sm font-medium text-foreground mb-0.5">
             I live in&hellip;
           </label>
+          <p className="text-xs text-muted-foreground mb-3">We use this to recommend nearby activities.</p>
           <div className="relative max-w-xs">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
