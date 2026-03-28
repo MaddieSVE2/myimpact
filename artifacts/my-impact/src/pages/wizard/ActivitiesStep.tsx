@@ -4,7 +4,7 @@ import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wi
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Standard SDG colours (1-indexed by SDG number)
@@ -41,6 +41,7 @@ interface AnalysedActivity {
 }
 
 type Phase = "select" | "quantify";
+type ActivityMode = "pick" | "describe";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
@@ -48,6 +49,7 @@ export default function ActivitiesStep() {
   const { data, isLoading } = useGetActivities();
 
   const [phase, setPhase] = useState<Phase>("select");
+  const [activityMode, setActivityMode] = useState<ActivityMode>("pick");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(input.activities.map(a => a.activityId))
   );
@@ -62,6 +64,11 @@ export default function ActivitiesStep() {
   const [analysed, setAnalysed] = useState<AnalysedActivity | null>(null);
   const [customQuantity, setCustomQuantity] = useState(20);
   const [analyseError, setAnalyseError] = useState("");
+
+  // Describe mode state
+  const [describeText, setDescribeText] = useState("");
+  const [describeLoading, setDescribeLoading] = useState(false);
+  const [describeError, setDescribeError] = useState("");
 
   // Session calculator (gap 2 fix)
   const [showSessionCalc, setShowSessionCalc] = useState(false);
@@ -250,6 +257,108 @@ export default function ActivitiesStep() {
     setShowCustom(false);
   };
 
+  const handleDescribeSubmit = async () => {
+    if (!describeText.trim()) return;
+    setDescribeLoading(true);
+    setDescribeError("");
+
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+      // Step 1: parse description into matched IDs + unmatched labels
+      const parseRes = await fetch(`${base}/api/custom-activity/parse-description`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: describeText.trim() }),
+      });
+      if (!parseRes.ok) throw new Error("parse error");
+      const { matchedIds, unmatchedLabels } = await parseRes.json() as {
+        matchedIds: string[];
+        unmatchedLabels: string[];
+      };
+
+      if (matchedIds.length === 0 && unmatchedLabels.length === 0) {
+        setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
+        setDescribeLoading(false);
+        return;
+      }
+
+      // Step 2: pre-select matched predefined IDs
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        matchedIds.forEach(id => {
+          next.add(id);
+          const activity = data?.activities.find(a => a.id === id);
+          if (activity && quantities[id] === undefined) {
+            setQuantities(q => ({ ...q, [id]: activity.defaultQuantity ?? 1 }));
+            setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : 10 }));
+          }
+        });
+        return next;
+      });
+
+      // Step 3: analyse unmatched labels in parallel
+      let successfulCustomCount = 0;
+      if (unmatchedLabels.slice(0, 5).length > 0) {
+        const analyseResults = await Promise.all(
+          unmatchedLabels.slice(0, 5).map(label =>
+            fetch(`${base}/api/custom-activity/analyse`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: label }),
+            }).then(r => r.ok ? r.json() as Promise<AnalysedActivity> : null).catch(() => null)
+          )
+        );
+
+        analyseResults.forEach((result, i) => {
+          if (!result) return;
+          const label = unmatchedLabels[i];
+          const activityId = `custom_${Date.now()}_${i}`;
+          const { sdg, sdgColor } = sdgFromHint(result.sdgHint);
+          const hrs = result.unit === "hour" ? result.defaultQuantity : 10;
+          const qty = result.unit === "hour" ? 1 : result.defaultQuantity;
+
+          const detail: CustomActivityDetail = {
+            activityId,
+            name: label,
+            quantity: qty,
+            hoursPerYear: hrs,
+            valuePerUnit: result.proxyMatch?.valuePerUnit ?? 0,
+            unit: result.unit,
+            proxy: result.proxyMatch?.title ?? "",
+            proxyYear: result.proxyMatch?.proxyYear ?? "",
+            sdg,
+            sdgColor,
+          };
+          addCustomActivity(detail);
+          successfulCustomCount++;
+        });
+      }
+
+      // Step 4: advance to quantify phase
+      setDescribeLoading(false);
+
+      const totalUsable = matchedIds.length + successfulCustomCount;
+      if (totalUsable === 0) {
+        // All downstream analyses failed — nothing usable was added
+        setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
+        return;
+      }
+
+      if (matchedIds.length > 0) {
+        setQuantifyIndex(0);
+        setPhase("quantify");
+      } else {
+        // Only custom activities — skip quantify
+        input.activities.forEach((_, i) => removeActivity(0));
+        setLocation("/wizard/contributions");
+      }
+    } catch {
+      setDescribeError("Something went wrong while analysing your description. Please try again.");
+      setDescribeLoading(false);
+    }
+  };
+
   const isQuantityUnit = (a: ActivityItem) => a.unit !== "hour";
 
   return (
@@ -265,255 +374,355 @@ export default function ActivitiesStep() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="bg-white border border-border rounded-xl p-6 md:p-8 mb-5">
-              <h2 className="text-xl font-display font-semibold text-foreground mb-1">
-                Which of these do you already do?
-              </h2>
-              <p className="text-sm text-muted-foreground mb-5">
-                Tick everything that applies. Don't worry about the details yet.
-                {preferredCategories.size > 0 && (
-                  <span className="text-primary"> Your interests are shown first.</span>
+            {/* Mode toggle */}
+            <div className="flex gap-1 p-1 bg-muted rounded-lg mb-5 w-fit">
+              <button
+                onClick={() => setActivityMode("pick")}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                  activityMode === "pick"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
-              </p>
+              >
+                <ListChecks className="w-4 h-4" />
+                Pick activities
+              </button>
+              <button
+                onClick={() => setActivityMode("describe")}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                  activityMode === "describe"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Describe what I do
+              </button>
+            </div>
 
-              {isLoading ? (
-                <div className="py-8 flex justify-center">
-                  <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2 mb-3">
-                    {displayedActivities.map(a => {
-                      const selected = selectedIds.has(a.id);
-                      const isPreferred = preferredCategories.has(a.category);
-                      return (
+            <AnimatePresence mode="wait">
+              {activityMode === "describe" ? (
+                <motion.div
+                  key="describe"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="bg-white border border-border rounded-xl p-6 md:p-8 mb-5">
+                    <h2 className="text-xl font-display font-semibold text-foreground mb-1">
+                      Tell us what you do
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Describe your activities in plain English and we'll find the right matches for you.
+                    </p>
+
+                    <textarea
+                      value={describeText}
+                      onChange={e => { setDescribeText(e.target.value); setDescribeError(""); }}
+                      placeholder="e.g. I cycle to work, help at a food bank and donate blood"
+                      rows={4}
+                      disabled={describeLoading}
+                      className="w-full p-3 rounded-lg border border-border bg-background text-sm focus:border-primary outline-none resize-none leading-relaxed disabled:opacity-60"
+                    />
+
+                    {describeError && (
+                      <div className="mt-3 px-4 py-3 rounded-lg bg-destructive/8 border border-destructive/20">
+                        <p className="text-sm text-destructive">{describeError}</p>
                         <button
-                          key={a.id}
-                          onClick={() => toggleSelect(a.id)}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
-                            selected
-                              ? "bg-primary/8 border-primary"
-                              : isPreferred
-                              ? "bg-primary/4 border-primary/20 hover:border-primary/50"
-                              : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
-                          )}
+                          onClick={() => setActivityMode("pick")}
+                          className="mt-1.5 text-xs text-destructive/80 underline underline-offset-2 hover:text-destructive"
                         >
-                          <div
-                            className={cn(
-                              "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
-                              selected ? "bg-primary border-primary" : "border-border"
-                            )}
-                          >
-                            {selected && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                          <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{a.category}</p>
-                          </div>
+                          Switch to picking activities manually
                         </button>
-                      );
-                    })}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleDescribeSubmit}
+                      disabled={!describeText.trim() || describeLoading}
+                      className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold text-white disabled:opacity-40 transition-all"
+                      style={{ background: "#E8633A" }}
+                    >
+                      {describeLoading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4" /> Analyse my activities</>
+                      )}
+                    </button>
                   </div>
 
-                  {moreActivities.length > 0 && !showAll && (
+                  <div className="flex justify-between">
                     <button
-                      onClick={() => setShowAll(true)}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4"
+                      onClick={() => setLocation("/wizard/actions")}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
                     >
-                      <ChevronDown className="w-3.5 h-3.5" />
-                      Show {moreActivities.length} more activities
+                      <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                  )}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="pick"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="bg-white border border-border rounded-xl p-6 md:p-8 mb-5">
+                    <h2 className="text-xl font-display font-semibold text-foreground mb-1">
+                      Which of these do you already do?
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Tick everything that applies. Don't worry about the details yet.
+                      {preferredCategories.size > 0 && (
+                        <span className="text-primary"> Your interests are shown first.</span>
+                      )}
+                    </p>
 
-                  {/* Zero-state encouragement */}
-                  {selectedIds.size === 0 && customActivities.length === 0 && !isLoading && (
-                    <div className="mb-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/15">
-                      <p className="text-sm text-foreground font-medium mb-0.5">Nothing ticked yet? That's okay.</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        You can still see your potential impact and find ideas near you. Or use the custom builder below to describe what you do.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Custom activity */}
-                  <div className="border-t border-border pt-4 mt-2">
-                    {!showCustom ? (
-                      <button
-                        onClick={() => setShowCustom(true)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/4 transition-all"
-                      >
-                        <PenLine className="w-4 h-4" />
-                        Don't see yours? Describe it here
-                      </button>
+                    {isLoading ? (
+                      <div className="py-8 flex justify-center">
+                        <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
+                      </div>
                     ) : (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="space-y-3"
-                      >
-                        <div>
-                          <label className="block text-xs font-medium text-foreground mb-1">What do you do?</label>
-                          <div className="flex gap-2">
-                            <input
-                              value={customName}
-                              onChange={e => { setCustomName(e.target.value); setAnalysed(null); setAnalyseError(""); }}
-                              onKeyDown={e => e.key === "Enter" && !analysed && analyseActivity()}
-                              placeholder="e.g. Litter picking, befriending scheme, peer support…"
-                              className="flex-1 p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
-                              autoFocus
-                              disabled={analysing}
-                            />
-                            {!analysed && (
+                      <>
+                        <div className="space-y-2 mb-3">
+                          {displayedActivities.map(a => {
+                            const selected = selectedIds.has(a.id);
+                            const isPreferred = preferredCategories.has(a.category);
+                            return (
                               <button
-                                onClick={analyseActivity}
-                                disabled={!customName.trim() || analysing}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white disabled:opacity-40 transition-all shrink-0"
-                                style={{ background: "#E8633A" }}
-                              >
-                                {analysing ? (
-                                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</>
-                                ) : (
-                                  <><Sparkles className="w-3.5 h-3.5" /> Analyse</>
+                                key={a.id}
+                                onClick={() => toggleSelect(a.id)}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
+                                  selected
+                                    ? "bg-primary/8 border-primary"
+                                    : isPreferred
+                                    ? "bg-primary/4 border-primary/20 hover:border-primary/50"
+                                    : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
                                 )}
+                              >
+                                <div
+                                  className={cn(
+                                    "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
+                                    selected ? "bg-primary border-primary" : "border-border"
+                                  )}
+                                >
+                                  {selected && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                                <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{a.category}</p>
+                                </div>
                               </button>
-                            )}
-                          </div>
-                          {analyseError && (
-                            <p className="text-xs text-destructive mt-1.5">{analyseError}</p>
-                          )}
+                            );
+                          })}
                         </div>
 
-                        {analysed && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-muted/30 rounded-lg p-4 space-y-3"
+                        {moreActivities.length > 0 && !showAll && (
+                          <button
+                            onClick={() => setShowAll(true)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-4"
                           >
-                            <div className="flex items-start gap-2">
-                              <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
-                              <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {analysed.unit === "pound" ? (
-                                <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
-                                  <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={customQuantity}
-                                    onChange={e => setCustomQuantity(Number(e.target.value))}
-                                    className="w-20 py-2.5 pr-2.5 bg-transparent text-base font-semibold text-center focus:outline-none"
-                                  />
-                                </div>
-                              ) : (
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={customQuantity}
-                                  onChange={e => setCustomQuantity(Number(e.target.value))}
-                                  className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                                />
-                              )}
-                              <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
-                            </div>
-
-                            {/* Proxy match badge */}
-                            {analysed.proxyMatch && (
-                              <div className="flex items-start gap-2 bg-white border border-border rounded-md p-3">
-                                <div className="shrink-0 w-1.5 h-full min-h-[1.5rem] rounded-full mt-0.5" style={{ backgroundColor: sdgFromHint(analysed.sdgHint).sdgColor }} />
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Social Value Match</p>
-                                  <p className="text-xs text-foreground font-medium leading-snug">{analysed.proxyMatch.title}</p>
-                                  <p className="text-xs text-primary font-bold mt-1">
-                                    £{analysed.proxyMatch.valuePerUnit.toLocaleString()} per {analysed.proxyMatch.unit}
-                                    {analysed.proxyMatch.proxyYear && <span className="text-muted-foreground font-normal"> · {analysed.proxyMatch.proxyYear}</span>}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-
-                            {!analysed.proxyMatch && (
-                              <p className="text-xs text-muted-foreground italic">No proxy match found. This activity will count towards your volunteer hours.</p>
-                            )}
-
-                            {analysed.sdgHint && (
-                              <p className="text-xs text-muted-foreground">Aligns with {analysed.sdgHint}</p>
-                            )}
-                          </motion.div>
+                            <ChevronDown className="w-3.5 h-3.5" />
+                            Show {moreActivities.length} more activities
+                          </button>
                         )}
 
-                        <div className="flex gap-2">
-                          {analysed ? (
-                            <button
-                              onClick={handleAddCustom}
-                              className="px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 transition-colors"
-                            >
-                              Add activity
-                            </button>
-                          ) : null}
-                          <button
-                            onClick={() => { setShowCustom(false); setAnalysed(null); setCustomName(""); setAnalyseError(""); }}
-                            className="px-4 py-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+                        {/* Zero-state encouragement */}
+                        {selectedIds.size === 0 && customActivities.length === 0 && !isLoading && (
+                          <div className="mb-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/15">
+                            <p className="text-sm text-foreground font-medium mb-0.5">Nothing ticked yet? That's okay.</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              You can still see your potential impact and find ideas near you. Or use the custom builder below to describe what you do.
+                            </p>
+                          </div>
+                        )}
 
-            {/* Custom activities already added */}
-            {customActivities.length > 0 && (
-              <div className="bg-white border border-border rounded-xl p-4 mb-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Custom activities added</p>
-                <div className="space-y-2">
-                  {customActivities.map(act => (
-                    <div key={act.activityId} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: act.sdgColor }} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{act.name}</p>
-                          {act.valuePerUnit > 0 ? (
-                            <p className="text-xs text-primary">£{act.valuePerUnit.toLocaleString()}/{act.unit} · {act.hoursPerYear} hrs/yr</p>
+                        {/* Custom activity */}
+                        <div className="border-t border-border pt-4 mt-2">
+                          {!showCustom ? (
+                            <button
+                              onClick={() => setShowCustom(true)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/4 transition-all"
+                            >
+                              <PenLine className="w-4 h-4" />
+                              Don't see yours? Describe it here
+                            </button>
                           ) : (
-                            <p className="text-xs text-muted-foreground">{act.hoursPerYear} hrs/yr</p>
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="space-y-3"
+                            >
+                              <div>
+                                <label className="block text-xs font-medium text-foreground mb-1">What do you do?</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    value={customName}
+                                    onChange={e => { setCustomName(e.target.value); setAnalysed(null); setAnalyseError(""); }}
+                                    onKeyDown={e => e.key === "Enter" && !analysed && analyseActivity()}
+                                    placeholder="e.g. Litter picking, befriending scheme, peer support…"
+                                    className="flex-1 p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
+                                    autoFocus
+                                    disabled={analysing}
+                                  />
+                                  {!analysed && (
+                                    <button
+                                      onClick={analyseActivity}
+                                      disabled={!customName.trim() || analysing}
+                                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white disabled:opacity-40 transition-all shrink-0"
+                                      style={{ background: "#E8633A" }}
+                                    >
+                                      {analysing ? (
+                                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</>
+                                      ) : (
+                                        <><Sparkles className="w-3.5 h-3.5" /> Analyse</>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                {analyseError && (
+                                  <p className="text-xs text-destructive mt-1.5">{analyseError}</p>
+                                )}
+                              </div>
+
+                              {analysed && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 8 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="bg-muted/30 rounded-lg p-4 space-y-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
+                                    <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    {analysed.unit === "pound" ? (
+                                      <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
+                                        <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={customQuantity}
+                                          onChange={e => setCustomQuantity(Number(e.target.value))}
+                                          className="w-20 py-2.5 pr-2.5 bg-transparent text-base font-semibold text-center focus:outline-none"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={customQuantity}
+                                        onChange={e => setCustomQuantity(Number(e.target.value))}
+                                        className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                                      />
+                                    )}
+                                    <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
+                                  </div>
+
+                                  {/* Proxy match badge */}
+                                  {analysed.proxyMatch && (
+                                    <div className="flex items-start gap-2 bg-white border border-border rounded-md p-3">
+                                      <div className="shrink-0 w-1.5 h-full min-h-[1.5rem] rounded-full mt-0.5" style={{ backgroundColor: sdgFromHint(analysed.sdgHint).sdgColor }} />
+                                      <div className="min-w-0">
+                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Social Value Match</p>
+                                        <p className="text-xs text-foreground font-medium leading-snug">{analysed.proxyMatch.title}</p>
+                                        <p className="text-xs text-primary font-bold mt-1">
+                                          £{analysed.proxyMatch.valuePerUnit.toLocaleString()} per {analysed.proxyMatch.unit}
+                                          {analysed.proxyMatch.proxyYear && <span className="text-muted-foreground font-normal"> · {analysed.proxyMatch.proxyYear}</span>}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {!analysed.proxyMatch && (
+                                    <p className="text-xs text-muted-foreground italic">No proxy match found. This activity will count towards your volunteer hours.</p>
+                                  )}
+
+                                  {analysed.sdgHint && (
+                                    <p className="text-xs text-muted-foreground">Aligns with {analysed.sdgHint}</p>
+                                  )}
+                                </motion.div>
+                              )}
+
+                              <div className="flex gap-2">
+                                {analysed ? (
+                                  <button
+                                    onClick={handleAddCustom}
+                                    className="px-4 py-2 rounded-md bg-foreground text-white text-xs font-medium hover:bg-foreground/90 transition-colors"
+                                  >
+                                    Add activity
+                                  </button>
+                                ) : null}
+                                <button
+                                  onClick={() => { setShowCustom(false); setAnalysed(null); setCustomName(""); setAnalyseError(""); }}
+                                  className="px-4 py-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </motion.div>
                           )}
                         </div>
-                      </div>
-                      <button
-                        onClick={() => removeCustomActivity(act.activityId)}
-                        className="text-muted-foreground hover:text-destructive shrink-0 ml-3"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                      </>
+                    )}
+                  </div>
 
-            <div className="flex justify-between">
-              <button
-                onClick={() => setLocation("/wizard/actions")}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <button
-                onClick={handleStartQuantify}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
-              >
-                {selectedIds.size === 0 && customActivities.length === 0
-                  ? "Skip"
-                  : `Next: ${selectedIds.size + customActivities.length} selected`}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+                  {/* Custom activities already added */}
+                  {customActivities.length > 0 && (
+                    <div className="bg-white border border-border rounded-xl p-4 mb-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Custom activities added</p>
+                      <div className="space-y-2">
+                        {customActivities.map(act => (
+                          <div key={act.activityId} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: act.sdgColor }} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{act.name}</p>
+                                {act.valuePerUnit > 0 ? (
+                                  <p className="text-xs text-primary">£{act.valuePerUnit.toLocaleString()}/{act.unit} · {act.hoursPerYear} hrs/yr</p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">{act.hoursPerYear} hrs/yr</p>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeCustomActivity(act.activityId)}
+                              className="text-muted-foreground hover:text-destructive shrink-0 ml-3"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <button
+                      onClick={() => setLocation("/wizard/actions")}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+                    >
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </button>
+                    <button
+                      onClick={handleStartQuantify}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
+                    >
+                      {selectedIds.size === 0 && customActivities.length === 0
+                        ? "Skip"
+                        : `Next: ${selectedIds.size + customActivities.length} selected`}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         ) : (
           <motion.div

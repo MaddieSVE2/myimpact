@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import proxiesData from "../lib/proxyData.json";
+import { ACTIVITIES } from "../lib/impactData";
 
 interface ProxyEntry {
   title: string;
@@ -147,6 +148,59 @@ ${candidateList || "No candidates found."}`,
   } catch (err) {
     console.error("Custom activity analyse error:", err);
     res.status(500).json({ error: "Failed to analyse activity" });
+  }
+});
+
+router.post("/parse-description", async (req, res) => {
+  try {
+    const { description } = req.body as { description: string };
+
+    if (!description?.trim()) {
+      res.status(400).json({ error: "description is required" });
+      return;
+    }
+
+    const activityList = ACTIVITIES.map(a => `- id: "${a.id}" | name: "${a.shortName}" | category: ${a.category}`).join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 600,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are a social impact assistant. A user will describe what they do in plain English. Your job is to match their description to the predefined activities listed below, and identify any activities they mention that don't match any predefined activity.
+
+Return a JSON object with exactly two fields:
+- matchedIds (string[]): an array of activity IDs from the list below that best match what the user describes. Only include IDs that are a genuine match — do not guess. Can be empty.
+- unmatchedLabels (string[]): short labels (3–6 words) for distinct activities the user mentions that have NO match in the predefined list. Can be empty.
+
+Be generous with matching — if the user's description is close to a predefined activity, include it. Do not create unmatched labels for things already covered by a matched ID.
+
+Predefined activities:
+${activityList}`,
+        },
+        {
+          role: "user",
+          content: `User description: "${description.trim()}"`,
+        },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+
+    const matchedIds: string[] = Array.isArray(parsed.matchedIds)
+      ? parsed.matchedIds.filter((id: unknown) => typeof id === "string" && ACTIVITIES.some(a => a.id === id))
+      : [];
+
+    const unmatchedLabels: string[] = Array.isArray(parsed.unmatchedLabels)
+      ? parsed.unmatchedLabels.filter((l: unknown) => typeof l === "string" && l.trim().length > 0).map((l: string) => l.trim())
+      : [];
+
+    res.json({ matchedIds, unmatchedLabels });
+  } catch (err) {
+    console.error("Parse description error:", err);
+    res.status(500).json({ error: "Failed to parse description" });
   }
 });
 
