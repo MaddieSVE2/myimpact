@@ -464,6 +464,22 @@ export const ACTIVITIES: Activity[] = [
     sdgColor: "#C5192D",
     description: "Delivering full-day STEM or coding workshops to inspire and educate young people.",
   },
+  {
+    id: "family_caring",
+    name: "Caring for a family member or someone in need",
+    shortName: "Caring for family",
+    category: "Health",
+    proxy: "PSSRU Informal Carer Support — unit cost of unpaid care per person supported per year (Carers UK / PSSRU, 2022)",
+    proxyYear: "2022",
+    unit: "person",
+    unitLabel: "people",
+    friendlyQuestion: "How many family members or people do you provide regular unpaid care for?",
+    defaultQuantity: 1,
+    valuePerUnit: 7680.0,
+    sdg: "Good Health and Well-Being",
+    sdgColor: "#4C9F38",
+    description: "Providing regular unpaid care, personal support, or assistance to a family member, friend, or neighbour who needs help due to illness, disability, or age.",
+  },
 ];
 
 export const CATEGORIES = [...new Set(ACTIVITIES.map((a) => a.category))].sort();

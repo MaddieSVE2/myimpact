@@ -7,8 +7,10 @@ import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
-  BookOpen, Award, ChevronDown, ChevronUp, FlaskConical
+  BookOpen, Award, ChevronDown, ChevronUp, FlaskConical,
+  Clipboard, ClipboardCheck, MessageSquare
 } from "lucide-react";
+import { useSidekick } from "@/lib/sidekick-context";
 import { useSaveImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -143,6 +145,7 @@ const ACTIVITY_SKILLS: Record<string, { emoji: string; name: string }[]> = {
   eco_transport:       [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "🏃", name: "Resilience" }],
   litter_picking:      [{ emoji: "🌱", name: "Environmental awareness" }, { emoji: "💡", name: "Initiative" }, { emoji: "🤝", name: "Teamwork" }],
   blood_donation:      [{ emoji: "🏃", name: "Resilience" }, { emoji: "💡", name: "Initiative" }],
+  family_caring:       [{ emoji: "❤️", name: "Empathy" }, { emoji: "🗣️", name: "Advocacy" }, { emoji: "📋", name: "Organisation" }, { emoji: "🏃", name: "Emotional resilience" }, { emoji: "🤲", name: "Personal care" }],
   charity_books:       [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
   charity_shop_bags:   [{ emoji: "📋", name: "Organisation" }, { emoji: "🤝", name: "Teamwork" }],
   fundraising:         [{ emoji: "🗣️", name: "Communication" }, { emoji: "🎯", name: "Leadership" }, { emoji: "🤝", name: "Teamwork" }],
@@ -364,18 +367,54 @@ function ProxyMethodology({ breakdowns }: {
   );
 }
 
+function generateCVText(result: any): string {
+  const skills = deriveSkills(result.activityBreakdowns);
+  const activityNames: string[] = result.activityBreakdowns.map((b: any) => b.activityName);
+  const hoursRounded = Math.round(result.totalHours);
+  const valueFormatted = formatCurrency(result.totalValue);
+  const skillNames = skills.slice(0, 5).map((s: { emoji: string; name: string }) => s.name);
+
+  let actText = "";
+  if (activityNames.length === 0) {
+    actText = "a range of voluntary activities";
+  } else if (activityNames.length === 1) {
+    actText = activityNames[0].toLowerCase();
+  } else if (activityNames.length === 2) {
+    actText = `${activityNames[0].toLowerCase()} and ${activityNames[1].toLowerCase()}`;
+  } else {
+    const last = activityNames[activityNames.length - 1].toLowerCase();
+    const rest = activityNames.slice(0, -1).map((n: string) => n.toLowerCase());
+    actText = `${rest.join(", ")}, and ${last}`;
+  }
+
+  let skillText = "";
+  if (skillNames.length === 0) {
+    skillText = "communication, teamwork, and initiative";
+  } else if (skillNames.length === 1) {
+    skillText = skillNames[0];
+  } else {
+    const lastSkill = skillNames[skillNames.length - 1];
+    const restSkills = skillNames.slice(0, -1);
+    skillText = `${restSkills.join(", ")} and ${lastSkill}`;
+  }
+
+  return `Over the past year, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}. This work has generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics based on peer-reviewed research and UK government data. Through this experience I have developed transferable skills including ${skillText}, which I bring to everything I do.`;
+}
+
 export default function Results() {
   const [, setLocation] = useLocation();
   const { result, input } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
+  const { setOpen: openSidekick } = useSidekick();
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [chosenPeriod, setChosenPeriod] = useState("");
   const [customPeriod, setCustomPeriod] = useState("");
+  const [cvCopied, setCvCopied] = useState(false);
 
   // Compute period presets from today's date
   const now = new Date();
@@ -675,6 +714,70 @@ export default function Results() {
       {result.activityBreakdowns.length > 0 && (
         <ProxyMethodology breakdowns={result.activityBreakdowns} />
       )}
+
+      {/* CV & applications statement */}
+      <motion.div
+        className="mb-4 bg-white border border-border rounded-xl overflow-hidden"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22 }}
+      >
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clipboard className="w-4 h-4 shrink-0" style={{ color: "#3b82f6" }} />
+            <p className="text-xs text-muted-foreground font-medium">Use this in your CV or application</p>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+            A ready-to-use paragraph for job applications, university personal statements, or cover letters — based on your actual impact.
+          </p>
+          <textarea
+            readOnly
+            value={generateCVText(result)}
+            rows={5}
+            className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
+          />
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(generateCVText(result)).then(() => {
+                setCvCopied(true);
+                setTimeout(() => setCvCopied(false), 2500);
+              });
+            }}
+            className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
+          >
+            {cvCopied
+              ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" /> Copied!</>
+              : <><Clipboard className="w-3.5 h-3.5" /> Copy paragraph</>
+            }
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Sidekick prompt */}
+      <motion.div
+        className="mb-6 rounded-xl border border-border overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #f0f9ff 0%, #fefce8 100%)" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <div className="px-5 py-4 flex items-center gap-4">
+          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "#F06127" }}>
+            <MessageSquare className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground mb-0.5">Want help putting this into your own words?</p>
+            <p className="text-xs text-muted-foreground leading-snug">Ask the sidekick to tailor your impact for a specific job, course, or statement.</p>
+          </div>
+          <button
+            onClick={() => openSidekick(true)}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
+            style={{ background: "#F06127", boxShadow: "0 2px 8px #F0612730" }}
+          >
+            Ask sidekick <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      </motion.div>
 
       {/* Fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border" style={{ background: "white", boxShadow: "0 -4px 24px rgba(0,0,0,0.10)" }}>

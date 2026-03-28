@@ -18,6 +18,7 @@ export const INTEREST_OPTIONS = [
   { id: 'digital', label: 'Digital skills', emoji: '💻', category: 'Education' },
   { id: 'disability', label: 'Disability & accessibility', emoji: '♿', category: 'Community' },
   { id: 'international', label: 'International development', emoji: '🌐', category: 'Community' },
+  { id: 'caring', label: 'Caring for family', emoji: '🤲', category: 'Health' },
 ];
 
 export interface CustomActivityDetail {
