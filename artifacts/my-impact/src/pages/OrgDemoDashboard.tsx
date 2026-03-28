@@ -101,8 +101,8 @@ export default function OrgDemoDashboard() {
 
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* Demo notice banner */}
-      <div className="bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center">
+      {/* Demo notice banner — sticky so it stays visible as user scrolls */}
+      <div className="sticky top-0 z-20 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center backdrop-blur-sm">
         <p className="text-xs font-semibold text-primary">
           This is example data for illustration. Your real dashboard populates as members log their activities.
         </p>
@@ -121,7 +121,7 @@ export default function OrgDemoDashboard() {
               <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold uppercase tracking-wide">Example · {DEMO.org.type}</span>
               <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[11px] font-semibold">Demo data</span>
             </div>
-            <h1 className="text-3xl font-display font-bold text-foreground leading-tight">{DEMO.org.name}</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground leading-tight">{DEMO.org.name} — Example Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" /> {DEMO.org.location}
             </p>
@@ -324,7 +324,7 @@ export default function OrgDemoDashboard() {
               href="/org"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/30 text-white text-sm font-semibold hover:bg-white/10 transition-colors"
             >
-              Already registered?
+              Already registered? View your dashboard
             </Link>
           </div>
         </div>
