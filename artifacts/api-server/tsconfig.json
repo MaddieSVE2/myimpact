@@ -4,7 +4,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment"
   },
   "include": ["src"],
   "references": [

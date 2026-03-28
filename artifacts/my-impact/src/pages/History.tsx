@@ -5,9 +5,10 @@ import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock,
+  HandCoins, UserPlus, Trophy, Clock, FileText,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -97,6 +98,30 @@ export default function History() {
   const { user } = useAuth();
   const { data, isLoading } = useGetImpactHistory({ userId: user?.id ?? "" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleDownloadPdf = async (recordId: string, recordName: string) => {
+    setDownloadingPdfId(recordId);
+    try {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/impact/pdf?recordId=${encodeURIComponent(recordId)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Server error");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `my-impact-${recordName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "PDF export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -300,6 +325,17 @@ export default function History() {
                         style={{ overflow: "hidden" }}
                       >
                         <RecordDetail result={record.impactResult} />
+                        <div className="px-4 py-3 border-t border-border bg-muted/5 flex justify-end">
+                          <button
+                            onClick={() => handleDownloadPdf(record.id, record.period || record.name)}
+                            disabled={downloadingPdfId === record.id}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all disabled:opacity-50"
+                            style={{ borderColor: "#E8633A", color: "#E8633A" }}
+                          >
+                            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                            {downloadingPdfId === record.id ? "Generating PDF…" : "Download Impact PDF"}
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>

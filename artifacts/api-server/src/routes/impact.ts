@@ -9,6 +9,9 @@ import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
 import { eq, desc, inArray, and } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
+import React from "react";
 
 const router: IRouter = Router();
 
@@ -340,6 +343,81 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to compute org stats" });
+  }
+});
+
+async function renderPdf(impactResult: unknown, userName: string, date: string): Promise<Buffer> {
+  const pdfData = parsePdfData(impactResult, userName, date);
+  const doc = buildImpactDocument(pdfData);
+  return await renderToBuffer(doc);
+}
+
+function sendPdfBuffer(res: import("express").Response, buffer: Buffer): void {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="my-impact-report.pdf"`);
+  res.setHeader("Content-Length", buffer.length);
+  res.end(buffer);
+}
+
+router.post("/pdf", async (req, res) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+
+    if (!body.impactResult) {
+      res.status(400).json({ error: "impactResult is required" });
+      return;
+    }
+
+    const userName = typeof body.name === "string" ? body.name : "Anonymous";
+    const date =
+      typeof body.date === "string"
+        ? body.date
+        : new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    const buffer = await renderPdf(body.impactResult, userName, date);
+    sendPdfBuffer(res, buffer);
+  } catch (err) {
+    console.error("PDF generation error:", err);
+    res.status(500).json({ error: "Failed to generate PDF" });
+  }
+});
+
+router.get("/pdf", authenticate, async (req: AuthenticatedRequest, res) => {
+  const recordIdParam = req.query.recordId;
+
+  if (!recordIdParam || typeof recordIdParam !== "string") {
+    res.status(400).json({ error: "recordId query parameter is required" });
+    return;
+  }
+
+  try {
+    const recordId = parseInt(recordIdParam, 10);
+    if (isNaN(recordId)) {
+      res.status(400).json({ error: "Invalid record ID" });
+      return;
+    }
+
+    const userId = req.user!.id;
+
+    const [record] = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+      .limit(1);
+
+    if (!record) {
+      res.status(404).json({ error: "Record not found" });
+      return;
+    }
+
+    const userName = record.name ?? "My Impact";
+    const date = record.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    const buffer = await renderPdf(record.resultJson, userName, date);
+    sendPdfBuffer(res, buffer);
+  } catch (err) {
+    console.error("PDF generation error:", err);
+    res.status(500).json({ error: "Failed to generate PDF" });
   }
 });
 

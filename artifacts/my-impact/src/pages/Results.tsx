@@ -8,7 +8,7 @@ import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
   BookOpen, Award, ChevronDown, ChevronUp, FlaskConical,
-  Clipboard, ClipboardCheck, MessageSquare
+  Clipboard, ClipboardCheck, MessageSquare, FileText
 } from "lucide-react";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useSaveImpact } from "@workspace/api-client-react";
@@ -533,6 +533,7 @@ export default function Results() {
   const { isLoggedIn, user } = useAuth();
   const { setOpen: openSidekick } = useSidekick();
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -651,6 +652,35 @@ export default function Results() {
       toast({ title: "Export failed", description: "Could not generate the image.", variant: "destructive" });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/impact/pdf`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          impactResult: result,
+          name: user?.email ?? "My Impact",
+          date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+        }),
+      });
+      if (!res.ok) throw new Error("Server error");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "my-impact-report.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "PDF export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -955,6 +985,15 @@ export default function Results() {
             </p>
             <div className="flex gap-2 flex-wrap">
               <button
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all disabled:opacity-50"
+                style={{ borderColor: "#E8633A", color: "#E8633A" }}
+              >
+                <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                {exportingPdf ? "Generating PDF…" : "Download Impact PDF"}
+              </button>
+              <button
                 onClick={handleExportPNG}
                 disabled={exporting}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all disabled:opacity-50"
@@ -1042,12 +1081,21 @@ export default function Results() {
 
           {/* Secondary actions */}
           <button
+            onClick={handleDownloadPdf}
+            disabled={exportingPdf}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+            style={{ borderColor: "#E8633A", color: "#E8633A" }}
+          >
+            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+            {exportingPdf ? "Generating…" : "Download PDF"}
+          </button>
+          <button
             onClick={handleExportPNG}
             disabled={exporting}
             className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
-            {exporting ? "Exporting…" : "Download PNG"}
+            {exporting ? "Exporting…" : "PNG"}
           </button>
 
           <div className="relative shrink-0">
