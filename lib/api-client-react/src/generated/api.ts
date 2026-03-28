@@ -18,6 +18,8 @@ import type {
 
 import type {
   ActivitiesResponse,
+  DeleteAllImpactRecordsResponse,
+  DeleteImpactRecordResponse,
   GetImpactHistoryParams,
   HealthStatus,
   ImpactHistoryResponse,
@@ -27,6 +29,8 @@ import type {
   SavedImpact,
   SuggestionsInput,
   SuggestionsResponse,
+  UpdateImpactRecordInput,
+  UpdateImpactRecordResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -543,3 +547,251 @@ export function useGetImpactHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update the period label of an impact record
+ */
+export const getUpdateImpactRecordUrl = (id: string) => {
+  return `/api/impact/${id}`;
+};
+
+export const updateImpactRecord = async (
+  id: string,
+  updateImpactRecordInput: UpdateImpactRecordInput,
+  options?: RequestInit,
+): Promise<UpdateImpactRecordResponse> => {
+  return customFetch<UpdateImpactRecordResponse>(getUpdateImpactRecordUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateImpactRecordInput),
+  });
+};
+
+export const getUpdateImpactRecordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateImpactRecord>>,
+    TError,
+    { id: string; data: BodyType<UpdateImpactRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateImpactRecord>>,
+  TError,
+  { id: string; data: BodyType<UpdateImpactRecordInput> },
+  TContext
+> => {
+  const mutationKey = ["updateImpactRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateImpactRecord>>,
+    { id: string; data: BodyType<UpdateImpactRecordInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+    return updateImpactRecord(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateImpactRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateImpactRecord>>
+>;
+export type UpdateImpactRecordMutationBody = BodyType<UpdateImpactRecordInput>;
+export type UpdateImpactRecordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the period label of an impact record
+ */
+export const useUpdateImpactRecord = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateImpactRecord>>,
+    TError,
+    { id: string; data: BodyType<UpdateImpactRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateImpactRecord>>,
+  TError,
+  { id: string; data: BodyType<UpdateImpactRecordInput> },
+  TContext
+> => {
+  return useMutation(getUpdateImpactRecordMutationOptions(options));
+};
+
+/**
+ * @summary Delete a single impact record
+ */
+export const getDeleteImpactRecordUrl = (id: string) => {
+  return `/api/impact/${id}`;
+};
+
+export const deleteImpactRecord = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteImpactRecordResponse> => {
+  return customFetch<DeleteImpactRecordResponse>(getDeleteImpactRecordUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteImpactRecordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteImpactRecord>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteImpactRecord>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteImpactRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteImpactRecord>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+    return deleteImpactRecord(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteImpactRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteImpactRecord>>
+>;
+export type DeleteImpactRecordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a single impact record
+ */
+export const useDeleteImpactRecord = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteImpactRecord>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteImpactRecord>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteImpactRecordMutationOptions(options));
+};
+
+/**
+ * @summary Delete all impact records for the authenticated user
+ */
+export const getDeleteAllImpactRecordsUrl = () => {
+  return `/api/impact/all`;
+};
+
+export const deleteAllImpactRecords = async (
+  options?: RequestInit,
+): Promise<DeleteAllImpactRecordsResponse> => {
+  return customFetch<DeleteAllImpactRecordsResponse>(getDeleteAllImpactRecordsUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAllImpactRecordsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAllImpactRecords>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAllImpactRecords>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteAllImpactRecords"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAllImpactRecords>>,
+    void
+  > = () => {
+    return deleteAllImpactRecords(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAllImpactRecordsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAllImpactRecords>>
+>;
+export type DeleteAllImpactRecordsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete all impact records for the authenticated user
+ */
+export const useDeleteAllImpactRecords = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAllImpactRecords>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAllImpactRecords>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteAllImpactRecordsMutationOptions(options));
+};

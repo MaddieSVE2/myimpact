@@ -122,3 +122,23 @@ export interface SuggestionsResponse {
 export type GetImpactHistoryParams = {
   userId: string;
 };
+
+export interface UpdateImpactRecordInput {
+  periodLabel: string;
+}
+
+export interface UpdateImpactRecordResponse {
+  id: string;
+  userId: string;
+  name: string;
+  period: string | null;
+  createdAt: string;
+}
+
+export interface DeleteImpactRecordResponse {
+  success: boolean;
+}
+
+export interface DeleteAllImpactRecordsResponse {
+  success: boolean;
+}

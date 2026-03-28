@@ -242,6 +242,78 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   });
 });
 
+router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const recordId = parseInt(req.params.id, 10);
+  if (isNaN(recordId)) {
+    res.status(400).json({ error: "Invalid record ID" });
+    return;
+  }
+
+  const { periodLabel } = req.body as { periodLabel?: string };
+  if (typeof periodLabel !== "string") {
+    res.status(400).json({ error: "periodLabel is required" });
+    return;
+  }
+
+  const [record] = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+    .limit(1);
+
+  if (!record) {
+    res.status(404).json({ error: "Record not found" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(impactRecordsTable)
+    .set({ periodLabel: periodLabel || null })
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+    .returning();
+
+  res.json({
+    id: String(updated.id),
+    userId: updated.userId,
+    name: updated.name,
+    period: updated.periodLabel ?? null,
+    createdAt: updated.createdAt.toISOString(),
+  });
+});
+
+router.delete("/all", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
+  res.json({ success: true });
+});
+
+router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const recordId = parseInt(req.params.id, 10);
+  if (isNaN(recordId)) {
+    res.status(400).json({ error: "Invalid record ID" });
+    return;
+  }
+
+  const [record] = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+    .limit(1);
+
+  if (!record) {
+    res.status(404).json({ error: "Record not found" });
+    return;
+  }
+
+  await db
+    .delete(impactRecordsTable)
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)));
+
+  res.json({ success: true });
+});
+
 router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
 

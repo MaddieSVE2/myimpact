@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { useGetImpactHistory } from "@workspace/api-client-react";
+import { useState, useRef, useEffect } from "react";
+import { useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetImpactHistoryQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +15,29 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
+
+const LOCAL_HISTORY_KEY = "mi_local_history";
+
+function getLocalHistory(): LocalRecord[] {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalHistory(records: LocalRecord[]) {
+  localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(records));
+}
+
+interface LocalRecord {
+  id: string;
+  name: string;
+  period: string | null;
+  createdAt: string;
+  impactResult: any;
+  activities: any[];
+}
 
 type Breakdown = {
   activityId: string;
@@ -38,7 +63,6 @@ function RecordDetail({ result }: { result: any }) {
 
   return (
     <div className="border-t border-border">
-      {/* Mini metrics row */}
       <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
         {metrics.map(m => (
           <div key={m.label} className="px-3 py-2.5 flex flex-col gap-0.5">
@@ -49,7 +73,6 @@ function RecordDetail({ result }: { result: any }) {
         ))}
       </div>
 
-      {/* Activity list */}
       {breakdowns.length > 0 ? (
         <div className="divide-y divide-border">
           {breakdowns.map(b => (
@@ -82,7 +105,6 @@ function RecordDetail({ result }: { result: any }) {
         <p className="px-4 py-3 text-xs text-muted-foreground italic">No activity breakdown recorded.</p>
       )}
 
-      {/* Totals footer */}
       <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <Clock className="w-3 h-3" aria-hidden="true" />
@@ -96,10 +118,41 @@ function RecordDetail({ result }: { result: any }) {
 
 export default function History() {
   const { user } = useAuth();
-  const { data, isLoading } = useGetImpactHistory({ userId: user?.id ?? "" });
+  const isAuthenticated = !!user?.id;
+  const queryClient = useQueryClient();
+
+  const { data: serverData, isLoading } = useGetImpactHistory(
+    { userId: user?.id ?? "" },
+    { query: { enabled: isAuthenticated } }
+  );
+
+  const [localRecords, setLocalRecords] = useState<LocalRecord[]>(() =>
+    isAuthenticated ? [] : getLocalHistory()
+  );
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const updateRecord = useUpdateImpactRecord();
+  const deleteRecord = useDeleteImpactRecord();
+  const deleteAll = useDeleteAllImpactRecords();
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const invalidateHistory = () => {
+    queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
+  };
 
   const handleDownloadPdf = async (recordId: string, recordName: string) => {
     setDownloadingPdfId(recordId);
@@ -123,7 +176,79 @@ export default function History() {
     }
   };
 
-  if (isLoading) {
+  const handleStartEdit = (record: { id: string; period: string | null; name: string }) => {
+    setEditingId(record.id);
+    setEditValue(record.period ?? record.name ?? "");
+    setDeletingId(null);
+  };
+
+  const handleSaveEdit = async (recordId: string) => {
+    const trimmed = editValue.trim();
+    if (!trimmed) {
+      setEditingId(null);
+      return;
+    }
+    if (isAuthenticated) {
+      try {
+        await updateRecord.mutateAsync({ id: recordId, data: { periodLabel: trimmed } });
+        invalidateHistory();
+        toast({ title: "Period label updated" });
+      } catch {
+        toast({ title: "Update failed", description: "Could not update the label. Please try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = localRecords.map(r =>
+        r.id === recordId ? { ...r, period: trimmed } : r
+      );
+      saveLocalHistory(updated);
+      setLocalRecords(updated);
+      toast({ title: "Period label updated" });
+    }
+    setEditingId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleConfirmDelete = async (recordId: string) => {
+    if (isAuthenticated) {
+      try {
+        await deleteRecord.mutateAsync({ id: recordId });
+        invalidateHistory();
+        toast({ title: "Record deleted" });
+      } catch {
+        toast({ title: "Delete failed", description: "Could not delete the record. Please try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = localRecords.filter(r => r.id !== recordId);
+      saveLocalHistory(updated);
+      setLocalRecords(updated);
+      toast({ title: "Record deleted" });
+    }
+    setDeletingId(null);
+    if (expandedId === recordId) setExpandedId(null);
+  };
+
+  const handleResetAll = async () => {
+    if (isAuthenticated) {
+      try {
+        await deleteAll.mutateAsync();
+        invalidateHistory();
+        toast({ title: "All records deleted" });
+      } catch {
+        toast({ title: "Reset failed", description: "Could not delete all records. Please try again.", variant: "destructive" });
+      }
+    } else {
+      saveLocalHistory([]);
+      setLocalRecords([]);
+      toast({ title: "All records deleted" });
+    }
+    setShowResetModal(false);
+    setExpandedId(null);
+  };
+
+  if (isLoading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div
@@ -135,7 +260,7 @@ export default function History() {
     );
   }
 
-  const records = data?.records || [];
+  const records = isAuthenticated ? (serverData?.records || []) : localRecords;
 
   const chartData = [...records].reverse().map(r => ({
     date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
@@ -161,9 +286,20 @@ export default function History() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My impact history</h1>
-        <p className="text-sm text-muted-foreground">Watch your social value grow over time.</p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My impact history</h1>
+          <p className="text-sm text-muted-foreground">Watch your social value grow over time.</p>
+        </div>
+        {records.length > 0 && (
+          <button
+            onClick={() => setShowResetModal(true)}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-destructive/40 text-destructive text-xs font-medium hover:bg-destructive/5 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Reset all
+          </button>
+        )}
       </div>
 
       {records.length === 0 ? (
@@ -256,6 +392,8 @@ export default function History() {
             <h3 className="text-sm font-semibold text-foreground mb-3">All records</h3>
             {records.map((record, i) => {
               const isOpen = expandedId === record.id;
+              const isEditing = editingId === record.id;
+              const isDeleting = deletingId === record.id;
               const activityCount = record.impactResult.activityBreakdowns?.length ?? 0;
               return (
                 <motion.div
@@ -266,30 +404,63 @@ export default function History() {
                   className="bg-white border border-border rounded-lg overflow-hidden transition-shadow hover:shadow-sm"
                   style={{ borderColor: isOpen ? "hsl(var(--primary) / 0.4)" : undefined }}
                 >
-                  {/* Clickable header row */}
-                  <button
-                    onClick={() => setExpandedId(isOpen ? null : record.id)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/10 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
+                  {/* Header row */}
+                  <div className="w-full flex items-center justify-between p-4 text-left">
+                    <button
+                      onClick={() => !isEditing && setExpandedId(isOpen ? null : record.id)}
+                      className="flex items-center gap-3 flex-1 min-w-0 hover:bg-muted/10 -m-1 p-1 rounded-md transition-colors"
+                    >
                       <div
                         className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors"
                         style={{ backgroundColor: isOpen ? "#F06127" : "hsl(var(--muted))" }}
                       >
                         <Calendar className="w-3.5 h-3.5" style={{ color: isOpen ? "white" : "hsl(var(--muted-foreground))" }} aria-hidden="true" />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {record.period && (
-                            <span
-                              className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{ backgroundColor: "#213547", color: "white" }}
-                            >
-                              {record.period}
-                            </span>
-                          )}
-                          {!record.period && (
-                            <p className="text-sm font-semibold text-foreground">{record.name}</p>
+                          {isEditing ? (
+                            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                              <input
+                                ref={editInputRef}
+                                type="text"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") handleSaveEdit(record.id);
+                                  if (e.key === "Escape") handleCancelEdit();
+                                }}
+                                className="text-xs border border-primary/40 rounded px-2 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 w-36"
+                                aria-label="Edit period label"
+                              />
+                              <button
+                                onClick={() => handleSaveEdit(record.id)}
+                                className="p-1 rounded text-green-600 hover:bg-green-50 transition-colors"
+                                aria-label="Save"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1 rounded text-muted-foreground hover:bg-muted/20 transition-colors"
+                                aria-label="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {record.period && (
+                                <span
+                                  className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                  style={{ backgroundColor: "#213547", color: "white" }}
+                                >
+                                  {record.period}
+                                </span>
+                              )}
+                              {!record.period && (
+                                <p className="text-sm font-semibold text-foreground">{record.name}</p>
+                              )}
+                            </>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -301,17 +472,81 @@ export default function History() {
                           )}
                         </p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2.5 shrink-0">
+                    </button>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                       <p className="text-lg font-display font-bold text-foreground">
                         {formatCurrency(record.impactResult.totalValue)}
                       </p>
-                      {isOpen
-                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                        : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                      }
+
+                      {/* Edit button */}
+                      {!isEditing && !isDeleting && (
+                        <button
+                          onClick={() => handleStartEdit(record)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors"
+                          aria-label="Edit period label"
+                        >
+                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      )}
+
+                      {/* Delete button / confirmation */}
+                      {!isEditing && !isDeleting && (
+                        <button
+                          onClick={() => { setDeletingId(record.id); setExpandedId(null); }}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+                          aria-label="Delete record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      )}
+
+                      {!isEditing && (
+                        <button
+                          onClick={() => setExpandedId(isOpen ? null : record.id)}
+                          className="p-1"
+                          aria-label={isOpen ? "Collapse" : "Expand"}
+                        >
+                          {isOpen
+                            ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                            : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                          }
+                        </button>
+                      )}
                     </div>
-                  </button>
+                  </div>
+
+                  {/* Inline delete confirmation */}
+                  <AnimatePresence initial={false}>
+                    {isDeleting && (
+                      <motion.div
+                        key="delete-confirm"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: "easeInOut" }}
+                        style={{ overflow: "hidden" }}
+                      >
+                        <div className="flex items-center justify-between px-4 py-3 bg-destructive/5 border-t border-destructive/20">
+                          <p className="text-xs text-destructive font-medium">Delete this record permanently?</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleConfirmDelete(record.id)}
+                              className="px-3 py-1.5 rounded-md bg-destructive text-white text-xs font-medium hover:bg-destructive/90 transition-colors"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="px-3 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted/20 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Expandable detail */}
                   <AnimatePresence initial={false}>
@@ -345,6 +580,58 @@ export default function History() {
           </div>
         </>
       )}
+
+      {/* Reset All Modal */}
+      <AnimatePresence>
+        {showResetModal && (
+          <motion.div
+            key="reset-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={() => setShowResetModal(false)}
+          >
+            <motion.div
+              key="reset-modal"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.18 }}
+              className="bg-white rounded-xl shadow-xl border border-border w-full max-w-sm mx-4 p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-destructive" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Reset all history?</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">This will permanently delete all your history.</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-5">
+                All {records.length} {records.length === 1 ? "record" : "records"} will be removed and cannot be recovered.
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setShowResetModal(false)}
+                  className="px-4 py-2 rounded-md border border-border text-xs font-medium hover:bg-muted/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetAll}
+                  disabled={deleteAll.isPending}
+                  className="px-4 py-2 rounded-md bg-destructive text-white text-xs font-medium hover:bg-destructive/90 transition-colors disabled:opacity-60"
+                >
+                  {deleteAll.isPending ? "Deleting…" : "Delete all records"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
