@@ -91,17 +91,19 @@ function StatCard({ icon: Icon, label, value, sub, highlight }: {
   );
 }
 
-export default function OrgDemoEducationDashboard() {
+export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
 
   return (
     <div className="min-h-screen bg-muted/20">
-      <div className="sticky top-0 z-20 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center backdrop-blur-sm">
-        <p className="text-xs font-semibold text-primary">
-          This is example data for illustration. Your real dashboard populates as students log their activities.
-        </p>
-      </div>
+      {!hideBanner && (
+        <div className="sticky top-0 z-20 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center backdrop-blur-sm">
+          <p className="text-xs font-semibold text-primary">
+            This is example data for illustration. Your real dashboard populates as students log their activities.
+          </p>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
         <Link href="/org/register" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">

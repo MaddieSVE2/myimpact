@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { updateNavHistory } from "@/lib/nav-history";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,14 +26,19 @@ import Journal from "@/pages/Journal";
 import Badges from "@/pages/Badges";
 import OrgPortal from "@/pages/OrgPortal";
 import OrgRegister from "@/pages/OrgRegister";
-import OrgDemoDashboard from "@/pages/OrgDemoDashboard";
-import OrgDemoEducationDashboard from "@/pages/OrgDemoEducationDashboard";
+import OrgDemoPage from "@/pages/OrgDemoPage";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
+
+function Redirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation(to, { replace: true }); }, [to]);
+  return null;
+}
 
 const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/", "/results"];
 
@@ -171,8 +176,10 @@ function AppRouter() {
           <Route path="/badges">
             {() => <PrivateRoute component={Badges} />}
           </Route>
-          <Route path="/org/demo/education" component={OrgDemoEducationDashboard} />
-          <Route path="/org/demo" component={OrgDemoDashboard} />
+          <Route path="/org/demo/education">
+            {() => <Redirect to="/org/demo?type=education" />}
+          </Route>
+          <Route path="/org/demo" component={OrgDemoPage} />
           <Route path="/org/register" component={OrgRegister} />
           <Route path="/org">
             {() => <OrgGuestRoute />}
