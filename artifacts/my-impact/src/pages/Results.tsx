@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useSaveImpact } from "@workspace/api-client-react";
+import type { SavedImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import html2canvas from "html2canvas";
@@ -564,7 +565,7 @@ export default function Results() {
       return;
     }
     try {
-      await saveMutation.mutateAsync({
+      const savedRecord: SavedImpact = await saveMutation.mutateAsync({
         data: {
           userId: user?.id ?? "",
           name: "My Impact Record",
@@ -581,6 +582,53 @@ export default function Results() {
           } : {}),
         },
       });
+
+      // Auto-create an activity card in the journal
+      const REFLECTION_PROMPTS = [
+        "What did that feel like?",
+        "What changed because of it?",
+        "Who benefited most from this?",
+        "What would you do differently next time?",
+      ];
+      const reflectionPrompt = REFLECTION_PROMPTS[Math.floor(Date.now() / 1000) % REFLECTION_PROMPTS.length];
+
+      const activityCount = result.activityBreakdowns.length;
+      const totalHours = Math.round(result.totalHours);
+      const donationAmount = input.donationsGBP ?? 0;
+
+      let summaryParts: string[] = [];
+      if (totalHours > 0) {
+        summaryParts.push(`You volunteered ${totalHours} ${totalHours === 1 ? "hour" : "hours"}${activityCount > 0 ? ` across ${activityCount} ${activityCount === 1 ? "activity" : "activities"}` : ""}`);
+      }
+      if (donationAmount > 0) {
+        summaryParts.push(`donated £${donationAmount.toLocaleString()} to good causes`);
+      }
+      if (summaryParts.length === 0) {
+        summaryParts.push("You recorded your impact");
+      }
+      const summary = summaryParts.join(" and ") + ".";
+
+      const periodLabel = period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+      const activityCard = {
+        id: `activity-${Date.now()}`,
+        type: "activity" as const,
+        impactRecordId: savedRecord.id,
+        periodLabel,
+        summary,
+        reflectionPrompt,
+        reflectionText: "",
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        const parsed: unknown = JSON.parse(localStorage.getItem("myimpact_journal") || "[]");
+        const existing = Array.isArray(parsed) ? parsed : [];
+        localStorage.setItem("myimpact_journal", JSON.stringify([activityCard, ...existing]));
+      } catch {
+        // ignore localStorage errors
+      }
+
       setSaved(true);
       setShowSaveDialog(false);
       toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });

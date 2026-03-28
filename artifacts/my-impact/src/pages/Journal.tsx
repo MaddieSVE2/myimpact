@@ -1,14 +1,28 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles } from "lucide-react";
 
 interface JournalEntry {
   id: string;
+  type: "entry";
   text: string;
   prompt: string;
   createdAt: string;
 }
+
+interface ActivityCard {
+  id: string;
+  type: "activity";
+  impactRecordId: string;
+  periodLabel: string;
+  summary: string;
+  reflectionPrompt: string;
+  reflectionText: string;
+  createdAt: string;
+}
+
+type FeedItem = JournalEntry | ActivityCard;
 
 const PROMPTS = [
   "What motivated you to get involved in this?",
@@ -27,20 +41,170 @@ function randomPrompt() {
 
 const STORAGE_KEY = "myimpact_journal";
 
-function loadEntries(): JournalEntry[] {
+function isActivityCard(item: unknown): item is ActivityCard {
+  if (typeof item !== "object" || item === null) return false;
+  const obj = item as Record<string, unknown>;
+  return (
+    typeof obj.id === "string" &&
+    obj.type === "activity" &&
+    typeof obj.impactRecordId === "string" &&
+    typeof obj.periodLabel === "string" &&
+    typeof obj.summary === "string" &&
+    typeof obj.reflectionPrompt === "string" &&
+    typeof obj.reflectionText === "string" &&
+    typeof obj.createdAt === "string"
+  );
+}
+
+interface JournalEntryRaw {
+  id: string;
+  text: string;
+  prompt: string;
+  createdAt: string;
+}
+
+function isJournalEntryLike(item: unknown): item is JournalEntryRaw {
+  if (typeof item !== "object" || item === null) return false;
+  const obj = item as Record<string, unknown>;
+  return (
+    typeof obj.id === "string" &&
+    typeof obj.text === "string" &&
+    typeof obj.prompt === "string" &&
+    typeof obj.createdAt === "string"
+  );
+}
+
+function loadEntries(): FeedItem[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    const result: FeedItem[] = [];
+    for (const item of parsed) {
+      if (isActivityCard(item)) {
+        result.push(item);
+      } else if (isJournalEntryLike(item)) {
+        result.push({
+          id: item.id,
+          type: "entry",
+          text: item.text,
+          prompt: item.prompt,
+          createdAt: item.createdAt,
+        });
+      }
+    }
+    return result;
   } catch {
     return [];
   }
 }
 
-function saveEntries(entries: JournalEntry[]) {
+function saveEntries(entries: FeedItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
+function ActivityCardItem({
+  card,
+  onDelete,
+  onSaveReflection,
+}: {
+  card: ActivityCard;
+  onDelete: (id: string) => void;
+  onSaveReflection: (cardId: string, text: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [saved, setSaved] = useState(!!card.reflectionText);
+  const [text, setText] = useState(card.reflectionText || "");
+
+  const handleSaveReflection = () => {
+    if (!draft.trim()) return;
+    onSaveReflection(card.id, draft.trim());
+    setText(draft.trim());
+    setSaved(true);
+    setDraft("");
+  };
+
+  return (
+    <motion.div
+      key={card.id}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="rounded-xl overflow-hidden group"
+      style={{
+        borderLeft: "4px solid #F06127",
+        border: "1px solid #fde8dc",
+        borderLeftWidth: "4px",
+        borderLeftColor: "#F06127",
+        background: "#fff9f7",
+      }}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: "#F06127" }} />
+            <span className="text-xs font-semibold" style={{ color: "#F06127" }}>Activity recorded</span>
+          </div>
+          <button
+            onClick={() => onDelete(card.id)}
+            className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <p className="text-sm font-semibold text-foreground mb-0.5">{card.periodLabel}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{card.summary}</p>
+
+        <div
+          className="rounded-lg p-3.5"
+          style={{ background: "rgba(240,97,39,0.06)", border: "1px solid rgba(240,97,39,0.15)" }}
+        >
+          <p className="text-xs font-medium text-foreground mb-2">
+            Reflect on this…
+          </p>
+          <p className="text-xs italic mb-3" style={{ color: "#F06127" }}>
+            "{card.reflectionPrompt}"
+          </p>
+
+          {saved ? (
+            <p className="text-sm text-foreground leading-relaxed italic">{text}</p>
+          ) : (
+            <>
+              <textarea
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                placeholder="Write freely. This is just for you…"
+                rows={3}
+                className="w-full p-2.5 rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 resize-none"
+                style={{ borderColor: "rgba(240,97,39,0.3)" }}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleSaveReflection}
+                  disabled={!draft.trim()}
+                  className="px-4 py-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-40"
+                  style={{ background: "#F06127" }}
+                >
+                  Save reflection
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <p className="text-[11px] text-muted-foreground mt-3">
+          {new Date(card.createdAt).toLocaleDateString("en-GB", {
+            weekday: "short", day: "numeric", month: "long", year: "numeric",
+            hour: "2-digit", minute: "2-digit"
+          })}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Journal() {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entries, setEntries] = useState<FeedItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt] = useState(randomPrompt);
@@ -53,6 +217,7 @@ export default function Journal() {
     if (!draft.trim()) return;
     const entry: JournalEntry = {
       id: Date.now().toString(),
+      type: "entry",
       text: draft.trim(),
       prompt,
       createdAt: new Date().toISOString(),
@@ -66,6 +231,14 @@ export default function Journal() {
 
   const handleDelete = (id: string) => {
     const updated = entries.filter(e => e.id !== id);
+    setEntries(updated);
+    saveEntries(updated);
+  };
+
+  const handleSaveReflection = (cardId: string, reflectionText: string) => {
+    const updated = entries.map(item =>
+      item.id === cardId ? { ...item, reflectionText } : item
+    );
     setEntries(updated);
     saveEntries(updated);
   };
@@ -90,7 +263,6 @@ export default function Journal() {
         </button>
       </div>
 
-      {/* New entry form */}
       <AnimatePresence>
         {isAdding && (
           <motion.div
@@ -148,33 +320,46 @@ export default function Journal() {
       ) : (
         <div className="space-y-4">
           <AnimatePresence>
-            {entries.map((entry, i) => (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-white border border-border rounded-xl p-5 group"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <p className="text-xs text-primary italic">"{entry.prompt}"</p>
-                  <button
-                    onClick={() => handleDelete(entry.id)}
-                    className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
-                <p className="text-[11px] text-muted-foreground mt-3">
-                  {new Date(entry.createdAt).toLocaleDateString("en-GB", {
-                    weekday: "short", day: "numeric", month: "long", year: "numeric",
-                    hour: "2-digit", minute: "2-digit"
-                  })}
-                </p>
-              </motion.div>
-            ))}
+            {entries.map((item, i) => {
+              if (item.type === "activity") {
+                return (
+                  <ActivityCardItem
+                    key={item.id}
+                    card={item}
+                    onDelete={handleDelete}
+                    onSaveReflection={handleSaveReflection}
+                  />
+                );
+              }
+              const entry = item as JournalEntry;
+              return (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-white border border-border rounded-xl p-5 group"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="text-xs text-primary italic">"{entry.prompt}"</p>
+                    <button
+                      onClick={() => handleDelete(entry.id)}
+                      className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {new Date(entry.createdAt).toLocaleDateString("en-GB", {
+                      weekday: "short", day: "numeric", month: "long", year: "numeric",
+                      hour: "2-digit", minute: "2-digit"
+                    })}
+                  </p>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       )}
