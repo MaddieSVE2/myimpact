@@ -141,7 +141,7 @@ export default function ActionsStep() {
               }}
               onBlur={handleLocationBlur}
               placeholder="e.g. Manchester, M1, SW1A 2AA…"
-              className="w-full pl-9 pr-4 py-2.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              className="w-full pl-9 pr-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
           <div className="mt-1.5 h-5">
@@ -178,7 +178,7 @@ export default function ActionsStep() {
                   type="button"
                   onClick={() => toggleInterest(option.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm border transition-all duration-150 select-none",
+                    "inline-flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-sm border transition-all duration-150 select-none",
                     selected
                       ? "bg-primary text-white border-primary font-medium"
                       : "bg-white text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
@@ -212,7 +212,7 @@ export default function ActionsStep() {
                 value={customInterest}
                 onChange={e => setCustomInterest(e.target.value)}
                 placeholder="e.g. Refugee support, domestic violence, prison reform…"
-                className="w-full px-4 py-2.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 autoFocus
               />
             </motion.div>
@@ -259,7 +259,7 @@ export default function ActionsStep() {
           <button
             onClick={handleNext}
             disabled={!canProceed}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next: Add activities <ArrowRight className="w-4 h-4" />
           </button>

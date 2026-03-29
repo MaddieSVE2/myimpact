@@ -1430,7 +1430,7 @@ export default function Results() {
           <button
             onClick={() => !saved && setShowSaveDialog(true)}
             disabled={saveMutation.isPending || saved}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
+            className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
             style={{
               background: saved ? "#22c55e" : "#213547",
               boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
@@ -1447,7 +1447,7 @@ export default function Results() {
           <button
             onClick={handleDownloadPdf}
             disabled={exportingPdf}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border text-sm font-medium transition-all disabled:opacity-50 shrink-0"
             style={{ borderColor: "#E8633A", color: "#E8633A" }}
           >
             <FileText className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1456,7 +1456,7 @@ export default function Results() {
           <button
             onClick={handleExportPNG}
             disabled={exporting}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
             {exporting ? "Exporting…" : "PNG"}
@@ -1465,7 +1465,7 @@ export default function Results() {
           <div className="relative shrink-0">
             <button
               onClick={handleNativeShare}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all"
             >
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> Share
             </button>
@@ -1493,7 +1493,7 @@ export default function Results() {
 
           <Link
             href="/journal"
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all shrink-0"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5" aria-hidden="true" /> Journal
           </Link>
@@ -1501,7 +1501,7 @@ export default function Results() {
           {/* Ideas CTA — grows to fill remaining space */}
           <Link
             href="/suggestions"
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
+            className="flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
             style={{ background: "#E8633A", boxShadow: "0 2px 12px #E8633A40" }}
           >
             Get personalised ideas <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1536,7 +1536,7 @@ export default function Results() {
                 <button
                   key={p.value}
                   onClick={() => { setChosenPeriod(p.value); setCustomPeriod(""); }}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                  className="px-3 py-2.5 min-h-[44px] rounded-full text-xs font-medium border transition-all"
                   style={chosenPeriod === p.value
                     ? { background: "#213547", color: "white", borderColor: "#213547" }
                     : { background: "white", color: "hsl(var(--foreground))", borderColor: "hsl(var(--border))" }
@@ -1558,7 +1558,7 @@ export default function Results() {
                 value={customPeriod}
                 onChange={e => { setCustomPeriod(e.target.value); setChosenPeriod(""); }}
                 placeholder='e.g. "Summer holiday 2026" or "Year 12"'
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                className="w-full px-3 py-3 min-h-[44px] rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
             </div>
 
@@ -1566,14 +1566,14 @@ export default function Results() {
             <div className="flex gap-2.5">
               <button
                 onClick={() => setShowSaveDialog(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
+                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleSave(customPeriod || chosenPeriod)}
                 disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
+                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
                 style={{ background: "#213547" }}
               >
                 {saveMutation.isPending ? "Saving…" : "Save record"}

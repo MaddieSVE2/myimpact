@@ -63,7 +63,7 @@ export default function ContributionsStep() {
                 type="number" min="0"
                 value={donations}
                 onChange={e => setDonations(Number(e.target.value))}
-                className="w-full py-2.5 pl-8 pr-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                className="w-full min-h-[44px] py-3 pl-8 pr-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
               />
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function ContributionsStep() {
                 type="number" min="0"
                 value={hours}
                 onChange={e => setHours(Number(e.target.value))}
-                className="w-full py-2.5 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                className="w-full min-h-[44px] py-3 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">hours</span>
             </div>
@@ -90,14 +90,14 @@ export default function ContributionsStep() {
       <div className="flex justify-between items-center">
         <button
           onClick={() => setLocation("/wizard/activities")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-white border border-border text-sm text-foreground font-medium hover:bg-secondary transition-all"
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-md bg-white border border-border text-sm text-foreground font-medium hover:bg-secondary transition-all min-h-[44px]"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <button
           onClick={handleFinish}
           disabled={calculateMutation.isPending}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-70"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-70 min-h-[44px]"
         >
           {calculateMutation.isPending ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Calculating...</>

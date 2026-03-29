@@ -281,6 +281,9 @@
   body {
     @apply font-sans antialiased bg-background text-foreground font-normal;
     background-image: none;
+    /* Prevent horizontal scroll from off-screen export targets (ShareCard) and
+       guard against any narrow-viewport overflow edge cases */
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {

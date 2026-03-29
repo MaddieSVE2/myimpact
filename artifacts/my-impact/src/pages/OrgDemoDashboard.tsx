@@ -220,24 +220,17 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Top activities</p>
           <div className="space-y-2">
             {DEMO.activities.map((a) => (
-              <div key={a.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
-                  <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary/30" style={{ width: `${(a.value / maxActivity) * 100}%` }} />
-                  </div>
+              <div key={a.name} className="py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-sm font-medium text-foreground truncate min-w-0">{a.name}</p>
+                  <p className="text-sm font-bold text-primary shrink-0">{formatCurrency(a.value)}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[11px] text-muted-foreground">participants</p>
-                  <p className="text-sm font-semibold text-foreground">{a.participants}%</p>
+                <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden mb-2">
+                  <div className="h-full rounded-full bg-primary/30" style={{ width: `${(a.value / maxActivity) * 100}%` }} />
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[11px] text-muted-foreground">hours</p>
-                  <p className="text-sm font-semibold text-foreground">{a.hours.toLocaleString("en-GB")}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[11px] text-muted-foreground">social value</p>
-                  <p className="text-sm font-bold text-primary">{formatCurrency(a.value)}</p>
+                <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                  <span><span className="font-semibold text-foreground">{a.participants}%</span> participants</span>
+                  <span><span className="font-semibold text-foreground">{a.hours.toLocaleString("en-GB")}</span> hrs</span>
                 </div>
               </div>
             ))}

@@ -214,15 +214,17 @@ export function Sidekick() {
           {messages.length > 0 && (
             <button
               onClick={handleClear}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              className="min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               title="Clear conversation"
+              aria-label="Clear conversation"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
           <button
             onClick={() => setOpen(false)}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
+            className="min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
+            aria-label="Close Sidekick"
           >
             <X className="w-4 h-4 md:hidden" />
             <ChevronRight className="w-4 h-4 hidden md:block" />
@@ -300,7 +302,7 @@ export function Sidekick() {
             onKeyDown={handleKeyDown}
             placeholder="Ask Sidekick anything…"
             disabled={streaming}
-            className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[42px] max-h-[120px] leading-snug disabled:opacity-50"
+            className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
             style={{ fontFamily: "inherit" }}
             onInput={(e) => {
               const el = e.currentTarget;
@@ -311,8 +313,9 @@ export function Sidekick() {
           <button
             onClick={handleSubmit}
             disabled={!input.trim() || streaming}
-            className="w-[42px] h-[42px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
+            className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
             style={{ backgroundColor: "#F06127" }}
+            aria-label="Send message"
           >
             <Send className="w-4 h-4" />
           </button>

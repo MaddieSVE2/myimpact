@@ -109,7 +109,7 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       required
-                      className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+                      className="w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
                     />
                   </div>
                 </div>
@@ -121,7 +121,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading || !email}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
                   style={{ background: "#F06127" }}
                 >
                   {loading ? "Sending..." : <>Send sign-in link <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}

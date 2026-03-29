@@ -25,6 +25,8 @@ export function StepProgress({ currentStep }: StepProgressProps) {
         {steps.map((step) => {
           const isCompleted = currentStep > step.id;
           const isCurrent = currentStep === step.id;
+          const isLast = step.id === steps.length;
+          const isFirst = step.id === 1;
           
           return (
             <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
@@ -39,7 +41,8 @@ export function StepProgress({ currentStep }: StepProgressProps) {
                 {isCompleted ? <Check className="w-4 h-4" /> : step.id}
               </div>
               <span className={cn(
-                "text-[11px] font-medium absolute -bottom-5 whitespace-nowrap transition-colors",
+                "text-[10px] font-medium absolute -bottom-5 transition-colors leading-tight text-center",
+                isFirst ? "left-0 translate-x-0" : isLast ? "right-0 translate-x-0" : "-translate-x-1/2 left-1/2",
                 isCurrent ? "text-primary" : "text-muted-foreground"
               )}>
                 {step.name}

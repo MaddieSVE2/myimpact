@@ -505,7 +505,7 @@ export default function ActivitiesStep() {
                     <button
                       onClick={handleDescribeSubmit}
                       disabled={!describeText.trim() || describeLoading}
-                      className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold text-white disabled:opacity-40 transition-all"
+                      className="mt-4 inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md text-sm font-semibold text-white disabled:opacity-40 transition-all"
                       style={{ background: "#E8633A" }}
                     >
                       {describeLoading ? (
@@ -519,7 +519,7 @@ export default function ActivitiesStep() {
                   <div className="flex justify-between">
                     <button
                       onClick={() => setLocation("/wizard/actions")}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
                     >
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
@@ -822,13 +822,13 @@ export default function ActivitiesStep() {
                   <div className="flex justify-between">
                     <button
                       onClick={() => setLocation("/wizard/actions")}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
                     >
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
                     <button
                       onClick={handleStartQuantify}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
+                      className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
                     >
                       {selectedIds.size === 0 && customActivities.length === 0
                         ? "Skip"
@@ -995,13 +995,13 @@ export default function ActivitiesStep() {
                 <div className="flex justify-between">
                   <button
                     onClick={() => quantifyIndex === 0 ? setActivitySelection({ phase: "select" }) : setActivitySelection({ quantifyIndex: quantifyIndex - 1 })}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-md bg-white border border-border text-sm font-medium hover:bg-secondary transition-all"
                   >
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
                   <button
                     onClick={handleQuantifyNext}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
+                    className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all"
                   >
                     {quantifyIndex < selectedList.length - 1 ? (
                       <><ChevronRight className="w-4 h-4" /> Next activity</>

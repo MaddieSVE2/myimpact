@@ -355,7 +355,7 @@ export function Navbar() {
 
             {/* Sidekick icon — mobile only */}
             <button
-              className="lg:hidden p-2"
+              className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => { setMobileOpen(false); openSidekick(true); }}
               aria-label="Open Sidekick AI"
@@ -365,7 +365,7 @@ export function Navbar() {
 
             {/* Hamburger — mobile only */}
             <button
-              className="lg:hidden p-2"
+              className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => setMobileOpen(o => !o)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -378,7 +378,7 @@ export function Navbar() {
 
         {/* Mobile dropdown */}
         {mobileOpen && (
-          <div className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1" style={{ background: DARK }}>
+          <div className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-0.5" style={{ background: DARK }}>
             {isLoggedIn && navItems.map((item) => {
               const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
               return (
@@ -387,11 +387,11 @@ export function Navbar() {
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium transition-colors min-h-[44px]",
                     isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
                   )}
                 >
-                  <item.icon className="w-4 h-4" aria-hidden="true" />
+                  <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                   {item.label}
                 </Link>
               );
@@ -400,7 +400,7 @@ export function Navbar() {
             <Link
               href="/wizard/actions"
               onClick={() => setMobileOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white"
+              className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
               style={{ background: "#F06127" }}
             >
               Calculate my impact →
@@ -411,18 +411,18 @@ export function Navbar() {
 
             <button
               onClick={toggleTheme}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+              className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               aria-pressed={isHighContrast}
             >
-              <Eye className="w-4 h-4" aria-hidden="true" />
+              <Eye className="w-4 h-4 shrink-0" aria-hidden="true" />
               {isHighContrast ? "Standard contrast" : "High contrast"}
             </button>
 
             <button
               onClick={handleAddToHome}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+              className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
             >
-              <Smartphone className="w-4 h-4" aria-hidden="true" />
+              <Smartphone className="w-4 h-4 shrink-0" aria-hidden="true" />
               Add to home screen
             </button>
 
@@ -430,9 +430,9 @@ export function Navbar() {
               <Link
                 href="/org"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
-                <Building2 className="w-4 h-4" aria-hidden="true" />
+                <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {inOrg ? "My organisation" : "Join my organisation"}
               </Link>
             )}
@@ -440,18 +440,18 @@ export function Navbar() {
             {isLoggedIn ? (
               <button
                 onClick={() => { logout(); setMobileOpen(false); }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
-                <LogOut className="w-4 h-4" aria-hidden="true" />
+                <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
                 Log out
               </button>
             ) : (
               <Link
                 href={`/login?from=${encodeURIComponent(location)}`}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
-                <LogIn className="w-4 h-4" aria-hidden="true" />
+                <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
                 Log in
               </Link>
             )}
