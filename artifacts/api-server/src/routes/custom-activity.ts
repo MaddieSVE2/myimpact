@@ -177,6 +177,12 @@ Return a JSON object with exactly two fields:
 
 Be generous with matching — if the user's description is close to a predefined activity, include it. Do not create unmatched labels for things already covered by a matched ID.
 
+CAREER BREAK / PARENTING TERMINOLOGY GUIDE — map these to predefined activities:
+- Stay at home parent, full-time parent, raising children, raising kids, looking after children, looking after grandchildren, caring for grandchildren, looking after my grandchild, full-time childcare, child carer, school runs, childminding, minding grandchildren → career_break_childcare
+- Managing school, SEN support, special educational needs, EHCP, school liaison, children's schooling, education admin, managing schooling, handling school needs, parent-teacher coordination → career_break_school_liaison
+- Managing hospital appointments, medical coordination, GP visits, specialist referrals, healthcare admin, medical appointments for dependants, managing appointments → career_break_medical_coordination
+- Looking after elderly relatives, elderly parent care, caring for elderly parents or grandparents, older family member care, dementia care, eldercare coordination → career_break_eldercare
+
 Predefined activities:
 ${activityList}`,
         },
