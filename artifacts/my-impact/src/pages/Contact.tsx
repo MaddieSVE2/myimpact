@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, CheckCircle, Mail } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -42,32 +43,35 @@ export default function Contact() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center px-4 py-16">
-        <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="min-h-screen bg-muted/20 flex flex-col">
+        <div className="flex-1 flex items-center justify-center px-4 py-16">
+          <div className="max-w-md w-full text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground mb-3">Message sent</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+              Thanks for getting in touch, <strong>{form.name}</strong>. We've received your message and will get back to you as soon as we can.
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+              A confirmation has been sent to <strong>{form.email}</strong>.
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Back to home
+            </Link>
           </div>
-          <h1 className="text-2xl font-display font-bold text-foreground mb-3">Message sent</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-            Thanks for getting in touch, <strong>{form.name}</strong>. We've received your message and will get back to you as soon as we can.
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-            A confirmation has been sent to <strong>{form.email}</strong>.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
-          >
-            Back to home
-          </Link>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <div className="max-w-lg mx-auto px-4 py-10">
+    <div className="min-h-screen bg-muted/20 flex flex-col">
+      <div className="flex-1 max-w-lg mx-auto w-full px-4 py-10">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to home
         </Link>
@@ -144,6 +148,7 @@ export default function Contact() {
           </p>
         </form>
       </div>
+      <Footer />
     </div>
   );
 }
