@@ -968,10 +968,10 @@ export default function Results() {
 
       // Auto-create an activity card in the journal
       const REFLECTION_PROMPTS = [
-        "What did that feel like?",
-        "What changed because of it?",
-        "Who benefited most from this?",
-        "What would you do differently next time?",
+        "What were your favourite activities?",
+        "What did you learn from this?",
+        "What moments stood out to you?",
+        "Anything else you'd like to remember about this?",
       ];
       const reflectionPrompt = REFLECTION_PROMPTS[Math.floor(Date.now() / 1000) % REFLECTION_PROMPTS.length];
 
