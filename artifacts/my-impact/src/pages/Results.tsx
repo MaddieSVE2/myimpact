@@ -1129,31 +1129,6 @@ export default function Results() {
         </p>
       </motion.div>
 
-      {/* Milestone progress */}
-      {nextMilestone && (
-        <motion.div
-          className="bg-white border border-border rounded-xl p-4 mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Next milestone: {nextMilestone.milestone.emoji} {nextMilestone.milestone.label}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go
-            </p>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "#F06127" }}
-            />
-          </div>
-        </motion.div>
-      )}
-
       {/* Donut charts */}
       {(result.activityBreakdowns.length > 0 || result.sdgBreakdowns.length > 0) && (
         <motion.div
@@ -1296,32 +1271,66 @@ export default function Results() {
         skillsSubheading={situationCopy.skillsSubheading}
       />
 
-      {/* Milestones earned */}
-      {earnedBadges.length > 0 && (
-        <div className="bg-white border border-border rounded-xl px-5 pt-5 pb-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Milestones earned</p>
-          <div className="flex flex-wrap gap-2">
-            {earnedBadges.map(badge => (
-              <div
-                key={badge.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
-                style={{ borderColor: badge.colour, color: badge.colour, background: `${badge.colour}14` }}
-              >
-                <span>{badge.emoji}</span>
-                <span>{badge.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Proxy methodology */}
       {result.activityBreakdowns.length > 0 && (
         <ProxyMethodology breakdowns={result.activityBreakdowns} />
       )}
 
-      {/* Persona-specific transferable skills */}
-      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
+      {/* Milestones earned */}
+      {earnedBadges.length > 0 && (
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones earned</p>
+            <Link href="/milestones" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Award className="w-3 h-3" aria-hidden="true" /> All milestones
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {earnedBadges.map(badge => (
+              <div
+                key={badge.id}
+                className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
+              >
+                <span className="text-xl shrink-0 mt-0.5">{badge.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Milestone progress */}
+      {nextMilestone && (
+        <motion.div
+          className="bg-white border border-border rounded-xl p-4 mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-semibold text-muted-foreground">
+              Next milestone: {nextMilestone.milestone.emoji} {nextMilestone.milestone.label}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go
+            </p>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "#F06127" }}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* Use case sections */}
       <motion.div
@@ -1366,68 +1375,13 @@ export default function Results() {
             </button>
           </div>
         </div>
-
-        {/* Share Your Impact */}
-        <div className="bg-white border border-border rounded-xl overflow-hidden">
-          <div className="px-5 pt-5 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Share2 className="w-4 h-4 shrink-0" style={{ color: "#E8633A" }} aria-hidden="true" />
-              <p className="text-sm font-semibold text-foreground">Share Your Impact</p>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Download a shareable impact card or post to social media and show the world what your time and effort is worth.
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleDownloadPdf}
-                disabled={exportingPdf}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all disabled:opacity-50"
-                style={{ borderColor: "#E8633A", color: "#E8633A" }}
-              >
-                <FileText className="w-3.5 h-3.5" aria-hidden="true" />
-                {exportingPdf ? "Generating PDF…" : "Download Impact PDF"}
-              </button>
-              <button
-                onClick={handleExportPNG}
-                disabled={exporting}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5" aria-hidden="true" />
-                {exporting ? "Exporting…" : "Download PNG card"}
-              </button>
-              <button
-                onClick={handleNativeShare}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
-              >
-                <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> Share
-              </button>
-            </div>
-            {shareOpen && (
-              <div className="mt-2 bg-white border border-border rounded-lg shadow-sm py-1 min-w-[160px] z-50 inline-block">
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                >
-                  <Twitter className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" /> Share on X
-                </a>
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                >
-                  <Linkedin className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" /> Share on LinkedIn
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Duke of Edinburgh panel */}
-        <DofEPanel breakdowns={result.activityBreakdowns} />
       </motion.div>
+
+      {/* Persona-specific transferable skills */}
+      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
+
+      {/* Duke of Edinburgh panel */}
+      <DofEPanel breakdowns={result.activityBreakdowns} />
 
       {/* Sidekick prompt */}
       <motion.div
