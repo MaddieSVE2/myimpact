@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -326,8 +326,8 @@ export function Navbar() {
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                           aria-pressed={feedbackMode}
                         >
-                          <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          {feedbackMode ? "Turn off feedback mode" : "Feedback mode"}
+                          <NotebookPen className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          {feedbackMode ? "Exit feedback mode" : "Enter feedback mode"}
                         </button>
                         <Link
                           href="/feedback"
@@ -514,8 +514,8 @@ export function Navbar() {
               className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               aria-pressed={feedbackMode}
             >
-              <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {feedbackMode ? "Turn off feedback mode" : "Feedback mode"}
+              <NotebookPen className="w-4 h-4 shrink-0" aria-hidden="true" />
+              {feedbackMode ? "Exit feedback mode" : "Enter feedback mode"}
             </button>
 
             <Link
