@@ -931,10 +931,13 @@ export default function Results() {
   const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const termLabel = month >= 9 ? `Autumn Term ${year}` : month >= 5 ? `Summer Term ${year}` : `Spring Term ${year}`;
   const academicYear = month >= 9 ? `${year}/${String(year + 1).slice(2)}` : `${year - 1}/${String(year).slice(2)}`;
+  const lastAcademicYearStart = month >= 9 ? year - 1 : year - 2;
+  const lastAcademicYear = `${lastAcademicYearStart}/${String(lastAcademicYearStart + 1).slice(2)}`;
   const PERIOD_PRESETS = [
     { label: "This month", value: monthLabel },
     { label: "Current term", value: termLabel },
     { label: "Academic year", value: `Academic Year ${academicYear}` },
+    ...(month < 9 ? [{ label: "Last academic year", value: `Academic Year ${lastAcademicYear}` }] : []),
   ];
 
   useEffect(() => {

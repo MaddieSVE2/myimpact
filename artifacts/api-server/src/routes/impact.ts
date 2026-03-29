@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte, sql } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -219,7 +219,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     if (existing.length > 0) {
       const [updated] = await db
         .update(impactRecordsTable)
-        .set(newValues)
+        .set({ ...newValues, createdAt: sql`now()` })
         .where(eq(impactRecordsTable.id, existing[0].id))
         .returning();
       record = updated;
