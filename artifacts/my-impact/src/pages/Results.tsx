@@ -1128,7 +1128,7 @@ export default function Results() {
         </p>
       </motion.div>
 
-      {/* Badges earned */}
+      {/* Milestones earned */}
       {earnedBadges.length > 0 && (
         <motion.div
           className="mb-6"
@@ -1137,9 +1137,9 @@ export default function Results() {
           transition={{ delay: 0.08 }}
         >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Badges earned</p>
-            <Link href="/badges" className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Award className="w-3 h-3" aria-hidden="true" /> All badges
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones earned</p>
+            <Link href="/milestones" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Award className="w-3 h-3" aria-hidden="true" /> All milestones
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-2">

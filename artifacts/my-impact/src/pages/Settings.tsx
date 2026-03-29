@@ -52,7 +52,7 @@ export default function Settings() {
               Display name
             </label>
             <p className="text-xs text-muted-foreground mb-2">
-              This is how you appear in badges and exports. Leave blank to use your email.
+              This is how you appear in milestones and exports. Leave blank to use your email.
             </p>
             <div className="flex gap-2">
               <input

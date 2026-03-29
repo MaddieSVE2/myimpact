@@ -182,7 +182,7 @@ export function Navbar() {
     { href: "/wizard/actions", label: "Calculate", icon: PlusCircle },
     { href: "/results", label: "My Impact", icon: Sparkles },
     { href: "/history", label: "History", icon: History },
-    { href: "/badges", label: "Badges", icon: Award },
+    { href: "/milestones", label: "Milestones", icon: Award },
     { href: "/journal", label: "Journal", icon: BookOpen },
     { href: "/suggestions", label: "Ideas", icon: Lightbulb },
   ];

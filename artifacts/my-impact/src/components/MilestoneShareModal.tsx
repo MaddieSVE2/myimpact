@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { Badge } from "@/lib/badges";
-import BadgeShareCard, { CARD_SIZES } from "./BadgeShareCard";
+import MilestoneShareCard, { CARD_SIZES } from "./MilestoneShareCard";
 import { X, Download, Linkedin, Twitter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-interface BadgeShareModalProps {
+interface MilestoneShareModalProps {
   badge: Badge;
   totalValue: number;
   onClose: () => void;
@@ -23,13 +23,13 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 
 const SCALE = 0.38;
 
-export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeShareModalProps) {
+export default function MilestoneShareModal({ badge, totalValue, onClose }: MilestoneShareModalProps) {
   const [format, setFormat] = useState<Format>("landscape");
   const [isGenerating, setIsGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const shareUrl = window.location.origin;
-  const shareText = `I've just earned the ${badge.name} badge on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at ${shareUrl}`;
+  const shareText = `I've just earned the ${badge.name} milestone on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at ${shareUrl}`;
 
   const captureCard = async (): Promise<HTMLCanvasElement | null> => {
     if (!cardRef.current) return null;
@@ -51,7 +51,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
       const canvas = await captureCard();
       if (!canvas) return;
       const link = document.createElement("a");
-      link.download = `${badge.name.toLowerCase().replace(/\s+/g, "-")}-badge.png`;
+      link.download = `${badge.name.toLowerCase().replace(/\s+/g, "-")}-milestone.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } finally {
@@ -89,7 +89,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-bold text-[#1a2e3a]">Share your badge</h2>
+            <h2 className="text-lg font-bold text-[#1a2e3a]">Share your milestone</h2>
             <p className="text-xs text-gray-500 mt-0.5">{badge.emoji} {badge.name}</p>
           </div>
           <button
@@ -137,7 +137,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
             }}
           >
             <div style={{ transform: `scale(${SCALE})`, transformOrigin: "top left" }}>
-              <BadgeShareCard
+              <MilestoneShareCard
                 badge={badge}
                 totalValue={totalValue}
                 format={format}
@@ -203,7 +203,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
         }}
         aria-hidden="true"
       >
-        <BadgeShareCard ref={cardRef} badge={badge} totalValue={totalValue} format={format} appUrl={window.location.hostname} />
+        <MilestoneShareCard ref={cardRef} badge={badge} totalValue={totalValue} format={format} appUrl={window.location.hostname} />
       </div>
     </div>
   );

@@ -70,11 +70,11 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
     "What should I include in an impact journal entry?",
     "How can I use my journal for a UCAS statement?",
   ],
-  "/badges": [
-    "What do these badges mean for employers?",
+  "/milestones": [
+    "What do these milestones mean for employers?",
     "Help me write a LinkedIn post about my impact",
-    "How do I earn more badges?",
-    "Can I use my badges in a personal statement?",
+    "How do I earn more milestones?",
+    "Can I use my milestones in a personal statement?",
   ],
   "/org": [
     "How do I explain our impact figures to funders?",

@@ -6,9 +6,9 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowLeft, Lock, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import BadgeShareModal from "@/components/BadgeShareModal";
+import MilestoneShareModal from "@/components/MilestoneShareModal";
 
-export default function Badges() {
+export default function Milestones() {
   const { data, isLoading } = useGetImpactHistory({ userId: "user_demo_123" });
   const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
 
@@ -28,7 +28,7 @@ export default function Badges() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My badges</h1>
+        <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My milestones</h1>
         <p className="text-sm text-muted-foreground">
           Earned through your positive contributions. Keep going to unlock more.
         </p>
@@ -67,12 +67,12 @@ export default function Badges() {
             </div>
             {!latest && (
               <p className="text-xs text-muted-foreground mt-3">
-                <Link href="/wizard/actions" className="text-primary hover:underline">Calculate your impact</Link> to start earning badges.
+                <Link href="/wizard/actions" className="text-primary hover:underline">Calculate your impact</Link> to start earning milestones.
               </p>
             )}
           </div>
 
-          {/* Earned badges */}
+          {/* Earned milestones */}
           {earnedBadges.length > 0 && (
             <div className="mb-6">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Earned ({earnedBadges.length})</p>
@@ -107,7 +107,7 @@ export default function Badges() {
             </div>
           )}
 
-          {/* Locked badges */}
+          {/* Locked milestones */}
           {lockedBadges.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Locked ({lockedBadges.length})</p>
@@ -141,7 +141,7 @@ export default function Badges() {
 
       {/* Share modal */}
       {sharingBadge && (
-        <BadgeShareModal
+        <MilestoneShareModal
           badge={sharingBadge}
           totalValue={currentTotal}
           onClose={() => setSharingBadge(null)}

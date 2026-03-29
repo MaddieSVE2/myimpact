@@ -26,7 +26,7 @@ import Results from "@/pages/Results";
 import Suggestions from "@/pages/Suggestions";
 import History from "@/pages/History";
 import Journal from "@/pages/Journal";
-import Badges from "@/pages/Badges";
+import Milestones from "@/pages/Milestones";
 import OrgPortal from "@/pages/OrgPortal";
 import OrgRegister from "@/pages/OrgRegister";
 import OrgDemoPage from "@/pages/OrgDemoPage";
@@ -112,7 +112,7 @@ function GuestBanner() {
           <Link href={loginHref} className="font-semibold underline underline-offset-2 hover:text-amber-900">
             Log in or create an account
           </Link>{" "}
-          to save your history, write journal entries, and earn badges.
+          to save your history, write journal entries, and earn milestones.
         </span>
       </p>
       <button
@@ -242,8 +242,11 @@ function AppRouter() {
             <Route path="/journal">
               {() => <PrivateRoute component={Journal} />}
             </Route>
+            <Route path="/milestones">
+              {() => <PrivateRoute component={Milestones} />}
+            </Route>
             <Route path="/badges">
-              {() => <PrivateRoute component={Badges} />}
+              {() => <Redirect to="/milestones" />}
             </Route>
             <Route path="/org/demo/education">
               {() => <Redirect to="/org/demo?type=education" />}

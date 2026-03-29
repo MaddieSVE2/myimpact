@@ -11,7 +11,7 @@ const PAGE_NAMES: Record<string, string> = {
   "/suggestions": "Suggestions",
   "/history": "History",
   "/journal": "Journal",
-  "/badges": "Badges",
+  "/milestones": "Milestones",
   "/profile": "Profile",
   "/profile/setup": "Profile Setup",
   "/settings": "Settings",

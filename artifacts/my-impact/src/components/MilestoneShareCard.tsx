@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { Badge } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
 
-interface BadgeShareCardProps {
+interface MilestoneShareCardProps {
   badge: Badge;
   totalValue: number;
   format: "landscape" | "portrait";
@@ -14,7 +14,7 @@ const CARD_SIZES = {
   portrait: { width: 1080, height: 1080 },
 };
 
-const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
+const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
   ({ badge, totalValue, format, appUrl }, ref) => {
     const { width, height } = CARD_SIZES[format];
     const displayUrl = appUrl ?? (typeof window !== "undefined" ? window.location.hostname : "myimpact.com");
@@ -110,7 +110,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
           </span>
         </div>
 
-        {/* Centre: Badge */}
+        {/* Centre: Milestone */}
         <div
           style={{
             display: "flex",
@@ -123,7 +123,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
             paddingBottom: format === "landscape" ? 24 : 32,
           }}
         >
-          {/* Badge emoji in circle */}
+          {/* Milestone emoji in circle */}
           <div
             style={{
               width: format === "landscape" ? 140 : 180,
@@ -142,7 +142,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
             </span>
           </div>
 
-          {/* Badge name */}
+          {/* Milestone name */}
           <div style={{ textAlign: "center" }}>
             <p
               style={{
@@ -245,7 +245,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
   }
 );
 
-BadgeShareCard.displayName = "BadgeShareCard";
+MilestoneShareCard.displayName = "MilestoneShareCard";
 
-export default BadgeShareCard;
+export default MilestoneShareCard;
 export { CARD_SIZES };
