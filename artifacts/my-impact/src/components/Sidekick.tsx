@@ -1,9 +1,26 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, ChevronRight, Sparkles, X, Bot } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function useMyOrgMembership(enabled: boolean) {
+  return useQuery<{ org: { id: string; name: string; type: string } | null }>({
+    queryKey: ["my-org"],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/org/my`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -60,10 +77,10 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
     "Can I use my badges in a personal statement?",
   ],
   "/org": [
-    "How does an organisation dashboard work?",
-    "What metrics matter most for a funding bid?",
-    "How do we grow our organisation's social value?",
-    "How should we present this data to trustees?",
+    "How do I explain our impact figures to funders?",
+    "How do I get volunteers to start logging?",
+    "What does the organisation dashboard actually show?",
+    "How do I respond if a trustee questions the accuracy of the figures?",
   ],
   "/org/register": [
     "What are the benefits of registering an organisation?",
@@ -234,9 +251,21 @@ export function Sidekick() {
   const abortRef = useRef<AbortController | null>(null);
   const { result, interests, careerBreak, situation } = useWizard();
   const [location] = useLocation();
+  const { isLoggedIn } = useAuth();
+  const { data: orgData } = useMyOrgMembership(isLoggedIn);
+  const isOrgManager = !!(orgData?.org);
+  const isOnOrgPage = location === "/org" || location.startsWith("/org/");
 
   const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
   const quickActions = (() => {
+    if (isOnOrgPage && isOrgManager) {
+      return [
+        "How do I explain our impact figures to funders?",
+        "How do I get volunteers to start logging?",
+        "What does the organisation dashboard actually show?",
+        "How do I respond if a trustee questions the accuracy of the figures?",
+      ];
+    }
     if (location === "/results") {
       const extras: string[] = [];
       if (interests.includes("military")) {
@@ -269,8 +298,12 @@ export function Sidekick() {
     if (result?.totalValue) ctx.totalValue = result.totalValue;
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
-    if (interests.length) ctx.interests = interests;
     if (situation) ctx.situation = situation;
+    const effectiveInterests = [...interests];
+    if (isOrgManager && !effectiveInterests.includes("org_manager")) {
+      effectiveInterests.push("org_manager");
+    }
+    if (effectiveInterests.length) ctx.interests = effectiveInterests;
     return Object.keys(ctx).length ? ctx : undefined;
   };
 
@@ -374,7 +407,7 @@ export function Sidekick() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, result, interests, situation]
+    [messages, streaming, result, interests, situation, isOrgManager]
   );
 
   const handleSubmit = () => sendMessage(input);
