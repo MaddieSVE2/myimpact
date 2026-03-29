@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -168,6 +168,9 @@ export function Navbar() {
   const [showInstall, setShowInstall] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, logout } = useAuth();
+  const isAdmin = ["maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
+    (user?.email ?? "").toLowerCase()
+  );
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
   const { isHighContrast, toggleTheme } = useTheme();
@@ -345,6 +348,16 @@ export function Navbar() {
                           >
                             <Building2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                             {inOrg ? "My organisation" : "Join my organisation"}
+                          </Link>
+                        )}
+                        {isAdmin && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                          >
+                            <ShieldCheck className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                            Admin panel
                           </Link>
                         )}
                         <div className="my-1 border-t border-border" />
@@ -525,6 +538,17 @@ export function Navbar() {
               >
                 <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {inOrg ? "My organisation" : "Join my organisation"}
+              </Link>
+            )}
+
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
+                Admin panel
               </Link>
             )}
 

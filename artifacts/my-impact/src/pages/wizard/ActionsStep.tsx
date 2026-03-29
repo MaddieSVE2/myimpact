@@ -39,9 +39,9 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterest, careerBreak, situation,
+    location, interests, customInterest, careerBreak, situations,
     setLocation: setWizardLocation, toggleInterest,
-    setCustomInterest, setCareerBreak, setSituation, seedFromProfile, updateInput, setLocationMeta,
+    setCustomInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
     hasDraft, clearDraft,
   } = useWizard();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
@@ -49,6 +49,7 @@ export default function ActionsStep() {
   const [showCustom, setShowCustom] = useState(!!customInterest);
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
   const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const profileSeeded = useRef(false);
 
   // Pre-fill from profile for logged-in users (only when no draft is active)
@@ -61,14 +62,16 @@ export default function ActionsStep() {
       .then((data) => {
         if (!data || !data.profile) return;
         const rawSituation = data.profile.situation;
-        const situationValue = Array.isArray(rawSituation)
-          ? (rawSituation[0] ?? null)
-          : (typeof rawSituation === "string" ? rawSituation : null);
+        const loadedSituations: string[] = Array.isArray(rawSituation)
+          ? rawSituation.filter(Boolean)
+          : (typeof rawSituation === "string" && rawSituation ? [rawSituation] : []);
+        const hasAnyData = data.profile.postcode || (data.profile.interests ?? []).length > 0 || loadedSituations.length > 0;
         seedFromProfile({
           postcode: data.profile.postcode ?? null,
           interests: data.profile.interests ?? [],
-          situation: situationValue,
+          situations: loadedSituations,
         });
+        if (hasAnyData) setProfileLoaded(true);
       });
   }, [authLoading, isLoggedIn, hasDraft, seedFromProfile]);
 
@@ -106,27 +109,15 @@ export default function ActionsStep() {
     }
   };
 
-  const handleSituationSelect = (id: string) => {
-    const next = situation === id ? null : id;
-    setSituation(next);
-    // Keep careerBreak consistent with situation selection
-    if (next === 'career_break') {
-      setCareerBreak(true);
-    } else {
-      // Always clear careerBreak when a non-career_break situation is chosen
-      setCareerBreak(false);
-    }
-  };
-
   const handleCareerBreakChange = (checked: boolean) => {
     setCareerBreak(checked);
-    // Only sync situation for logged-in users (guests keep legacy careerBreak-only behavior)
-    if (isLoggedIn) {
-      if (checked) {
-        setSituation('career_break');
-      } else if (situation === 'career_break') {
-        setSituation(null);
-      }
+    // For guest users (not logged in), keep legacy careerBreak-only behavior
+    // For logged-in users, careerBreak is toggled via the situations pill
+    if (!isLoggedIn) return;
+    if (checked && !situations.includes('career_break')) {
+      toggleSituation('career_break');
+    } else if (!checked && situations.includes('career_break')) {
+      toggleSituation('career_break');
     }
   };
 
@@ -144,14 +135,16 @@ export default function ActionsStep() {
     // Silently auto-save profile if logged in
     if (isLoggedIn) {
       const postcode = location.trim() || null;
-      // Derive canonical situation: careerBreak checkbox maps to career_break situation
-      const canonicalSituation = situation ?? (careerBreak ? 'career_break' : null);
+      // For guests without situations, fall back to careerBreak checkbox
+      const situationsToSave = situations.length > 0
+        ? situations
+        : (careerBreak ? ['career_break'] : []);
       fetch(`${BASE}/api/profile`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          situation: canonicalSituation,
+          situation: situationsToSave,
           interests,
           postcode,
         }),
@@ -161,7 +154,7 @@ export default function ActionsStep() {
     setLocation("/wizard/activities");
   };
 
-  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak || !!situation;
+  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak || situations.length > 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -189,6 +182,18 @@ export default function ActionsStep() {
         </motion.div>
       )}
 
+      {!hasDraft && profileLoaded && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-muted/40 border border-border"
+        >
+          <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-sm text-muted-foreground">We've pre-filled your details from your profile — adjust anything below.</span>
+        </motion.div>
+      )}
+
       <motion.div
         className="bg-white border border-border rounded-xl p-6 md:p-8"
         initial={{ opacity: 0, y: 16 }}
@@ -206,15 +211,16 @@ export default function ActionsStep() {
             <label className="block text-sm font-medium text-foreground mb-1">
               My situation&hellip; <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <p className="text-xs text-muted-foreground mb-3">We use this to tailor your activity suggestions and results.</p>
+            <p className="text-xs text-muted-foreground mb-3">Select all that apply — we use this to tailor your activity suggestions and results.</p>
             <div className="flex flex-wrap gap-2">
               {SITUATION_OPTIONS.map(opt => {
-                const selected = situation === opt.id;
+                const selected = situations.includes(opt.id);
                 return (
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => handleSituationSelect(opt.id)}
+                    onClick={() => toggleSituation(opt.id)}
+                    aria-pressed={selected}
                     className={cn(
                       "px-3.5 py-2.5 min-h-[44px] rounded-full text-sm border transition-all duration-150 select-none",
                       selected

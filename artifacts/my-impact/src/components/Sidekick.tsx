@@ -249,7 +249,8 @@ export function Sidekick() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { result, interests, careerBreak, situation } = useWizard();
+  const { result, interests, careerBreak, situations } = useWizard();
+  const situation = situations[0] ?? null;
   const [location] = useLocation();
   const { isLoggedIn } = useAuth();
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
@@ -407,7 +408,7 @@ export function Sidekick() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, result, interests, situation, isOrgManager]
+    [messages, streaming, result, interests, situations, isOrgManager]
   );
 
   const handleSubmit = () => sendMessage(input);
