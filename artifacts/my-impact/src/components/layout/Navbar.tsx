@@ -4,11 +4,12 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, Megaphone,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useTheme } from "@/lib/theme-context";
+import { useFeedback } from "@/lib/feedback-context";
 import { useQuery } from "@tanstack/react-query";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -170,6 +171,7 @@ export function Navbar() {
   const { setOpen: openSidekick } = useSidekick();
   const { canInstall, triggerInstall } = useInstallPrompt();
   const { isHighContrast, toggleTheme } = useTheme();
+  const { feedbackMode, toggleFeedbackMode } = useFeedback();
   const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
   const inOrg = !orgLoading && !!orgData?.org;
 
@@ -319,6 +321,22 @@ export function Navbar() {
                           <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Add to home screen
                         </button>
+                        <button
+                          onClick={() => { setUserMenuOpen(false); toggleFeedbackMode(); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                          aria-pressed={feedbackMode}
+                        >
+                          <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          {feedbackMode ? "Turn off feedback mode" : "Feedback mode"}
+                        </button>
+                        <Link
+                          href="/feedback"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          Send feedback
+                        </Link>
                         {!orgLoading && (
                           <Link
                             href="/org"
@@ -469,6 +487,24 @@ export function Navbar() {
               <Smartphone className="w-4 h-4 shrink-0" aria-hidden="true" />
               Add to home screen
             </button>
+
+            <button
+              onClick={() => { setMobileOpen(false); toggleFeedbackMode(); }}
+              className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              aria-pressed={feedbackMode}
+            >
+              <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+              {feedbackMode ? "Turn off feedback mode" : "Feedback mode"}
+            </button>
+
+            <Link
+              href="/feedback"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+            >
+              <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+              Send feedback
+            </Link>
 
             {isLoggedIn && (
               <Link

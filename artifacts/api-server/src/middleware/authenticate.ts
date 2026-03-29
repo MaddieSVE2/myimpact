@@ -22,3 +22,18 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
     res.status(401).json({ error: "Invalid or expired session" });
   }
 }
+
+export function attachUserIfPresent(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+  const token = req.cookies?.mi_session;
+  if (token) {
+    try {
+      const secret = process.env.SESSION_SECRET;
+      if (secret) {
+        const payload = jwt.verify(token, secret) as { id: string; email: string };
+        req.user = { id: payload.id, email: payload.email };
+      }
+    } catch {
+    }
+  }
+  next();
+}

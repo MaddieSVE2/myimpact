@@ -8,6 +8,8 @@ import { WizardProvider } from "@/lib/wizard-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SidekickProvider } from "@/lib/sidekick-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { FeedbackProvider } from "@/lib/feedback-context";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
 import { usePageViewTracking } from "@/hooks/usePageViewTracking";
@@ -38,6 +40,7 @@ import ProfileSetup from "@/pages/ProfileSetup";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import Contact from "@/pages/Contact";
+import Feedback from "@/pages/Feedback";
 
 const queryClient = new QueryClient();
 
@@ -252,6 +255,8 @@ function AppRouter() {
             <Route path="/admin" component={Admin} />
             <Route path="/contact" component={Contact} />
 
+            <Route path="/feedback" component={Feedback} />
+
             <Route component={NotFound} />
           </Switch>
           </ErrorBoundary>
@@ -259,6 +264,7 @@ function AppRouter() {
       </div>
       {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
       <Sidekick />
+      <FeedbackWidget />
     </div>
   );
 }
@@ -269,13 +275,15 @@ function App() {
       <TooltipProvider>
         <ThemeProvider>
           <AuthProvider>
-            <SidekickProvider>
-              <WizardProvider>
-                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <AppRouter />
-                </WouterRouter>
-              </WizardProvider>
-            </SidekickProvider>
+            <FeedbackProvider>
+              <SidekickProvider>
+                <WizardProvider>
+                  <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                    <AppRouter />
+                  </WouterRouter>
+                </WizardProvider>
+              </SidekickProvider>
+            </FeedbackProvider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

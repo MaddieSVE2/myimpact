@@ -10,6 +10,7 @@ import journalRouter from "./journal";
 import profileRouter from "./profile";
 import adminRouter from "./admin";
 import contactRouter from "./contact";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/journal", journalRouter);
 router.use("/profile", profileRouter);
 router.use("/admin", adminRouter);
 router.use("/contact", contactRouter);
+router.use("/feedback", feedbackRouter);
 
 export default router;

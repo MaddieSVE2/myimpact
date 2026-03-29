@@ -30,7 +30,19 @@ export const pageViewsTable = pgTable("page_views", {
   visitedAt: timestamp("visited_at").defaultNow().notNull(),
 });
 
+export const feedbackTable = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => usersTable.id),
+  pageUrl: text("page_url"),
+  category: text("category"),
+  message: text("message").notNull(),
+  name: text("name"),
+  email: text("email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type User = typeof usersTable.$inferSelect;
 export type MagicToken = typeof magicTokensTable.$inferSelect;
 export type UserProfile = typeof userProfilesTable.$inferSelect;
 export type PageView = typeof pageViewsTable.$inferSelect;
+export type Feedback = typeof feedbackTable.$inferSelect;
