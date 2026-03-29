@@ -1129,37 +1129,6 @@ export default function Results() {
         </p>
       </motion.div>
 
-      {/* Milestones earned */}
-      {earnedBadges.length > 0 && (
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones earned</p>
-            <Link href="/milestones" className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Award className="w-3 h-3" aria-hidden="true" /> All milestones
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {earnedBadges.map(badge => (
-              <div
-                key={badge.id}
-                className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
-              >
-                <span className="text-xl shrink-0 mt-0.5">{badge.emoji}</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
       {/* Milestone progress */}
       {nextMilestone && (
         <motion.div
