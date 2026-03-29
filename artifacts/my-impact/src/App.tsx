@@ -31,6 +31,7 @@ import OrgDemoPage from "@/pages/OrgDemoPage";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
+import WhatsNew from "@/pages/WhatsNew";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
@@ -208,6 +209,7 @@ function AppRouter() {
             <Route path="/login" component={Login} />
             <Route path="/auth/confirm" component={AuthConfirm} />
             <Route path="/about" component={About} />
+            <Route path="/whats-new" component={WhatsNew} />
 
             {/* Wizard routes — open to all */}
             <Route path="/wizard/actions" component={ActionsStep} />
