@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, Megaphone,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -301,14 +301,6 @@ export function Navbar() {
                           <Settings className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Account settings
                         </Link>
-                        <Link
-                          href="/whats-new"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
-                        >
-                          <Megaphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          What's New
-                        </Link>
                         <button
                           onClick={() => { setUserMenuOpen(false); toggleTheme(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
@@ -474,15 +466,6 @@ export function Navbar() {
                 Account settings
               </Link>
             )}
-
-            <Link
-              href="/whats-new"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-            >
-              <Megaphone className="w-4 h-4 shrink-0" aria-hidden="true" />
-              What's New
-            </Link>
 
             <button
               onClick={toggleTheme}
