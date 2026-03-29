@@ -251,7 +251,7 @@ export default function ActivitiesStep() {
         const activity = data?.activities.find(a => a.id === id);
         if (activity && quantities[id] === undefined) {
           setQuantities(q => ({ ...q, [id]: activity.defaultQuantity ?? 1 }));
-          setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : 10 }));
+          setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : Math.max(1, Math.round((activity.defaultQuantity ?? 1) * 2)) }));
         }
       }
       return next;
@@ -285,7 +285,7 @@ export default function ActivitiesStep() {
       input.activities.forEach((_, i) => removeActivity(0));
       selectedList.forEach(a => {
         const qty = quantities[a.id] ?? (a.defaultQuantity ?? 1);
-        const hrs = a.unit === "hour" ? (quantities[a.id] ?? (a.defaultQuantity ?? 20)) : (hours[a.id] ?? 10);
+        const hrs = a.unit === "hour" ? (quantities[a.id] ?? (a.defaultQuantity ?? 20)) : (hours[a.id] ?? Math.max(1, Math.round((quantities[a.id] ?? (a.defaultQuantity ?? 1)) * 2)));
         const finalQty = a.unit === "hour" ? 1 : qty;
         addActivity({ activityId: a.id, quantity: finalQty, hoursPerYear: a.unit === "hour" ? qty : hrs });
       });
@@ -398,7 +398,7 @@ export default function ActivitiesStep() {
           const activity = data?.activities.find(a => a.id === id);
           if (activity && quantities[id] === undefined) {
             setQuantities(q => ({ ...q, [id]: activity.defaultQuantity ?? 1 }));
-            setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : 10 }));
+            setHours(h => ({ ...h, [id]: activity.unit === "hour" ? (activity.defaultQuantity ?? 20) : Math.max(1, Math.round((activity.defaultQuantity ?? 1) * 2)) }));
           }
         });
         return next;
@@ -422,7 +422,7 @@ export default function ActivitiesStep() {
           const label = unmatchedLabels[i];
           const activityId = `custom_${Date.now()}_${i}`;
           const { sdg, sdgColor } = sdgFromHint(result.sdgHint);
-          const hrs = result.unit === "hour" ? result.defaultQuantity : 10;
+          const hrs = result.unit === "hour" ? result.defaultQuantity : Math.max(1, Math.round((result.defaultQuantity ?? 1) * 2));
           const qty = result.unit === "hour" ? 1 : result.defaultQuantity;
 
           const detail: CustomActivityDetail = {
@@ -1019,7 +1019,10 @@ export default function ActivitiesStep() {
                             type="number"
                             min="1"
                             value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1}
-                            onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
+                            onChange={e => {
+                              const qty = Number(e.target.value);
+                              setQuantities(q => ({ ...q, [currentActivity.id]: qty }));
+                            }}
                             className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
                           />
                           <span className="text-sm text-muted-foreground">{currentActivity.unitLabel}</span>
@@ -1029,6 +1032,24 @@ export default function ActivitiesStep() {
                             Most households put out around 26 bins with recyclables per year (fortnightly collection)
                           </p>
                         )}
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-foreground mb-2">
+                            Approximate hours per year
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="number"
+                              min="1"
+                              value={hours[currentActivity.id] ?? Math.max(1, Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1) * 2))}
+                              onChange={e => setHours(h => ({ ...h, [currentActivity.id]: Number(e.target.value) }))}
+                              className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                            />
+                            <span className="text-sm text-muted-foreground">hours per year</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Used to track volunteering hours for your DofE record
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
