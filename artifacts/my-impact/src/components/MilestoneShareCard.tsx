@@ -7,6 +7,7 @@ interface MilestoneShareCardProps {
   totalValue: number;
   format: "landscape" | "portrait";
   appUrl?: string;
+  logoDataUrl?: string;
 }
 
 const CARD_SIZES = {
@@ -14,10 +15,28 @@ const CARD_SIZES = {
   portrait: { width: 1080, height: 1080 },
 };
 
+const HEADER_HEIGHT = {
+  landscape: 60,
+  portrait: 76,
+};
+
+const FOOTER_HEIGHT = {
+  landscape: 40,
+  portrait: 56,
+};
+
 const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
-  ({ badge, totalValue, format, appUrl }, ref) => {
+  ({ badge, totalValue, format, appUrl, logoDataUrl }, ref) => {
     const { width, height } = CARD_SIZES[format];
+    const padding = format === "landscape" ? 56 : 80;
+    const paddingH = format === "landscape" ? 72 : 80;
     const displayUrl = appUrl ?? (typeof window !== "undefined" ? window.location.hostname : "myimpact.com");
+
+    const headerH = HEADER_HEIGHT[format];
+    const footerH = FOOTER_HEIGHT[format];
+    const centreH = height - padding * 2 - headerH - footerH;
+
+    const logoSrc = logoDataUrl ?? "/images/myimpact.png";
 
     return (
       <div
@@ -30,12 +49,11 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
           fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          padding: format === "landscape" ? "56px 72px" : "80px 80px",
+          padding: `${padding}px ${paddingH}px`,
           boxSizing: "border-box",
           position: "relative",
           overflow: "hidden",
-          borderRadius: format === "landscape" ? 24 : 24,
+          borderRadius: 24,
         }}
       >
         {/* Decorative accent circle */}
@@ -65,62 +83,44 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
         />
 
         {/* Header: Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            height: headerH,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
           <div
             style={{
-              width: format === "landscape" ? 44 : 52,
-              height: format === "landscape" ? 44 : 52,
+              backgroundColor: "#213547",
               borderRadius: 10,
-              backgroundColor: "#e8622a",
-              position: "relative",
-              flexShrink: 0,
+              padding: format === "landscape" ? "6px 12px" : "8px 14px",
+              display: "inline-flex",
+              alignItems: "center",
             }}
           >
-            <span
+            <img
+              src={logoSrc}
+              alt="My Impact"
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-                fontWeight: 800,
-                fontSize: format === "landscape" ? 20 : 24,
-                letterSpacing: -0.5,
-                lineHeight: 1,
-                textAlign: "center",
+                height: format === "landscape" ? 32 : 40,
+                width: "auto",
+                display: "block",
               }}
-            >
-              MI
-            </span>
+            />
           </div>
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: format === "landscape" ? 20 : 24,
-              color: "#1a2e3a",
-              letterSpacing: -0.3,
-              lineHeight: 1,
-            }}
-          >
-            My Impact
-          </span>
         </div>
 
         {/* Centre: Milestone */}
         <div
           style={{
+            height: centreH,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            flex: 1,
             gap: format === "landscape" ? 20 : 28,
-            paddingTop: format === "landscape" ? 24 : 32,
-            paddingBottom: format === "landscape" ? 24 : 32,
           }}
         >
           {/* Milestone emoji in circle */}
@@ -135,6 +135,7 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
               justifyContent: "center",
               boxShadow: "0 8px 32px rgba(26,46,58,0.12)",
               border: `4px solid ${badge.colour}`,
+              flexShrink: 0,
             }}
           >
             <span style={{ fontSize: format === "landscape" ? 64 : 80 }}>
@@ -180,6 +181,7 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
               flexDirection: "column",
               alignItems: "center",
               gap: 4,
+              flexShrink: 0,
             }}
           >
             <p
@@ -209,11 +211,13 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
         {/* Footer */}
         <div
           style={{
+            height: footerH,
             display: "flex",
             flexDirection: format === "landscape" ? "row" : "column",
             alignItems: format === "landscape" ? "flex-end" : "flex-start",
             justifyContent: "space-between",
             gap: format === "portrait" ? 8 : 0,
+            flexShrink: 0,
           }}
         >
           <p
