@@ -174,8 +174,10 @@ router.post("/suggestions", (req, res) => {
     const other     = scored.filter((a) => !a.hasRelatedCurrent && !a.isPreferred).sort(byImpactDesc);
     suggestions = [...related, ...preferred, ...other].slice(0, 6);
   } else {
-    // No stated interests — sort purely by impact
-    suggestions = [...scored].sort(byImpactDesc).slice(0, 6);
+    // No stated interests — still surface related activities first, then sort remaining by impact
+    const related = scored.filter((a) => a.hasRelatedCurrent).sort(byImpactDesc);
+    const other   = scored.filter((a) => !a.hasRelatedCurrent).sort(byImpactDesc);
+    suggestions = [...related, ...other].slice(0, 6);
   }
 
   const output = suggestions.map(({ estimatedImpact: _ei, isPreferred: _ip, hasRelatedCurrent: _hrc, ...rest }) => rest);
