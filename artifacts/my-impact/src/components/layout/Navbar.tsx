@@ -285,6 +285,7 @@ export function Navbar() {
                         )}
                       </div>
                       <div className="py-1">
+                        {/* Account */}
                         <Link
                           href="/profile"
                           onClick={() => setUserMenuOpen(false)}
@@ -301,6 +302,8 @@ export function Navbar() {
                           <Settings className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Account settings
                         </Link>
+                        <div className="my-1 border-t border-border" />
+                        {/* Preferences */}
                         <button
                           onClick={() => { setUserMenuOpen(false); toggleTheme(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
@@ -316,6 +319,8 @@ export function Navbar() {
                           <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Add to home screen
                         </button>
+                        <div className="my-1 border-t border-border" />
+                        {/* Feedback */}
                         <button
                           onClick={() => { setUserMenuOpen(false); toggleFeedbackMode(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
@@ -332,6 +337,8 @@ export function Navbar() {
                           <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Send feedback
                         </Link>
+                        <div className="my-1 border-t border-border" />
+                        {/* Organisation */}
                         {!orgLoading && (
                           <Link
                             href="/org"
@@ -453,8 +460,20 @@ export function Navbar() {
               Calculate my impact →
             </Link>
 
-            {/* Divider before account actions */}
-            <div className="my-1 border-t border-white/10" />
+            {/* Divider before account actions — only when logged in */}
+            {isLoggedIn && <div className="my-1 border-t border-white/10" />}
+
+            {/* Account */}
+            {isLoggedIn && (
+              <Link
+                href="/profile"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <User className="w-4 h-4 shrink-0" aria-hidden="true" />
+                My profile
+              </Link>
+            )}
 
             {isLoggedIn && (
               <Link
@@ -466,6 +485,9 @@ export function Navbar() {
                 Account settings
               </Link>
             )}
+
+            {/* Preferences */}
+            <div className="my-1 border-t border-white/10" />
 
             <button
               onClick={toggleTheme}
@@ -483,6 +505,9 @@ export function Navbar() {
               <Smartphone className="w-4 h-4 shrink-0" aria-hidden="true" />
               Add to home screen
             </button>
+
+            {/* Feedback */}
+            <div className="my-1 border-t border-white/10" />
 
             <button
               onClick={() => { setMobileOpen(false); toggleFeedbackMode(); }}
@@ -502,16 +527,8 @@ export function Navbar() {
               Send feedback
             </Link>
 
-            {isLoggedIn && (
-              <Link
-                href="/profile"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-              >
-                <User className="w-4 h-4 shrink-0" aria-hidden="true" />
-                My profile
-              </Link>
-            )}
+            {/* Organisation — divider only when at least one item will show */}
+            {isLoggedIn && (!orgLoading || isAdmin) && <div className="my-1 border-t border-white/10" />}
 
             {isLoggedIn && !orgLoading && (
               <Link
@@ -536,13 +553,16 @@ export function Navbar() {
             )}
 
             {isLoggedIn ? (
-              <button
-                onClick={() => { logout(); setMobileOpen(false); }}
-                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-              >
-                <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Log out
-              </button>
+              <>
+                <div className="my-1 border-t border-white/10" />
+                <button
+                  onClick={() => { logout(); setMobileOpen(false); }}
+                  className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+                >
+                  <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  Log out
+                </button>
+              </>
             ) : (
               <Link
                 href={`/login?from=${encodeURIComponent(location)}`}
