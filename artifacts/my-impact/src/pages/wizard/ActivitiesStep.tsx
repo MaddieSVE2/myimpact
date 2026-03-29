@@ -50,7 +50,7 @@ interface AnalysedActivity {
 type Phase = "select" | "quantify";
 type ActivityMode = "pick" | "describe";
 
-const DOFE_ACTIVITY_IDS = new Set(["dofe_bronze", "dofe_silver", "dofe_gold"]);
+const DOFE_ACTIVITY_IDS = new Set(["dofe"]);
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
@@ -150,10 +150,7 @@ export default function ActivitiesStep() {
       boosted.add('helping_neighbours');
     }
     if (interests.includes('young_people') || interests.includes('education')) {
-      boosted.add('dofe_bronze');
-      boosted.add('dofe_silver');
-      boosted.add('dofe_gold');
-      boosted.add('school_fundraising');
+      boosted.add('dofe');
     }
     if (interests.includes('community') || interests.includes('employment') || interests.includes('education')) {
       boosted.add('job_club');
@@ -170,11 +167,9 @@ export default function ActivitiesStep() {
       boosted.add('job_club');
     }
     if (careerBreak || situations.includes('career_break')) {
-      boosted.add('career_break_childcare');
-      boosted.add('career_break_eldercare');
+      boosted.add('family_caring');
       boosted.add('career_break_school_liaison');
       boosted.add('career_break_medical_coordination');
-      boosted.add('family_caring');
       boosted.add('elderly_visiting');
       boosted.add('befriending');
       boosted.add('helping_neighbours');
@@ -199,10 +194,8 @@ export default function ActivitiesStep() {
       boosted.add('food_bank');
     }
     if (situations.includes('student')) {
-      boosted.add('dofe_bronze');
-      boosted.add('dofe_silver');
-      boosted.add('dofe_gold');
-      boosted.add('school_fundraising');
+      boosted.add('dofe');
+      boosted.add('fundraising');
       boosted.add('literacy_support');
       boosted.add('community_garden');
       boosted.add('litter_picking');
@@ -650,46 +643,98 @@ export default function ActivitiesStep() {
                       </div>
                     ) : (
                       <>
-                        <div className="space-y-2 mb-3">
-                          {(pickSearch.trim()
-                            ? sortedActivities.filter(a =>
-                                a.shortName.toLowerCase().includes(pickSearch.toLowerCase()) ||
-                                a.category.toLowerCase().includes(pickSearch.toLowerCase())
-                              )
-                            : displayedActivities
-                          ).map(a => {
-                            const selected = selectedIds.has(a.id);
-                            const isPreferred = preferredCategories.has(a.category);
-                            return (
-                              <button
-                                key={a.id}
-                                onClick={() => toggleSelect(a.id)}
-                                className={cn(
-                                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
-                                  selected
-                                    ? "bg-primary/8 border-primary"
-                                    : isPreferred
-                                    ? "bg-primary/4 border-primary/20 hover:border-primary/50"
-                                    : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
-                                )}
-                              >
-                                <div
+                        {pickSearch.trim() ? (
+                          <div className="space-y-2 mb-3">
+                            {sortedActivities.filter(a =>
+                              a.shortName.toLowerCase().includes(pickSearch.toLowerCase()) ||
+                              a.category.toLowerCase().includes(pickSearch.toLowerCase()) ||
+                              (a.group ?? '').toLowerCase().includes(pickSearch.toLowerCase())
+                            ).map(a => {
+                              const selected = selectedIds.has(a.id);
+                              const isPreferred = preferredCategories.has(a.category);
+                              return (
+                                <button
+                                  key={a.id}
+                                  onClick={() => toggleSelect(a.id)}
                                   className={cn(
-                                    "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
-                                    selected ? "bg-primary border-primary" : "border-border"
+                                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
+                                    selected
+                                      ? "bg-primary/8 border-primary"
+                                      : isPreferred
+                                      ? "bg-primary/4 border-primary/20 hover:border-primary/50"
+                                      : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
                                   )}
                                 >
-                                  {selected && <Check className="w-3 h-3 text-white" />}
-                                </div>
-                                <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">{a.category}</p>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                                  <div
+                                    className={cn(
+                                      "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
+                                      selected ? "bg-primary border-primary" : "border-border"
+                                    )}
+                                  >
+                                    {selected && <Check className="w-3 h-3 text-white" />}
+                                  </div>
+                                  <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{a.group ?? a.category}</p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (() => {
+                          const activitiesToShow = showAll ? sortedActivities : primaryActivities;
+                          const groups: string[] = [];
+                          activitiesToShow.forEach(a => {
+                            const g = a.group ?? a.category;
+                            if (!groups.includes(g)) groups.push(g);
+                          });
+                          return (
+                            <div className="mb-3">
+                              {groups.map(group => {
+                                const groupActivities = activitiesToShow.filter(a => (a.group ?? a.category) === group);
+                                return (
+                                  <div key={group} className="mb-4">
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">{group}</p>
+                                    <div className="space-y-2">
+                                      {groupActivities.map(a => {
+                                        const selected = selectedIds.has(a.id);
+                                        const isPreferred = preferredCategories.has(a.category);
+                                        return (
+                                          <button
+                                            key={a.id}
+                                            onClick={() => toggleSelect(a.id)}
+                                            className={cn(
+                                              "w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all",
+                                              selected
+                                                ? "bg-primary/8 border-primary"
+                                                : isPreferred
+                                                ? "bg-primary/4 border-primary/20 hover:border-primary/50"
+                                                : "bg-white border-border hover:border-primary/30 hover:bg-muted/20"
+                                            )}
+                                          >
+                                            <div
+                                              className={cn(
+                                                "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
+                                                selected ? "bg-primary border-primary" : "border-border"
+                                              )}
+                                            >
+                                              {selected && <Check className="w-3 h-3 text-white" />}
+                                            </div>
+                                            <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
 
                         {moreActivities.length > 0 && !showAll && !pickSearch.trim() && (
                           <button

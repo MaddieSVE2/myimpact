@@ -93,6 +93,7 @@ export const GetActivitiesResponse = zod.object({
       name: zod.string(),
       shortName: zod.string(),
       category: zod.string(),
+      group: zod.string().optional(),
       proxy: zod.string(),
       proxyYear: zod.string(),
       unit: zod.string(),

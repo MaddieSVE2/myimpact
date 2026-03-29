@@ -14,6 +14,7 @@ export interface ActivityItem {
   name: string;
   shortName: string;
   category: string;
+  group?: string;
   proxy: string;
   proxyYear: string;
   unit: string;
