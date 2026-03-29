@@ -63,6 +63,16 @@ interface WizardState {
   activitySelection: ActivitySelectionDraft;
 }
 
+export interface HistoryRecord {
+  impactResult: ImpactResult;
+  activities: SelectedActivity[];
+  situation?: string | null;
+  region?: string | null;
+  outwardCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
 interface WizardContextType extends WizardState {
   setLocation: (location: string) => void;
   setLocationMeta: (meta: LocationMeta | null) => void;
@@ -77,6 +87,7 @@ interface WizardContextType extends WizardState {
   addCustomActivity: (detail: CustomActivityDetail) => void;
   removeCustomActivity: (activityId: string) => void;
   setResult: (result: ImpactResult) => void;
+  loadFromRecord: (record: HistoryRecord) => void;
   reset: () => void;
   clearDraft: () => void;
   hasDraft: boolean;
@@ -253,6 +264,35 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setHasDraft(false);
   };
 
+  const loadFromRecord = useCallback((record: HistoryRecord) => {
+    setResultState(record.impactResult);
+    setInput({
+      description: '',
+      activities: record.activities,
+      donationsGBP: 0,
+      additionalVolunteerHours: 0,
+    });
+    setSituationState(record.situation ?? null);
+    setCareerBreakState(record.situation === 'career_break');
+    setInterests([]);
+    setCustomInterestState('');
+    if (record.region != null && record.lat != null && record.lng != null && record.outwardCode != null) {
+      setLocationState(record.outwardCode);
+      setLocationMetaState({
+        region: record.region,
+        outwardCode: record.outwardCode,
+        lat: record.lat,
+        lng: record.lng,
+      });
+    } else {
+      setLocationState('');
+      setLocationMetaState(null);
+    }
+    setActivitySelectionState(defaultActivitySelection);
+    removeDraft();
+    setHasDraft(false);
+  }, []);
+
   const reset = () => {
     setLocationState('');
     setLocationMetaState(null);
@@ -287,7 +327,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     <WizardContext.Provider value={{
       location, locationMeta, interests, customInterest, careerBreak, situation, input, customActivities, result, activitySelection,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, setSituation, seedFromProfile, updateInput,
-      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset,
+      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, reset,
       clearDraft, hasDraft, setActivitySelection,
     }}>
       {children}

@@ -118,6 +118,11 @@ export interface SavedImpact {
   period?: string | null;
   createdAt: string;
   impactResult: ImpactResult;
+  activities: SelectedActivity[];
+  region?: string | null;
+  outwardCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface ImpactHistoryResponse {

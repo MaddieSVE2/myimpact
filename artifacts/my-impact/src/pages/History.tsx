@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords } from "@workspace/api-client-react";
+import {
+  useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords,
+  getGetImpactHistoryQueryKey,
+} from "@workspace/api-client-react";
+import type { ImpactResult, SelectedActivity, SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetImpactHistoryQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -35,9 +39,15 @@ interface LocalRecord {
   name: string;
   period: string | null;
   createdAt: string;
-  impactResult: any;
-  activities: any[];
+  impactResult: ImpactResult;
+  activities: SelectedActivity[];
+  region?: string | null;
+  outwardCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
+
+type AnyRecord = LocalRecord | SavedImpact;
 
 type Breakdown = {
   activityId: string;
@@ -127,6 +137,8 @@ export default function History() {
   const { user } = useAuth();
   const isAuthenticated = !!user?.id;
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+  const { loadFromRecord } = useWizard();
 
   const { data: serverData, isLoading } = useGetImpactHistory(
     { userId: user?.id ?? "" },
@@ -267,7 +279,9 @@ export default function History() {
     );
   }
 
-  const records = isAuthenticated ? (serverData?.records || []) : localRecords;
+  const records: AnyRecord[] = isAuthenticated
+    ? (serverData?.records || [])
+    : localRecords;
 
   const chartData = [...records].filter(r => r.impactResult?.totalValue != null).reverse().map(r => ({
     date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
@@ -567,7 +581,28 @@ export default function History() {
                         style={{ overflow: "hidden" }}
                       >
                         <RecordDetail result={record.impactResult} />
-                        <div className="px-4 py-3 border-t border-border bg-muted/5 flex justify-end">
+                        <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
+                          {record.impactResult && record.activities?.length > 0 && (
+                            <button
+                              onClick={() => {
+                                const histRecord: HistoryRecord = {
+                                  impactResult: record.impactResult,
+                                  activities: record.activities,
+                                  region: record.region ?? null,
+                                  outwardCode: record.outwardCode ?? null,
+                                  lat: record.lat ?? null,
+                                  lng: record.lng ?? null,
+                                };
+                                loadFromRecord(histRecord);
+                                navigate("/results");
+                              }}
+                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all"
+                              style={{ borderColor: "#213547", color: "#213547" }}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                              View full report
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDownloadPdf(record.id, record.period || record.name)}
                             disabled={downloadingPdfId === record.id}

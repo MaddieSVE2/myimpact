@@ -333,6 +333,10 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     createdAt: r.createdAt.toISOString(),
     impactResult: r.resultJson,
     activities: r.activitiesJson,
+    region: r.region ?? null,
+    outwardCode: r.outwardCode ?? null,
+    lat: r.lat != null ? Number(r.lat) : null,
+    lng: r.lng != null ? Number(r.lng) : null,
   }));
 
   res.json({ records: formatted });
