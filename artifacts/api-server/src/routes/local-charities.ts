@@ -22,7 +22,7 @@ router.post("/suggest", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are a UK volunteering expert. Given a location and a specific volunteering activity, suggest up to 3 real local organisations, groups, or charities where someone could do that specific activity near that location.
+          content: `You are a UK volunteering expert. Given a location and a specific volunteering activity, suggest up to 3 real local organisations, groups, or charities where someone could do that specific activity within the user's local authority/council area.
 
 Return a JSON object with a "places" array. Each item has:
 - name (string): the real name of the organisation or group
@@ -30,12 +30,14 @@ Return a JSON object with a "places" array. Each item has:
 - howToJoin (string): one concrete action to get started, max 12 words
 
 Rules:
-- Only suggest groups that genuinely operate near the stated location
+- First, identify the specific local authority or council area for the given location (e.g. Fife Council, Glasgow City Council, Leeds City Council)
+- Only suggest organisations that operate specifically within that identified local authority — not neighbouring councils or regions
+- Do NOT expand to neighbouring areas, even if it would produce more results — strict boundary adherence is required
+- If you cannot confidently find 2 or more real organisations within that specific local authority, return only the ones you are confident about (even just 1, or an empty array)
 - Be specific — e.g. for "community garden" suggest actual named community gardens, not generic charities
 - If the location is vague (e.g. "England"), suggest well-known national networks for that activity
 - Skip any entry you are not reasonably confident about — quality over quantity
-- Use British English
-- Return 2 to 3 entries`,
+- Use British English`,
         },
         {
           role: "user",
