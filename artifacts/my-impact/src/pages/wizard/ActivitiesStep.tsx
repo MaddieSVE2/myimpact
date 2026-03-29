@@ -50,6 +50,8 @@ interface AnalysedActivity {
 type Phase = "select" | "quantify";
 type ActivityMode = "pick" | "describe";
 
+const DOFE_ACTIVITY_IDS = new Set(["dofe_bronze", "dofe_silver", "dofe_gold"]);
+
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
   const { input, interests, careerBreak, situations, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
@@ -208,14 +210,32 @@ export default function ActivitiesStep() {
     return boosted;
   }, [interests, careerBreak, situations]);
 
+  const isVeteran = situations.includes('armed_forces') || interests.includes('military');
+
+  // Sanitize any DofE activities out of the selection state for veteran users
+  useEffect(() => {
+    if (!isVeteran) return;
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      DOFE_ACTIVITY_IDS.forEach(id => {
+        if (next.has(id)) { next.delete(id); changed = true; }
+      });
+      return changed ? next : prev;
+    });
+  }, [isVeteran]);
+
   const sortedActivities = useMemo(() => {
     if (!data) return [];
-    return [...data.activities].sort((a, b) => {
+    const filtered = isVeteran
+      ? data.activities.filter(a => !DOFE_ACTIVITY_IDS.has(a.id))
+      : data.activities;
+    return [...filtered].sort((a, b) => {
       const aScore = boostedActivityIds.has(a.id) ? 0 : preferredCategories.has(a.category) ? 1 : 2;
       const bScore = boostedActivityIds.has(b.id) ? 0 : preferredCategories.has(b.category) ? 1 : 2;
       return aScore - bScore;
     });
-  }, [data, preferredCategories, boostedActivityIds]);
+  }, [data, preferredCategories, boostedActivityIds, isVeteran]);
 
   const primaryActivities = sortedActivities.slice(0, 8);
   const moreActivities = sortedActivities.slice(8);
@@ -278,6 +298,7 @@ export default function ActivitiesStep() {
     const knownIds = new Set(data.activities.map(a => a.id));
     previousActivities.forEach(prev => {
       if (!knownIds.has(prev.activityId)) return;
+      if (isVeteran && DOFE_ACTIVITY_IDS.has(prev.activityId)) return;
       setSelectedIds(ids => {
         const next = new Set(ids);
         next.add(prev.activityId);
@@ -366,10 +387,13 @@ export default function ActivitiesStep() {
         return;
       }
 
-      // Step 2: pre-select matched predefined IDs
+      // Step 2: pre-select matched predefined IDs (filter out DofE for veterans)
+      const allowedMatchedIds = isVeteran
+        ? matchedIds.filter(id => !DOFE_ACTIVITY_IDS.has(id))
+        : matchedIds;
       setSelectedIds(prev => {
         const next = new Set(prev);
-        matchedIds.forEach(id => {
+        allowedMatchedIds.forEach(id => {
           next.add(id);
           const activity = data?.activities.find(a => a.id === id);
           if (activity && quantities[id] === undefined) {
@@ -421,14 +445,14 @@ export default function ActivitiesStep() {
       // Step 4: advance to quantify phase
       setDescribeLoading(false);
 
-      const totalUsable = matchedIds.length + successfulCustomCount;
+      const totalUsable = allowedMatchedIds.length + successfulCustomCount;
       if (totalUsable === 0) {
         // All downstream analyses failed — nothing usable was added
         setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
         return;
       }
 
-      if (matchedIds.length > 0) {
+      if (allowedMatchedIds.length > 0) {
         setActivitySelection({ quantifyIndex: 0, phase: "quantify" });
       } else {
         // Only custom activities — skip quantify

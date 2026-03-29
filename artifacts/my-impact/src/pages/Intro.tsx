@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useWizard } from "@/lib/wizard-context";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -230,6 +231,9 @@ function TestimonialsCarousel() {
 }
 
 export default function Intro() {
+  const { interests, situations } = useWizard();
+  const isVeteran = situations.includes('armed_forces') || interests.includes('military');
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── HERO ── */}
@@ -403,7 +407,7 @@ export default function Intro() {
                 {[
                   { label: "CVs and job applications", bg: "var(--brand-orange-chip)", color: C.orange },
                   { label: "Funding bids", bg: "var(--brand-olive-chip)", color: C.dark },
-                  { label: "UCAS & DofE", bg: "var(--brand-light-blue-chip)", color: C.dark },
+                  ...(!isVeteran ? [{ label: "UCAS & DofE", bg: "var(--brand-light-blue-chip)", color: C.dark }] : []),
                   { label: "Annual reports", bg: "var(--brand-orange-chip)", color: C.orange },
                   { label: "Social media", bg: "var(--brand-olive-chip)", color: C.dark },
                 ].map(t => (

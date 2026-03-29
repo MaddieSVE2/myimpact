@@ -910,6 +910,7 @@ export default function Results() {
   const [, setLocation] = useLocation();
   const { result, input, locationMeta, interests, careerBreak, situations } = useWizard();
   const situation = situations[0] ?? null;
+  const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
@@ -1383,8 +1384,8 @@ export default function Results() {
       {/* Persona-specific transferable skills */}
       <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
 
-      {/* Duke of Edinburgh panel */}
-      <DofEPanel breakdowns={result.activityBreakdowns} />
+      {/* Duke of Edinburgh panel — hidden for veterans */}
+      {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
 
       {/* Sidekick prompt */}
       <motion.div
