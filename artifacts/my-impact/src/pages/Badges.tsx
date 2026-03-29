@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { useGetImpactHistory } from "@workspace/api-client-react";
-import { computeBadges, MILESTONES } from "@/lib/badges";
+import { computeBadges, MILESTONES, Badge } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import BadgeShareModal from "@/components/BadgeShareModal";
 
 export default function Badges() {
   const { data, isLoading } = useGetImpactHistory({ userId: "user_demo_123" });
+  const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
 
   const records = data?.records ?? [];
   const latest = records[0];
@@ -80,14 +83,24 @@ export default function Badges() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.07 }}
-                    className="bg-white border border-border rounded-xl p-4 flex items-start gap-3"
+                    className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2"
                     style={{ borderTopColor: badge.colour, borderTopWidth: 3 }}
                   >
-                    <span className="text-2xl shrink-0">{badge.emoji}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{badge.name}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl shrink-0">{badge.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{badge.name}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setSharingBadge(badge)}
+                      className="self-start flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
+                      style={{ backgroundColor: "#e8622a", color: "#ffffff" }}
+                    >
+                      <Share2 size={12} />
+                      Share
+                    </button>
                   </motion.div>
                 ))}
               </div>
@@ -125,6 +138,15 @@ export default function Badges() {
           <ArrowLeft className="w-3.5 h-3.5" /> Back to history
         </Link>
       </div>
+
+      {/* Share modal */}
+      {sharingBadge && (
+        <BadgeShareModal
+          badge={sharingBadge}
+          totalValue={currentTotal}
+          onClose={() => setSharingBadge(null)}
+        />
+      )}
     </div>
   );
 }
