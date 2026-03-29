@@ -86,6 +86,144 @@ const DEFAULT_QUICK_ACTIONS = [
   "What SDGs am I helping?",
 ];
 
+function normalise(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+const INSTANT_ANSWERS: { patterns: string[]; answer: string }[] = [
+  {
+    patterns: ["what is my impact", "what is my impact app", "what does my impact do"],
+    answer:
+      "My Impact helps you see the difference you make. Whether you volunteer, fundraise, mentor, or simply show up for your community, your actions have real value. My Impact turns that value into something you can see, share, and be proud of.",
+  },
+  {
+    patterns: ["what is social value", "what does social value mean", "explain social value"],
+    answer:
+      "Social value is a way of measuring the broader benefit that people, organisations, and communities create beyond just money. My Impact uses accredited research from the Social Value Engine to translate your activities into a pound figure, based on the genuine difference those actions make to the people and communities around you.",
+  },
+  {
+    patterns: [
+      "how does the calculation work",
+      "how is my social value calculated",
+      "how is my score calculated",
+      "how does the scoring work",
+      "how is the score calculated",
+    ],
+    answer:
+      "My Impact matches your activities to outcomes and uses the Social Value Engine's research database to assign a pound value to each one. The SVE is an accredited platform used across the public and third sectors for over a decade. Values are adjusted to reflect how much of the difference is genuinely down to you, rather than something that would have happened anyway.",
+  },
+  {
+    patterns: [
+      "what does my score actually mean",
+      "what does my score mean",
+      "what does the score mean",
+      "what does my number mean",
+    ],
+    answer:
+      "Your score is a personal running total of the social value you have created through your logged activities. A higher score simply means you have done more or been active for longer. There is no benchmark to hit and no one to compete with. The most meaningful comparison is your own score over time as it grows.",
+  },
+  {
+    patterns: [
+      "is this free to use",
+      "is my impact free",
+      "is it free",
+      "does it cost anything",
+      "how much does it cost",
+      "is there a cost",
+    ],
+    answer: "Yes, My Impact is completely free for individuals to use.",
+  },
+  {
+    patterns: [
+      "who can see my score",
+      "who can see my data",
+      "is my score private",
+      "is my data private",
+      "who sees my information",
+    ],
+    answer:
+      "Only you can see your score and activity detail, unless you choose to share it. If you are part of an organisation, the organisation dashboard shows aggregated data only, not your individual activities or score.",
+  },
+  {
+    patterns: [
+      "is my data shared",
+      "do you share my data",
+      "what do you do with my data",
+      "is my data sold",
+      "data privacy",
+    ],
+    answer: "No. Your data is not sold or shared with third parties. It is used only to calculate and display your social value within My Impact.",
+  },
+  {
+    patterns: [
+      "does unpaid caring count",
+      "does caring count",
+      "does looking after someone count",
+      "does childcare count",
+      "does eldercare count",
+    ],
+    answer:
+      "Yes, absolutely. Caring is recognised as skilled, valuable work. Whether you look after a child, an elderly relative, or someone with additional needs, that contribution matters and can be logged in My Impact.",
+  },
+  {
+    patterns: [
+      "does informal volunteering count",
+      "does it have to be through an organisation",
+      "does it need to be official",
+      "can i log unofficial volunteering",
+    ],
+    answer:
+      "Yes. Informal volunteering counts. It does not have to be through a registered organisation. If you help out in your community, support a neighbour, or give your time in any way, it is worth logging.",
+  },
+  {
+    patterns: [
+      "can i log past activities",
+      "can i add old activities",
+      "can i backdate activities",
+      "can i log things i did before",
+      "can i add activities from before i joined",
+    ],
+    answer: "Yes. You can log activities from before you joined My Impact, so your full history of contribution is captured.",
+  },
+  {
+    patterns: [
+      "what if my activity isnt on the list",
+      "what if my activity is not on the list",
+      "my activity isnt listed",
+      "i cant find my activity",
+      "what if i cant find my activity",
+    ],
+    answer:
+      "If your activity is not on the list, you can describe it in your own words. The AI activity mode will match it to the right activity type so your contribution is still captured and valued.",
+  },
+  {
+    patterns: [
+      "is my impact connected to social value engine",
+      "is this connected to sve",
+      "does this use social value engine",
+      "what is the social value engine",
+    ],
+    answer:
+      "Yes. My Impact's calculation methodology is built on the Social Value Engine's accredited research database. The SVE has been used across the public and third sectors for over a decade to measure the real value of social contributions.",
+  },
+];
+
+function getInstantAnswer(text: string): string | null {
+  const normalised = normalise(text);
+  for (const entry of INSTANT_ANSWERS) {
+    for (const pattern of entry.patterns) {
+      if (normalised === pattern) {
+        return entry.answer;
+      }
+    }
+  }
+  return null;
+}
+
 export function Sidekick() {
   const { open, setOpen } = useSidekick();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -125,8 +263,8 @@ export function Sidekick() {
   const buildContext = () => {
     const ctx: Record<string, unknown> = {};
     if (result?.totalValue) ctx.totalValue = result.totalValue;
-    if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b) => b.activityName);
-    if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s) => s.sdg);
+    if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
+    if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
     if (interests.length) ctx.interests = interests;
     return Object.keys(ctx).length ? ctx : undefined;
   };
@@ -138,9 +276,16 @@ export function Sidekick() {
       const newMessages: Message[] = [...messages, { role: "user", content: userText }];
       setMessages(newMessages);
       setInput("");
-      setStreaming(true);
 
       const assistantIndex = newMessages.length;
+
+      const instant = getInstantAnswer(userText);
+      if (instant !== null) {
+        setMessages((prev) => [...prev, { role: "assistant", content: instant }]);
+        return;
+      }
+
+      setStreaming(true);
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       abortRef.current = new AbortController();
@@ -156,13 +301,58 @@ export function Sidekick() {
 
         if (!res.ok) throw new Error("Request failed");
 
-        const data = await res.json() as { content?: string; error?: string };
-        const content = data.content ?? "";
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[assistantIndex] = { role: "assistant", content };
-          return updated;
-        });
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamDone = false;
+
+        while (!streamDone) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6).trim();
+            if (raw === "[DONE]") {
+              streamDone = true;
+              break;
+            }
+            try {
+              const parsed = JSON.parse(raw) as { delta?: string; error?: string };
+              if (parsed.error) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  if (!updated[assistantIndex]?.content) {
+                    updated[assistantIndex] = {
+                      role: "assistant",
+                      content: "Sorry, I couldn't get a response. Please try again.",
+                    };
+                  }
+                  return updated;
+                });
+                streamDone = true;
+                break;
+              }
+              if (parsed.delta) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[assistantIndex] = {
+                    role: "assistant",
+                    content: (updated[assistantIndex]?.content ?? "") + parsed.delta,
+                  };
+                  return updated;
+                });
+              }
+            } catch {
+            }
+          }
+        }
       } catch (err: unknown) {
         if ((err as Error).name !== "AbortError") {
           setMessages((prev) => {
