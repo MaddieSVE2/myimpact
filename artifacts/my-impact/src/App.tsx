@@ -34,6 +34,7 @@ import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
 import WhatsNew from "@/pages/WhatsNew";
+import Privacy from "@/pages/Privacy";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
@@ -214,6 +215,7 @@ function AppRouter() {
             <Route path="/auth/confirm" component={AuthConfirm} />
             <Route path="/about" component={About} />
             <Route path="/whats-new" component={WhatsNew} />
+            <Route path="/privacy" component={Privacy} />
 
             {/* Wizard routes — open to all */}
             <Route path="/wizard/actions" component={ActionsStep} />
