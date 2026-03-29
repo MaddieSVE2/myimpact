@@ -10,6 +10,7 @@ import { SidekickProvider } from "@/lib/sidekick-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
+import { usePageViewTracking } from "@/hooks/usePageViewTracking";
 import { X, LogIn, Building2 } from "lucide-react";
 
 // Layout & Pages
@@ -34,6 +35,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
 import Profile from "@/pages/Profile";
+import Admin from "@/pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -189,6 +191,8 @@ function AppRouter() {
     locationRef.current = location;
   }
 
+  usePageViewTracking();
+
   return (
     <div className="flex flex-row min-h-screen">
       {/* ── Main content column ── */}
@@ -241,6 +245,8 @@ function AppRouter() {
             <Route path="/org">
               {() => <OrgGuestRoute />}
             </Route>
+
+            <Route path="/admin" component={Admin} />
 
             <Route component={NotFound} />
           </Switch>

@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS page_views (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  page TEXT NOT NULL,
+  visited_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

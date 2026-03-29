@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, serial } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -23,6 +23,14 @@ export const userProfilesTable = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const pageViewsTable = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => usersTable.id),
+  page: text("page").notNull(),
+  visitedAt: timestamp("visited_at").defaultNow().notNull(),
+});
+
 export type User = typeof usersTable.$inferSelect;
 export type MagicToken = typeof magicTokensTable.$inferSelect;
 export type UserProfile = typeof userProfilesTable.$inferSelect;
+export type PageView = typeof pageViewsTable.$inferSelect;

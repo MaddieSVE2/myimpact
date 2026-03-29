@@ -8,6 +8,7 @@ import authRouter from "./auth";
 import orgRouter from "./org";
 import journalRouter from "./journal";
 import profileRouter from "./profile";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/local-charities", localCharitiesRouter);
 router.use("/org", orgRouter);
 router.use("/journal", journalRouter);
 router.use("/profile", profileRouter);
+router.use("/admin", adminRouter);
 
 export default router;
