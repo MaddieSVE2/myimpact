@@ -4,6 +4,7 @@ import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -127,6 +128,7 @@ function TestimonialsCarousel() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = TESTIMONIALS.length;
+  const isMobile = useIsMobile();
 
   const go = (dir: 1 | -1) => setCurrent(c => (c + dir + n) % n);
 
@@ -152,6 +154,10 @@ function TestimonialsCarousel() {
     transition: "background 0.18s",
   };
 
+  // On mobile: full-width single card; on desktop: 33.33% three-column layout
+  const cardWidth = isMobile ? "100%" : "33.33%";
+  const cardLeft  = isMobile ? "0%"   : "33.33%";
+
   return (
     <div
       style={{ position: "relative" }}
@@ -161,7 +167,15 @@ function TestimonialsCarousel() {
       {/* Overflow clip — cards slide individually, not as a group */}
       <div style={{ position: "relative", overflow: "hidden" }}>
         {/* Phantom centre card — establishes container height, never seen */}
-        <div style={{ visibility: "hidden", width: "33.33%", margin: "0 33.33%", pointerEvents: "none" }} aria-hidden="true">
+        <div
+          style={{
+            visibility: "hidden",
+            width: cardWidth,
+            margin: isMobile ? "0" : "0 33.33%",
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        >
           <TestimonialCard s={TESTIMONIALS[current]} />
         </div>
 
@@ -171,19 +185,29 @@ function TestimonialsCarousel() {
           const offset = getOffset(i);
           const isCenter = offset === 0;
           const isSide   = Math.abs(offset) === 1;
+
+          // On mobile: hide all non-center cards completely
+          const opacity = isCenter ? 1 : isMobile ? 0 : isSide ? 0.28 : 0;
+
           return (
             <motion.div
               key={i}
               animate={{
                 x: `${offset * 100}%`,
-                opacity: isCenter ? 1 : isSide ? 0.28 : 0,
+                opacity,
               }}
               transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
-              onClick={() => { if (offset === 1) go(1); if (offset === -1) go(-1); }}
+              onClick={() => {
+                if (!isMobile) {
+                  if (offset === 1) go(1);
+                  if (offset === -1) go(-1);
+                }
+              }}
               style={{
                 position: "absolute", top: 0, height: "100%",
-                left: "33.33%", width: "33.33%",
-                cursor: isSide ? "pointer" : "default",
+                left: cardLeft, width: cardWidth,
+                cursor: !isMobile && isSide ? "pointer" : "default",
+                pointerEvents: isMobile && !isCenter ? "none" : "auto",
               }}
             >
               <TestimonialCard s={s} />
