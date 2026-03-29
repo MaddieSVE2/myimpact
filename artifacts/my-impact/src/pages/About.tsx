@@ -84,7 +84,7 @@ export default function About() {
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
         <div style={{
           position: "relative", zIndex: 2, padding: "0 5%",
-          maxWidth: 1100, width: "100%", margin: "0 auto",
+          maxWidth: 900, width: "100%", margin: "0 auto",
           display: "grid", gridTemplateColumns: "1fr auto",
           gap: "clamp(40px, 6vw, 80px)", alignItems: "center",
         }}>
