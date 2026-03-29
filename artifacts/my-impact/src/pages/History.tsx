@@ -52,6 +52,13 @@ type Breakdown = {
 };
 
 function RecordDetail({ result }: { result: any }) {
+  if (!result) {
+    return (
+      <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
+        No detail available for this record.
+      </div>
+    );
+  }
   const breakdowns: Breakdown[] = result.activityBreakdowns ?? [];
 
   const metrics = [
@@ -262,7 +269,7 @@ export default function History() {
 
   const records = isAuthenticated ? (serverData?.records || []) : localRecords;
 
-  const chartData = [...records].reverse().map(r => ({
+  const chartData = [...records].filter(r => r.impactResult?.totalValue != null).reverse().map(r => ({
     date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
     fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
     value: r.impactResult.totalValue,
@@ -279,10 +286,10 @@ export default function History() {
   const latest = records[0];
   const previous = records[1];
   const sameType = latest && previous && inferPeriodType(latest.period) === inferPeriodType(previous.period);
-  const changeVsLast = sameType
+  const changeVsLast = sameType && latest.impactResult?.totalValue != null && previous.impactResult?.totalValue != null
     ? latest.impactResult.totalValue - previous.impactResult.totalValue
     : null;
-  const allTimeTotal = records.reduce((sum, r) => sum + r.impactResult.totalValue, 0);
+  const allTimeTotal = records.reduce((sum, r) => sum + (r.impactResult?.totalValue ?? 0), 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -343,7 +350,7 @@ export default function History() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult.totalValue)}</p>
+                    <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult?.totalValue ?? 0)}</p>
                     <p className="text-xs text-muted-foreground mt-1">{latest.period || new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
                   </>
                 )}
@@ -394,7 +401,7 @@ export default function History() {
               const isOpen = expandedId === record.id;
               const isEditing = editingId === record.id;
               const isDeleting = deletingId === record.id;
-              const activityCount = record.impactResult.activityBreakdowns?.length ?? 0;
+              const activityCount = record.impactResult?.activityBreakdowns?.length ?? 0;
               return (
                 <motion.div
                   key={record.id}
@@ -476,7 +483,7 @@ export default function History() {
 
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <p className="text-lg font-display font-bold text-foreground">
-                        {formatCurrency(record.impactResult.totalValue)}
+                        {formatCurrency(record.impactResult?.totalValue ?? 0)}
                       </p>
 
                       {/* Edit button */}

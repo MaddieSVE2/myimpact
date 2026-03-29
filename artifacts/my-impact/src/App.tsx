@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { updateNavHistory } from "@/lib/nav-history";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,6 +33,46 @@ import About from "@/pages/About";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    console.error("[ErrorBoundary]", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center gap-4">
+          <p className="text-lg font-semibold text-foreground">Something went wrong</p>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            We hit an unexpected error loading this page. Please try refreshing — your data is safe.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
@@ -151,6 +191,7 @@ function AppRouter() {
       <Navbar />
       <GuestBanner />
       <main className="flex-grow">
+        <ErrorBoundary>
         <Switch>
           <Route path="/" component={Intro} />
 
@@ -187,6 +228,7 @@ function AppRouter() {
 
           <Route component={NotFound} />
         </Switch>
+        </ErrorBoundary>
       </main>
       <Sidekick />
     </div>
