@@ -761,7 +761,11 @@ export function calculateImpact(
   additionalVolunteerHours: number,
   customActivities: CustomActivityInput[] = []
 ) {
-  const VOLUNTEER_RATE = 12.21;
+  // Clamp numeric inputs: treat NaN/negative as zero to prevent corrupted totals
+  const safeDonations = Math.max(0, isNaN(donationsGBP) ? 0 : donationsGBP);
+  const safeExtraHours = Math.max(0, isNaN(additionalVolunteerHours) ? 0 : additionalVolunteerHours);
+
+  const VOLUNTEER_RATE = 12.21;   // National Living Wage 2024/25 — GOV.UK
   const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr — employer-valued skills premium, NCVO Time Well Spent 2023
 
   const activityBreakdowns = activities
@@ -822,11 +826,11 @@ export function calculateImpact(
   const totalActivityHours =
     activities.reduce((sum, a) => sum + a.hoursPerYear, 0) +
     customActivities.reduce((sum, a) => sum + a.hoursPerYear, 0);
-  const totalHours = totalActivityHours + additionalVolunteerHours;
+  const totalHours = totalActivityHours + safeExtraHours;
 
   const impactValue = activityBreakdowns.reduce((sum, a) => sum + a.impactValue, 0);
   const contributionValue = totalHours * VOLUNTEER_RATE;
-  const donationsValue = donationsGBP;
+  const donationsValue = safeDonations;
   const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
   const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
 

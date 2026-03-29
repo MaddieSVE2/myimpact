@@ -940,11 +940,32 @@ export default function Results() {
     ...(month < 9 ? [{ label: "Last academic year", value: `Academic Year ${lastAcademicYear}` }] : []),
   ];
 
-  useEffect(() => {
-    if (!result) setLocation("/wizard/actions");
-  }, [result, setLocation]);
-
-  if (!result) return null;
+  if (!result) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <p className="text-xl font-semibold text-foreground">No result to display yet</p>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Complete the calculator to see your personalised impact report.
+        </p>
+        <div className="flex flex-wrap gap-3 justify-center mt-2">
+          <button
+            onClick={() => setLocation("/wizard/actions")}
+            className="px-5 py-2.5 rounded-xl bg-[#F06127] text-white text-sm font-bold hover:bg-[#d95420] transition-colors"
+          >
+            Calculate my impact →
+          </button>
+          {isLoggedIn && (
+            <button
+              onClick={() => setLocation("/history")}
+              className="px-5 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors"
+            >
+              View my history
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = async (period: string) => {
     if (!isLoggedIn) {

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { getUncachableResendClient } from "../lib/resend.js";
@@ -49,6 +49,25 @@ router.post("/request", async (req, res) => {
       .values({ id: randomBytes(12).toString("hex"), email: normalizedEmail })
       .returning();
     user = created;
+  }
+
+  // Rate-limit: at most one magic link per 60 seconds per user.
+  // Select the newest unexpired token to ensure we check the most-recently issued one.
+  const cooldownStart = new Date(Date.now() - 60 * 1000);
+  const [newestToken] = await db
+    .select()
+    .from(magicTokensTable)
+    .where(
+      and(
+        eq(magicTokensTable.userId, user.id),
+        gt(magicTokensTable.expiresAt, cooldownStart)
+      )
+    )
+    .orderBy(desc(magicTokensTable.expiresAt))
+    .limit(1);
+  if (newestToken && newestToken.expiresAt.getTime() - Date.now() > 14 * 60 * 1000) {
+    res.status(429).json({ error: "A sign-in link was just sent. Please check your email or wait a moment before requesting another." });
+    return;
   }
 
   const token = randomBytes(32).toString("hex");

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch, Link } from "wouter";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
-import { Lock, ChevronRight, Loader2 } from "lucide-react";
+import { Lock, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -221,6 +221,17 @@ export default function ProfileSetup() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#f8fafc" }}>
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#f8fafc" }}>
+        <div className="flex flex-col items-center gap-4 max-w-xs text-center">
+          <AlertCircle className="w-10 h-10 text-destructive" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Could not load your profile. Please refresh the page.</p>
+        </div>
       </div>
     );
   }

@@ -338,7 +338,10 @@ export function Sidekick() {
           signal: abortRef.current.signal,
         });
 
-        if (!res.ok) throw new Error("Request failed");
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          throw new Error(errText || `Request failed (${res.status})`);
+        }
 
         const reader = res.body?.getReader();
         if (!reader) throw new Error("No response body");
@@ -347,53 +350,57 @@ export function Sidekick() {
         let buffer = "";
         let streamDone = false;
 
-        while (!streamDone) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (!streamDone) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const raw = line.slice(6).trim();
-            if (raw === "[DONE]") {
-              streamDone = true;
-              break;
-            }
-            try {
-              const parsed = JSON.parse(raw) as { delta?: string; error?: string };
-              if (parsed.error) {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  if (!updated[assistantIndex]?.content) {
-                    updated[assistantIndex] = {
-                      role: "assistant",
-                      content: "Sorry, I couldn't get a response. Please try again.",
-                    };
-                  }
-                  return updated;
-                });
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const raw = line.slice(6).trim();
+              if (raw === "[DONE]") {
                 streamDone = true;
                 break;
               }
-              if (parsed.delta) {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[assistantIndex] = {
-                    role: "assistant",
-                    content: (updated[assistantIndex]?.content ?? "") + parsed.delta,
-                  };
-                  return updated;
-                });
+              try {
+                const parsed = JSON.parse(raw) as { delta?: string; error?: string };
+                if (parsed.error) {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    if (!updated[assistantIndex]?.content) {
+                      updated[assistantIndex] = {
+                        role: "assistant",
+                        content: "Sorry, I couldn't get a response. Please try again.",
+                      };
+                    }
+                    return updated;
+                  });
+                  streamDone = true;
+                  break;
+                }
+                if (parsed.delta) {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[assistantIndex] = {
+                      role: "assistant",
+                      content: (updated[assistantIndex]?.content ?? "") + parsed.delta,
+                    };
+                    return updated;
+                  });
+                }
+              } catch {
               }
-            } catch {
             }
           }
+        } finally {
+          reader.cancel().catch(() => {});
         }
       } catch (err: unknown) {
-        if ((err as Error).name !== "AbortError") {
+        if (err instanceof Error && err.name !== "AbortError") {
           setMessages((prev) => {
             const updated = [...prev];
             updated[assistantIndex] = {

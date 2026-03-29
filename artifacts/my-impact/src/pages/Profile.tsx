@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
-import { Lock, ChevronRight, Loader2, Check } from "lucide-react";
+import { Lock, ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
 
 const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },
@@ -15,7 +15,7 @@ const SITUATION_OPTIONS = [
 const POSTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 
 export default function Profile() {
-  const { data: profileData, isLoading, refetch } = useGetProfile();
+  const { data: profileData, isLoading, isError, refetch } = useGetProfile();
   const { mutateAsync: updateProfile } = useUpdateProfile();
 
   const [situation, setSituation] = useState<string[]>([]);
@@ -106,6 +106,21 @@ export default function Profile() {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-4">
+        <AlertCircle className="w-10 h-10 text-destructive" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">Could not load your profile.</p>
+        <button
+          onClick={() => refetch()}
+          className="text-sm text-primary underline hover:text-primary/80"
+        >
+          Try again
+        </button>
       </div>
     );
   }

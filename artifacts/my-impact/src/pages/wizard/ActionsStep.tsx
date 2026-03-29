@@ -75,12 +75,14 @@ export default function ActionsStep() {
       });
   }, [authLoading, isLoggedIn, hasDraft, seedFromProfile]);
 
-  // When draft is cleared, reset UI-only state
+  // When draft is cleared, reset UI-only state and allow profile re-seed
   useEffect(() => {
     if (!hasDraft) {
       setShowCustom(false);
       setLookupState('idle');
       setResolvedRegion(null);
+      setProfileLoaded(false);
+      profileSeeded.current = false;
     }
   }, [hasDraft]);
 

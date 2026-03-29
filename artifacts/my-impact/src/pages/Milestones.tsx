@@ -4,12 +4,17 @@ import { computeBadges, MILESTONES, Badge } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowLeft, Lock, Share2 } from "lucide-react";
+import { ArrowLeft, Lock, Share2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MilestoneShareModal from "@/components/MilestoneShareModal";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Milestones() {
-  const { data, isLoading } = useGetImpactHistory({ userId: "user_demo_123" });
+  const { user } = useAuth();
+  const { data, isLoading, isError } = useGetImpactHistory(
+    { userId: user?.id ?? "" },
+    { query: { enabled: !!user?.id } }
+  );
   const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
 
   const records = data?.records ?? [];
@@ -37,6 +42,11 @@ export default function Milestones() {
       {isLoading ? (
         <div className="py-12 flex justify-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : isError ? (
+        <div className="py-12 flex flex-col items-center gap-3 text-center">
+          <AlertCircle className="w-8 h-8 text-destructive" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Could not load your milestones. Please refresh.</p>
         </div>
       ) : (
         <>

@@ -140,7 +140,7 @@ export default function History() {
   const [, navigate] = useLocation();
   const { loadFromRecord } = useWizard();
 
-  const { data: serverData, isLoading } = useGetImpactHistory(
+  const { data: serverData, isLoading, isError: serverError } = useGetImpactHistory(
     { userId: user?.id ?? "" },
     { query: { enabled: isAuthenticated, queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) } }
   );
@@ -275,6 +275,21 @@ export default function History() {
           role="status"
           aria-label="Loading"
         />
+      </div>
+    );
+  }
+
+  if (serverError && isAuthenticated) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-4 text-center">
+        <AlertTriangle className="w-10 h-10 text-destructive" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">Could not load your history. Please try refreshing the page.</p>
+        <button
+          onClick={() => queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) })}
+          className="text-sm text-primary underline hover:text-primary/80"
+        >
+          Try again
+        </button>
       </div>
     );
   }

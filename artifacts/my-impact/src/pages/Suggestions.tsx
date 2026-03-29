@@ -81,7 +81,7 @@ export default function Suggestions() {
     }
   }, [tileLocal, location]);
 
-  const { data, isPending } = suggestionsMutation;
+  const { data, isPending, isError } = suggestionsMutation;
   const hasLocation = Boolean(location?.trim());
 
   return (
@@ -108,6 +108,11 @@ export default function Suggestions() {
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-24 bg-white border border-border rounded-lg animate-pulse" />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Could not load suggestions. Please try again later.</span>
         </div>
       ) : (
         <div className="space-y-3">

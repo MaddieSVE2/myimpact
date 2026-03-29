@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { useCalculateImpact } from "@workspace/api-client-react";
 
 export default function ContributionsStep() {
@@ -12,10 +12,12 @@ export default function ContributionsStep() {
   
   const [donations, setDonations] = useState<number>(input.donationsGBP || 0);
   const [hours, setHours] = useState<number>(input.additionalVolunteerHours || 0);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   const calculateMutation = useCalculateImpact();
 
   const handleFinish = async () => {
+    setCalcError(null);
     const finalInput = {
       ...input,
       donationsGBP: donations,
@@ -28,8 +30,9 @@ export default function ContributionsStep() {
       const res = await calculateMutation.mutateAsync({ data: finalInput as any });
       setResult(res);
       setLocation("/results");
-    } catch (e) {
-      console.error("Calculation failed", e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+      setCalcError(msg);
     }
   };
 
@@ -86,6 +89,13 @@ export default function ContributionsStep() {
         </div>
 
       </motion.div>
+
+      {calcError && (
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>{calcError}</span>
+        </div>
+      )}
 
       <div className="flex justify-between items-center">
         <button
