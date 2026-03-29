@@ -79,7 +79,9 @@ export default function Login() {
               <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
                 <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} aria-hidden="true" />
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Check your inbox</h2>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                {isOrgLogin ? "Check your work inbox" : "Check your inbox"}
+              </h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
                 {isOrgLogin
                   ? <>We've sent your organisation sign-in link to <strong>{email}</strong>. It expires in 15 minutes.</>
