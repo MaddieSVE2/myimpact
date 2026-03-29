@@ -52,6 +52,20 @@ function bullet(text) {
   });
 }
 
+function subbullet(text) {
+  return new Paragraph({
+    children: [
+      new TextRun({
+        text,
+        size: 22,
+        color: DARK,
+      }),
+    ],
+    bullet: { level: 1 },
+    spacing: { before: 40, after: 40 },
+  });
+}
+
 function subtitle(text) {
   return new Paragraph({
     children: [
@@ -198,12 +212,12 @@ const doc = new Document({
         bullet("Capable of answering social value questions, helping draft CV bullet points, supporting UCAS personal statement writing, and writing apprenticeship supporting statements"),
         bullet("Responses use plain, accessible language rather than technical terminology"),
         bullet("Persona-specific depth for the following user journeys:"),
-        bullet("  Returning to work: covers redundancy, mental health recovery, and caring responsibilities; leads with acknowledgement of self-doubt before practical help"),
-        bullet("  Informal carer: confirms caring counts, avoids asking for exact hours, frames the employment gap honestly with named transferable skills"),
-        bullet("  Scepticism handling: acknowledges frustration without hollow reassurance; explains what the platform concretely provides versus what it cannot guarantee"),
-        bullet("  Charity manager / org admin: funder reporting guidance, volunteer onboarding support, and trustee scepticism framing"),
-        bullet("  Apprenticeship: assessor evidence criteria, supporting statement structure with sample paragraph format"),
-        bullet("  Armed forces / veteran: transition framing, civilian employer language, and export of quantified evidence"),
+        subbullet("Returning to work: covers redundancy, mental health recovery, and caring responsibilities; leads with acknowledgement of self-doubt before practical help"),
+        subbullet("Informal carer: confirms caring counts, avoids asking for exact hours, frames the employment gap honestly with named transferable skills"),
+        subbullet("Scepticism handling: acknowledges frustration without hollow reassurance; explains what the platform concretely provides versus what it cannot guarantee"),
+        subbullet("Charity manager / org admin: funder reporting guidance, volunteer onboarding support, and trustee scepticism framing"),
+        subbullet("Apprenticeship: assessor evidence criteria, supporting statement structure with sample paragraph format"),
+        subbullet("Armed forces / veteran: transition framing, civilian employer language, and export of quantified evidence"),
         bullet("Sidekick knows when it is talking to an organisation manager and adjusts its responses accordingly"),
         bullet("Honest answers about sharing options: distinguishes between impact statement copy, PDF download, and social media share; clarifies that no public profile URL exists"),
         bullet("Contextual quick-action prompts change per page to surface the most relevant questions"),
