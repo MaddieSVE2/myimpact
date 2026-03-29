@@ -1327,6 +1327,25 @@ export default function Results() {
         skillsSubheading={situationCopy.skillsSubheading}
       />
 
+      {/* Milestones earned */}
+      {earnedBadges.length > 0 && (
+        <div className="bg-white border border-border rounded-xl px-5 pt-5 pb-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Milestones earned</p>
+          <div className="flex flex-wrap gap-2">
+            {earnedBadges.map(badge => (
+              <div
+                key={badge.id}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
+                style={{ borderColor: badge.colour, color: badge.colour, background: `${badge.colour}14` }}
+              >
+                <span>{badge.emoji}</span>
+                <span>{badge.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Proxy methodology */}
       {result.activityBreakdowns.length > 0 && (
         <ProxyMethodology breakdowns={result.activityBreakdowns} />
@@ -1334,9 +1353,6 @@ export default function Results() {
 
       {/* Persona-specific transferable skills */}
       <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
-
-      {/* Duke of Edinburgh panel */}
-      <DofEPanel breakdowns={result.activityBreakdowns} />
 
       {/* Use case sections */}
       <motion.div
@@ -1439,6 +1455,9 @@ export default function Results() {
             )}
           </div>
         </div>
+
+        {/* Duke of Edinburgh panel */}
+        <DofEPanel breakdowns={result.activityBreakdowns} />
       </motion.div>
 
       {/* Sidekick prompt */}
