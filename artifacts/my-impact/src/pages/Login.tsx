@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
-import { Mail, ArrowRight, CheckCircle, X } from "lucide-react";
+import { Mail, ArrowRight, CheckCircle, X, Building2 } from "lucide-react";
 
 const DEMO_EMAIL = "demo@demo.org";
 
@@ -25,6 +25,8 @@ export default function Login() {
   const postLoginTo = isValidPath(nextParam) ? nextParam
     : isValidPath(fromParam) ? fromParam
     : null;
+
+  const isOrgLogin = typeof nextParam === "string" && nextParam.startsWith("/org");
 
   const handleClose = () => {
     navigate(closeTo);
@@ -79,7 +81,10 @@ export default function Login() {
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">Check your inbox</h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                We've sent a sign-in link to <strong>{email}</strong>. It expires in 15 minutes.
+                {isOrgLogin
+                  ? <>We've sent your organisation sign-in link to <strong>{email}</strong>. It expires in 15 minutes.</>
+                  : <>We've sent a sign-in link to <strong>{email}</strong>. It expires in 15 minutes.</>
+                }
               </p>
               <button
                 onClick={() => { setSent(false); setEmail(""); }}
@@ -90,10 +95,24 @@ export default function Login() {
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-foreground mb-1">Sign in</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                We'll email you a magic link, no password needed.
-              </p>
+              {isOrgLogin ? (
+                <div className="mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(232,99,58,0.10)" }}>
+                    <Building2 className="w-5 h-5 text-primary" aria-hidden="true" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-1">Log in to your organisation dashboard</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Access your team's impact data and reports. We'll send you a magic link — no password needed.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-foreground mb-1">Sign in</h2>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    We'll email you a magic link, no password needed.
+                  </p>
+                </>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -128,12 +147,14 @@ export default function Login() {
                 </button>
               </form>
 
-              <p className="text-xs text-muted-foreground text-center mt-5">
-                New here?{" "}
-                <Link href="/wizard/actions" className="underline hover:text-foreground">
-                  Calculate your impact first
-                </Link>
-              </p>
+              {!isOrgLogin && (
+                <p className="text-xs text-muted-foreground text-center mt-5">
+                  New here?{" "}
+                  <Link href="/wizard/actions" className="underline hover:text-foreground">
+                    Calculate your impact first
+                  </Link>
+                </p>
+              )}
             </>
           )}
         </div>
