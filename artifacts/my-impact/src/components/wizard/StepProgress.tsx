@@ -41,7 +41,7 @@ export function StepProgress({ currentStep }: StepProgressProps) {
                 {isCompleted ? <Check className="w-4 h-4" /> : step.id}
               </div>
               <span className={cn(
-                "text-[10px] font-medium absolute -bottom-5 transition-colors leading-tight text-center",
+                "text-[10px] font-medium absolute top-full mt-1 transition-colors leading-tight text-center",
                 isFirst ? "left-0 translate-x-0" : isLast ? "right-0 translate-x-0" : "-translate-x-1/2 left-1/2",
                 isCurrent ? "text-primary" : "text-muted-foreground"
               )}>
