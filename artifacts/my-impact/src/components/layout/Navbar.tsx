@@ -281,6 +281,14 @@ export function Navbar() {
                       </div>
                       <div className="py-1">
                         <Link
+                          href="/profile"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <User className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          My profile
+                        </Link>
+                        <Link
                           href="/settings"
                           onClick={() => setUserMenuOpen(false)}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
@@ -444,6 +452,17 @@ export function Navbar() {
               <Smartphone className="w-4 h-4 shrink-0" aria-hidden="true" />
               Add to home screen
             </button>
+
+            {isLoggedIn && (
+              <Link
+                href="/profile"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <User className="w-4 h-4 shrink-0" aria-hidden="true" />
+                My profile
+              </Link>
+            )}
 
             {isLoggedIn && !orgLoading && (
               <Link

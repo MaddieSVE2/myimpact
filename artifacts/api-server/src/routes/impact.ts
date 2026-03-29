@@ -244,7 +244,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const recordId = parseInt(req.params.id, 10);
+  const recordId = parseInt(req.params.id as string, 10);
   if (isNaN(recordId)) {
     res.status(400).json({ error: "Invalid record ID" });
     return;
@@ -290,7 +290,7 @@ router.delete("/all", authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const recordId = parseInt(req.params.id, 10);
+  const recordId = parseInt(req.params.id as string, 10);
   if (isNaN(recordId)) {
     res.status(400).json({ error: "Invalid record ID" });
     return;

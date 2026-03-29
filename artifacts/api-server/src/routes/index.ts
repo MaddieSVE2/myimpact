@@ -7,6 +7,7 @@ import localCharitiesRouter from "./local-charities";
 import authRouter from "./auth";
 import orgRouter from "./org";
 import journalRouter from "./journal";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/custom-activity", customActivityRouter);
 router.use("/local-charities", localCharitiesRouter);
 router.use("/org", orgRouter);
 router.use("/journal", journalRouter);
+router.use("/profile", profileRouter);
 
 export default router;

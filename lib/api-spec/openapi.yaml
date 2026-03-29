@@ -11,6 +11,8 @@ tags:
     description: Health operations
   - name: impact
     description: Impact calculation operations
+  - name: profile
+    description: User profile operations
 paths:
   /healthz:
     get:
@@ -109,6 +111,112 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImpactHistoryResponse"
+  /impact/all:
+    delete:
+      operationId: deleteAllImpactRecords
+      tags: [impact]
+      summary: Delete all impact records for the authenticated user
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: All records deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAllImpactRecordsResponse"
+        "401":
+          description: Not authenticated
+  /impact/{id}:
+    patch:
+      operationId: updateImpactRecord
+      tags: [impact]
+      summary: Update the period label of an impact record
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateImpactRecordInput"
+      responses:
+        "200":
+          description: Updated record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateImpactRecordResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteImpactRecord
+      tags: [impact]
+      summary: Delete a single impact record
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteImpactRecordResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get current user profile
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+        "401":
+          description: Not authenticated
+    put:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Upsert current user profile
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+        "401":
+          description: Not authenticated
 components:
   schemas:
     HealthStatus:
@@ -125,6 +233,8 @@ components:
           type: string
         name:
           type: string
+        shortName:
+          type: string
         category:
           type: string
         proxy:
@@ -135,6 +245,10 @@ components:
           type: string
         unitLabel:
           type: string
+        friendlyQuestion:
+          type: string
+        defaultQuantity:
+          type: number
         valuePerUnit:
           type: number
         sdg:
@@ -146,11 +260,14 @@ components:
       required:
         - id
         - name
+        - shortName
         - category
         - proxy
         - proxyYear
         - unit
         - unitLabel
+        - friendlyQuestion
+        - defaultQuantity
         - valuePerUnit
         - sdg
         - sdgColor
@@ -184,6 +301,40 @@ components:
         - activityId
         - quantity
         - hoursPerYear
+    CustomActivityInput:
+      type: object
+      properties:
+        activityId:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: number
+        hoursPerYear:
+          type: number
+        valuePerUnit:
+          type: number
+        unit:
+          type: string
+        proxy:
+          type: string
+        proxyYear:
+          type: string
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+      required:
+        - activityId
+        - name
+        - quantity
+        - hoursPerYear
+        - valuePerUnit
+        - unit
+        - proxy
+        - proxyYear
+        - sdg
+        - sdgColor
     ImpactInput:
       type: object
       properties:
@@ -193,6 +344,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SelectedActivity"
+        customActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomActivityInput"
         donationsGBP:
           type: number
         additionalVolunteerHours:
@@ -210,6 +365,10 @@ components:
         activityName:
           type: string
         category:
+          type: string
+        proxy:
+          type: string
+        proxyYear:
           type: string
         sdg:
           type: string
@@ -294,16 +453,35 @@ components:
           type: string
         name:
           type: string
+        period:
+          type: string
+          nullable: true
         impactResult:
           $ref: "#/components/schemas/ImpactResult"
         activities:
           type: array
           items:
             $ref: "#/components/schemas/SelectedActivity"
+        customActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomActivityInput"
         donationsGBP:
           type: number
         additionalVolunteerHours:
           type: number
+        region:
+          type: string
+          nullable: true
+        outwardCode:
+          type: string
+          nullable: true
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
       required:
         - userId
         - name
@@ -320,6 +498,9 @@ components:
           type: string
         name:
           type: string
+        period:
+          type: string
+          nullable: true
         createdAt:
           type: string
         impactResult:
@@ -392,3 +573,80 @@ components:
             $ref: "#/components/schemas/SuggestionItem"
       required:
         - suggestions
+    UserProfileData:
+      type: object
+      properties:
+        situation:
+          type: string
+          nullable: true
+        interests:
+          type: array
+          items:
+            type: string
+        postcode:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+    ProfileResponse:
+      type: object
+      properties:
+        profile:
+          oneOf:
+            - $ref: "#/components/schemas/UserProfileData"
+            - type: "null"
+      required:
+        - profile
+    ProfileInput:
+      type: object
+      properties:
+        situation:
+          type: string
+          nullable: true
+        interests:
+          type: array
+          items:
+            type: string
+        postcode:
+          type: string
+          nullable: true
+    UpdateImpactRecordInput:
+      type: object
+      properties:
+        periodLabel:
+          type: string
+      required:
+        - periodLabel
+    UpdateImpactRecordResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        period:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - name
+        - createdAt
+    DeleteImpactRecordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+    DeleteAllImpactRecordsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success

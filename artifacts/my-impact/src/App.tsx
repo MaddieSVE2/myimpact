@@ -32,6 +32,8 @@ import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import ProfileSetup from "@/pages/ProfileSetup";
+import Profile from "@/pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -207,6 +209,14 @@ function AppRouter() {
           <Route path="/wizard/contributions" component={ContributionsStep} />
           <Route path="/results" component={Results} />
           <Route path="/suggestions" component={Suggestions} />
+
+          {/* Profile routes */}
+          <Route path="/profile/setup">
+            {() => <PrivateRoute component={ProfileSetup} />}
+          </Route>
+          <Route path="/profile">
+            {() => <PrivateRoute component={Profile} />}
+          </Route>
 
           {/* Protected routes */}
           <Route path="/settings">

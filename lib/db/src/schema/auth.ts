@@ -15,5 +15,14 @@ export const magicTokensTable = pgTable("magic_tokens", {
   confirmed: boolean("confirmed").default(false).notNull(),
 });
 
+export const userProfilesTable = pgTable("user_profiles", {
+  userId: text("user_id").primaryKey().references(() => usersTable.id),
+  situation: text("situation"),
+  interests: text("interests").array(),
+  postcode: text("postcode"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type User = typeof usersTable.$inferSelect;
 export type MagicToken = typeof magicTokensTable.$inferSelect;
+export type UserProfile = typeof userProfilesTable.$inferSelect;

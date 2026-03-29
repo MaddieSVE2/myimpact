@@ -12,11 +12,14 @@ export interface HealthStatus {
 export interface ActivityItem {
   id: string;
   name: string;
+  shortName: string;
   category: string;
   proxy: string;
   proxyYear: string;
   unit: string;
   unitLabel: string;
+  friendlyQuestion: string;
+  defaultQuantity: number;
   valuePerUnit: number;
   sdg: string;
   sdgColor: string;
@@ -35,9 +38,23 @@ export interface SelectedActivity {
   description?: string;
 }
 
+export interface CustomActivityInput {
+  activityId: string;
+  name: string;
+  quantity: number;
+  hoursPerYear: number;
+  valuePerUnit: number;
+  unit: string;
+  proxy: string;
+  proxyYear: string;
+  sdg: string;
+  sdgColor: string;
+}
+
 export interface ImpactInput {
   description: string;
   activities: SelectedActivity[];
+  customActivities?: CustomActivityInput[];
   donationsGBP: number;
   additionalVolunteerHours: number;
 }
@@ -46,6 +63,8 @@ export interface ActivityBreakdown {
   activityId: string;
   activityName: string;
   category: string;
+  proxy?: string;
+  proxyYear?: string;
   sdg: string;
   sdgColor: string;
   impactValue: number;
@@ -80,16 +99,23 @@ export interface ImpactResult {
 export interface SaveImpactInput {
   userId: string;
   name: string;
+  period?: string | null;
   impactResult: ImpactResult;
   activities: SelectedActivity[];
+  customActivities?: CustomActivityInput[];
   donationsGBP: number;
   additionalVolunteerHours: number;
+  region?: string | null;
+  outwardCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface SavedImpact {
   id: string;
   userId: string;
   name: string;
+  period?: string | null;
   createdAt: string;
   impactResult: ImpactResult;
 }
@@ -119,9 +145,22 @@ export interface SuggestionsResponse {
   suggestions: SuggestionItem[];
 }
 
-export type GetImpactHistoryParams = {
-  userId: string;
-};
+export interface UserProfileData {
+  situation?: string | null;
+  interests?: string[];
+  postcode?: string | null;
+  updatedAt?: string;
+}
+
+export interface ProfileResponse {
+  profile: UserProfileData | null;
+}
+
+export interface ProfileInput {
+  situation?: string | null;
+  interests?: string[];
+  postcode?: string | null;
+}
 
 export interface UpdateImpactRecordInput {
   periodLabel: string;
@@ -131,7 +170,7 @@ export interface UpdateImpactRecordResponse {
   id: string;
   userId: string;
   name: string;
-  period: string | null;
+  period?: string | null;
   createdAt: string;
 }
 
@@ -142,3 +181,7 @@ export interface DeleteImpactRecordResponse {
 export interface DeleteAllImpactRecordsResponse {
   success: boolean;
 }
+
+export type GetImpactHistoryParams = {
+  userId: string;
+};

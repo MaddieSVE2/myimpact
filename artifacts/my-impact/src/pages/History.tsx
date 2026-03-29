@@ -130,7 +130,7 @@ export default function History() {
 
   const { data: serverData, isLoading } = useGetImpactHistory(
     { userId: user?.id ?? "" },
-    { query: { enabled: isAuthenticated } }
+    { query: { enabled: isAuthenticated, queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) } }
   );
 
   const [localRecords, setLocalRecords] = useState<LocalRecord[]>(() =>
@@ -183,7 +183,7 @@ export default function History() {
     }
   };
 
-  const handleStartEdit = (record: { id: string; period: string | null; name: string }) => {
+  const handleStartEdit = (record: { id: string; period?: string | null; name: string }) => {
     setEditingId(record.id);
     setEditValue(record.period ?? record.name ?? "");
     setDeletingId(null);

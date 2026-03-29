@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/lib/auth-context";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -8,7 +7,6 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function AuthConfirm() {
   const [, navigate] = useLocation();
-  const { } = useAuth();
 
   const [status, setStatus] = useState<"verifying" | "ready" | "confirming" | "error">("verifying");
   const [email, setEmail] = useState<string | null>(null);
@@ -54,11 +52,24 @@ export default function AuthConfirm() {
       const data = await res.json();
       if (data.ok) {
         const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-        const destination =
+
+        const safeReturnTo =
           returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
-            ? base + returnToParam
-            : base + "/history";
-        window.location.href = destination;
+            ? returnToParam
+            : "/history";
+
+        try {
+          const profileRes = await fetch(`${BASE}/api/profile`, { credentials: "include" });
+          const profileData = await profileRes.json();
+          if (profileData.profile === null) {
+            const setupUrl = `${base}/profile/setup?returnTo=${encodeURIComponent(safeReturnTo)}`;
+            window.location.href = setupUrl;
+            return;
+          }
+        } catch {
+        }
+
+        window.location.href = base + safeReturnTo;
       } else {
         setStatus("error");
         setErrorMsg(data.error ?? "Failed to confirm sign-in.");

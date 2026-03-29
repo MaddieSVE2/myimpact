@@ -306,8 +306,8 @@ function ProxyMethodology({ breakdowns }: {
     activityId: string;
     activityName: string;
     category: string;
-    proxy: string;
-    proxyYear: string;
+    proxy?: string;
+    proxyYear?: string;
     sdgColor: string;
     impactValue: number;
     hours: number;

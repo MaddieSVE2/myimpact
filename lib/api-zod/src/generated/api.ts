@@ -18,19 +18,6 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Calculate personal social value
  */
-export const CustomActivityItem = zod.object({
-  activityId: zod.string(),
-  name: zod.string(),
-  quantity: zod.number(),
-  hoursPerYear: zod.number(),
-  valuePerUnit: zod.number(),
-  unit: zod.string(),
-  proxy: zod.string(),
-  proxyYear: zod.string(),
-  sdg: zod.string(),
-  sdgColor: zod.string(),
-});
-
 export const CalculateImpactBody = zod.object({
   description: zod.string(),
   activities: zod.array(
@@ -41,7 +28,22 @@ export const CalculateImpactBody = zod.object({
       description: zod.string().optional(),
     }),
   ),
-  customActivities: zod.array(CustomActivityItem).optional(),
+  customActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        name: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        valuePerUnit: zod.number(),
+        unit: zod.string(),
+        proxy: zod.string(),
+        proxyYear: zod.string(),
+        sdg: zod.string(),
+        sdgColor: zod.string(),
+      }),
+    )
+    .optional(),
   donationsGBP: zod.number(),
   additionalVolunteerHours: zod.number(),
 });
@@ -58,8 +60,8 @@ export const CalculateImpactResponse = zod.object({
       activityId: zod.string(),
       activityName: zod.string(),
       category: zod.string(),
-      proxy: zod.string(),
-      proxyYear: zod.string(),
+      proxy: zod.string().optional(),
+      proxyYear: zod.string().optional(),
       sdg: zod.string(),
       sdgColor: zod.string(),
       impactValue: zod.number(),
@@ -97,6 +99,7 @@ export const GetActivitiesResponse = zod.object({
       unitLabel: zod.string(),
       friendlyQuestion: zod.string(),
       defaultQuantity: zod.number(),
+      valuePerUnit: zod.number(),
       sdg: zod.string(),
       sdgColor: zod.string(),
       description: zod.string(),
@@ -135,7 +138,7 @@ export const GetSuggestionsResponse = zod.object({
 export const SaveImpactBody = zod.object({
   userId: zod.string(),
   name: zod.string(),
-  period: zod.string().optional(),
+  period: zod.string().nullish(),
   impactResult: zod.object({
     totalValue: zod.number(),
     impactValue: zod.number(),
@@ -148,8 +151,8 @@ export const SaveImpactBody = zod.object({
         activityId: zod.string(),
         activityName: zod.string(),
         category: zod.string(),
-        proxy: zod.string(),
-        proxyYear: zod.string(),
+        proxy: zod.string().optional(),
+        proxyYear: zod.string().optional(),
         sdg: zod.string(),
         sdgColor: zod.string(),
         impactValue: zod.number(),
@@ -178,19 +181,35 @@ export const SaveImpactBody = zod.object({
       description: zod.string().optional(),
     }),
   ),
+  customActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        name: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        valuePerUnit: zod.number(),
+        unit: zod.string(),
+        proxy: zod.string(),
+        proxyYear: zod.string(),
+        sdg: zod.string(),
+        sdgColor: zod.string(),
+      }),
+    )
+    .optional(),
   donationsGBP: zod.number(),
   additionalVolunteerHours: zod.number(),
-  region: zod.string().optional(),
-  outwardCode: zod.string().optional(),
-  lat: zod.number().optional(),
-  lng: zod.number().optional(),
+  region: zod.string().nullish(),
+  outwardCode: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
 });
 
 export const SaveImpactResponse = zod.object({
   id: zod.string(),
   userId: zod.string(),
   name: zod.string(),
-  period: zod.string().nullable(),
+  period: zod.string().nullish(),
   createdAt: zod.string(),
   impactResult: zod.object({
     totalValue: zod.number(),
@@ -204,8 +223,8 @@ export const SaveImpactResponse = zod.object({
         activityId: zod.string(),
         activityName: zod.string(),
         category: zod.string(),
-        proxy: zod.string(),
-        proxyYear: zod.string(),
+        proxy: zod.string().optional(),
+        proxyYear: zod.string().optional(),
         sdg: zod.string(),
         sdgColor: zod.string(),
         impactValue: zod.number(),
@@ -241,7 +260,7 @@ export const GetImpactHistoryResponse = zod.object({
       id: zod.string(),
       userId: zod.string(),
       name: zod.string(),
-      period: zod.string().nullable(),
+      period: zod.string().nullish(),
       createdAt: zod.string(),
       impactResult: zod.object({
         totalValue: zod.number(),
@@ -255,8 +274,8 @@ export const GetImpactHistoryResponse = zod.object({
             activityId: zod.string(),
             activityName: zod.string(),
             category: zod.string(),
-            proxy: zod.string(),
-            proxyYear: zod.string(),
+            proxy: zod.string().optional(),
+            proxyYear: zod.string().optional(),
             sdg: zod.string(),
             sdgColor: zod.string(),
             impactValue: zod.number(),
@@ -279,4 +298,77 @@ export const GetImpactHistoryResponse = zod.object({
       }),
     }),
   ),
+});
+
+/**
+ * @summary Delete all impact records for the authenticated user
+ */
+export const DeleteAllImpactRecordsResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Update the period label of an impact record
+ */
+export const UpdateImpactRecordParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateImpactRecordBody = zod.object({
+  periodLabel: zod.string(),
+});
+
+export const UpdateImpactRecordResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  period: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a single impact record
+ */
+export const DeleteImpactRecordParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteImpactRecordResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get current user profile
+ */
+export const GetProfileResponse = zod.object({
+  profile: zod.union([
+    zod.object({
+      situation: zod.string().nullish(),
+      interests: zod.array(zod.string()).optional(),
+      postcode: zod.string().nullish(),
+      updatedAt: zod.string().optional(),
+    }),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Upsert current user profile
+ */
+export const UpdateProfileBody = zod.object({
+  situation: zod.string().nullish(),
+  interests: zod.array(zod.string()).optional(),
+  postcode: zod.string().nullish(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  profile: zod.union([
+    zod.object({
+      situation: zod.string().nullish(),
+      interests: zod.array(zod.string()).optional(),
+      postcode: zod.string().nullish(),
+      updatedAt: zod.string().optional(),
+    }),
+    zod.null(),
+  ]),
 });
