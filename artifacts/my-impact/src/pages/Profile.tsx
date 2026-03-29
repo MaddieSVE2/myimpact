@@ -18,7 +18,7 @@ export default function Profile() {
   const { data: profileData, isLoading, refetch } = useGetProfile();
   const { mutateAsync: updateProfile } = useUpdateProfile();
 
-  const [situation, setSituation] = useState<string | null>(null);
+  const [situation, setSituation] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [postcode, setPostcode] = useState("");
   const [postcodeError, setPostcodeError] = useState<string | null>(null);
@@ -26,14 +26,14 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const [savedSituation, setSavedSituation] = useState<string | null>(null);
+  const [savedSituation, setSavedSituation] = useState<string[]>([]);
   const [savedInterests, setSavedInterests] = useState<string[]>([]);
   const [savedPostcode, setSavedPostcode] = useState("");
 
   useEffect(() => {
     if (!isLoading && profileData !== undefined) {
       const p = profileData.profile;
-      const sit = p?.situation ?? null;
+      const sit = p?.situation ?? [];
       const ints = p?.interests ?? [];
       const pc = p?.postcode ?? "";
       setSituation(sit);
@@ -54,8 +54,10 @@ export default function Profile() {
     setSaved(false);
   };
 
-  const handleSituationClick = (id: string) => {
-    setSituation(prev => (prev === id ? null : id));
+  const toggleSituation = (id: string) => {
+    setSituation(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
     setDirty(true);
     setSaved(false);
   };
@@ -127,12 +129,12 @@ export default function Profile() {
           <h3 className="text-sm font-semibold text-foreground mb-3">Your situation <span className="text-muted-foreground font-normal">(optional)</span></h3>
           <div className="flex flex-wrap gap-2">
             {SITUATION_OPTIONS.map(opt => {
-              const selected = situation === opt.id;
+              const selected = situation.includes(opt.id);
               return (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => handleSituationClick(opt.id)}
+                  onClick={() => toggleSituation(opt.id)}
                   className="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                   style={
                     selected

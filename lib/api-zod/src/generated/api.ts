@@ -343,7 +343,7 @@ export const DeleteImpactRecordResponse = zod.object({
 export const GetProfileResponse = zod.object({
   profile: zod.union([
     zod.object({
-      situation: zod.string().nullish(),
+      situation: zod.array(zod.string()).optional(),
       interests: zod.array(zod.string()).optional(),
       postcode: zod.string().nullish(),
       updatedAt: zod.string().optional(),
@@ -356,7 +356,7 @@ export const GetProfileResponse = zod.object({
  * @summary Upsert current user profile
  */
 export const UpdateProfileBody = zod.object({
-  situation: zod.string().nullish(),
+  situation: zod.array(zod.string()).optional(),
   interests: zod.array(zod.string()).optional(),
   postcode: zod.string().nullish(),
 });
@@ -364,7 +364,7 @@ export const UpdateProfileBody = zod.object({
 export const UpdateProfileResponse = zod.object({
   profile: zod.union([
     zod.object({
-      situation: zod.string().nullish(),
+      situation: zod.array(zod.string()).optional(),
       interests: zod.array(zod.string()).optional(),
       postcode: zod.string().nullish(),
       updatedAt: zod.string().optional(),

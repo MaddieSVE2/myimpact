@@ -146,7 +146,7 @@ export interface SuggestionsResponse {
 }
 
 export interface UserProfileData {
-  situation?: string | null;
+  situation?: string[];
   interests?: string[];
   postcode?: string | null;
   updatedAt?: string;
@@ -157,7 +157,7 @@ export interface ProfileResponse {
 }
 
 export interface ProfileInput {
-  situation?: string | null;
+  situation?: string[];
   interests?: string[];
   postcode?: string | null;
 }

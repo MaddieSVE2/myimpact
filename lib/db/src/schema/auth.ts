@@ -17,7 +17,7 @@ export const magicTokensTable = pgTable("magic_tokens", {
 
 export const userProfilesTable = pgTable("user_profiles", {
   userId: text("user_id").primaryKey().references(() => usersTable.id),
-  situation: text("situation"),
+  situation: text("situation").array(),
   interests: text("interests").array(),
   postcode: text("postcode"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

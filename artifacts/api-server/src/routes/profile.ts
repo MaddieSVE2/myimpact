@@ -18,7 +18,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
 
   res.json({
     profile: {
-      situation: profile.situation ?? null,
+      situation: profile.situation ?? [],
       interests: profile.interests ?? [],
       postcode: profile.postcode ?? null,
       updatedAt: profile.updatedAt.toISOString(),
@@ -30,7 +30,11 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const body = req.body as Record<string, unknown>;
 
-  const situation = typeof body.situation === "string" ? body.situation : null;
+  const situation = Array.isArray(body.situation)
+    ? body.situation.filter((s): s is string => typeof s === "string")
+    : typeof body.situation === "string"
+      ? [body.situation]
+      : [];
   const interests = Array.isArray(body.interests)
     ? body.interests.filter((i): i is string => typeof i === "string")
     : [];
@@ -58,7 +62,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
 
   res.json({
     profile: {
-      situation: upserted.situation ?? null,
+      situation: upserted.situation ?? [],
       interests: upserted.interests ?? [],
       postcode: upserted.postcode ?? null,
       updatedAt: upserted.updatedAt.toISOString(),

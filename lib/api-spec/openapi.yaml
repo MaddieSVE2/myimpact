@@ -577,8 +577,9 @@ components:
       type: object
       properties:
         situation:
-          type: string
-          nullable: true
+          type: array
+          items:
+            type: string
         interests:
           type: array
           items:
@@ -601,8 +602,9 @@ components:
       type: object
       properties:
         situation:
-          type: string
-          nullable: true
+          type: array
+          items:
+            type: string
         interests:
           type: array
           items:

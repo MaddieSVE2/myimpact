@@ -18,10 +18,10 @@ const SITUATION_OPTIONS = [
 const POSTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 
 interface ProfileFormProps {
-  initialSituation: string | null;
+  initialSituation: string[];
   initialInterests: string[];
   initialPostcode: string | null;
-  onSave: (data: { situation: string | null; interests: string[]; postcode: string | null }) => Promise<void>;
+  onSave: (data: { situation: string[]; interests: string[]; postcode: string | null }) => Promise<void>;
   onSkip?: () => void;
   saving: boolean;
   isSetup?: boolean;
@@ -36,10 +36,16 @@ function ProfileForm({
   saving,
   isSetup = false,
 }: ProfileFormProps) {
-  const [situation, setSituation] = useState<string | null>(initialSituation);
+  const [situation, setSituation] = useState<string[]>(initialSituation);
   const [interests, setInterests] = useState<string[]>(initialInterests);
   const [postcode, setPostcode] = useState(initialPostcode ?? "");
   const [postcodeError, setPostcodeError] = useState<string | null>(null);
+
+  const toggleSituation = (id: string) => {
+    setSituation(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
 
   const toggleInterest = (id: string) => {
     setInterests(prev =>
@@ -82,12 +88,12 @@ function ProfileForm({
         <h3 className="text-sm font-semibold text-foreground mb-3">Your situation <span className="text-muted-foreground font-normal">(optional)</span></h3>
         <div className="flex flex-wrap gap-2">
           {SITUATION_OPTIONS.map(opt => {
-            const selected = situation === opt.id;
+            const selected = situation.includes(opt.id);
             return (
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setSituation(selected ? null : opt.id)}
+                onClick={() => toggleSituation(opt.id)}
                 className="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                 style={
                   selected
@@ -187,7 +193,7 @@ export default function ProfileSetup() {
   const { mutateAsync: updateProfile } = useUpdateProfile();
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async (data: { situation: string | null; interests: string[]; postcode: string | null }) => {
+  const handleSave = async (data: { situation: string[]; interests: string[]; postcode: string | null }) => {
     setSaving(true);
     try {
       await updateProfile({ data });
@@ -203,7 +209,7 @@ export default function ProfileSetup() {
   const handleSkip = async () => {
     if (isNewUser) {
       try {
-        await updateProfile({ data: { situation: null, interests: [], postcode: null } });
+        await updateProfile({ data: { situation: [], interests: [], postcode: null } });
       } catch {
       }
     }
@@ -236,7 +242,7 @@ export default function ProfileSetup() {
           </p>
 
           <ProfileForm
-            initialSituation={existing?.situation ?? null}
+            initialSituation={existing?.situation ?? []}
             initialInterests={existing?.interests ?? []}
             initialPostcode={existing?.postcode ?? null}
             onSave={handleSave}
