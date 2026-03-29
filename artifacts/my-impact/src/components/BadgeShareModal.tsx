@@ -28,8 +28,8 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
   const [isGenerating, setIsGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const shareText = `I've just earned the ${badge.name} badge on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at myimpact.com`;
-  const shareUrl = "https://myimpact.com";
+  const shareUrl = window.location.origin;
+  const shareText = `I've just earned the ${badge.name} badge on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at ${shareUrl}`;
 
   const captureCard = async (): Promise<HTMLCanvasElement | null> => {
     if (!cardRef.current) return null;
@@ -60,12 +60,13 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
   };
 
   const handleShareLinkedIn = () => {
-    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`;
+    const url = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=600");
   };
 
   const handleShareTwitter = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    const twitterText = `I've just earned the ${badge.name} badge on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
   };
 
@@ -140,6 +141,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
                 badge={badge}
                 totalValue={totalValue}
                 format={format}
+                appUrl={window.location.hostname}
               />
             </div>
           </div>
@@ -201,7 +203,7 @@ export default function BadgeShareModal({ badge, totalValue, onClose }: BadgeSha
         }}
         aria-hidden="true"
       >
-        <BadgeShareCard ref={cardRef} badge={badge} totalValue={totalValue} format={format} />
+        <BadgeShareCard ref={cardRef} badge={badge} totalValue={totalValue} format={format} appUrl={window.location.hostname} />
       </div>
     </div>
   );

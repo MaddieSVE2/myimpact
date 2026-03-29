@@ -6,6 +6,7 @@ interface BadgeShareCardProps {
   badge: Badge;
   totalValue: number;
   format: "landscape" | "portrait";
+  appUrl?: string;
 }
 
 const CARD_SIZES = {
@@ -14,8 +15,9 @@ const CARD_SIZES = {
 };
 
 const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
-  ({ badge, totalValue, format }, ref) => {
+  ({ badge, totalValue, format, appUrl }, ref) => {
     const { width, height } = CARD_SIZES[format];
+    const displayUrl = appUrl ?? (typeof window !== "undefined" ? window.location.hostname : "myimpact.com");
 
     return (
       <div
@@ -70,17 +72,26 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
               height: format === "landscape" ? 44 : 52,
               borderRadius: 10,
               backgroundColor: "#e8622a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              position: "relative",
+              flexShrink: 0,
             }}
           >
             <span
               style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 color: "#ffffff",
                 fontWeight: 800,
                 fontSize: format === "landscape" ? 20 : 24,
                 letterSpacing: -0.5,
+                lineHeight: 1,
+                textAlign: "center",
               }}
             >
               MI
@@ -92,6 +103,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
               fontSize: format === "landscape" ? 20 : 24,
               color: "#1a2e3a",
               letterSpacing: -0.3,
+              lineHeight: 1,
             }}
           >
             My Impact
@@ -225,7 +237,7 @@ const BadgeShareCard = forwardRef<HTMLDivElement, BadgeShareCardProps>(
               letterSpacing: 0.2,
             }}
           >
-            myimpact.com
+            {displayUrl}
           </p>
         </div>
       </div>
