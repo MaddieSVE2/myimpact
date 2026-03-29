@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { X, MessageSquare, Send, CheckCircle } from "lucide-react";
+import { X, MessageSquare, Send, CheckCircle, NotebookPen } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -113,7 +113,7 @@ export function FeedbackWidget() {
                   onClick={() => setFeedbackMode(false)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Turn off feedback mode
+                  Exit feedback mode
                 </button>
                 <button
                   type="submit"
@@ -138,13 +138,13 @@ export function FeedbackWidget() {
       <button
         onClick={() => setExpanded(v => !v)}
         className={cn(
-          "flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg font-semibold text-sm text-white transition-all hover:-translate-y-0.5",
-          expanded ? "bg-[#213547]" : "bg-primary"
+          "flex items-center gap-2.5 px-5 py-3 rounded-full shadow-xl font-semibold text-base text-white transition-all hover:-translate-y-0.5 hover:shadow-2xl",
+          expanded ? "bg-amber-600" : "bg-amber-500"
         )}
         aria-label={expanded ? "Close feedback widget" : "Open feedback widget"}
         aria-expanded={expanded}
       >
-        <MessageSquare className="w-4 h-4" aria-hidden="true" />
+        <NotebookPen className="w-5 h-5" aria-hidden="true" />
         Feedback
       </button>
     </div>
