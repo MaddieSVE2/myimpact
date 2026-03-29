@@ -1,0 +1,40 @@
+Feature: Share Milestone Moments (Badge Sharing)
+I am building a feature for My Impact, a social value platform. When a user earns a badge, they should be able to share it as a styled card on social media. Please build this as a standalone shareable card generator that can be triggered from the Badges page.
+What the feature should do
+When a user clicks a Share button on an earned badge, generate a styled image card that can be downloaded or shared directly to LinkedIn, Twitter/X, and Facebook.
+The card should display
+
+The My Impact logo (top left)
+The badge emoji/icon and badge name (prominent, centred)
+The badge description (one line)
+The user's cumulative social value score at the time of earning, e.g. "I've created £1,000 of social value"
+A short tagline: "Calculated using globally recognised social value standards"
+The My Impact URL
+
+Design spec
+
+Background colour: #f5f0e8 (matching the existing platform background)
+Primary text colour: #1a2e3a (dark navy)
+Accent colour: #e8622a (orange, matching the platform's CTA colour)
+Font: system default, clean and readable
+Two format options: landscape (1200x630px) for LinkedIn and Twitter, portrait (1080x1080px) for Instagram
+Rounded corners, generous whitespace, no clutter
+
+Sharing behaviour
+
+LinkedIn: open LinkedIn share dialog with the card image attached and pre-populated text
+Twitter/X: open Twitter share dialog with pre-populated text and image
+Facebook: open Facebook share dialog
+Download option: allow user to download the card as a PNG for manual sharing
+
+Pre-populated share text (editable by user before posting)
+"I've just earned the [Badge Name] badge on My Impact. I've created an estimated £[score] of social value through [brief activity context]. Find out what difference you make at myimpact.com"
+Technical notes
+
+Use html2canvas or a canvas-based approach to generate the card image client-side
+The Share button should appear on each earned badge card on the Badges page
+Locked badges should not have a Share button
+The card generator should work as a modal overlay, showing a preview before the user chooses their platform
+
+Existing badge data structure to work with
+Each badge has: name, emoji/icon, description, and the user's score at point of earning. Please use this structure when building the card generator.
