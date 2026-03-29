@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, GraduationCap, Lightbulb, Award, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, GraduationCap, Lightbulb, Award, BookOpen, Coins } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -57,9 +57,9 @@ const DEMO = {
     avgActivitiesLogged: 3.8,
   },
   insights: [
-    "79% of registered students have at least one verified activity on record — giving them portable evidence to include in UCAS statements or graduate applications.",
+    "79% of registered students have logged at least one activity — giving them portable evidence to include in UCAS statements or graduate applications.",
     "Peer tutoring delivers the highest social value per hour at £62.10, while also being the activity most cited by students in employability reflections.",
-    "Students who log a leadership role (society committee, team captain) average 2.4× more hours of evidenced activity than those who do not.",
+    "Students who log a leadership role (society committee, team captain) average 2.4× more hours of logged activity than those who do not.",
     "Year 2 students generate the highest total social value, driven by higher uptake of structured programmes like Duke of Edinburgh Gold.",
   ],
 };
@@ -94,6 +94,7 @@ function StatCard({ icon: Icon, label, value, sub, highlight }: {
 export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
+  const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -130,7 +131,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
         {/* Headline stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard icon={TrendingUp} label="Total social value" value={formatCurrency(DEMO.headline.totalSocialValue)} highlight />
-          <StatCard icon={Award} label="Students with evidence" value={`${DEMO.headline.pctWithEvidence}%`} sub={`${DEMO.headline.studentsWithEvidencedActivity} students with records`} />
+          <StatCard icon={Coins} label="Social value per hour" value={`£${socialValuePerHour}/hr`} sub="of social value per student hour invested" />
           <StatCard icon={Users} label="Students registered" value={String(DEMO.headline.members)} sub={`${DEMO.headline.activeMembers} actively logging`} />
           <StatCard icon={Clock} label="Total hours given" value={DEMO.headline.totalHours.toLocaleString("en-GB")} sub="across all activities" />
         </div>
@@ -140,23 +141,23 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
           <SectionLabel>Graduate outcomes</SectionLabel>
           <SectionTitle>Employability evidence at a glance</SectionTitle>
           <p className="text-sm text-muted-foreground -mt-4 mb-6">
-            These headline figures give Student Services a quick picture of how well-evidenced your cohort is for graduate applications, UCAS statements, and accreditation returns.
+            These headline figures give Student Services a quick picture of how well-prepared your cohort is for graduate applications, UCAS statements, and accreditation returns.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 text-center">
               <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-1">With leadership role</p>
               <p className="text-3xl font-display font-bold text-primary">{DEMO.employabilitySignals.studentsWithLeadershipRole}</p>
-              <p className="text-xs text-muted-foreground mt-1">students evidenced</p>
+              <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Community activity</p>
               <p className="text-3xl font-display font-bold text-foreground">{DEMO.employabilitySignals.studentsWithCommunityActivity}</p>
-              <p className="text-xs text-muted-foreground mt-1">students evidenced</p>
+              <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Award / programme</p>
               <p className="text-3xl font-display font-bold text-foreground">{DEMO.employabilitySignals.studentsWithAward}</p>
-              <p className="text-xs text-muted-foreground mt-1">students evidenced</p>
+              <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Avg activities logged</p>
@@ -248,8 +249,8 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
         {/* Skills */}
         <div className="bg-white border border-border rounded-xl p-6">
           <SectionLabel>Skills & development</SectionLabel>
-          <SectionTitle>Top skills your students are evidencing</SectionTitle>
-          <p className="text-sm text-muted-foreground -mt-4 mb-6">Skills are self-reported by students as part of their activity logging. Percentage shows share of active students evidencing each skill — directly relevant to employability and UCAS personal statements.</p>
+          <SectionTitle>Top skills your students are building</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Skills are self-reported by students as part of their activity logging. Percentage shows share of active students who have logged this skill — directly relevant to employability and UCAS personal statements.</p>
           <div className="grid sm:grid-cols-2 gap-4">
             {DEMO.topSkills.map((s) => (
               <div key={s.skill} className="flex items-center gap-3">
