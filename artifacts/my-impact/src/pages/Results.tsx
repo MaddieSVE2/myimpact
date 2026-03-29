@@ -908,7 +908,8 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta, interests, careerBreak, situation } = useWizard();
+  const { result, input, locationMeta, interests, careerBreak, situations } = useWizard();
+  const situation = situations[0] ?? null;
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();

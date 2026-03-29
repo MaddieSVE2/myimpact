@@ -334,7 +334,7 @@ export default function ActionsStep() {
         </div>
 
         {/* Career break checkbox — hidden when situation picker covers it */}
-        {(!isLoggedIn || situation !== 'career_break') && (
+        {(!isLoggedIn || !situations.includes('career_break')) && (
           <div className="pt-4 border-t border-border">
             <label className="flex items-start gap-3 cursor-pointer select-none group">
               <div className="relative mt-0.5 shrink-0">
