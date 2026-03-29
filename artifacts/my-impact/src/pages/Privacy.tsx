@@ -58,7 +58,7 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p>My Impact is operated by My Impact CIC, a community interest company registered in England and Wales. We are the data controller for all personal data processed through this service.</p>
-        <p style={{ marginTop: 12 }}>If you have any questions about this policy or how we handle your data, please contact us at <a href="mailto:hello@myimpact.org.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.org.uk</a>.</p>
+        <p style={{ marginTop: 12 }}>If you have any questions about this policy or how we handle your data, please contact us at <a href="mailto:maddie@socialvalueengine.com" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>maddie@socialvalueengine.com</a>.</p>
       </>
     ),
   },
@@ -175,7 +175,7 @@ const SECTIONS: Section[] = [
           <li><strong>Right to object</strong> — you can object to processing based on legitimate interests.</li>
           <li><strong>Rights related to automated decision-making</strong> — you have the right not to be subject to decisions made solely by automated means that have a significant effect on you.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>To exercise any of these rights, please contact us at <a href="mailto:hello@myimpact.org.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.org.uk</a>. We will respond within 30 days.</p>
+        <p style={{ marginTop: 12 }}>To exercise any of these rights, please contact us at <a href="mailto:maddie@socialvalueengine.com" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>maddie@socialvalueengine.com</a>. We will respond within 30 days.</p>
         <p style={{ marginTop: 12 }}>If you are unhappy with how we handle your data, you have the right to lodge a complaint with the <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Information Commissioner's Office (ICO)</a>.</p>
       </>
     ),
