@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable } from "@workspace/db";
+import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
@@ -181,12 +181,23 @@ const DEMO_ORG_NAME = "Demo Organisation";
 const DEMO_ORG_TYPE = "corporate";
 const DEMO_INVITE_CODE = "DEMO-0000";
 
+const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
+  "demo@demo.org": { situation: [] },
+  "volunteer@volunteer.org": { situation: ["volunteer"] },
+  "student@student.org": { situation: ["student"] },
+  "carer@carer.org": { situation: ["career_break"] },
+  "veteran@veteran.org": { situation: ["armed_forces"] },
+  "apprentice@apprentice.org": { situation: ["apprenticeship"] },
+  "jobseeker@jobseeker.org": { situation: ["job_seeking"] },
+};
+
 router.post("/demo-login", async (req, res) => {
   const { email } = req.body;
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-  if (normalizedEmail !== "demo@demo.org") {
-    res.status(403).json({ error: "Demo login is only available for demo@demo.org" });
+  const persona = PERSONA_ACCOUNTS[normalizedEmail];
+  if (!persona) {
+    res.status(403).json({ error: "Instant login is not available for this email" });
     return;
   }
 
@@ -202,29 +213,39 @@ router.post("/demo-login", async (req, res) => {
     user = created;
   }
 
-  const existingOrg = await db.query.organisationsTable.findFirst({
-    where: eq(organisationsTable.id, DEMO_ORG_ID),
-  });
+  await db
+    .insert(userProfilesTable)
+    .values({ userId: user.id, situation: persona.situation })
+    .onConflictDoUpdate({
+      target: userProfilesTable.userId,
+      set: { situation: persona.situation },
+    });
 
-  if (!existingOrg) {
-    await db.insert(organisationsTable).values({
-      id: DEMO_ORG_ID,
-      name: DEMO_ORG_NAME,
-      type: DEMO_ORG_TYPE,
-      inviteCode: DEMO_INVITE_CODE,
-    }).onConflictDoNothing();
-  }
+  if (normalizedEmail === "demo@demo.org") {
+    const existingOrg = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, DEMO_ORG_ID),
+    });
 
-  const existingMembership = await db.query.orgMembersTable.findFirst({
-    where: (t, { and }) => and(eq(t.orgId, DEMO_ORG_ID), eq(t.userId, user!.id)),
-  });
+    if (!existingOrg) {
+      await db.insert(organisationsTable).values({
+        id: DEMO_ORG_ID,
+        name: DEMO_ORG_NAME,
+        type: DEMO_ORG_TYPE,
+        inviteCode: DEMO_INVITE_CODE,
+      }).onConflictDoNothing();
+    }
 
-  if (!existingMembership) {
-    await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id }).onConflictDoNothing();
+    const existingMembership = await db.query.orgMembersTable.findFirst({
+      where: (t, { and }) => and(eq(t.orgId, DEMO_ORG_ID), eq(t.userId, user!.id)),
+    });
+
+    if (!existingMembership) {
+      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id }).onConflictDoNothing();
+    }
   }
 
   issueSession(res, user);
-  res.json({ ok: true, user: { id: user.id, email: user.email } });
+  res.json({ ok: true, user: { id: user.id, email: user.email }, orgRedirect: normalizedEmail === "demo@demo.org" });
 });
 
 router.get("/me", async (req: any, res) => {

@@ -8,12 +8,17 @@ interface User {
   displayName: string | null;
 }
 
+interface DemoLoginResult {
+  user: User;
+  orgRedirect: boolean;
+}
+
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
   requestMagicLink: (email: string, returnTo?: string) => Promise<void>;
-  demoLogin: (email: string) => Promise<User>;
+  demoLogin: (email: string) => Promise<DemoLoginResult>;
   updateProfile: (fields: { displayName: string | null }) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -23,7 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   requestMagicLink: async () => {},
-  demoLogin: async () => { throw new Error("Not implemented"); },
+  demoLogin: async () => { throw new Error("Not implemented") as Error & { status: number }; },
   updateProfile: async () => {},
   logout: async () => {},
 });
@@ -53,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const demoLogin = async (email: string): Promise<User> => {
+  const demoLogin = async (email: string): Promise<DemoLoginResult> => {
     const res = await fetch(`${BASE}/api/auth/demo-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,11 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error ?? "Demo login failed");
+      const err = new Error(data.error ?? "Demo login failed") as Error & { status: number };
+      err.status = res.status;
+      throw err;
     }
     const u: User = { ...data.user, displayName: data.user.displayName ?? null };
     setUser(u);
-    return u;
+    return { user: u, orgRedirect: !!data.orgRedirect };
   };
 
   const updateProfile = async (fields: { displayName: string | null }) => {
