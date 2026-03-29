@@ -237,9 +237,38 @@ router.get("/me", async (req: any, res) => {
   try {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
-    res.json({ user: { id: payload.id, email: payload.email } });
+    const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, payload.id) });
+    if (!user) { res.json({ user: null }); return; }
+    res.json({ user: { id: user.id, email: user.email, displayName: user.displayName ?? null } });
   } catch {
     res.json({ user: null });
+  }
+});
+
+router.patch("/me", async (req: any, res) => {
+  const token = req.cookies?.mi_session;
+  if (!token) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+  try {
+    const secret = process.env.SESSION_SECRET!;
+    const payload = jwt.verify(token, secret) as { id: string; email: string };
+
+    const { displayName } = req.body;
+    if (typeof displayName !== "string" && displayName !== null) {
+      res.status(400).json({ error: "displayName must be a string or null" });
+      return;
+    }
+    const trimmed = typeof displayName === "string" ? displayName.trim().slice(0, 80) || null : null;
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ displayName: trimmed })
+      .where(eq(usersTable.id, payload.id))
+      .returning();
+
+    res.json({ user: { id: updated.id, email: updated.email, displayName: updated.displayName ?? null } });
+  } catch {
+    res.status(401).json({ error: "Invalid session" });
   }
 });
 

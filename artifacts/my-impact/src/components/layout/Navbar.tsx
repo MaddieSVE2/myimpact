@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -280,6 +280,14 @@ export function Navbar() {
                         )}
                       </div>
                       <div className="py-1">
+                        <Link
+                          href="/settings"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <Settings className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          Account settings
+                        </Link>
                         <button
                           onClick={() => { setUserMenuOpen(false); toggleTheme(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
@@ -408,6 +416,17 @@ export function Navbar() {
 
             {/* Divider before account actions */}
             <div className="my-1 border-t border-white/10" />
+
+            {isLoggedIn && (
+              <Link
+                href="/settings"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <Settings className="w-4 h-4 shrink-0" aria-hidden="true" />
+                Account settings
+              </Link>
+            )}
 
             <button
               onClick={toggleTheme}

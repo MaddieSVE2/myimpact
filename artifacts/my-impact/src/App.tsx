@@ -30,6 +30,7 @@ import OrgDemoPage from "@/pages/OrgDemoPage";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -208,6 +209,9 @@ function AppRouter() {
           <Route path="/suggestions" component={Suggestions} />
 
           {/* Protected routes */}
+          <Route path="/settings">
+            {() => <PrivateRoute component={Settings} />}
+          </Route>
           <Route path="/history">
             {() => <PrivateRoute component={History} />}
           </Route>

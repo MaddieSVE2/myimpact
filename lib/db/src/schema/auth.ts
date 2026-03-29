@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
+  displayName: text("display_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

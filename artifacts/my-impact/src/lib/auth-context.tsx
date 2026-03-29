@@ -5,6 +5,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 interface User {
   id: string;
   email: string;
+  displayName: string | null;
 }
 
 interface AuthContextType {
@@ -13,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   requestMagicLink: (email: string, returnTo?: string) => Promise<void>;
   demoLogin: (email: string) => Promise<User>;
+  updateProfile: (fields: { displayName: string | null }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -22,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   requestMagicLink: async () => {},
   demoLogin: async () => { throw new Error("Not implemented"); },
+  updateProfile: async () => {},
   logout: async () => {},
 });
 
@@ -61,8 +64,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       throw new Error(data.error ?? "Demo login failed");
     }
+    const u: User = { ...data.user, displayName: data.user.displayName ?? null };
+    setUser(u);
+    return u;
+  };
+
+  const updateProfile = async (fields: { displayName: string | null }) => {
+    const res = await fetch(`${BASE}/api/auth/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(fields),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Failed to update profile");
+    }
     setUser(data.user);
-    return data.user as User;
   };
 
   const logout = async () => {
@@ -71,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );
