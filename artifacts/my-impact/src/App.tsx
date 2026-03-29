@@ -190,60 +190,64 @@ function AppRouter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:pr-12">
-      <Navbar />
-      <GuestBanner />
-      <main className="flex-grow">
-        <ErrorBoundary>
-        <Switch>
-          <Route path="/" component={Intro} />
+    <div className="flex flex-row min-h-screen">
+      {/* ── Main content column ── */}
+      <div className="flex flex-col flex-grow min-w-0">
+        <Navbar />
+        <GuestBanner />
+        <main className="flex-grow">
+          <ErrorBoundary>
+          <Switch>
+            <Route path="/" component={Intro} />
 
-          {/* Auth routes — no navbar chrome needed */}
-          <Route path="/login" component={Login} />
-          <Route path="/auth/confirm" component={AuthConfirm} />
-          <Route path="/about" component={About} />
+            {/* Auth routes — no navbar chrome needed */}
+            <Route path="/login" component={Login} />
+            <Route path="/auth/confirm" component={AuthConfirm} />
+            <Route path="/about" component={About} />
 
-          {/* Wizard routes — open to all */}
-          <Route path="/wizard/actions" component={ActionsStep} />
-          <Route path="/wizard/activities" component={ActivitiesStep} />
-          <Route path="/wizard/contributions" component={ContributionsStep} />
-          <Route path="/results" component={Results} />
-          <Route path="/suggestions" component={Suggestions} />
+            {/* Wizard routes — open to all */}
+            <Route path="/wizard/actions" component={ActionsStep} />
+            <Route path="/wizard/activities" component={ActivitiesStep} />
+            <Route path="/wizard/contributions" component={ContributionsStep} />
+            <Route path="/results" component={Results} />
+            <Route path="/suggestions" component={Suggestions} />
 
-          {/* Profile routes */}
-          <Route path="/profile/setup">
-            {() => <PrivateRoute component={ProfileSetup} />}
-          </Route>
-          <Route path="/profile">
-            {() => <PrivateRoute component={Profile} />}
-          </Route>
+            {/* Profile routes */}
+            <Route path="/profile/setup">
+              {() => <PrivateRoute component={ProfileSetup} />}
+            </Route>
+            <Route path="/profile">
+              {() => <PrivateRoute component={Profile} />}
+            </Route>
 
-          {/* Protected routes */}
-          <Route path="/settings">
-            {() => <PrivateRoute component={Settings} />}
-          </Route>
-          <Route path="/history">
-            {() => <PrivateRoute component={History} />}
-          </Route>
-          <Route path="/journal">
-            {() => <PrivateRoute component={Journal} />}
-          </Route>
-          <Route path="/badges">
-            {() => <PrivateRoute component={Badges} />}
-          </Route>
-          <Route path="/org/demo/education">
-            {() => <Redirect to="/org/demo?type=education" />}
-          </Route>
-          <Route path="/org/demo" component={OrgDemoPage} />
-          <Route path="/org/register" component={OrgRegister} />
-          <Route path="/org">
-            {() => <OrgGuestRoute />}
-          </Route>
+            {/* Protected routes */}
+            <Route path="/settings">
+              {() => <PrivateRoute component={Settings} />}
+            </Route>
+            <Route path="/history">
+              {() => <PrivateRoute component={History} />}
+            </Route>
+            <Route path="/journal">
+              {() => <PrivateRoute component={Journal} />}
+            </Route>
+            <Route path="/badges">
+              {() => <PrivateRoute component={Badges} />}
+            </Route>
+            <Route path="/org/demo/education">
+              {() => <Redirect to="/org/demo?type=education" />}
+            </Route>
+            <Route path="/org/demo" component={OrgDemoPage} />
+            <Route path="/org/register" component={OrgRegister} />
+            <Route path="/org">
+              {() => <OrgGuestRoute />}
+            </Route>
 
-          <Route component={NotFound} />
-        </Switch>
-        </ErrorBoundary>
-      </main>
+            <Route component={NotFound} />
+          </Switch>
+          </ErrorBoundary>
+        </main>
+      </div>
+      {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
       <Sidekick />
     </div>
   );

@@ -556,7 +556,7 @@ export function Sidekick() {
     <>
       {/* ── Desktop: right sidebar (hidden on mobile) ── */}
       <div
-        className="hidden lg:flex fixed top-0 right-0 h-screen z-50 flex-col bg-white transition-all duration-300 ease-in-out"
+        className="hidden lg:flex sticky top-0 h-screen flex-col bg-white transition-all duration-300 ease-in-out flex-shrink-0"
         style={{
           width: open ? 380 : 48,
           borderLeft: "1px solid #e5e7eb",
