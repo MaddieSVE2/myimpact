@@ -9,6 +9,7 @@ import orgRouter from "./org";
 import journalRouter from "./journal";
 import profileRouter from "./profile";
 import adminRouter from "./admin";
+import contactRouter from "./contact";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/org", orgRouter);
 router.use("/journal", journalRouter);
 router.use("/profile", profileRouter);
 router.use("/admin", adminRouter);
+router.use("/contact", contactRouter);
 
 export default router;

@@ -37,6 +37,7 @@ import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
+import Contact from "@/pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -249,6 +250,7 @@ function AppRouter() {
             </Route>
 
             <Route path="/admin" component={Admin} />
+            <Route path="/contact" component={Contact} />
 
             <Route component={NotFound} />
           </Switch>

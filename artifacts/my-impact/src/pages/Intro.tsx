@@ -543,9 +543,8 @@ export default function Intro() {
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const, marginBottom: 20 }}>
           <Link href="/about" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>About</Link>
           <Link href="/whats-new" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>What's New</Link>
-          {["Privacy", "Contact"].map(l => (
-            <a key={l} href="#" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>{l}</a>
-          ))}
+          <a href="#" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Privacy</a>
+          <Link href="/contact" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Contact</Link>
           <Link href="/org/register" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Register your organisation</Link>
           <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
         </div>
