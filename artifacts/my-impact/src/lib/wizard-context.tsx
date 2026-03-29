@@ -56,6 +56,7 @@ interface WizardState {
   interests: string[];
   customInterest: string;
   careerBreak: boolean;
+  situation: string | null;
   input: ImpactInput;
   customActivities: CustomActivityDetail[];
   result: ImpactResult | null;
@@ -68,6 +69,8 @@ interface WizardContextType extends WizardState {
   setCustomInterest: (val: string) => void;
   toggleInterest: (interestId: string) => void;
   setCareerBreak: (val: boolean) => void;
+  setSituation: (val: string | null) => void;
+  seedFromProfile: (profile: { postcode: string | null; interests: string[]; situation: string | null }) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
   removeActivity: (index: number) => void;
@@ -101,6 +104,7 @@ const defaultState: WizardState = {
   interests: [],
   customInterest: '',
   careerBreak: false,
+  situation: null,
   input: defaultInput,
   customActivities: [],
   result: null,
@@ -109,13 +113,15 @@ const defaultState: WizardState = {
 
 const DRAFT_KEY = 'wizard_draft_v1';
 
-function loadDraft(): WizardState | null {
+type StoredDraft = Partial<WizardState> & { interests?: string[] };
+
+function loadDraft(): StoredDraft | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return null;
-    return parsed as WizardState;
+    return parsed as StoredDraft;
   } catch {
     return null;
   }
@@ -154,6 +160,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         interests: sanitizedInterests,
         customInterest: draft.customInterest ?? '',
         careerBreak: draft.careerBreak ?? hadLegacyCareerBreak,
+        situation: draft.situation ?? null,
         input: draft.input ?? defaultInput,
         customActivities: draft.customActivities ?? [],
         result: null,
@@ -174,6 +181,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [interests, setInterests] = useState<string[]>(initialState.interests);
   const [customInterest, setCustomInterestState] = useState(initialState.customInterest);
   const [careerBreak, setCareerBreakState] = useState<boolean>(initialState.careerBreak);
+  const [situation, setSituationState] = useState<string | null>(initialState.situation);
   const [input, setInput] = useState<ImpactInput>(initialState.input);
   const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>(initialState.customActivities);
   const [result, setResultState] = useState<ImpactResult | null>(null);
@@ -185,22 +193,32 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (result !== null) return;
-    const hasProgress = !!(location || interests.length > 0 || customInterest || careerBreak ||
+    const hasProgress = !!(location || interests.length > 0 || customInterest || careerBreak || situation ||
       input.activities.length > 0 || input.donationsGBP > 0 ||
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection });
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situation, input, customActivities, result, activitySelection });
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situation, input, customActivities, result, activitySelection]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
   const setCustomInterest = (val: string) => setCustomInterestState(val);
   const setCareerBreak = (val: boolean) => setCareerBreakState(val);
+  const setSituation = (val: string | null) => setSituationState(val);
+
+  const seedFromProfile = useCallback((profile: { postcode: string | null; interests: string[]; situation: string | null }) => {
+    // Authoritative seed: always write all fields so stale in-memory values are cleared
+    setLocationState(profile.postcode ?? '');
+    const sanitized = (profile.interests ?? []).filter(id => INTEREST_OPTIONS.some(o => o.id === id));
+    setInterests(sanitized);
+    setSituationState(profile.situation);
+    setCareerBreakState(profile.situation === 'career_break');
+  }, []);
 
   const toggleInterest = (interestId: string) => {
     setInterests(prev =>
@@ -241,6 +259,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setInterests([]);
     setCustomInterestState('');
     setCareerBreakState(false);
+    setSituationState(null);
     setInput(defaultInput);
     setCustomActivities([]);
     setResultState(null);
@@ -255,6 +274,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setInterests([]);
     setCustomInterestState('');
     setCareerBreakState(false);
+    setSituationState(null);
     setInput(defaultInput);
     setCustomActivities([]);
     setResultState(null);
@@ -265,8 +285,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, input, customActivities, result, activitySelection,
-      setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, updateInput,
+      location, locationMeta, interests, customInterest, careerBreak, situation, input, customActivities, result, activitySelection,
+      setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, setSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, reset,
       clearDraft, hasDraft, setActivitySelection,
     }}>

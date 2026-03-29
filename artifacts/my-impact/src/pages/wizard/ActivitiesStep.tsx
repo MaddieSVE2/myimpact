@@ -52,7 +52,7 @@ type ActivityMode = "pick" | "describe";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, careerBreak, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
+  const { input, interests, careerBreak, situation, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -130,7 +130,7 @@ export default function ActivitiesStep() {
     );
   }, [interests]);
 
-  // Certain interests should boost specific activities regardless of category
+  // Certain interests/situation should boost specific activities regardless of category
   const boostedActivityIds = useMemo(() => {
     const boosted = new Set<string>();
     if (interests.includes('older_people') || interests.includes('caring')) {
@@ -167,7 +167,7 @@ export default function ActivitiesStep() {
       boosted.add('employability_coaching');
       boosted.add('job_club');
     }
-    if (careerBreak) {
+    if (careerBreak || situation === 'career_break') {
       boosted.add('career_break_childcare');
       boosted.add('career_break_eldercare');
       boosted.add('career_break_school_liaison');
@@ -177,8 +177,36 @@ export default function ActivitiesStep() {
       boosted.add('befriending');
       boosted.add('helping_neighbours');
     }
+    // Situation-specific boosts
+    if (situation === 'armed_forces') {
+      boosted.add('military_community_reconstruction');
+      boosted.add('military_population_liaison');
+      boosted.add('military_personnel_training');
+      boosted.add('military_first_aid');
+      boosted.add('military_logistics');
+      boosted.add('veterans_breakfast');
+      boosted.add('community_garden');
+      boosted.add('sports_coaching');
+    }
+    if (situation === 'job_seeking') {
+      boosted.add('job_club');
+      boosted.add('employability_coaching');
+      boosted.add('literacy_support');
+      boosted.add('digital_coaching');
+      boosted.add('youth_mentoring');
+      boosted.add('food_bank');
+    }
+    if (situation === 'student') {
+      boosted.add('dofe_bronze');
+      boosted.add('dofe_silver');
+      boosted.add('dofe_gold');
+      boosted.add('school_fundraising');
+      boosted.add('literacy_support');
+      boosted.add('community_garden');
+      boosted.add('litter_picking');
+    }
     return boosted;
-  }, [interests, careerBreak]);
+  }, [interests, careerBreak, situation]);
 
   const sortedActivities = useMemo(() => {
     if (!data) return [];

@@ -206,10 +206,12 @@ function PersonalDevelopmentDetail({
   value,
   totalHours,
   breakdowns,
+  skillsSubheading,
 }: {
   value: number;
   totalHours: number;
   breakdowns: any[];
+  skillsSubheading: string;
 }) {
   const [open, setOpen] = useState(false);
   const skills = deriveSkills(breakdowns);
@@ -241,7 +243,7 @@ function PersonalDevelopmentDetail({
 
       {/* Skills developed */}
       <div className="border-t border-border px-5 py-4">
-        <p className="text-xs font-semibold text-foreground mb-3">Skills you're developing</p>
+        <p className="text-xs font-semibold text-foreground mb-3">{skillsSubheading}</p>
         <div className="flex flex-wrap gap-2">
           {skills.map(s => (
             <span
@@ -727,7 +729,7 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
   );
 }
 
-function generateCVText(result: any, interests: string[] = [], careerBreak = false): string {
+function generateCVText(result: any, interests: string[] = [], careerBreak = false, situation: string | null = null): string {
   const skills = deriveSkills(result.activityBreakdowns);
   const activityNames: string[] = result.activityBreakdowns.map((b: any) => b.activityName);
   const hoursRounded = Math.round(result.totalHours);
@@ -758,8 +760,10 @@ function generateCVText(result: any, interests: string[] = [], careerBreak = fal
     skillText = `${restSkills.join(", ")} and ${lastSkill}`;
   }
 
-  const isCareerBreak = careerBreak;
-  const isMilitary = interests.includes('military');
+  // Situation takes strict precedence; interest-based fallbacks only when no explicit situation is set
+  const isCareerBreak = situation === 'career_break' || (!situation && careerBreak);
+  const isMilitary = situation === 'armed_forces' || (!situation && interests.includes('military'));
+  const isJobSeeking = situation === 'job_seeking';
 
   if (isCareerBreak) {
     return `During my career break, I contributed ${hoursRounded} hours of unpaid time to ${actText}. This period of active contribution generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics. The skills I developed, including ${skillText}, are directly transferable and reflect real, substantive work that I carried out to a high standard throughout this period.`;
@@ -767,6 +771,10 @@ function generateCVText(result: any, interests: string[] = [], careerBreak = fal
 
   if (isMilitary) {
     return `Through my service and subsequent community contributions, I have committed ${hoursRounded} hours to activities including ${actText}, generating an estimated ${valueFormatted} in social value based on Social Value Engine proxy metrics. This work has developed transferable skills including ${skillText}, which I apply in every environment I operate in.`;
+  }
+
+  if (isJobSeeking) {
+    return `While job seeking, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}, generating an estimated ${valueFormatted} in social value based on Social Value Engine proxy metrics. This experience has developed transferable skills including ${skillText} — directly applicable to the roles I am pursuing.`;
   }
 
   return `Over the past year, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}. This work has generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics based on peer-reviewed research and UK government data. Through this experience I have developed transferable skills including ${skillText}, which I bring to everything I do.`;
@@ -790,9 +798,42 @@ const CAREER_BREAK_TRANSFERABLE_SKILLS = [
   { emoji: "🏃", name: "Resilience" },
 ];
 
-function PersonaTransferableSkills({ interests, careerBreak }: { interests: string[]; careerBreak: boolean }) {
-  const isMilitary = interests.includes('military');
-  const isCareerBreak = careerBreak;
+function getSituationCopy(situation: string | null): {
+  headline: string;
+  intro: string;
+  skillsSubheading: string;
+} {
+  if (situation === 'armed_forces') {
+    return {
+      headline: "Your service, measured.",
+      intro: "This is the verified social value of your commitment — in service and in civilian life. Use it to show employers and institutions what your experience is really worth.",
+      skillsSubheading: "Skills from service you're developing",
+    };
+  }
+  if (situation === 'job_seeking') {
+    return {
+      headline: "Your impact, employer-ready.",
+      intro: "These transferable skills and verified social value figures give you concrete, credible evidence to bring to interviews and job applications.",
+      skillsSubheading: "Transferable skills employers value",
+    };
+  }
+  if (situation === 'career_break') {
+    return {
+      headline: "Your break was active contribution.",
+      intro: "This period wasn't time out — it was time invested. Here's the verified value of what you contributed, and the skills you built that employers recognise.",
+      skillsSubheading: "Skills from your career break",
+    };
+  }
+  return {
+    headline: "Your annual social value",
+    intro: "That's the equivalent financial value of the positive difference you've made to society over the past year, calculated using globally recognised Social Value Engine proxies.",
+    skillsSubheading: "Skills you're developing",
+  };
+}
+
+function PersonaTransferableSkills({ interests, careerBreak, situation }: { interests: string[]; careerBreak: boolean; situation: string | null }) {
+  const isMilitary = situation === 'armed_forces' || interests.includes('military');
+  const isCareerBreak = situation === 'career_break' || careerBreak;
   if (!isMilitary && !isCareerBreak) return null;
 
   return (
@@ -867,7 +908,7 @@ function PersonaTransferableSkills({ interests, careerBreak }: { interests: stri
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta, interests, careerBreak } = useWizard();
+  const { result, input, locationMeta, interests, careerBreak, situation } = useWizard();
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
@@ -1064,6 +1105,8 @@ export default function Results() {
   const nextMilestone = getNextMilestone(result.totalValue);
 
 
+  const situationCopy = getSituationCopy(situation);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 pb-28">
       {/* Hidden share card for export */}
@@ -1076,12 +1119,12 @@ export default function Results() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Your annual social value</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{situationCopy.headline}</p>
         <h1 className="text-6xl md:text-7xl font-display font-bold text-foreground tracking-tight mb-3">
           {formatCurrency(result.totalValue)}
         </h1>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          That's the equivalent financial value of the positive difference you've made to society over the past year, calculated using globally recognised Social Value Engine proxies.
+          {situationCopy.intro}
         </p>
       </motion.div>
 
@@ -1280,6 +1323,7 @@ export default function Results() {
         value={result.personalDevelopmentValue}
         totalHours={result.totalHours}
         breakdowns={result.activityBreakdowns}
+        skillsSubheading={situationCopy.skillsSubheading}
       />
 
       {/* Proxy methodology */}
@@ -1288,7 +1332,7 @@ export default function Results() {
       )}
 
       {/* Persona-specific transferable skills */}
-      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} />
+      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
 
       {/* Duke of Edinburgh panel */}
       <DofEPanel breakdowns={result.activityBreakdowns} />
@@ -1314,13 +1358,13 @@ export default function Results() {
             </p>
             <textarea
               readOnly
-              value={generateCVText(result, interests, careerBreak)}
+              value={generateCVText(result, interests, careerBreak, situation)}
               rows={5}
               className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
             />
             <button
               onClick={() => {
-                navigator.clipboard.writeText(generateCVText(result, interests, careerBreak)).then(() => {
+                navigator.clipboard.writeText(generateCVText(result, interests, careerBreak, situation)).then(() => {
                   setStatementCopied(true);
                   setTimeout(() => setStatementCopied(false), 2500);
                 }).catch(() => {

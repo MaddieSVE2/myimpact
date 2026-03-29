@@ -1,12 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
+
+const SITUATION_OPTIONS = [
+  { id: "volunteer", label: "I volunteer" },
+  { id: "job_seeking", label: "Job seeking" },
+  { id: "student", label: "Student" },
+  { id: "career_break", label: "Career break" },
+  { id: "armed_forces", label: "Armed forces / veteran" },
+  { id: "something_else", label: "Something else" },
+];
 
 async function lookupPostcode(raw: string) {
   const postcode = raw.replace(/\s+/g, "").toUpperCase();
@@ -23,18 +33,39 @@ async function lookupPostcode(raw: string) {
   };
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterest, careerBreak,
+    location, interests, customInterest, careerBreak, situation,
     setLocation: setWizardLocation, toggleInterest,
-    setCustomInterest, setCareerBreak, updateInput, setLocationMeta,
+    setCustomInterest, setCareerBreak, setSituation, seedFromProfile, updateInput, setLocationMeta,
     hasDraft, clearDraft,
   } = useWizard();
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
 
   const [showCustom, setShowCustom] = useState(!!customInterest);
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
   const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
+  const profileSeeded = useRef(false);
+
+  // Pre-fill from profile for logged-in users (only when no draft is active)
+  useEffect(() => {
+    if (authLoading || !isLoggedIn || hasDraft || profileSeeded.current) return;
+    profileSeeded.current = true;
+    fetch(`${BASE}/api/profile`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then((data) => {
+        if (!data || !data.profile) return;
+        seedFromProfile({
+          postcode: data.profile.postcode ?? null,
+          interests: data.profile.interests ?? [],
+          situation: data.profile.situation ?? null,
+        });
+      });
+  }, [authLoading, isLoggedIn, hasDraft, seedFromProfile]);
 
   // When draft is cleared, reset UI-only state
   useEffect(() => {
@@ -70,7 +101,31 @@ export default function ActionsStep() {
     }
   };
 
-  const handleNext = () => {
+  const handleSituationSelect = (id: string) => {
+    const next = situation === id ? null : id;
+    setSituation(next);
+    // Keep careerBreak consistent with situation selection
+    if (next === 'career_break') {
+      setCareerBreak(true);
+    } else {
+      // Always clear careerBreak when a non-career_break situation is chosen
+      setCareerBreak(false);
+    }
+  };
+
+  const handleCareerBreakChange = (checked: boolean) => {
+    setCareerBreak(checked);
+    // Only sync situation for logged-in users (guests keep legacy careerBreak-only behavior)
+    if (isLoggedIn) {
+      if (checked) {
+        setSituation('career_break');
+      } else if (situation === 'career_break') {
+        setSituation(null);
+      }
+    }
+  };
+
+  const handleNext = async () => {
     const interestLabels = interests
       .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
       .filter(Boolean)
@@ -80,10 +135,28 @@ export default function ActionsStep() {
       ? `I live in ${location} and care most about: ${allInterests || 'making a positive difference'}.`
       : `I care most about: ${allInterests || 'making a positive difference'}.`;
     updateInput({ description });
+
+    // Silently auto-save profile if logged in
+    if (isLoggedIn) {
+      const postcode = location.trim() || null;
+      // Derive canonical situation: careerBreak checkbox maps to career_break situation
+      const canonicalSituation = situation ?? (careerBreak ? 'career_break' : null);
+      fetch(`${BASE}/api/profile`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          situation: canonicalSituation,
+          interests,
+          postcode,
+        }),
+      }).catch(() => {});
+    }
+
     setLocation("/wizard/activities");
   };
 
-  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak;
+  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak || !!situation;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -121,6 +194,36 @@ export default function ActionsStep() {
         <p className="text-sm text-muted-foreground mb-8">
           Help us personalise your experience. Just a couple of quick questions.
         </p>
+
+        {/* Situation — only shown to logged-in users */}
+        {isLoggedIn && (
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-foreground mb-1">
+              My situation&hellip; <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">We use this to tailor your activity suggestions and results.</p>
+            <div className="flex flex-wrap gap-2">
+              {SITUATION_OPTIONS.map(opt => {
+                const selected = situation === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleSituationSelect(opt.id)}
+                    className={cn(
+                      "px-3.5 py-2.5 min-h-[44px] rounded-full text-sm border transition-all duration-150 select-none",
+                      selected
+                        ? "bg-primary text-white border-primary font-medium"
+                        : "bg-white text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Location */}
         <div className="mb-8">
@@ -219,41 +322,43 @@ export default function ActionsStep() {
           )}
         </div>
 
-        {/* Career break checkbox */}
-        <div className="pt-4 border-t border-border">
-          <label className="flex items-start gap-3 cursor-pointer select-none group">
-            <div className="relative mt-0.5 shrink-0">
-              <input
-                type="checkbox"
-                checked={careerBreak}
-                onChange={e => setCareerBreak(e.target.checked)}
-                className="sr-only"
-              />
-              <div
-                className={cn(
-                  "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
-                  careerBreak
-                    ? "bg-primary border-primary"
-                    : "bg-white border-border group-hover:border-primary/50"
-                )}
-              >
-                {careerBreak && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                  </svg>
-                )}
+        {/* Career break checkbox — hidden when situation picker covers it */}
+        {(!isLoggedIn || situation !== 'career_break') && (
+          <div className="pt-4 border-t border-border">
+            <label className="flex items-start gap-3 cursor-pointer select-none group">
+              <div className="relative mt-0.5 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={careerBreak}
+                  onChange={e => handleCareerBreakChange(e.target.checked)}
+                  className="sr-only"
+                />
+                <div
+                  className={cn(
+                    "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+                    careerBreak
+                      ? "bg-primary border-primary"
+                      : "bg-white border-border group-hover:border-primary/50"
+                  )}
+                >
+                  {careerBreak && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                    </svg>
+                  )}
+                </div>
               </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground leading-snug">
-                I'm currently on a career break / returning to work
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                We'll highlight how your activities build transferable skills and help you frame this period on your CV.
-              </p>
-            </div>
-          </label>
-        </div>
+              <div>
+                <p className="text-sm font-medium text-foreground leading-snug">
+                  I'm currently on a career break / returning to work
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  We'll highlight how your activities build transferable skills and help you frame this period on your CV.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         <div className="flex justify-end pt-6">
           <button
