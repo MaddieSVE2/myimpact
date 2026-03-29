@@ -10,6 +10,7 @@ const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },
   { id: "job_seeking", label: "I'm job seeking" },
   { id: "student", label: "I'm a student" },
+  { id: "apprenticeship", label: "Applying for an apprenticeship" },
   { id: "career_break", label: "Career break" },
   { id: "armed_forces", label: "Armed forces / veteran" },
   { id: "something_else", label: "Something else" },

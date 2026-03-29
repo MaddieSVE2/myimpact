@@ -13,6 +13,7 @@ const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },
   { id: "job_seeking", label: "Job seeking" },
   { id: "student", label: "Student" },
+  { id: "apprenticeship", label: "Applying for an apprenticeship" },
   { id: "career_break", label: "Career break" },
   { id: "armed_forces", label: "Armed forces / veteran" },
   { id: "something_else", label: "Something else" },
@@ -59,10 +60,14 @@ export default function ActionsStep() {
       .catch(() => null)
       .then((data) => {
         if (!data || !data.profile) return;
+        const rawSituation = data.profile.situation;
+        const situationValue = Array.isArray(rawSituation)
+          ? (rawSituation[0] ?? null)
+          : (typeof rawSituation === "string" ? rawSituation : null);
         seedFromProfile({
           postcode: data.profile.postcode ?? null,
           interests: data.profile.interests ?? [],
-          situation: data.profile.situation ?? null,
+          situation: situationValue,
         });
       });
   }, [authLoading, isLoggedIn, hasDraft, seedFromProfile]);

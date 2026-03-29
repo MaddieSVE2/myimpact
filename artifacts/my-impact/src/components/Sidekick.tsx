@@ -232,7 +232,7 @@ export function Sidekick() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { result, interests, careerBreak } = useWizard();
+  const { result, interests, careerBreak, situation } = useWizard();
   const [location] = useLocation();
 
   const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
@@ -246,6 +246,10 @@ export function Sidekick() {
       if (careerBreak) {
         extras.push("Help me write about my career break on my CV positively");
         extras.push("Draft an interview answer about my gap in employment");
+      }
+      if (situation === "apprenticeship") {
+        extras.push("Help me write a supporting statement paragraph for my apprenticeship");
+        extras.push("Will this help me get an apprenticeship?");
       }
       return [...extras, ...baseQuickActions].slice(0, 4);
     }
@@ -266,6 +270,7 @@ export function Sidekick() {
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
     if (interests.length) ctx.interests = interests;
+    if (situation) ctx.situation = situation;
     return Object.keys(ctx).length ? ctx : undefined;
   };
 
@@ -369,7 +374,7 @@ export function Sidekick() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, result, interests]
+    [messages, streaming, result, interests, situation]
   );
 
   const handleSubmit = () => sendMessage(input);
