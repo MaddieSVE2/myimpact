@@ -241,8 +241,8 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
         {/* SDG alignment */}
         <div className="bg-white border border-border rounded-xl p-6">
           <SectionLabel>Global goals</SectionLabel>
-          <SectionTitle>UN SDG alignment</SectionTitle>
-          <p className="text-sm text-muted-foreground -mt-4 mb-6">Your members' activities map to these UN Sustainable Development Goals. Percentage shows share of total social value.</p>
+          <SectionTitle>UN Sustainable Development Goals (SDGs)</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">The United Nations has defined 17 global goals to guide a better world by 2030. The percentages below show how much of your members' total social value contributes to each goal.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {DEMO.sdgs.map((sdg) => (
               <div key={sdg.number} className="rounded-xl p-4 text-white relative overflow-hidden" style={{ backgroundColor: sdg.color }}>
@@ -254,7 +254,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-4">SDG alignment is calculated using the Social Value Engine methodology, which maps each activity type to its primary and secondary global goals.</p>
+          <p className="text-[11px] text-muted-foreground mt-4">Goal alignment is calculated using the Social Value Engine methodology, which maps each volunteering activity to its primary and secondary UN Sustainable Development Goals (SDGs).</p>
         </div>
 
         {/* Regional distribution */}

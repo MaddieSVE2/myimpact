@@ -1183,7 +1183,10 @@ export default function Results() {
           {/* SDG donut */}
           {result.sdgBreakdowns.length > 0 && (
             <figure className="bg-white border border-border rounded-xl p-4 m-0">
-              <figcaption className="text-xs font-semibold text-muted-foreground mb-3">By SDG</figcaption>
+              <figcaption className="mb-3">
+                <p className="text-xs font-semibold text-muted-foreground">UN Sustainable Development Goals (SDGs)</p>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">The 17 global goals set by the United Nations that your volunteering contributes to</p>
+              </figcaption>
               <div role="img" aria-label="Donut chart showing social value breakdown by Sustainable Development Goal">
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
