@@ -167,7 +167,7 @@ export default function Profile() {
         <section>
           <h3 className="text-sm font-semibold text-foreground mb-3">Your interests <span className="text-muted-foreground font-normal">(optional)</span></h3>
           <div className="flex flex-wrap gap-2">
-            {INTEREST_OPTIONS.map(opt => {
+            {INTEREST_OPTIONS.filter(opt => opt.id !== 'military' || situation.includes('armed_forces')).map(opt => {
               const selected = interests.includes(opt.id);
               return (
                 <button

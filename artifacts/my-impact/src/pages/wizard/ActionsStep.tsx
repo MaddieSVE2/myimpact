@@ -286,7 +286,7 @@ export default function ActionsStep() {
             Select all that apply. We'll use this to personalise your activities and suggestions.
           </p>
           <div className="flex flex-wrap gap-2 mb-3">
-            {INTEREST_OPTIONS.map(option => {
+            {INTEREST_OPTIONS.filter(option => option.id !== 'military' || situations.includes('armed_forces')).map(option => {
               const selected = interests.includes(option.id);
               return (
                 <button
