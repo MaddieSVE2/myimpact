@@ -43,6 +43,7 @@ import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import Contact from "@/pages/Contact";
 import Feedback from "@/pages/Feedback";
+import PublicProfile from "@/pages/PublicProfile";
 
 const queryClient = new QueryClient();
 
@@ -92,7 +93,7 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
-const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/", "/results"];
+const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/", "/results", "/profile"];
 
 function GuestBanner() {
   const { isLoggedIn, isLoading } = useAuth();
@@ -262,6 +263,9 @@ function AppRouter() {
             <Route path="/contact" component={Contact} />
 
             <Route path="/feedback" component={Feedback} />
+
+            {/* Public profile — no login required */}
+            <Route path="/profile/:slug" component={PublicProfile} />
 
             <Route component={NotFound} />
           </Switch>

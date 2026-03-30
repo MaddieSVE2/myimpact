@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useSocialSharing } from "@/lib/social-sharing-context";
 import { useToast } from "@/hooks/use-toast";
+import PublicProfileSettings from "./PublicProfileSettings";
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
@@ -161,6 +162,9 @@ export default function Settings() {
           </Link>
         </div>
       </section>
+
+      {/* Public profile section */}
+      <PublicProfileSettings />
 
       {/* App section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-8 overflow-hidden">

@@ -119,6 +119,26 @@ A collapsible right-side panel (SVE-style) providing contextual AI assistance:
 - **Always typecheck from the root** — run `pnpm run typecheck`
 - **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array
 
+## Public Profile Feature
+
+Users can publish a shareable public profile at `/profile/:slug`:
+
+- **DB table**: `public_profiles` (userId PK, slug unique, isEnabled, customMessage, showHours, showSroi, showCategories, showJournalHighlights, slugCustomised)
+- **Migration**: `lib/db/migrations/0004_public_profile.sql`
+- **API routes** (`artifacts/api-server/src/routes/public-profile.ts`):
+  - `GET /api/public-profile/me` — fetch own settings (auth required)
+  - `POST /api/public-profile/enable` — enable and auto-generate slug (auth required)
+  - `PUT /api/public-profile` — update settings/disable/re-enable (auth required)
+  - `GET /api/public-profile/check-slug/:slug` — slug availability check (auth required)
+  - `GET /api/public-profile/:slug` — public page data (no auth, rate-limited 30 req/min/IP)
+- **Settings UI**: `PublicProfileSettings.tsx` embedded in `/settings` page
+- **Public page**: `PublicProfile.tsx` at `/profile/:slug` (no auth required)
+- **GDPR**: users must acknowledge publishing implications before enabling
+- **Disabling**: profile immediately returns 404 (no caching lag)
+- **Account deletion**: ON DELETE CASCADE removes public profile
+- **Slug rules**: 3-30 chars, lowercase alphanumeric + hyphens, no reserved words, customisable once
+- **Rate limiting**: in-memory per-IP rate limit (30 req/60s) on public endpoint
+
 ## Root Scripts
 
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
