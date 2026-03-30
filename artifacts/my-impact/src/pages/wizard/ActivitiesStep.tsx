@@ -50,11 +50,9 @@ interface AnalysedActivity {
 type Phase = "select" | "quantify";
 type ActivityMode = "pick" | "describe";
 
-const DOFE_ACTIVITY_IDS = new Set(["dofe"]);
-
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, careerBreak, situations, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
+  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -132,7 +130,9 @@ export default function ActivitiesStep() {
     );
   }, [interests]);
 
-  // Certain interests/situation should boost specific activities regardless of category
+  // Boost specific activities based on the user's selected interests only.
+  // Situation/background no longer affects activity ranking — it only influences
+  // language, framing, and report card sections (see Results.tsx).
   const boostedActivityIds = useMemo(() => {
     const boosted = new Set<string>();
     if (interests.includes('older_people') || interests.includes('caring')) {
@@ -166,69 +166,17 @@ export default function ActivitiesStep() {
       boosted.add('employability_coaching');
       boosted.add('job_club');
     }
-    if (careerBreak || situations.includes('career_break')) {
-      boosted.add('family_caring');
-      boosted.add('career_break_school_liaison');
-      boosted.add('career_break_medical_coordination');
-      boosted.add('elderly_visiting');
-      boosted.add('befriending');
-      boosted.add('helping_neighbours');
-    }
-    // Situation-specific boosts
-    if (situations.includes('armed_forces')) {
-      boosted.add('military_community_reconstruction');
-      boosted.add('military_population_liaison');
-      boosted.add('military_personnel_training');
-      boosted.add('military_first_aid');
-      boosted.add('military_logistics');
-      boosted.add('veterans_breakfast');
-      boosted.add('community_garden');
-      boosted.add('sports_coaching');
-    }
-    if (situations.includes('job_seeking')) {
-      boosted.add('job_club');
-      boosted.add('employability_coaching');
-      boosted.add('literacy_support');
-      boosted.add('digital_coaching');
-      boosted.add('youth_mentoring');
-      boosted.add('food_bank');
-    }
-    if (situations.includes('student')) {
-      boosted.add('dofe');
-      boosted.add('fundraising');
-      boosted.add('literacy_support');
-      boosted.add('community_garden');
-      boosted.add('litter_picking');
-    }
     return boosted;
-  }, [interests, careerBreak, situations]);
-
-  const isVeteran = situations.includes('armed_forces') || interests.includes('military');
-
-  // Sanitize any DofE activities out of the selection state for veteran users
-  useEffect(() => {
-    if (!isVeteran) return;
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      let changed = false;
-      DOFE_ACTIVITY_IDS.forEach(id => {
-        if (next.has(id)) { next.delete(id); changed = true; }
-      });
-      return changed ? next : prev;
-    });
-  }, [isVeteran]);
+  }, [interests]);
 
   const sortedActivities = useMemo(() => {
     if (!data) return [];
-    const filtered = isVeteran
-      ? data.activities.filter(a => !DOFE_ACTIVITY_IDS.has(a.id))
-      : data.activities;
-    return [...filtered].sort((a, b) => {
+    return [...data.activities].sort((a, b) => {
       const aScore = boostedActivityIds.has(a.id) ? 0 : preferredCategories.has(a.category) ? 1 : 2;
       const bScore = boostedActivityIds.has(b.id) ? 0 : preferredCategories.has(b.category) ? 1 : 2;
       return aScore - bScore;
     });
-  }, [data, preferredCategories, boostedActivityIds, isVeteran]);
+  }, [data, preferredCategories, boostedActivityIds]);
 
   const primaryActivities = sortedActivities.slice(0, 8);
   const moreActivities = sortedActivities.slice(8);
@@ -291,7 +239,6 @@ export default function ActivitiesStep() {
     const knownIds = new Set(data.activities.map(a => a.id));
     previousActivities.forEach(prev => {
       if (!knownIds.has(prev.activityId)) return;
-      if (isVeteran && DOFE_ACTIVITY_IDS.has(prev.activityId)) return;
       setSelectedIds(ids => {
         const next = new Set(ids);
         next.add(prev.activityId);
@@ -380,13 +327,10 @@ export default function ActivitiesStep() {
         return;
       }
 
-      // Step 2: pre-select matched predefined IDs (filter out DofE for veterans)
-      const allowedMatchedIds = isVeteran
-        ? matchedIds.filter(id => !DOFE_ACTIVITY_IDS.has(id))
-        : matchedIds;
+      // Step 2: pre-select matched predefined IDs
       setSelectedIds(prev => {
         const next = new Set(prev);
-        allowedMatchedIds.forEach(id => {
+        matchedIds.forEach(id => {
           next.add(id);
           const activity = data?.activities.find(a => a.id === id);
           if (activity && quantities[id] === undefined) {
@@ -438,14 +382,14 @@ export default function ActivitiesStep() {
       // Step 4: advance to quantify phase
       setDescribeLoading(false);
 
-      const totalUsable = allowedMatchedIds.length + successfulCustomCount;
+      const totalUsable = matchedIds.length + successfulCustomCount;
       if (totalUsable === 0) {
         // All downstream analyses failed — nothing usable was added
         setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
         return;
       }
 
-      if (allowedMatchedIds.length > 0) {
+      if (matchedIds.length > 0) {
         setActivitySelection({ quantifyIndex: 0, phase: "quantify" });
       } else {
         // Only custom activities — skip quantify

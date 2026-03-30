@@ -213,7 +213,7 @@ export default function ActionsStep() {
             <label className="block text-sm font-medium text-foreground mb-1">
               My situation&hellip; <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <p className="text-xs text-muted-foreground mb-3">Select all that apply — we use this to tailor your activity suggestions and results.</p>
+            <p className="text-xs text-muted-foreground mb-3">Select all that apply — we use this to personalise the language and framing of your results.</p>
             <div className="flex flex-wrap gap-2">
               {SITUATION_OPTIONS.map(opt => {
                 const selected = situations.includes(opt.id);
