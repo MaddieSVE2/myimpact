@@ -18,8 +18,8 @@ function issueSession(res: any, user: { id: string; email: string }) {
   const token = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: "30d" });
   res.cookie("mi_session", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: "/",
   });
@@ -313,7 +313,7 @@ router.patch("/me", async (req: any, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie("mi_session", { path: "/" });
+  res.clearCookie("mi_session", { path: "/", secure: true, sameSite: "none" });
   res.json({ ok: true });
 });
 
