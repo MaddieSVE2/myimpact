@@ -1,7 +1,25 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { searchCharities } from "../lib/charity-commission";
+import { searchOSCRCharities } from "../lib/oscr";
 
 const router = Router();
+
+const SCOTTISH_TERMS = new Set([
+  "aberdeen", "aberdeenshire", "angus", "argyll", "bute", "clackmannanshire",
+  "dumfries", "galloway", "dundee", "east ayrshire", "east dunbartonshire",
+  "east lothian", "east renfrewshire", "edinburgh", "eilean siar",
+  "falkirk", "fife", "glasgow", "highland", "highlands", "inverclyde",
+  "midlothian", "moray", "north ayrshire", "north lanarkshire", "orkney",
+  "perth", "kinross", "renfrewshire", "scottish borders", "shetland",
+  "south ayrshire", "south lanarkshire", "stirling", "west dunbartonshire",
+  "west lothian", "scotland", "scottish",
+]);
+
+function isScottishLocation(location: string): boolean {
+  const lower = location.toLowerCase();
+  return Array.from(SCOTTISH_TERMS).some(t => lower.includes(t));
+}
 
 router.post("/suggest", async (req, res) => {
   try {
@@ -12,6 +30,63 @@ router.post("/suggest", async (req, res) => {
 
     if (!location?.trim() || !activityName?.trim()) {
       res.status(400).json({ error: "location and activityName are required" });
+      return;
+    }
+
+    const ccApiKey = process.env.CHARITY_COMMISSION_API_KEY;
+    const oscrApiKey = process.env.OSCR_API_KEY;
+
+    let registerPlaces: Array<{
+      name: string;
+      description: string;
+      howToJoin: string;
+      website: string | null;
+      source: "register";
+      registrationNumber: string;
+      registerUrl: string;
+    }> = [];
+
+    const scotland = isScottishLocation(location);
+
+    if (scotland) {
+      try {
+        const oscrResults = await searchOSCRCharities(
+          location,
+          activityName,
+          oscrApiKey,
+          3
+        );
+        registerPlaces = oscrResults.map(c => ({
+          name: c.name,
+          description: c.description,
+          howToJoin: `Visit their official OSCR register page to find out how to get involved`,
+          website: c.website ?? c.registerUrl,
+          source: "register" as const,
+          registrationNumber: c.registrationNumber,
+          registerUrl: c.registerUrl,
+        }));
+      } catch (err) {
+        console.error("OSCR search error:", err);
+      }
+    } else if (!scotland && ccApiKey) {
+      try {
+        const ccResults = await searchCharities(location, activityName, ccApiKey, 3);
+        registerPlaces = ccResults.map(c => ({
+          name: c.name,
+          description: c.description,
+          howToJoin: `Visit their official Charity Commission page to find out how to get involved`,
+          website: c.website ?? c.registerUrl,
+          source: "register" as const,
+          registrationNumber: c.registrationNumber,
+          registerUrl: c.registerUrl,
+        }));
+      } catch (err) {
+        console.error("Charity Commission search error:", err);
+      }
+    }
+
+    if (registerPlaces.length > 0) {
+      res.json({ places: registerPlaces });
       return;
     }
 
@@ -51,11 +126,17 @@ Rules:
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(raw);
     const places = Array.isArray(parsed.places)
-      ? parsed.places.map(({ name, description, howToJoin, website }: { name: string; description: string; howToJoin: string; website?: string | null }) => ({
+      ? parsed.places.map(({ name, description, howToJoin, website }: {
+          name: string;
+          description: string;
+          howToJoin: string;
+          website?: string | null;
+        }) => ({
           name,
           description,
           howToJoin,
           website: typeof website === "string" && website.startsWith("http") ? website : null,
+          source: "ai" as const,
         }))
       : [];
 

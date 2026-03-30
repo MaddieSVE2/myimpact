@@ -11,6 +11,9 @@ interface LocalPlace {
   description: string;
   howToJoin: string;
   website: string | null;
+  source?: "register" | "ai";
+  registrationNumber?: string;
+  registerUrl?: string;
 }
 
 interface TileLocalState {
@@ -209,24 +212,70 @@ export default function Suggestions() {
                         ) : (
                           local.places.map((place, pi) => (
                             <div key={pi} className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                  <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
+                                  {place.source === "register" ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      ✓ Registered charity
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                      Suggested
+                                    </span>
+                                  )}
+                                </div>
+                                {place.source === "register" && place.registrationNumber && (
+                                  <p className="text-[10px] text-muted-foreground/70 mb-0.5">
+                                    Reg. no. {place.registrationNumber}
+                                  </p>
+                                )}
                                 <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{place.description}</p>
                                 <p className="text-[11px] text-foreground/60 mt-0.5 italic">{place.howToJoin}</p>
                               </div>
-                              <a
-                                href={place.website ?? `https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${location} volunteer charity`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
-                              >
-                                {place.website ? "Visit website" : "Search online"} <ExternalLink className="w-2.5 h-2.5" />
-                              </a>
+                              <div className="shrink-0 flex flex-col gap-1 items-end">
+                                {place.source === "register" && place.registerUrl && (
+                                  <a
+                                    href={place.registerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all text-emerald-700"
+                                  >
+                                    Register page <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                                {place.source !== "register" && (
+                                  <a
+                                    href={place.website ?? `https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${location} volunteer charity`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                                  >
+                                    {place.website ? "Visit website" : "Search online"} <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                                {place.source === "register" && place.website && place.website !== place.registerUrl && (
+                                  <a
+                                    href={place.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                                  >
+                                    Website <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           ))
                         )}
 
-                        <p className="text-[10px] text-muted-foreground/60 pt-1">AI-suggested. Always verify before contacting.</p>
+                        {local?.places && local.places.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground/60 pt-1">
+                            {local.places[0]?.source === "register"
+                              ? "Results from the official UK charity register."
+                              : "AI-suggested. Always verify before contacting."}
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   )}

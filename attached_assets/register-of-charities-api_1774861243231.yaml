@@ -1,0 +1,3237 @@
+openapi: 3.0.1
+info:
+  title: Register of Charities API
+  description: A collection of operations for accessing the Register of Charities data.
+  version: '1.0'
+servers:
+  - url: https://api.charitycommission.gov.uk/register/api
+paths:
+  /sectorincomecategory:
+    get:
+      summary: SectorDataIncomeCategory
+      description: "Returns sector data split by income category.\n"
+      operationId: get-sectordataincomecategory
+      responses:
+        '200':
+          description: ''
+  /sectoroverview:
+    get:
+      summary: SectorDataOverview
+      description: Returns an overview of the sector.
+      operationId: get-sectordataoverview
+      responses:
+        '200':
+          description: ''
+  /sectordatatop10:
+    get:
+      summary: SectorDataGetTopN01All
+      description: Returns all top ten lists from the sector data.
+      operationId: get-sectordatagettopn01all
+      responses:
+        '200':
+          description: ''
+  '/charityfinancialhistory/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityFinancialHistory
+      description: Gets the last 5 years financial history for a charity.
+      operationId: get-getcharityfinancialhistory
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/sectordatatop10/{listType}':
+    get:
+      summary: SectorDataGetTop10Individual
+      description: Returns a specified list of top 10 charities from the sector data.
+      operationId: get-sectordatagettop10individual
+      parameters:
+        - name: listType
+          in: path
+          description: The type of list to be views
+          required: true
+          schema:
+            type: String
+      responses:
+        '200':
+          description: ''
+  '/charityassetsliabilities/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAssetsLiabilities
+      description: Gets a charity's most recent assets and liabilities figures.
+      operationId: get-getcharityassetsliabilities
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/ciodissolution/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityCioDissolution
+      description: Gets details of a CIO dissolution.
+      operationId: get-getcharityciodissolution
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityRegNumber/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetSearchCharityByRegNumber
+      description: Search for charities by their registered number.
+      operationId: get-getsearchcharitybyregnumber
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitygoverningdocument/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityGoverningDocument
+      description: Gets a charity's governing document details.
+      operationId: get-getcharitygoverningdocument
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitydetailsmulti/{RegisteredNumbers}':
+    get:
+      summary: GetCharityDetailsMulti
+      description: Gets main details about multiple charities.
+      operationId: get-getcharitydetailsmulti
+      parameters:
+        - name: RegisteredNumbers
+          in: path
+          description: The registration numbers of the charities. Comma separated list
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/checkprimarygrants/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityCheckPrimaryGrants
+      description: Whether a charity's primary purpose is grant making.
+      operationId: get-getcharitycheckprimarygrants
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  /sectorincomeband:
+    get:
+      summary: SectorDataIncomeBand
+      description: Returns sector data split by income bands.
+      operationId: get-sectordataincomeband
+      responses:
+        '200':
+          description: ''
+  '/charitywhowhathow/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityWhoWhatHow
+      description: Gets all of a charity's classification details.
+      operationId: get-getcharitywhowhathow
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitydetails/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityDetails
+      description: Gets main details about a charity.
+      operationId: get-getcharitydetails
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitytrusteenames/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityTrusteeNames
+      description: Returns the names of a charity's trustees.
+      operationId: get-getcharitytrusteenames
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/searchCharityName/{charityname}':
+    get:
+      summary: GetSearchCharityByName
+      description: Search for charities by their name.
+      operationId: get-getsearchcharitybyname
+      parameters:
+        - name: charityname
+          in: path
+          description: Charity name search term
+          required: true
+          schema:
+            type: String
+      responses:
+        '200':
+          description: ''
+  '/charitygovernanceinformation/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityGovernanceInformation
+      description: Gets simple governance details.
+      operationId: get-getcharitygovernanceinformation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityconstituency/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityConstituency
+      description: Gets the name of the constituency in which the charity's public contact is based.
+      operationId: get-getcharityconstituency
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitytrusteeinformation/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityTrusteeInformation
+      description: Gets details of a charity's trustees and other charities they are linked to.
+      operationId: get-getcharitytrusteeinformation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/searchCharityRemDate/{startDate}/{endDate}':
+    get:
+      summary: GetSearchCharityByRemDate
+      description: Search for charities by their register removal date.
+      operationId: get-getsearchcharitybyremdate
+      parameters:
+        - name: startDate
+          in: path
+          description: The earliest removal date of range to be searched in the format YYYY-MM-DD
+          required: true
+          schema:
+            type: Date
+        - name: endDate
+          in: path
+          description: The latest removal date of range to be searched in the format YYYY-MM-DD
+          required: true
+          schema:
+            type: Date
+      responses:
+        '200':
+          description: ''
+  '/searchCharityRegDate/{startDate}/{endDate}':
+    get:
+      summary: GetSearchCharityByRegDate
+      description: Search for charities by their registration date.
+      operationId: get-getsearchcharitybyregdate
+      parameters:
+        - name: startDate
+          in: path
+          description: Earliest registration date of range to search in the format YYYY-MM-DD
+          required: true
+          schema:
+            type: Date
+        - name: endDate
+          in: path
+          description: Latest registration date of range to search in the format YYYY-MM-DD
+          required: true
+          schema:
+            type: Date
+      responses:
+        '200':
+          description: ''
+  '/charitycontactinformation/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityContactInformation
+      description: Gets the contact details for a charity.
+      operationId: get-getcharitycontactinformation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityregulatoryreport/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityRegulatoryReport
+      description: Returns details of published reports on a charity.
+      operationId: get-getcharityregulatoryreport
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityareaofoperation/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAreaOfOperation
+      description: Gets all of a charity's areas of operation.
+      operationId: get-getcharityareaofoperation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityaooregion/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAoORegion
+      description: Gets region level information about a charity's area of operation.
+      operationId: get-getcharityaooregion
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityregistrationhistory/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityRegistrationHistory
+      description: Gets the registration history of a charity.
+      operationId: get-getcharityregistrationhistory
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityaoolocalauthority/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAoOLocalAuthority
+      description: Gets local authority level information about a charity's area of operation.
+      operationId: get-getcharityaoolocalauthority
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitypolicyinformation/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityPolicyInformation
+      description: Returns a list of policies the charity has in place.
+      operationId: get-getcharitypolicyinformation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/CharityAoOCountryContinent/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAoOCountryContinent
+      description: Gets continent and country level information about a charity's area of operation.
+      operationId: get-getcharityaoocountrycontinent
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityoverview/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityOverview
+      description: Returns information from a charity's most recently submitted Annual Return.
+      operationId: get-getcharityoverview
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/allcharitydetails/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetAllCharityDetails
+      description: 'Gets extended main details about a charity including trustees, classifications and areas of operation.'
+      operationId: get-getallcharitydetails
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/CharityOtherRegulators/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityOtherRegulators
+      description: Returns a list of other organisations the charity is regulated by.
+      operationId: get-getcharityotherregulators
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityaraccounts/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityAccountArInformation
+      description: Gets a charity's AR and Accounts submission details.
+      operationId: get-getcharityaccountarinformation
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charityothernames/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityOtherNames
+      description: Gets other names the charity is or has been known by.
+      operationId: get-getcharityothernames
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/linkedcharities/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityLinkedCharities
+      description: Get details of all charities linked to a main charity.
+      operationId: get-getcharitylinkedcharities
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/linkedcharity/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityLinkedCharity
+      description: Get details of a specific linked charity.
+      operationId: get-getcharitylinkedcharity
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/allcharitydetailsV2/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetAllCharityDetailsV2
+      description: 'Gets extended main details about a charity including trustees, classifications and areas of operation.'
+      operationId: getallcharitydetailsv2
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitytrusteeinformationv2/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityTrusteeInformationV2
+      description: Gets details of a charity's trustees and other charities they are linked to.
+      operationId: getcharitytrusteeinformationv2
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+  '/charitytrusteenamesV2/{RegisteredNumber}/{suffix}':
+    get:
+      summary: GetCharityTrusteeNamesV2
+      description: Returns the names of a charity's trustees.
+      operationId: getcharitytrusteenamesv2
+      parameters:
+        - name: RegisteredNumber
+          in: path
+          description: The registration number of the charity
+          required: true
+          schema:
+            type: Integer
+        - name: suffix
+          in: path
+          description: The subsidiary or linked charity number
+          required: true
+          schema:
+            type: Integer
+      responses:
+        '200':
+          description: ''
+components:
+  schemas:
+    SectorDataOverview:
+      type: object
+      properties:
+        date_updated:
+          type: string
+          format: date
+        number_of_main_charities:
+          type: integer
+          format: int32
+        number_of_linked_charities:
+          type: integer
+          format: int32
+        income:
+          type: integer
+          format: int64
+        expenditure:
+          type: integer
+          format: int64
+        inc_donations_legacies:
+          type: integer
+          format: int64
+        inc_other_trading_activities:
+          type: integer
+          format: int64
+        inc_investments:
+          type: integer
+          format: int64
+        inc_charitable_activities:
+          type: integer
+          format: int64
+        inc_other:
+          type: integer
+          format: int64
+        inc_total:
+          type: integer
+          format: int64
+        investment_gains_losses:
+          type: integer
+          format: int64
+        income_growth:
+          type: integer
+          format: int64
+        exp_raising_funds:
+          type: integer
+          format: int64
+        exp_charitable_activities:
+          type: integer
+          format: int64
+        exp_other:
+          type: integer
+          format: int64
+        exp_total:
+          type: integer
+          format: int64
+        expenditure_growth:
+          type: integer
+          format: int64
+        assets_own_use:
+          type: integer
+          format: int64
+        assets_long_term_investment:
+          type: integer
+          format: int64
+        defined_net_assets_pension:
+          type: integer
+          format: int64
+        assets_other_assets:
+          type: integer
+          format: int64
+        assets_total_liabilities:
+          type: integer
+          format: int64
+        employees:
+          type: integer
+          format: int64
+        volunteers:
+          type: integer
+          format: int64
+        trustees:
+          type: integer
+          format: int64
+        exp_on_income_generation:
+          type: integer
+          format: int64
+        retained:
+          type: integer
+          format: int64
+      example:
+        date_updated: string
+        number_of_main_charities: 0
+        number_of_linked_charities: 0
+        income: 0
+        expenditure: 0
+        inc_donations_legacies: 0
+        inc_other_trading_activities: 0
+        inc_investments: 0
+        inc_charitable_activities: 0
+        inc_other: 0
+        inc_total: 0
+        investment_gains_losses: 0
+        income_growth: 0
+        exp_raising_funds: 0
+        exp_charitable_activities: 0
+        exp_other: 0
+        exp_total: 0
+        expenditure_growth: 0
+        assets_own_use: 0
+        assets_long_term_investment: 0
+        defined_net_assets_pension: 0
+        assets_other_assets: 0
+        assets_total_liabilities: 0
+        employees: 0
+        volunteers: 0
+        trustees: 0
+        exp_on_income_generation: 0
+        retained: 0
+    SectorDataIncomeCategory:
+      type: array
+      items:
+        required:
+          - income_category
+          - order_no
+          - no_of_charities
+          - tot_income_endowments
+          - tot_expenditure
+          - avg_income_endowments
+          - avg_expenditure
+          - perc_of_charities
+          - perc_of_income
+          - perc_of_expenditure
+          - inc_donations_legacies
+          - inc_other_trading_activities
+          - inc_investments
+          - inc_charitable_activities
+          - inc_other
+          - investment_gains_losses
+          - exp_raising_funds
+          - exp_charitable_activities
+          - exp_other
+          - assets_own_use
+          - assets_long_term_investment
+          - defined_net_assets_pension
+          - assets_other_assets
+          - assets_total_liabilities
+          - trustees
+          - employees
+          - volunteers
+          - last_modified_time
+          - tot_gross_income
+          - tot_gross_expenditure
+          - avg_gross_income
+        type: object
+        properties:
+          income_category:
+            type: string
+          order_no:
+            type: integer
+            format: int32
+          no_of_charities:
+            type: integer
+            format: int32
+          tot_income_endowments:
+            type: integer
+            format: int64
+          tot_expenditure:
+            type: integer
+            format: int64
+          avg_income_endowments:
+            type: integer
+            format: int64
+          avg_expenditure:
+            type: integer
+            format: int64
+          perc_of_charities:
+            type: integer
+            format: int64
+          perc_of_income:
+            type: integer
+            format: int64
+          perc_of_expenditure:
+            type: integer
+            format: int64
+          inc_donations_legacies:
+            type: integer
+            format: int64
+          inc_other_trading_activities:
+            type: integer
+            format: int64
+          inc_investments:
+            type: integer
+            format: int64
+          inc_charitable_activities:
+            type: integer
+          inc_other:
+            type: integer
+            format: int64
+          investment_gains_losses:
+            type: integer
+            format: int64
+          exp_raising_funds:
+            type: integer
+            format: int64
+          exp_charitable_activities:
+            type: integer
+          exp_other:
+            type: integer
+            format: int64
+          assets_own_use:
+            type: integer
+            format: int64
+          assets_long_term_investment:
+            type: integer
+            format: int64
+          defined_net_assets_pension:
+            type: integer
+            format: int64
+          assets_other_assets:
+            type: integer
+            format: int64
+          assets_total_liabilities:
+            type: integer
+            format: int64
+          trustees:
+            type: integer
+            format: int64
+          employees:
+            type: integer
+            format: int32
+          volunteers:
+            type: integer
+            format: int32
+          last_modified_time:
+            type: string
+            format: date
+          tot_gross_income:
+            type: integer
+            format: int64
+          tot_gross_expenditure:
+            type: integer
+            format: int64
+          avg_gross_income:
+            type: integer
+            format: int64
+      example:
+        - income_category: string
+          order_no: 0
+          no_of_charities: 0
+          tot_income_endowments: 0
+          tot_expenditure: 0
+          avg_income_endowments: 0
+          avg_expenditure: 0
+          perc_of_charities: 0
+          perc_of_income: 0
+          perc_of_expenditure: 0
+          inc_donations_legacies: 0
+          inc_other_trading_activities: 0
+          inc_investments: 0
+          inc_charitable_activities: 0
+          inc_other: 0
+          investment_gains_losses: 0
+          exp_raising_funds: 0
+          exp_charitable_activities: 0
+          exp_other: 0
+          assets_own_use: 0
+          assets_long_term_investment: 0
+          defined_net_assets_pension: 0
+          assets_other_assets: 0
+          assets_total_liabilities: 0
+          trustees: 0
+          employees: 0
+          volunteers: 0
+          last_modified_time: string
+          tot_gross_income: 0
+          tot_gross_expenditure: 0
+          avg_gross_income: 0
+    SectorDataIncomeBand:
+      type: array
+      items:
+        required:
+          - income_band
+          - order_no
+          - no_of_charities
+          - tot_income_endowments
+          - tot_expenditure
+          - avg_income_endowments
+          - avg_expenditure
+          - perc_of_charities
+          - perc_of_income
+          - perc_of_expenditure
+          - inc_donations_legacies
+          - inc_other_trading_activities
+          - inc_investments
+          - inc_charitable_activities
+          - inc_other
+          - investment_gains_losses
+          - exp_raising_funds
+          - exp_charitable_activities
+          - exp_other
+          - assets_own_use
+          - assets_long_term_investment
+          - defined_net_assets_pension
+          - assets_other_assets
+          - assets_total_liabilities
+          - trustees
+          - employees
+          - volunteers
+          - last_modified_time
+          - tot_gross_income
+          - tot_gross_expenditure
+          - avg_gross_income
+        type: object
+        properties:
+          income_band:
+            type: string
+          order_no:
+            type: integer
+            format: int32
+          no_of_charities:
+            type: integer
+            format: int32
+          tot_income_endowments:
+            type: integer
+            format: int64
+          tot_expenditure:
+            type: integer
+            format: int64
+          avg_income_endowments:
+            type: integer
+            format: int64
+          avg_expenditure:
+            type: integer
+            format: int64
+          perc_of_charities:
+            type: number
+            format: double
+          perc_of_income:
+            type: number
+            format: double
+          perc_of_expenditure:
+            type: number
+            format: double
+          inc_donations_legacies:
+            type: integer
+            format: int64
+          inc_other_trading_activities:
+            type: integer
+            format: int64
+          inc_investments:
+            type: integer
+            format: int64
+          inc_charitable_activities:
+            type: integer
+            format: int64
+          inc_other:
+            type: integer
+            format: int64
+          investment_gains_losses:
+            type: integer
+            format: int64
+          exp_raising_funds:
+            type: integer
+            format: int64
+          exp_charitable_activities:
+            type: integer
+            format: int64
+          exp_other:
+            type: integer
+            format: int64
+          assets_own_use:
+            type: integer
+            format: int64
+          assets_long_term_investment:
+            type: integer
+            format: int64
+          defined_net_assets_pension:
+            type: integer
+            format: int64
+          assets_other_assets:
+            type: integer
+            format: int64
+          assets_total_liabilities:
+            type: integer
+            format: int64
+          trustees:
+            type: integer
+            format: int32
+          employees:
+            type: integer
+            format: int32
+          volunteers:
+            type: integer
+            format: int32
+          last_modified_time:
+            type: string
+            format: date
+          tot_gross_income:
+            type: integer
+            format: int64
+          tot_gross_expenditure:
+            type: integer
+            format: int64
+          avg_gross_income:
+            type: integer
+            format: int64
+      example:
+        - income_band: string
+          order_no: 0
+          no_of_charities: 0
+          tot_income_endowments: 0
+          tot_expenditure: 0
+          avg_income_endowments: 0
+          avg_expenditure: 0
+          perc_of_charities: 0.738338286803158
+          perc_of_income: 0.428174329737721
+          perc_of_expenditure: 0.0151742489496496
+          inc_donations_legacies: 0
+          inc_other_trading_activities: 0
+          inc_investments: 0
+          inc_charitable_activities: 0
+          inc_other: 0
+          investment_gains_losses: 0
+          exp_raising_funds: 0
+          exp_charitable_activities: 0
+          exp_other: 0
+          assets_own_use: 0
+          assets_long_term_investment: 0
+          defined_net_assets_pension: 0
+          assets_other_assets: 0
+          assets_total_liabilities: 0
+          trustees: 0
+          employees: 0
+          volunteers: 0
+          last_modified_time: string
+          tot_gross_income: 0
+          tot_gross_expenditure: 0
+          avg_gross_income: 0
+    GetCharityGoverningDocument:
+      type: object
+      properties:
+        governing_document_description:
+          type: string
+        charitable_objects:
+          type: string
+        area_of_benefit:
+          type: string
+    GetAllCharityDetails:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        reg_charity_number:
+          type: integer
+          format: int32
+        group_subsid_suffix:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        charity_type:
+          type: string
+        insolvent:
+          type: boolean
+        in_administration:
+          type: boolean
+        prev_excepted_ind:
+          type: boolean
+        cif_cdf_ind:
+          type: boolean
+        cio_dissolution_ind:
+          type: boolean
+        interim_manager_ind:
+          type: boolean
+        date_of_interim_manager_appt:
+          type: string
+          format: date
+        reg_status:
+          type: string
+        date_of_registration:
+          type: string
+          format: date
+        date_of_removal:
+          type: string
+          format: date
+        latest_acc_fin_year_start_date:
+          type: string
+          format: date
+        latest_acc_fin_year_end_date:
+          type: string
+          format: date
+        latest_income:
+          type: integer
+          format: int64
+        latest_expenditure:
+          type: integer
+          format: int64
+        address_line_one:
+          type: string
+        address_line_two:
+          type: string
+        address_line_three:
+          type: string
+        address_line_four:
+          type: string
+        address_line_five: { }
+        address_post_code:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        web:
+          type: string
+        charity_co_reg_number:
+          type: string
+        reporting_status:
+          type: string
+        removal_reason:
+          type: string
+        cio_ind:
+          type: boolean
+        last_modified_time:
+          type: string
+          format: date
+        trustee_names:
+          type: array
+          items:
+            required:
+              - organisation_number
+              - trustee_name
+            type: object
+            properties:
+              organisation_number:
+                type: integer
+                format: int32
+              trustee_name:
+                type: string
+        who_what_where:
+          type: array
+          items:
+            required:
+              - classification_code
+              - classification_type
+              - classification_desc
+            type: object
+            properties:
+              classification_code:
+                type: integer
+                format: int32
+              classification_type:
+                type: string
+              classification_desc:
+                type: string
+        CharityAoOCountryContinent:
+          type: array
+          items:
+            required:
+              - country
+              - continent
+            type: object
+            properties:
+              country:
+                type: string
+              continent:
+                type: string
+        CharityAoOLocalAuthority:
+          type: array
+          items:
+            required:
+              - local_authority
+              - metropolitan_county
+              - welsh_ind
+            type: object
+            properties:
+              local_authority:
+                type: string
+              metropolitan_county:
+                type: string
+              welsh_ind:
+                type: boolean
+        CharityAoORegion:
+          type: array
+          items:
+            required:
+              - region
+            type: object
+            properties:
+              region:
+                type: string
+        other_names:
+          type: array
+          items:
+            required:
+              - other_name
+              - name_type
+            type: object
+            properties:
+              other_name:
+                type: string
+              name_type:
+                type: string
+        constituency_name:
+          type: array
+          items:
+            required:
+              - constituency_name
+            type: object
+            properties:
+              constituency_name:
+                type: string
+      example:
+        organisation_number: 0
+        reg_charity_number: 0
+        group_subsid_suffix: 0
+        charity_name: string
+        charity_type: string
+        insolvent: false
+        in_administration: false
+        prev_excepted_ind: false
+        cif_cdf_ind: false
+        cio_dissolution_ind: false
+        interim_manager_ind: false
+        date_of_interim_manager_appt: string
+        reg_status: string
+        date_of_registration: string
+        date_of_removal: string
+        latest_acc_fin_year_start_date: string
+        latest_acc_fin_year_end_date: string
+        latest_income: 0
+        latest_expenditure: 0
+        address_line_one: string
+        address_line_two: string
+        address_line_three: string
+        address_line_four: string
+        address_post_code: string
+        phone: string
+        email: string
+        web: string
+        charity_co_reg_number: string
+        reporting_status: string
+        removal_reason: string
+        cio_ind: false
+        last_modified_time: string
+        trustee_names:
+          - organisation_number: 0
+            trustee_name: string
+        who_what_where:
+          - classification_code: 0
+            classification_type: string
+            classification_desc: string
+        CharityAoOCountryContinent:
+          - country: string
+            continent: string
+        CharityAoOLocalAuthority:
+          - local_authority: string
+            metropolitan_county: string
+            welsh_ind: false
+        CharityAoORegion:
+          - region: string
+        other_names:
+          - other_name: string
+            name_type: string
+        constituency_name:
+          - constituency_name: string
+    GetCharityAccountArInformation:
+      type: array
+      items:
+        required:
+          - title
+          - reporting_period_year_end
+          - date_received
+          - date_due
+          - document_name
+          - accounts_qualified
+          - suppression_ind
+          - suppression_type
+        type: object
+        properties:
+          title:
+            type: string
+          reporting_period_year_end:
+            type: string
+            format: date
+          date_received:
+            type: string
+            format: date
+          date_due:
+            type: string
+            format: date
+          document_name:
+            type: string
+          accounts_qualified:
+            type: boolean
+          suppression_ind:
+            type: boolean
+          suppression_type:
+            type: string
+      example:
+        - title: string
+          reporting_period_year_end: string
+          date_received: string
+          date_due: string
+          document_name: string
+          accounts_qualified: false
+          suppression_ind: false
+          suppression_type: string
+    GetCharityAoOCountryContinent:
+      type: array
+      items:
+        required:
+          - country
+          - continent
+        type: object
+        properties:
+          country:
+            type: string
+          continent:
+            type: string
+      example:
+        - country: string
+          continent: string
+    GetCharityAoOLocalAuthority:
+      type: array
+      items:
+        required:
+          - local_authority
+          - metropolitan_county
+          - welsh_ind
+        type: object
+        properties:
+          local_authority:
+            type: string
+          metropolitan_county:
+            type: string
+          welsh_ind:
+            type: boolean
+      example:
+        - local_authority: string
+          metropolitan_county: string
+          welsh_ind: false
+    GetCharityAoORegion:
+      type: array
+      items:
+        required:
+          - region
+        type: object
+        properties:
+          region:
+            type: string
+      example:
+        - region: string
+    GetCharityAreaOfOperation:
+      type: array
+      items:
+        required:
+          - area_of_operation
+          - geographic_area_type
+        type: object
+        properties:
+          area_of_operation:
+            type: string
+          geographic_area_type:
+            type: string
+      example:
+        - area_of_operation: string
+          geographic_area_type: string
+    GetCharityAssetsLiabilities:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - fin_period_end_date
+          - assets_own_use
+          - assets_long_term_investment
+          - defined_net_assets_pension
+          - assets_other_assets
+          - assets_total_liabilities
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          fin_period_end_date:
+            type: string
+            format: date
+          assets_own_use:
+            type: integer
+            format: int64
+          assets_long_term_investment:
+            type: integer
+            format: int64
+          defined_net_assets_pension:
+            type: integer
+            format: int64
+          assets_other_assets:
+            type: integer
+            format: int64
+          assets_total_liabilities:
+            type: integer
+            format: int64
+      example:
+        - organisation_number: 0
+          fin_period_end_date: string
+          assets_own_use: 0
+          assets_long_term_investment: 0
+          defined_net_assets_pension: 0
+          assets_other_assets: 0
+          assets_total_liabilities: 0
+    GetCharityCheckPrimaryGrants:
+      type: object
+      properties:
+        primary_purpose_grant_making:
+          type: boolean
+      example:
+        primary_purpose_grant_making: false
+    GetCharityCIODissolution:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        date_cio_dissolution_notice:
+          type: string
+          format: date
+      example:
+        organisation_number: 0
+        date_cio_dissolution_notice: string
+    GetCharityConstituency:
+      type: object
+      properties:
+        constituency_name:
+          type: string
+      example:
+        constituency_name: string
+    GetCharityContactInformation:
+      type: object
+      properties:
+        contact_address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        web:
+          type: string
+      example:
+        contact_address: string
+        phone: string
+        email: string
+        web: string
+    GetCharityDetails:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        reg_charity_number:
+          type: integer
+          format: int32
+        group_subsid_suffix:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        charity_type:
+          type: string
+        insolvent:
+          type: boolean
+        in_administration:
+          type: boolean
+        prev_excepted_ind:
+          type: boolean
+        cif_cdf_ind:
+          type: boolean
+        cio_dissolution_ind:
+          type: boolean
+        interim_manager_ind:
+          type: boolean
+        date_of_interim_manager_appt:
+          type: string
+          format: date
+        reg_status:
+          type: string
+        date_of_registration:
+          type: string
+          format: date
+        date_of_removal:
+          type: string
+          format: date
+        latest_acc_fin_year_start_date:
+          type: string
+          format: date
+        latest_acc_fin_year_end_date:
+          type: string
+          format: date
+        latest_income:
+          type: integer
+          format: int64
+        latest_expenditure:
+          type: integer
+          format: int64
+        address_line_one:
+          type: string
+        address_line_two:
+          type: string
+        address_line_three:
+          type: string
+        address_line_four:
+          type: string
+        address_line_five:
+          type: string
+        address_post_code:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        web:
+          type: string
+        charity_co_reg_number:
+          type: string
+        reporting_status:
+          type: string
+        removal_reason:
+          type: string
+        cio_ind:
+          type: boolean
+        last_modified_time:
+          type: string
+          format: date
+      example:
+        organisation_number: 0
+        reg_charity_number: 0
+        group_subsid_suffix: 0
+        charity_name: string
+        charity_type: string
+        insolvent: false
+        in_administration: false
+        prev_excepted_ind: false
+        cif_cdf_ind: false
+        cio_dissolution_ind: false
+        interim_manager_ind: false
+        date_of_interim_manager_appt: string
+        reg_status: string
+        date_of_registration: string
+        date_of_removal: string
+        latest_acc_fin_year_start_date: string
+        latest_acc_fin_year_end_date: string
+        latest_income: 0
+        latest_expenditure: 0
+        address_line_one: string
+        address_line_two: string
+        address_line_three: string
+        address_line_four: string
+        address_line_five: string
+        address_post_code: string
+        phone: string
+        email: string
+        web: string
+        charity_co_reg_number: string
+        reporting_status: string
+        removal_reason: string
+        cio_ind: false
+        last_modified_time: string
+    GetCharityDetailsMulti:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - reg_charity_number
+          - group_subsid_suffix
+          - charity_name
+          - charity_type
+          - insolvent
+          - in_administration
+          - prev_excepted_ind
+          - cif_cdf_ind
+          - cio_dissolution_ind
+          - interim_manager_ind
+          - date_of_interim_manager_appt
+          - reg_status
+          - date_of_registration
+          - date_of_removal
+          - latest_acc_fin_year_start_date
+          - latest_acc_fin_year_end_date
+          - latest_income
+          - latest_expenditure
+          - address_line_one
+          - address_line_two
+          - address_line_three
+          - address_line_four
+          - address_line_five
+          - address_post_code
+          - phone
+          - email
+          - web
+          - charity_co_reg_number
+          - reporting_status
+          - removal_reason
+          - cio_ind
+          - last_modified_time
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          reg_charity_number:
+            type: integer
+            format: int32
+          group_subsid_suffix:
+            type: integer
+            format: int32
+          charity_name:
+            type: string
+          charity_type:
+            type: string
+          insolvent:
+            type: boolean
+          in_administration:
+            type: boolean
+          prev_excepted_ind:
+            type: boolean
+          cif_cdf_ind:
+            type: boolean
+          cio_dissolution_ind:
+            type: boolean
+          interim_manager_ind:
+            type: boolean
+          date_of_interim_manager_appt:
+            type: string
+            format: date
+          reg_status:
+            type: string
+          date_of_registration:
+            type: string
+            format: date
+          date_of_removal:
+            type: string
+            format: date
+          latest_acc_fin_year_start_date:
+            type: string
+            format: date
+          latest_acc_fin_year_end_date:
+            type: string
+            format: date
+          latest_income:
+            type: integer
+            format: int64
+          latest_expenditure:
+            type: integer
+            format: int64
+          address_line_one:
+            type: string
+          address_line_two:
+            type: string
+          address_line_three:
+            type: string
+          address_line_four:
+            type: string
+          address_line_five:
+            type: string
+          address_post_code:
+            type: string
+          phone:
+            type: string
+          email:
+            type: string
+            format: email
+          web:
+            type: string
+          charity_co_reg_number:
+            type: string
+          reporting_status:
+            type: string
+          removal_reason:
+            type: string
+          cio_ind:
+            type: boolean
+          last_modified_time:
+            type: string
+            format: date
+      example:
+        - organisation_number: 0
+          reg_charity_number: 0
+          group_subsid_suffix: 0
+          charity_name: string
+          charity_type: string
+          insolvent: false
+          in_administration: false
+          prev_excepted_ind: false
+          cif_cdf_ind: false
+          cio_dissolution_ind: false
+          interim_manager_ind: false
+          date_of_interim_manager_appt: string
+          reg_status: string
+          date_of_registration: string
+          date_of_removal: string
+          latest_acc_fin_year_start_date: string
+          latest_acc_fin_year_end_date: string
+          latest_income: 0
+          latest_expenditure: 0
+          address_line_one: string
+          address_line_two: string
+          address_line_three: string
+          address_line_four: string
+          address_line_five: string
+          address_post_code: string
+          phone: string
+          email: string
+          web: string
+          charity_co_reg_number: string
+          reporting_status: string
+          removal_reason: string
+          cio_ind: false
+          last_modified_time: string
+    GetCharityFinancialHistory:
+      type: array
+      items:
+        required:
+          - ar_cycle_reference
+          - financial_period_end_date
+          - income
+          - expenditure
+          - consolidated_account
+          - charity_only_account
+          - income_from_govt_contracts
+          - income_from_govt_grants
+          - inc_donations_and_legacies
+          - inc_other_trading_activities
+          - inc_charitable_activities
+          - inc_endowments
+          - inc_legacies
+          - inc_investment
+          - inc_other
+          - inc_total
+          - exp_charitable_activities
+          - exp_raising_funds
+          - exp_governance
+          - exp_grants_institution
+          - exp_investment_management
+          - exp_other
+          - exp_total
+        type: object
+        properties:
+          ar_cycle_reference:
+            type: string
+          financial_period_end_date:
+            type: string
+            format: date-time
+          income:
+            type: integer
+            format: int64
+          expenditure:
+            type: integer
+            format: int64
+          consolidated_account:
+            type: boolean
+          charity_only_account:
+            type: boolean
+          income_from_govt_contracts:
+            type: integer
+            format: int64
+          income_from_govt_grants:
+            type: integer
+            format: int64
+          inc_donations_and_legacies:
+            type: integer
+            format: int64
+          inc_other_trading_activities:
+            type: integer
+            format: int64
+          inc_charitable_activities:
+            type: integer
+            format: int64
+          inc_endowments:
+            type: integer
+            format: int64
+          inc_legacies:
+            type: integer
+            format: int64
+          inc_investment:
+            type: integer
+            format: int64
+          inc_other:
+            type: integer
+            format: int64
+          inc_total:
+            type: integer
+            format: int64
+          exp_charitable_activities:
+            type: integer
+            format: int64
+          exp_raising_funds:
+            type: integer
+            format: int64
+          exp_governance:
+            type: integer
+            format: int64
+          exp_grants_institution:
+            type: integer
+            format: int64
+          exp_investment_management:
+            type: integer
+            format: int64
+          exp_other:
+            type: integer
+            format: int64
+          exp_total:
+            type: integer
+            format: int64
+      example:
+        - ar_cycle_reference: string
+          financial_period_end_date: string
+          income: 0
+          expenditure: 0
+          consolidated_account: false
+          charity_only_account: false
+          income_from_govt_contracts: 0
+          income_from_govt_grants: 0
+          inc_donations_and_legacies: 0
+          inc_other_trading_activities: 0
+          inc_charitable_activities: 0
+          inc_endowments: 0
+          inc_legacies: 0
+          inc_investment: 0
+          inc_other: 0
+          inc_total: 0
+          exp_charitable_activities: 0
+          exp_raising_funds: 0
+          exp_governance: 0
+          exp_grants_institution: 0
+          exp_investment_management: 0
+          exp_other: 0
+          exp_total: 0
+    GetCharityLinkedCharities:
+      type: object
+      properties:
+        charity_name:
+          type: string
+        linked_organisation_number:
+          type: integer
+        main_organisation_number:
+          type: integer
+        reg_charity_number:
+          type: integer
+        charity_suffix:
+          type: integer
+        governing_document:
+          type: string
+        charitable_objects:
+          type: string
+        area_of_benefit:
+          type: string
+      example:
+        charity_name: string
+        linked_organisation_number: 0
+        main_organisation_number: 0
+        reg_charity_number: 0
+        charity_suffix: 0
+        governing_document: string
+        charitable_objects: string
+        area_of_benefit: string
+    GetCharityGovernanceInformation:
+      type: object
+      properties:
+        charity_type:
+          type: string
+        charity_co_reg_number:
+          type: string
+        gift_aid:
+          type: boolean
+        has_land:
+          type: boolean
+      example:
+        charity_type: string
+        charity_co_reg_number: string
+        gift_aid: false
+        has_land: false
+    GetCharityLinkedCharity:
+      type: object
+      properties:
+        charity_name:
+          type: string
+        linked_organisation_number:
+          type: integer
+          format: int32
+        main_organisation_number:
+          type: integer
+          format: int32
+        reg_charity_number:
+          type: integer
+          format: int32
+        charity_suffix:
+          type: integer
+          format: int32
+        governing_document:
+          type: string
+        charitable_objects:
+          type: string
+        area_of_benefit:
+          type: string
+      example:
+        charity_name: string
+        linked_organisation_number: 0
+        main_organisation_number: 0
+        reg_charity_number: 0
+        charity_suffix: 0
+        governing_document: string
+        charitable_objects: string
+        area_of_benefit: string
+    GetCharityOtherRegulators:
+      type: array
+      items:
+        required:
+          - regulator_desc
+          - regulator_web
+        type: object
+        properties:
+          regulator_desc:
+            type: string
+          regulator_web:
+            type: string
+      example:
+        - regulator_desc: string
+          regulator_web: string
+    GetCharityTrusteeInformation:
+      type: object
+      properties:
+        name:
+          type: string
+        is_chair:
+          type: boolean
+        date_of_appointment:
+          type: string
+          format: date
+        organisation_number:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        reporting_status:
+          type: string
+        reg_charity_number:
+          type: integer
+          format: int32
+      example:
+        name: string
+        is_chair: false
+        date_of_appointment: string
+        organisation_number: 0
+        charity_name: string
+        reporting_status: string
+        reg_charity_number: 0
+    GetCharityRegulatoryReport:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        report_name:
+          type: string
+        report_location:
+          type: string
+        date_published:
+          type: string
+          format: date
+      example:
+        organisation_number: 0
+        report_name: string
+        report_location: string
+        date_published: string
+    GetCharityTrusteeNames:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - trustee_name
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          trustee_name:
+            type: string
+      example:
+        - organisation_number: 0
+          trustee_name: string
+    GetCharityWhoWhatHow:
+      type: array
+      items:
+        required:
+          - classification_code
+          - classification_type
+          - classification_desc
+        type: object
+        properties:
+          classification_code:
+            type: integer
+            format: int32
+          classification_type:
+            type: string
+          classification_desc:
+            type: string
+      example:
+        - classification_code: 0
+          classification_type: string
+          classification_desc: string
+    GetCharityOtherNames:
+      type: array
+      items:
+        required:
+          - other_name
+          - name_type
+        type: object
+        properties:
+          other_name:
+            type: string
+          name_type:
+            type: string
+    GetCharityOverview:
+      type: object
+      properties:
+        activities:
+          type: string
+        latest_acc_fin_year_end_date:
+          type: string
+          format: date-time
+        latest_income:
+          type: integer
+          format: int64
+        latest_expenditure:
+          type: integer
+          format: int64
+        inc_donations_legacies:
+          type: integer
+          format: int64
+        inc_other_trading_activities:
+          type: integer
+          format: int64
+        inc_investments:
+          type: integer
+          format: int64
+        inc_charitable_activities:
+          type: integer
+          format: int64
+        inc_other:
+          type: integer
+          format: int64
+        investment_gains_losses:
+          type: integer
+          format: int64
+        exp_raising_funds:
+          type: integer
+          format: int64
+        exp_charitable_activities:
+          type: integer
+          format: int64
+        exp_other:
+          type: integer
+          format: int64
+        volunteers:
+          type: integer
+          format: int32
+        employees:
+          type: integer
+          format: int32
+        trustees:
+          type: integer
+          format: int32
+        fin_period_end_date:
+          type: string
+          format: date-time
+        raises_funds_from_public:
+          type: boolean
+        professional_fundraiser:
+          type: boolean
+        agreement_professional_fundraiser:
+          type: boolean
+        commercial_participator:
+          type: boolean
+        agreement_commercial_participator:
+          type: boolean
+        grant_making_main_activity:
+          type: boolean
+        receive_govt_funding_contracts:
+          type: boolean
+        number_govt_contracts:
+          type: integer
+          format: int32
+        income_from_govt_contracts:
+          type: integer
+          format: int64
+        receive_govt_funding_grants:
+          type: boolean
+        number_govt_grants:
+          type: integer
+          format: int32
+        income_from_govt_grants:
+          type: integer
+          format: int64
+        trading_subsidiary:
+          type: boolean
+        trustee_also_director:
+          type: boolean
+        any_trustee_benefit:
+          type: boolean
+        trustee_payments_acting_as_trustee:
+          type: boolean
+        trustee_payments_services:
+          type: boolean
+        trustee_receives_other_benefit:
+          type: boolean
+        trustee_resigned_employment:
+          type: boolean
+        employees_over_60k:
+          type: boolean
+        band_60001_70000:
+          type: integer
+          format: int32
+        band_70001_80000:
+          type: integer
+          format: int32
+        band_80001_90000:
+          type: integer
+          format: int32
+        band_90001_100000:
+          type: integer
+          format: int32
+        band_100001_110000:
+          type: integer
+          format: int32
+        band_110001_120000:
+          type: integer
+          format: int32
+        band_120001_130000:
+          type: integer
+          format: int32
+        band_130001_140000:
+          type: integer
+          format: int32
+        band_140001_150000:
+          type: integer
+          format: int32
+        band_150001_200000:
+          type: integer
+          format: int32
+        band_200001_250000:
+          type: integer
+          format: int32
+        band_250001_300000:
+          type: integer
+          format: int32
+        band_300001_350000:
+          type: integer
+          format: int32
+        band_350001_400000:
+          type: integer
+          format: int32
+        band_400001_450000:
+          type: integer
+          format: int32
+        band_450001_500000:
+          type: integer
+          format: int32
+        band_over_500000:
+          type: integer
+          format: int32
+        partb_income:
+          type: integer
+          format: int64
+        partb_expenditure:
+          type: integer
+          format: int64
+    GetCharityPolicyInformation:
+      type: object
+      properties:
+        policy_desc:
+          type: string
+    GetCharityRegistrationHistory:
+      type: array
+      items:
+        required:
+          - event_group
+          - reg_desc
+          - reg_date
+          - event_reason
+          - assoc_organisation_number
+        type: object
+        properties:
+          event_group:
+            type: string
+          reg_desc:
+            type: string
+          reg_date:
+            type: string
+            format: date-time
+          event_reason:
+            type: string
+          assoc_organisation_number:
+            type: integer
+            format: int32
+      example:
+        - event_group: string
+          reg_desc: string
+          reg_date: string
+          event_reason: string
+          assoc_organisation_number: 0
+    GetSearchCharityByRegNumber:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        reg_charity_number:
+          type: integer
+          format: int32
+        group_subsid_suffix:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        reg_status:
+          type: string
+        date_of_registration:
+          type: string
+          format: date
+        date_of_removal:
+          type: string
+          format: date
+      example:
+        organisation_number: 0
+        reg_charity_number: 0
+        group_subsid_suffix: 0
+        charity_name: string
+        reg_status: string
+        date_of_registration: string
+        date_of_removal: string
+    GetSearchCharityByName:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - reg_charity_number
+          - group_subsid_suffix
+          - charity_name
+          - reg_status
+          - date_of_registration
+          - date_of_removal
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          reg_charity_number:
+            type: integer
+            format: int32
+          group_subsid_suffix:
+            type: integer
+            format: int32
+          charity_name:
+            type: string
+          reg_status:
+            type: string
+          date_of_registration:
+            type: string
+            format: date
+          date_of_removal:
+            type: string
+            format: date
+      example:
+        - organisation_number: 0
+          reg_charity_number: 0
+          group_subsid_suffix: 0
+          charity_name: string
+          reg_status: string
+          date_of_registration: string
+          date_of_removal: string
+    GetSearchCharityByRegDate:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - reg_charity_number
+          - group_subsid_suffix
+          - charity_name
+          - reg_status
+          - date_of_registration
+          - date_of_removal
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          reg_charity_number:
+            type: integer
+            format: int32
+          group_subsid_suffix:
+            type: integer
+            format: int32
+          charity_name:
+            type: string
+          reg_status:
+            type: string
+          date_of_registration:
+            type: string
+            format: date
+          date_of_removal:
+            type: string
+            format: date
+      example:
+        - organisation_number: 0
+          reg_charity_number: 0
+          group_subsid_suffix: 0
+          charity_name: string
+          reg_status: string
+          date_of_registration: string
+          date_of_removal: string
+    GetSearchCharityByRemDate:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - reg_charity_number
+          - group_subsid_suffix
+          - charity_name
+          - reg_status
+          - date_of_registration
+          - date_of_removal
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          reg_charity_number:
+            type: integer
+            format: int32
+          group_subsid_suffix:
+            type: integer
+            format: int32
+          charity_name:
+            type: string
+          reg_status:
+            type: string
+          date_of_registration:
+            type: string
+            format: date
+          date_of_removal:
+            type: string
+            format: date
+      example:
+        - organisation_number: 0
+          reg_charity_number: 0
+          group_subsid_suffix: 0
+          charity_name: string
+          reg_status: string
+          date_of_registration: string
+          date_of_removal: string
+    SectorDataTop10All:
+      type: array
+      items:
+        required:
+          - type
+          - order_no
+          - organisation_number
+          - reg_charity_number
+          - charity_name
+          - inc_donations_legacies
+          - inc_other_trading_activities
+          - inc_investments
+          - inc_charitable_activities
+          - inc_other
+          - inc_total
+          - investment_gains_losses
+          - income_growth
+          - exp_raising_funds
+          - exp_charitable_activities
+          - exp_other
+          - exp_total
+          - expenditure_growth
+          - assets_own_use
+          - assets_long_term_investment
+          - defined_net_assets_pension
+          - assets_other_assets
+          - assets_total_liabilities
+          - trustees
+          - employees
+          - volunteers
+          - last_modified_time
+        type: object
+        properties:
+          type:
+            type: string
+          order_no:
+            type: integer
+            format: int32
+          organisation_number:
+            type: integer
+            format: int32
+          reg_charity_number:
+            type: integer
+            format: int32
+          charity_name:
+            type: string
+          inc_donations_legacies:
+            type: integer
+            format: int64
+          inc_other_trading_activities:
+            type: integer
+            format: int64
+          inc_investments:
+            type: integer
+            format: int64
+          inc_charitable_activities:
+            type: integer
+            format: int64
+          inc_other:
+            type: integer
+            format: int64
+          inc_total:
+            type: integer
+            format: int64
+          investment_gains_losses:
+            type: integer
+            format: int64
+          income_growth:
+            type: integer
+            format: int64
+          exp_raising_funds:
+            type: integer
+            format: int64
+          exp_charitable_activities:
+            type: integer
+            format: int64
+          exp_other:
+            type: integer
+            format: int64
+          exp_total:
+            type: integer
+            format: int64
+          expenditure_growth:
+            type: integer
+            format: int64
+          assets_own_use:
+            type: integer
+            format: int64
+          assets_long_term_investment:
+            type: integer
+            format: int64
+          defined_net_assets_pension:
+            type: integer
+            format: int64
+          assets_other_assets:
+            type: integer
+            format: int64
+          assets_total_liabilities:
+            type: integer
+            format: int64
+          trustees:
+            type: integer
+            format: int32
+          employees:
+            type: integer
+            format: int32
+          volunteers:
+            type: integer
+            format: int32
+          last_modified_time:
+            type: string
+            format: date
+      example:
+        - type: string
+          order_no: 0
+          organisation_number: 0
+          reg_charity_number: 0
+          charity_name: string
+          inc_donations_legacies: 0
+          inc_other_trading_activities: 0
+          inc_investments: 0
+          inc_charitable_activities: 0
+          inc_other: 0
+          inc_total: 0
+          investment_gains_losses: 0
+          income_growth: 0
+          exp_raising_funds: 0
+          exp_charitable_activities: 0
+          exp_other: 0
+          exp_total: 0
+          expenditure_growth: 0
+          assets_own_use: 0
+          assets_long_term_investment: 0
+          defined_net_assets_pension: 0
+          assets_other_assets: 0
+          assets_total_liabilities: 0
+          trustees: 0
+          employees: 0
+          volunteers: 0
+          last_modified_time: string
+    SectorDataTop10Individual:
+      type: object
+      properties:
+        type:
+          type: string
+        items:
+          type: object
+          properties:
+            type:
+              type: string
+            properties:
+              type: object
+              properties:
+                type:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                order_no:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                organisation_number:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                reg_charity_number:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                charity_name:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                inc_donations_legacies:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                inc_other_trading_activities:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                inc_investments:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                inc_charitable_activities:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                inc_other:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                inc_total:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                investment_gains_losses:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                income_growth:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                exp_raising_funds:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                exp_charitable_activities:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                exp_other:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                exp_total:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                expenditure_growth:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                assets_own_use:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                assets_long_term_investment:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                defined_net_assets_pension:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                assets_other_assets:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                assets_total_liabilities:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                trustees:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                employees:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                volunteers:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+                last_modified_time:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    format:
+                      type: string
+            required:
+              type: array
+              items:
+                type: string
+      example:
+        type: string
+        items:
+          type: string
+          properties:
+            type:
+              type: string
+            order_no:
+              type: string
+              format: string
+            organisation_number:
+              type: string
+              format: string
+            reg_charity_number:
+              type: string
+              format: string
+            charity_name:
+              type: string
+            inc_donations_legacies:
+              type: string
+              format: string
+            inc_other_trading_activities:
+              type: string
+              format: string
+            inc_investments:
+              type: string
+              format: string
+            inc_charitable_activities:
+              type: string
+              format: string
+            inc_other:
+              type: string
+              format: string
+            inc_total:
+              type: string
+              format: string
+            investment_gains_losses:
+              type: string
+              format: string
+            income_growth:
+              type: string
+              format: string
+            exp_raising_funds:
+              type: string
+              format: string
+            exp_charitable_activities:
+              type: string
+              format: string
+            exp_other:
+              type: string
+              format: string
+            exp_total:
+              type: string
+              format: string
+            expenditure_growth:
+              type: string
+              format: string
+            assets_own_use:
+              type: string
+              format: string
+            assets_long_term_investment:
+              type: string
+              format: string
+            defined_net_assets_pension:
+              type: string
+              format: string
+            assets_other_assets:
+              type: string
+              format: string
+            assets_total_liabilities:
+              type: string
+              format: string
+            trustees:
+              type: string
+              format: string
+            employees:
+              type: string
+              format: string
+            volunteers:
+              type: string
+              format: string
+            last_modified_time:
+              type: string
+              format: string
+          required:
+            - string
+    GetCharityTrusteeNamesV2:
+      type: array
+      items:
+        required:
+          - organisation_number
+          - trustee_name
+          - truste_id
+        type: object
+        properties:
+          organisation_number:
+            type: integer
+            format: int32
+          trustee_name:
+            type: string
+          trustee_id:
+            type: integer
+            format: int32
+      example:
+        organisation_number: 0
+        trustee_name: string
+        trustee_id: 0
+    GetAllCharityDetailsV2:
+      type: object
+      properties:
+        organisation_number:
+          type: integer
+          format: int32
+        reg_charity_number:
+          type: integer
+          format: int32
+        group_subsid_suffix:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        charity_type:
+          type: string
+        insolvent:
+          type: boolean
+        in_administration:
+          type: boolean
+        prev_excepted_ind:
+          type: boolean
+        cif_cdf_ind:
+          type: boolean
+        cio_dissolution_ind:
+          type: boolean
+        interim_manager_ind:
+          type: boolean
+        date_of_interim_manager_appt:
+          type: string
+          format: date
+        reg_status:
+          type: string
+        date_of_registration:
+          type: string
+          format: date
+        date_of_removal:
+          type: string
+          format: date
+        latest_acc_fin_year_start_date:
+          type: string
+          format: date
+        latest_acc_fin_year_end_date:
+          type: string
+          format: date
+        latest_income:
+          type: integer
+          format: int64
+        latest_expenditure:
+          type: integer
+          format: int64
+        address_line_one:
+          type: string
+        address_line_two:
+          type: string
+        address_line_three:
+          type: string
+        address_line_four:
+          type: string
+        address_line_five: { }
+        address_post_code:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        web:
+          type: string
+        charity_co_reg_number:
+          type: string
+        reporting_status:
+          type: string
+        removal_reason:
+          type: string
+        cio_ind:
+          type: boolean
+        last_modified_time:
+          type: string
+          format: date
+        trustee_names:
+          type: array
+          items:
+            required:
+              - organisation_number
+              - trustee_name
+              - trustee_id
+            type: object
+            properties:
+              organisation_number:
+                type: integer
+                format: int32
+              trustee_name:
+                type: string
+              trustee_id:
+                type: integer
+                format: int32
+        who_what_where:
+          type: array
+          items:
+            required:
+              - classification_code
+              - classification_type
+              - classification_desc
+            type: object
+            properties:
+              classification_code:
+                type: integer
+                format: int32
+              classification_type:
+                type: string
+              classification_desc:
+                type: string
+        CharityAoOCountryContinent:
+          type: array
+          items:
+            required:
+              - country
+              - continent
+            type: object
+            properties:
+              country:
+                type: string
+              continent:
+                type: string
+        CharityAoOLocalAuthority:
+          type: array
+          items:
+            required:
+              - local_authority
+              - metropolitan_county
+              - welsh_ind
+            type: object
+            properties:
+              local_authority:
+                type: string
+              metropolitan_county:
+                type: string
+              welsh_ind:
+                type: boolean
+        CharityAoORegion:
+          type: array
+          items:
+            required:
+              - region
+            type: object
+            properties:
+              region:
+                type: string
+        other_names:
+          type: array
+          items:
+            required:
+              - other_name
+              - name_type
+            type: object
+            properties:
+              other_name:
+                type: string
+              name_type:
+                type: string
+        constituency_name:
+          type: array
+          items:
+            required:
+              - constituency_name
+            type: object
+            properties:
+              constituency_name:
+                type: string
+      example:
+        organisation_number: 0
+        reg_charity_number: 0
+        group_subsid_suffix: 0
+        charity_name: string
+        charity_type: string
+        insolvent: false
+        in_administration: false
+        prev_excepted_ind: false
+        cif_cdf_ind: false
+        cio_dissolution_ind: false
+        interim_manager_ind: false
+        date_of_interim_manager_appt: string
+        reg_status: string
+        date_of_registration: string
+        date_of_removal: string
+        latest_acc_fin_year_start_date: string
+        latest_acc_fin_year_end_date: string
+        latest_income: 0
+        latest_expenditure: 0
+        address_line_one: string
+        address_line_two: string
+        address_line_three: string
+        address_line_four: string
+        address_post_code: string
+        phone: string
+        email: string
+        web: string
+        charity_co_reg_number: string
+        reporting_status: string
+        removal_reason: string
+        cio_ind: false
+        last_modified_time: string
+        trustee_names:
+          - organisation_number: 0
+            trustee_name: string
+            trustee_id: 0
+        who_what_where:
+          - classification_code: 0
+            classification_type: string
+            classification_desc: string
+        CharityAoOCountryContinent:
+          - country: string
+            continent: string
+        CharityAoOLocalAuthority:
+          - local_authority: string
+            metropolitan_county: string
+            welsh_ind: false
+        CharityAoORegion:
+          - region: string
+        other_names:
+          - other_name: string
+            name_type: string
+        constituency_name:
+          - constituency_name: string
+    GetCharityTrusteeInformationV2:
+      type: object
+      properties:
+        name:
+          type: string
+        is_chair:
+          type: boolean
+        date_of_appointment:
+          type: string
+          format: date
+        organisation_number:
+          type: integer
+          format: int32
+        charity_name:
+          type: string
+        reporting_status:
+          type: string
+        reg_charity_number:
+          type: integer
+          format: int32
+        trustee_id:
+          type: integer
+          format: int32
+      example:
+        name: string
+        is_chair: false
+        date_of_appointment: string
+        organisation_number: 0
+        charity_name: string
+        reporting_status: string
+        reg_charity_number: 0
+        trustee_id: 0
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      name: Ocp-Apim-Subscription-Key
+      in: header
+    apiKeyQuery:
+      type: apiKey
+      name: subscription-key
+      in: query
+security:
+  - apiKeyHeader: [ ]
+  - apiKeyQuery: [ ]

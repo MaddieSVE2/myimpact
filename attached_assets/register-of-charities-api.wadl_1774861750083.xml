@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="utf-8"?>
+<application xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://wadl.dev.java.net/2009/02 http://www.w3.org/Submission/wadl/wadl.xsd" xmlns="http://wadl.dev.java.net/2009/02">
+  <doc title="Register of Charities API">A collection of operations for accessing the Register of Charities data.</doc>
+  <resources base="https://api.charitycommission.gov.uk/register/api">
+    <resource path="/sectorincomecategory">
+      <doc title="SectorDataIncomeCategory">Returns sector data split by income category.
+</doc>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/sectoroverview">
+      <doc title="SectorDataOverview">Returns an overview of the sector.</doc>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/sectordatatop10">
+      <doc title="SectorDataGetTopN01All">Returns all top ten lists from the sector data.</doc>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityfinancialhistory/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityFinancialHistory">Gets the last 5 years financial history for a charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/sectordatatop10/{listType}">
+      <doc title="SectorDataGetTop10Individual">Returns a specified list of top 10 charities from the sector data.</doc>
+      <param name="listType" style="template" type="xs:String" required="true">
+        <doc>The type of list to be views</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityassetsliabilities/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAssetsLiabilities">Gets a charity's most recent assets and liabilities figures.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/ciodissolution/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityCioDissolution">Gets details of a CIO dissolution.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityRegNumber/{RegisteredNumber}/{suffix}">
+      <doc title="GetSearchCharityByRegNumber">Search for charities by their registered number.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitygoverningdocument/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityGoverningDocument">Gets a charity's governing document details.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitydetailsmulti/{RegisteredNumbers}">
+      <doc title="GetCharityDetailsMulti">Gets main details about multiple charities.</doc>
+      <param name="RegisteredNumbers" style="template" type="xs:Integer" required="true">
+        <doc>The registration numbers of the charities. Comma separated list</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/checkprimarygrants/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityCheckPrimaryGrants">Whether a charity's primary purpose is grant making.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/sectorincomeband">
+      <doc title="SectorDataIncomeBand">Returns sector data split by income bands.</doc>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitywhowhathow/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityWhoWhatHow">Gets all of a charity's classification details.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitydetails/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityDetails">Gets main details about a charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitytrusteenames/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityTrusteeNames">Returns the names of a charity's trustees.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/searchCharityName/{charityname}">
+      <doc title="GetSearchCharityByName">Search for charities by their name.</doc>
+      <param name="charityname" style="template" type="xs:String" required="true">
+        <doc>Charity name search term</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitygovernanceinformation/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityGovernanceInformation">Gets simple governance details.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityconstituency/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityConstituency">Gets the name of the constituency in which the charity's public contact is based.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitytrusteeinformation/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityTrusteeInformation">Gets details of a charity's trustees and other charities they are linked to.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/searchCharityRemDate/{startDate}/{endDate}">
+      <doc title="GetSearchCharityByRemDate">Search for charities by their register removal date.</doc>
+      <param name="startDate" style="template" type="xs:Date" required="true">
+        <doc>The earliest removal date of range to be searched in the format YYYY-MM-DD</doc>
+      </param>
+      <param name="endDate" style="template" type="xs:Date" required="true">
+        <doc>The latest removal date of range to be searched in the format YYYY-MM-DD</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/searchCharityRegDate/{startDate}/{endDate}">
+      <doc title="GetSearchCharityByRegDate">Search for charities by their registration date.</doc>
+      <param name="startDate" style="template" type="xs:Date" required="true">
+        <doc>Earliest registration date of range to search in the format YYYY-MM-DD</doc>
+      </param>
+      <param name="endDate" style="template" type="xs:Date" required="true">
+        <doc>Latest registration date of range to search in the format YYYY-MM-DD</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitycontactinformation/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityContactInformation">Gets the contact details for a charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityregulatoryreport/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityRegulatoryReport">Returns details of published reports on a charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityareaofoperation/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAreaOfOperation">Gets all of a charity's areas of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityaooregion/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAoORegion">Gets region level information about a charity's area of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityregistrationhistory/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityRegistrationHistory">Gets the registration history of a charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityaoolocalauthority/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAoOLocalAuthority">Gets local authority level information about a charity's area of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitypolicyinformation/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityPolicyInformation">Returns a list of policies the charity has in place.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/CharityAoOCountryContinent/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAoOCountryContinent">Gets continent and country level information about a charity's area of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityoverview/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityOverview">Returns information from a charity's most recently submitted Annual Return.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/allcharitydetails/{RegisteredNumber}/{suffix}">
+      <doc title="GetAllCharityDetails">Gets extended main details about a charity including trustees, classifications and areas of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/CharityOtherRegulators/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityOtherRegulators">Returns a list of other organisations the charity is regulated by.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityaraccounts/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityAccountArInformation">Gets a charity's AR and Accounts submission details.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charityothernames/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityOtherNames">Gets other names the charity is or has been known by.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/linkedcharities/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityLinkedCharities">Get details of all charities linked to a main charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/linkedcharity/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityLinkedCharity">Get details of a specific linked charity.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/allcharitydetailsV2/{RegisteredNumber}/{suffix}">
+      <doc title="GetAllCharityDetailsV2">Gets extended main details about a charity including trustees, classifications and areas of operation.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitytrusteeinformationv2/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityTrusteeInformationV2">Gets details of a charity's trustees and other charities they are linked to.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+    <resource path="/charitytrusteenamesV2/{RegisteredNumber}/{suffix}">
+      <doc title="GetCharityTrusteeNamesV2">Returns the names of a charity's trustees.</doc>
+      <param name="RegisteredNumber" style="template" type="xs:Integer" required="true">
+        <doc>The registration number of the charity</doc>
+      </param>
+      <param name="suffix" style="template" type="xs:Integer" required="true">
+        <doc>The subsidiary or linked charity number</doc>
+      </param>
+      <method name="GET">
+        <request />
+      </method>
+    </resource>
+  </resources>
+</application>
