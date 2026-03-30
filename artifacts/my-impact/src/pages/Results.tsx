@@ -317,8 +317,9 @@ function ProxyMethodology({ breakdowns }: {
 }) {
   const [open, setOpen] = useState(false);
   const withProxy = breakdowns.filter(b => b.proxy);
+  const noProxyCustom = breakdowns.filter(b => b.category === "Custom" && !b.proxy);
 
-  if (withProxy.length === 0) return null;
+  if (withProxy.length === 0 && noProxyCustom.length === 0) return null;
 
   return (
     <motion.div
@@ -337,6 +338,9 @@ function ProxyMethodology({ breakdowns }: {
             <p className="text-sm font-semibold text-foreground">How we calculated this</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {withProxy.length} SVE {withProxy.length === 1 ? "proxy" : "proxies"} used
+              {noProxyCustom.length > 0 && (
+                <span> · {noProxyCustom.length} activity {noProxyCustom.length === 1 ? "was" : "were"} not included</span>
+              )}
             </p>
           </div>
         </div>
@@ -371,12 +375,27 @@ function ProxyMethodology({ breakdowns }: {
                         {b.proxyYear && (
                           <span className="text-muted-foreground/60"> ({b.proxyYear})</span>
                         )}
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 leading-none align-middle">closest match</span>
                       </p>
                     </div>
                     <p className="text-sm font-bold shrink-0" style={{ color: "#F06127" }}>
                       {formatCurrency(b.impactValue)}
                     </p>
                   </div>
+                </div>
+              </div>
+            ))}
+            {noProxyCustom.map(b => (
+              <div key={b.activityId} className="flex items-start gap-3 px-5 py-3.5 bg-muted/5">
+                <div
+                  className="w-0.5 self-stretch rounded-full shrink-0 mt-0.5 opacity-30"
+                  style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-muted-foreground leading-snug">{b.activityName}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5 leading-snug italic">
+                    No proxy match found — this activity was not included in the social value calculation
+                  </p>
                 </div>
               </div>
             ))}
