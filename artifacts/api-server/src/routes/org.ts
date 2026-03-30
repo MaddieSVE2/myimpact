@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -17,6 +18,23 @@ router.post("/register", async (req, res) => {
   const { orgName, type, contactName, contactEmail, size, purpose } = req.body;
   if (!orgName || !type || !contactName || !contactEmail) {
     res.status(400).json({ error: "Required fields missing" });
+    return;
+  }
+
+  try {
+    await db.insert(orgRegistrationsTable).values({
+      id: randomUUID(),
+      orgName,
+      type,
+      contactName,
+      contactEmail,
+      size: size || null,
+      purpose: purpose || null,
+      status: "pending",
+    });
+  } catch (dbErr) {
+    console.error("Failed to save org registration to DB:", dbErr);
+    res.status(500).json({ error: "Failed to save registration. Please try again." });
     return;
   }
 

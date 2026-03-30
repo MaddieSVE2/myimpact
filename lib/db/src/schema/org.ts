@@ -18,5 +18,19 @@ export const orgMembersTable = pgTable("org_members", {
   membershipUnique: unique("org_members_membership_unique").on(table.orgId, table.userId),
 }));
 
+export const orgRegistrationsTable = pgTable("org_registrations", {
+  id: text("id").primaryKey(),
+  orgName: text("org_name").notNull(),
+  type: text("type").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  size: text("size"),
+  purpose: text("purpose"),
+  status: text("status").notNull().default("pending"),
+  inviteCode: text("invite_code"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
+export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
