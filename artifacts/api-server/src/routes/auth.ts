@@ -279,7 +279,7 @@ router.get("/me", async (req: any, res) => {
     const payload = jwt.verify(token, secret) as { id: string; email: string };
     const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, payload.id) });
     if (!user) { res.json({ user: null }); return; }
-    res.json({ user: { id: user.id, email: user.email, displayName: user.displayName ?? null } });
+    res.json({ user: { id: user.id, email: user.email, displayName: user.displayName ?? null, createdAt: user.createdAt } });
   } catch {
     res.json({ user: null });
   }

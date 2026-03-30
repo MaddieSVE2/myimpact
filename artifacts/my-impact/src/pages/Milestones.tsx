@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useGetImpactHistory } from "@workspace/api-client-react";
-import { computeBadges, MILESTONES, Badge } from "@/lib/badges";
+import { useState, useEffect } from "react";
+import { useGetImpactHistory, useGetActivities } from "@workspace/api-client-react";
+import { computeBadges, Badge } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -10,7 +10,14 @@ import MilestoneShareModal from "@/components/MilestoneShareModal";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+
+function getYearMonth(isoDate: string): string {
+  const d = new Date(isoDate);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
 
 export default function Milestones() {
   const { user } = useAuth();
@@ -18,7 +25,24 @@ export default function Milestones() {
     { userId: user?.id ?? "" },
     { query: { enabled: !!user?.id } }
   );
+  const { data: activitiesData } = useGetActivities();
   const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
+  const [isOrgMember, setIsOrgMember] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const base = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
+    fetch(`${base}/api/org/my`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { org: null })
+      .then((d: { org: unknown }) => setIsOrgMember(!!d.org))
+      .catch(() => setIsOrgMember(false));
+  }, [user?.id]);
+
+  const personUnitActivityIds = new Set(
+    (activitiesData?.activities ?? [])
+      .filter((a) => a.unit === "person" || a.unit === "young_person")
+      .map((a) => a.id)
+  );
 
   const { data: inviteData } = useQuery<{ sharedAt: string | null }>({
     queryKey: ["user-invite"],
@@ -33,15 +57,69 @@ export default function Milestones() {
 
   const records = data?.records ?? [];
   const latest = records[0];
-  const isFirstRecord = records.length <= 1;
+  const isFirstRecord = records.length > 0;
   const hasSharedInvite = !!inviteData?.sharedAt;
 
-  const badges = latest
-    ? computeBadges({ totalValue: latest.impactResult.totalValue, activityBreakdowns: [] }, isFirstRecord, hasSharedInvite)
-    : computeBadges({ totalValue: 0, activityBreakdowns: [] }, false, hasSharedInvite);
+  const cumulativeHours = records.reduce(
+    (sum: number, r) => sum + (r.impactResult.totalHours ?? 0),
+    0
+  );
+  const cumulativeDonations = records.reduce(
+    (sum: number, r) => sum + (r.impactResult.donationsValue ?? 0),
+    0
+  );
+
+  const cumulativePeopleSupported = records.reduce((sum: number, r) => {
+    const recordPeople = (r.activities ?? []).reduce((s: number, a) => {
+      if (personUnitActivityIds.has(a.activityId)) {
+        return s + (a.quantity ?? 0);
+      }
+      return s;
+    }, 0);
+    return sum + recordPeople;
+  }, 0);
+
+  const monthlyRecordCounts: Record<string, number> = {};
+  const recordDates: string[] = [];
+  for (const r of records) {
+    if (r.createdAt) {
+      const key = getYearMonth(r.createdAt);
+      monthlyRecordCounts[key] = (monthlyRecordCounts[key] ?? 0) + 1;
+      recordDates.push(r.createdAt);
+    }
+  }
+
+  const sdgIds: string[] = records.flatMap((r) =>
+    (r.impactResult.sdgBreakdowns ?? []).map((s) => s.sdg)
+  );
+
+  const allCategories = records.flatMap((r) =>
+    (r.impactResult.activityBreakdowns ?? []).map((a) => ({ category: a.category }))
+  );
+
+  const accountAgeDays = user?.createdAt
+    ? Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  const badges = computeBadges({
+    totalValue: latest?.impactResult.totalValue ?? 0,
+    activityBreakdowns: allCategories,
+    isFirstRecord,
+    cumulativeHours,
+    cumulativeDonations,
+    cumulativePeopleSupported,
+    monthlyRecordCounts,
+    recordDates,
+    isOrgMember,
+    accountAgeDays,
+    sdgIds,
+    hasSharedInvite,
+  });
 
   const earnedBadges = badges.filter(b => b.earned);
   const lockedBadges = badges.filter(b => !b.earned);
+  const lockedSecretBadges = lockedBadges.filter(b => b.secret);
+  const lockedNonSecretBadges = lockedBadges.filter(b => !b.secret);
 
   const currentTotal = latest?.impactResult.totalValue ?? 0;
 
@@ -120,7 +198,7 @@ export default function Milestones() {
                     </div>
                     <button
                       onClick={() => setSharingBadge(badge)}
-                      className="self-start flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
+                      className="hidden self-start flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
                       style={{ backgroundColor: "#e8622a", color: "#ffffff" }}
                     >
                       <Share2 size={12} />
@@ -132,12 +210,12 @@ export default function Milestones() {
             </div>
           )}
 
-          {/* Locked milestones */}
-          {lockedBadges.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Locked ({lockedBadges.length})</p>
+          {/* Locked non-secret milestones */}
+          {lockedNonSecretBadges.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Locked ({lockedNonSecretBadges.length})</p>
               <div className="grid grid-cols-2 gap-3">
-                {lockedBadges.map(badge => (
+                {lockedNonSecretBadges.map(badge => (
                   <div
                     key={badge.id}
                     className="bg-muted/30 border border-border rounded-xl p-4 flex items-start gap-3 opacity-60"
@@ -149,6 +227,30 @@ export default function Milestones() {
                         <Lock className="w-3 h-3 text-muted-foreground" />
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Locked secret milestones */}
+          {lockedSecretBadges.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Discover more ({lockedSecretBadges.length})</p>
+              <div className="grid grid-cols-2 gap-3">
+                {lockedSecretBadges.map(badge => (
+                  <div
+                    key={badge.id}
+                    className="bg-muted/20 border border-dashed border-border rounded-xl p-4 flex items-start gap-3 opacity-50"
+                  >
+                    <span className="text-2xl shrink-0 grayscale">❓</span>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold text-muted-foreground">???</p>
+                        <Lock className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">Keep exploring to discover this milestone</p>
                     </div>
                   </div>
                 ))}

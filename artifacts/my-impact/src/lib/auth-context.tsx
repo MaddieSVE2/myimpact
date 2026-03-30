@@ -6,6 +6,7 @@ interface User {
   id: string;
   email: string;
   displayName: string | null;
+  createdAt?: string;
 }
 
 interface DemoLoginResult {
