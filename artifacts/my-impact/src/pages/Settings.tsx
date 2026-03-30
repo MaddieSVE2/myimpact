@@ -3,14 +3,12 @@ import { Link } from "wouter";
 import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
-import { useSocialSharing } from "@/lib/social-sharing-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
   const { isHighContrast, toggleTheme } = useTheme();
-  const { socialSharingEnabled, toggleSocialSharing } = useSocialSharing();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
@@ -118,25 +116,6 @@ export default function Settings() {
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                 style={{ transform: isHighContrast ? "translateX(16px)" : "translateX(0)" }}
-              />
-            </div>
-          </button>
-          <button
-            onClick={toggleSocialSharing}
-            aria-pressed={socialSharingEnabled}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left border-t border-border"
-          >
-            <div>
-              <p className="text-sm font-medium text-foreground">Show social sharing options on badges</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Display a Share button on earned badges on the Milestones page.</p>
-            </div>
-            <div
-              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-              style={{ background: socialSharingEnabled ? "#F06127" : "#d1d5db" }}
-            >
-              <span
-                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                style={{ transform: socialSharingEnabled ? "translateX(16px)" : "translateX(0)" }}
               />
             </div>
           </button>
