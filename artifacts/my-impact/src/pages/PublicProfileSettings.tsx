@@ -360,18 +360,13 @@ export default function PublicProfileSettings() {
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Public profile</h2>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-            Live
-          </span>
         </div>
-        <button
-          onClick={handleDisable}
-          disabled={saving}
-          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-        >
-          Disable
-        </button>
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-medium text-foreground">
+            {saving ? "Saving…" : "Live"}
+          </span>
+          <Toggle enabled={!saving} onToggle={handleDisable} disabled={saving} />
+        </div>
       </div>
 
       <div className="px-5 py-5 space-y-5">
