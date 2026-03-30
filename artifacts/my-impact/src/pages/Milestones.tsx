@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useGetImpactHistory, useGetActivities } from "@workspace/api-client-react";
-import { computeBadges, Badge } from "@/lib/badges";
+import { computeBadges } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowLeft, Lock, Share2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Lock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import MilestoneShareModal from "@/components/MilestoneShareModal";
 import { useAuth } from "@/lib/auth-context";
-import { useSocialSharing } from "@/lib/social-sharing-context";
 import { useQuery } from "@tanstack/react-query";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
@@ -22,13 +20,11 @@ function getYearMonth(isoDate: string): string {
 
 export default function Milestones() {
   const { user } = useAuth();
-  const { socialSharingEnabled } = useSocialSharing();
   const { data, isLoading, isError } = useGetImpactHistory(
     { userId: user?.id ?? "" },
     { query: { enabled: !!user?.id } }
   );
   const { data: activitiesData } = useGetActivities();
-  const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
   const [isOrgMember, setIsOrgMember] = useState(false);
 
   useEffect(() => {
@@ -198,16 +194,6 @@ export default function Milestones() {
                         <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
                       </div>
                     </div>
-                    {socialSharingEnabled && (
-                      <button
-                        onClick={() => setSharingBadge(badge)}
-                        className="self-start flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
-                        style={{ backgroundColor: "#e8622a", color: "#ffffff" }}
-                      >
-                        <Share2 size={12} />
-                        Share
-                      </button>
-                    )}
                   </motion.div>
                 ))}
               </div>
@@ -270,14 +256,6 @@ export default function Milestones() {
         </Link>
       </div>
 
-      {/* Share modal */}
-      {sharingBadge && (
-        <MilestoneShareModal
-          badge={sharingBadge}
-          totalValue={currentTotal}
-          onClose={() => setSharingBadge(null)}
-        />
-      )}
     </div>
   );
 }
