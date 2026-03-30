@@ -175,7 +175,10 @@ Return a JSON object with exactly two fields:
 - matchedIds (string[]): an array of activity IDs from the list below that best match what the user describes. Only include IDs that are a genuine match — do not guess. Can be empty.
 - unmatchedLabels (string[]): short labels (3–6 words) for distinct activities the user mentions that have NO match in the predefined list. Can be empty.
 
-Be generous with matching — if the user's description is close to a predefined activity, include it. Do not create unmatched labels for things already covered by a matched ID.
+MATCHING RULES — follow these strictly:
+1. Only match a predefined activity if the user has clearly and explicitly described it. Do not match on loose association, inference, or vague similarity.
+2. Do not create an unmatchedLabel for any activity that semantically overlaps with an already-matched predefined ID. The same real-world behaviour must not appear in both matchedIds and unmatchedLabels.
+3. "charity_books" must only be matched if the user explicitly mentions donating physical items (clothes, books, goods) to a charity shop. Mentions of donating money, fundraising, or volunteering must NOT trigger this match.
 
 CAREER BREAK / PARENTING TERMINOLOGY GUIDE — map these to predefined activities:
 - Stay at home parent, full-time parent, raising children, raising kids, looking after children, looking after grandchildren, caring for grandchildren, looking after my grandchild, full-time childcare, child carer, school runs, childminding, minding grandchildren → career_break_childcare
