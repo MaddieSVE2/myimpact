@@ -27,7 +27,8 @@ export function computeBadges(
     totalValue: number;
     activityBreakdowns: Array<{ category: string }>;
   },
-  isFirstRecord: boolean
+  isFirstRecord: boolean,
+  hasSharedInvite: boolean = false
 ): Badge[] {
   const categories = new Set(result.activityBreakdowns.map((a) => a.category));
   const total = result.totalValue;
@@ -112,6 +113,14 @@ export function computeBadges(
       colour: "#d97706",
       description: "Over £5,000 in social value. You're in rare company — a true champion of positive change.",
       earned: total >= 5000,
+    },
+    {
+      id: "spread_the_word",
+      name: "Spread the Word",
+      emoji: "📣",
+      colour: "#6366f1",
+      description: "You shared My Impact with a friend, helping grow the community of changemakers.",
+      earned: hasSharedInvite,
     },
   ];
 

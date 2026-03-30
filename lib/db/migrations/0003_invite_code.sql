@@ -1,0 +1,3 @@
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS invite_code TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS invite_shared_at TIMESTAMP;

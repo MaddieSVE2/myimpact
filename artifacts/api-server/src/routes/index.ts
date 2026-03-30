@@ -11,6 +11,7 @@ import profileRouter from "./profile";
 import adminRouter from "./admin";
 import contactRouter from "./contact";
 import feedbackRouter from "./feedback";
+import inviteRouter from "./invite";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/profile", profileRouter);
 router.use("/admin", adminRouter);
 router.use("/contact", contactRouter);
 router.use("/feedback", feedbackRouter);
+router.use("/user/invite", inviteRouter);
 
 export default router;

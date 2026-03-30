@@ -21,6 +21,8 @@ export const userProfilesTable = pgTable("user_profiles", {
   interests: text("interests").array(),
   postcode: text("postcode"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  inviteCode: text("invite_code").unique(),
+  inviteSharedAt: timestamp("invite_shared_at"),
 });
 
 export const pageViewsTable = pgTable("page_views", {

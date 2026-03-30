@@ -8,6 +8,9 @@ import { ArrowLeft, Lock, Share2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MilestoneShareModal from "@/components/MilestoneShareModal";
 import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
+
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Milestones() {
   const { user } = useAuth();
@@ -17,13 +20,25 @@ export default function Milestones() {
   );
   const [sharingBadge, setSharingBadge] = useState<Badge | null>(null);
 
+  const { data: inviteData } = useQuery<{ sharedAt: string | null }>({
+    queryKey: ["user-invite"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/user/invite`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
   const records = data?.records ?? [];
   const latest = records[0];
   const isFirstRecord = records.length <= 1;
+  const hasSharedInvite = !!inviteData?.sharedAt;
 
   const badges = latest
-    ? computeBadges({ totalValue: latest.impactResult.totalValue, activityBreakdowns: [] }, isFirstRecord)
-    : computeBadges({ totalValue: 0, activityBreakdowns: [] }, false);
+    ? computeBadges({ totalValue: latest.impactResult.totalValue, activityBreakdowns: [] }, isFirstRecord, hasSharedInvite)
+    : computeBadges({ totalValue: 0, activityBreakdowns: [] }, false, hasSharedInvite);
 
   const earnedBadges = badges.filter(b => b.earned);
   const lockedBadges = badges.filter(b => !b.earned);

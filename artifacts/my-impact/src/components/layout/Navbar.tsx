@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useTheme } from "@/lib/theme-context";
 import { useFeedback } from "@/lib/feedback-context";
 import { useQuery } from "@tanstack/react-query";
+import InviteModal from "@/components/InviteModal";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -166,6 +167,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, logout } = useAuth();
   const isAdmin = ["maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
@@ -318,6 +320,13 @@ export function Navbar() {
                         >
                           <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           Add to home screen
+                        </button>
+                        <button
+                          onClick={() => { setUserMenuOpen(false); setShowInvite(true); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <Gift className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          Invite a friend
                         </button>
                         <div className="my-1 border-t border-border" />
                         {/* Feedback */}
@@ -506,6 +515,16 @@ export function Navbar() {
               Add to home screen
             </button>
 
+            {isLoggedIn && (
+              <button
+                onClick={() => { setMobileOpen(false); setShowInvite(true); }}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <Gift className="w-4 h-4 shrink-0" aria-hidden="true" />
+                Invite a friend
+              </button>
+            )}
+
             {/* Feedback */}
             <div className="my-1 border-t border-white/10" />
 
@@ -578,6 +597,7 @@ export function Navbar() {
       </nav>
 
       {showInstall && <AddToHomeModal onClose={() => setShowInstall(false)} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
     </>
   );
 }
