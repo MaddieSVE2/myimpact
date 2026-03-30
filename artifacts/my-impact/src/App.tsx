@@ -8,6 +8,7 @@ import { WizardProvider } from "@/lib/wizard-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SidekickProvider } from "@/lib/sidekick-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { SocialSharingProvider } from "@/lib/social-sharing-context";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { PrivateRoute } from "@/components/PrivateRoute";
@@ -279,6 +280,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
+          <SocialSharingProvider>
           <AuthProvider>
             <FeedbackProvider>
               <SidekickProvider>
@@ -290,6 +292,7 @@ function App() {
               </SidekickProvider>
             </FeedbackProvider>
           </AuthProvider>
+          </SocialSharingProvider>
           <Toaster />
         </ThemeProvider>
       </TooltipProvider>
