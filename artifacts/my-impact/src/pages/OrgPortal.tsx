@@ -9,6 +9,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
+import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -86,6 +89,38 @@ function useOrgStats(enabled: boolean, from: string, to: string) {
     enabled,
     queryFn: async () => {
       const res = await fetch(`${BASE}/api/impact/org-stats${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+  });
+}
+
+function useOrgMonthly(enabled: boolean, from: string, to: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return useQuery<{ monthly: MonthlyDataPoint[] }>({
+    queryKey: ["org-monthly", from, to],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/stats/monthly${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+  });
+}
+
+function useOrgRegions(enabled: boolean, from: string, to: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return useQuery<{ regions: RegionData[] }>({
+    queryKey: ["org-regions", from, to],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/stats/regions${qs ? `?${qs}` : ""}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -586,6 +621,8 @@ export default function OrgPortal() {
   const { from, to } = getDateRange();
 
   const { data: stats, isLoading: statsLoading, isError: statsError } = useOrgStats(inOrg, from, to);
+  const { data: monthlyData, isLoading: monthlyLoading } = useOrgMonthly(inOrg, from, to);
+  const { data: regionsData, isLoading: regionsLoading } = useOrgRegions(inOrg, from, to);
   const { data: joinLinkData } = useJoinLink(inOrg);
 
   function handlePresetChange(key: PresetKey) {
@@ -658,10 +695,56 @@ export default function OrgPortal() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <StatCard icon={TrendingUp} label="Total social value" value={formatCurrency(stats.totalSocialValue)} />
-            <StatCard icon={Users} label="Members" value={String(stats.totalMemberCount)} sub={`${stats.totalUsers} with saved records`} />
-            <StatCard icon={BarChart2} label="Avg per person" value={formatCurrency(stats.averageValuePerPerson)} />
-            <StatCard icon={Clock} label="Total hours given" value={`${Math.round(stats.totalHours).toLocaleString("en-GB")}`} sub="volunteering hours" />
+            <div className="bg-primary border border-primary rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-white/70" />
+                <p className="text-xs font-semibold text-white/70 uppercase tracking-wider">Total social value</p>
+              </div>
+              <p className="text-2xl font-display font-bold text-white">
+                £<AnimatedNumber value={stats.totalSocialValue} formatter={v => v.toLocaleString("en-GB")} />
+              </p>
+            </div>
+            <div className="bg-white border border-border rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Members</p>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">
+                <AnimatedNumber value={stats.totalMemberCount} />
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{stats.totalUsers} with saved records</p>
+            </div>
+            <div className="bg-white border border-border rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart2 className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg per person</p>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">
+                £<AnimatedNumber value={stats.averageValuePerPerson} formatter={v => v.toLocaleString("en-GB")} />
+              </p>
+            </div>
+            <div className="bg-white border border-border rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total hours given</p>
+              </div>
+              <p className="text-2xl font-display font-bold text-foreground">
+                <AnimatedNumber value={Math.round(stats.totalHours)} formatter={v => v.toLocaleString("en-GB")} />
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">volunteering hours</p>
+            </div>
+          </motion.div>
+
+          {/* Impact over time */}
+          <motion.div
+            className="bg-white border border-border rounded-xl p-5 mb-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+          >
+            <h3 className="text-sm font-semibold text-foreground mb-1">Impact over time</h3>
+            <p className="text-xs text-muted-foreground mb-4">Social value generated by your members, grouped by month for the selected period.</p>
+            <ImpactTimeline data={monthlyData?.monthly ?? []} isLoading={monthlyLoading} />
           </motion.div>
 
           {stats.valueByCategory.length > 0 && (
@@ -680,12 +763,56 @@ export default function OrgPortal() {
                     <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(1)}k`} />
                     <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#F06127" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill="#F06127" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </motion.div>
           )}
+
+          {/* Regional map */}
+          <motion.div
+            className="bg-white border border-border rounded-xl p-5 mb-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <h3 className="text-sm font-semibold text-foreground mb-1">Where your members are</h3>
+            <p className="text-xs text-muted-foreground mb-4">Member activity by UK region. Click any shaded area for details.</p>
+            {regionsLoading ? (
+              <div className="h-[360px] flex items-center justify-center">
+                <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : (regionsData?.regions?.length ?? 0) > 0 ? (
+              <>
+                <UKRegionMap regions={regionsData!.regions} />
+                <div className="mt-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Region summary</p>
+                  <div className="space-y-2">
+                    {regionsData!.regions.map(r => (
+                      <div key={r.region} className="flex items-center gap-3">
+                        <div className="w-28 shrink-0">
+                          <p className="text-sm font-medium text-foreground">{r.region}</p>
+                          <p className="text-xs text-muted-foreground">{r.members} members</p>
+                        </div>
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${r.pct}%` }} />
+                        </div>
+                        <p className="w-8 text-right text-sm font-semibold text-foreground shrink-0">{r.pct}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">No regional data yet</p>
+                  <p className="text-xs text-muted-foreground max-w-xs">Regional data will appear as members with postcodes log their activities.</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
 
           {stats.totalUsers === 0 && (
             <motion.div

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, GraduationCap, Lightbulb, Award, BookOpen, Coins } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -6,6 +6,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Cell,
 } from "recharts";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
+import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 
 const DEMO = {
   org: { name: "Northfield University — Student Services", type: "University", location: "Midlands, England" },
@@ -62,6 +65,29 @@ const DEMO = {
     "Students who log a leadership role (society committee, team captain) average 2.4× more hours of logged activity than those who do not.",
     "Year 2 students generate the highest total social value, driven by higher uptake of structured programmes like Duke of Edinburgh Gold.",
   ],
+  regions: [
+    { region: "West Midlands", members: 96, hours: 1180, value: 67300, sroi: 1.48, pct: 31 },
+    { region: "East Midlands", members: 68, hours: 836, value: 47700, sroi: 1.48, pct: 22 },
+    { region: "Yorkshire and The Humber", members: 46, hours: 565, value: 32000, sroi: 1.46, pct: 15 },
+    { region: "London", members: 40, hours: 492, value: 27900, sroi: 1.47, pct: 13 },
+    { region: "South East", members: 31, hours: 380, value: 21700, sroi: 1.47, pct: 10 },
+    { region: "North West", members: 21, hours: 258, value: 14700, sroi: 1.47, pct: 7 },
+    { region: "South West", members: 10, hours: 109, value: 7350, sroi: 1.55, pct: 3 },
+  ] satisfies RegionData[],
+  monthlyTimeline: [
+    { month: "Jan", value: 7200 },
+    { month: "Feb", value: 14600 },
+    { month: "Mar", value: 24100 },
+    { month: "Apr", value: 36800 },
+    { month: "May", value: 52400 },
+    { month: "Jun", value: 74900 },
+    { month: "Jul", value: 91200 },
+    { month: "Aug", value: 107500 },
+    { month: "Sep", value: 132800 },
+    { month: "Oct", value: 158200 },
+    { month: "Nov", value: 186400 },
+    { month: "Dec", value: 218650 },
+  ] satisfies MonthlyDataPoint[],
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -76,19 +102,34 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, highlight }: {
-  icon: any; label: string; value: string; sub?: string; highlight?: boolean;
-}) {
-  return (
-    <div className={`rounded-xl p-5 border ${highlight ? "bg-primary text-white border-primary" : "bg-white border-border"}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${highlight ? "text-white/70" : "text-primary"}`} />
-        <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
-      </div>
-      <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>{value}</p>
-      {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
-    </div>
-  );
+function AnimatedBar({ pct, delay = 0 }: { pct: number; delay?: number }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    el.style.width = "0%";
+    const timer = setTimeout(() => {
+      el.style.transition = "width 1s cubic-bezier(0.4,0,0.2,1)";
+      el.style.width = `${pct}%`;
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [pct, delay]);
+  return <div ref={barRef} className="h-full rounded-full bg-primary/30" style={{ width: "0%" }} />;
+}
+
+function AnimatedSkillBar({ pct, delay = 0 }: { pct: number; delay?: number }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    el.style.width = "0%";
+    const timer = setTimeout(() => {
+      el.style.transition = "width 1s cubic-bezier(0.4,0,0.2,1)";
+      el.style.width = `${pct}%`;
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [pct, delay]);
+  return <div ref={barRef} className="h-full rounded-full bg-primary/60" style={{ width: "0%" }} />;
 }
 
 export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
@@ -130,10 +171,53 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
 
         {/* Headline stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard icon={TrendingUp} label="Total social value" value={formatCurrency(DEMO.headline.totalSocialValue)} highlight />
-          <StatCard icon={Coins} label="Social value per hour" value={`£${socialValuePerHour}/hr`} sub="of social value per student hour invested" />
-          <StatCard icon={Users} label="Students registered" value={String(DEMO.headline.members)} sub={`${DEMO.headline.activeMembers} actively logging`} />
-          <StatCard icon={Clock} label="Total hours given" value={DEMO.headline.totalHours.toLocaleString("en-GB")} sub="across all activities" />
+          <div className="rounded-xl p-5 border bg-primary text-white border-primary">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-white/70" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Total social value</p>
+            </div>
+            <p className="text-2xl font-display font-bold text-white">
+              £<AnimatedNumber value={DEMO.headline.totalSocialValue} formatter={v => v.toLocaleString("en-GB")} />
+            </p>
+          </div>
+          <div className="rounded-xl p-5 border bg-white border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-4 h-4 text-primary" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Social value per hour</p>
+            </div>
+            <p className="text-2xl font-display font-bold text-foreground">
+              £<AnimatedNumber value={socialValuePerHour} />/hr
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">of social value per student hour invested</p>
+          </div>
+          <div className="rounded-xl p-5 border bg-white border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-primary" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Students registered</p>
+            </div>
+            <p className="text-2xl font-display font-bold text-foreground">
+              <AnimatedNumber value={DEMO.headline.members} />
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">{DEMO.headline.activeMembers} actively logging</p>
+          </div>
+          <div className="rounded-xl p-5 border bg-white border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-primary" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total hours given</p>
+            </div>
+            <p className="text-2xl font-display font-bold text-foreground">
+              <AnimatedNumber value={DEMO.headline.totalHours} formatter={v => v.toLocaleString("en-GB")} />
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">across all activities</p>
+          </div>
+        </div>
+
+        {/* Impact over time */}
+        <div className="bg-white border border-border rounded-xl p-6">
+          <SectionLabel>Impact over time</SectionLabel>
+          <SectionTitle>Social value accumulation — Jan to Dec 2025</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Total social value generated by students across the academic year, shown month by month. Data is illustrative for this demo.</p>
+          <ImpactTimeline data={DEMO.monthlyTimeline} />
         </div>
 
         {/* Employability signals */}
@@ -146,17 +230,23 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 text-center">
               <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-1">With leadership role</p>
-              <p className="text-3xl font-display font-bold text-primary">{DEMO.employabilitySignals.studentsWithLeadershipRole}</p>
+              <p className="text-3xl font-display font-bold text-primary">
+                <AnimatedNumber value={DEMO.employabilitySignals.studentsWithLeadershipRole} />
+              </p>
               <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Community activity</p>
-              <p className="text-3xl font-display font-bold text-foreground">{DEMO.employabilitySignals.studentsWithCommunityActivity}</p>
+              <p className="text-3xl font-display font-bold text-foreground">
+                <AnimatedNumber value={DEMO.employabilitySignals.studentsWithCommunityActivity} />
+              </p>
               <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Award / programme</p>
-              <p className="text-3xl font-display font-bold text-foreground">{DEMO.employabilitySignals.studentsWithAward}</p>
+              <p className="text-3xl font-display font-bold text-foreground">
+                <AnimatedNumber value={DEMO.employabilitySignals.studentsWithAward} />
+              </p>
               <p className="text-xs text-muted-foreground mt-1">students with records</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
@@ -178,7 +268,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                 <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.valueByCategory.map((_, i) => (
                     <Cell key={i} fill={i === 0 ? "#F06127" : i === 1 ? "#B5BE2E" : i === 2 ? "#A8C8DA" : i === 3 ? "#7E8FAD" : "#E8633A"} />
                   ))}
@@ -189,12 +279,12 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
 
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Top activities</p>
           <div className="space-y-2">
-            {DEMO.activities.map((a) => (
+            {DEMO.activities.map((a, idx) => (
               <div key={a.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
                   <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary/30" style={{ width: `${(a.value / maxActivity) * 100}%` }} />
+                    <AnimatedBar pct={(a.value / maxActivity) * 100} delay={idx * 60} />
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -227,7 +317,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                 <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.activityByYear.map((_, i) => (
                     <Cell key={i} fill={i === 1 ? "#F06127" : "#A8C8DA"} />
                   ))}
@@ -239,10 +329,37 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
             {DEMO.activityByYear.map(y => (
               <div key={y.year} className="bg-muted/20 rounded-lg p-3 text-center">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">{y.year}</p>
-                <p className="text-xl font-display font-bold text-foreground">{y.students}</p>
+                <p className="text-xl font-display font-bold text-foreground">
+                  <AnimatedNumber value={y.students} />
+                </p>
                 <p className="text-xs text-muted-foreground">students active</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Regional map */}
+        <div className="bg-white border border-border rounded-xl p-6">
+          <SectionLabel>Geographic spread</SectionLabel>
+          <SectionTitle>Where your students are based</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Student activity by UK region. Click any shaded area for details. Darker shading indicates higher activity concentration.</p>
+          <UKRegionMap regions={DEMO.regions} />
+          <div className="mt-5">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Region summary</p>
+            <div className="space-y-2">
+              {DEMO.regions.map((r) => (
+                <div key={r.region} className="flex items-center gap-3">
+                  <div className="w-28 shrink-0">
+                    <p className="text-sm font-medium text-foreground">{r.region}</p>
+                    <p className="text-xs text-muted-foreground">{r.members} students</p>
+                  </div>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${r.pct}%` }} />
+                  </div>
+                  <p className="w-8 text-right text-sm font-semibold text-foreground shrink-0">{r.pct}%</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -252,7 +369,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
           <SectionTitle>Top skills your students are building</SectionTitle>
           <p className="text-sm text-muted-foreground -mt-4 mb-6">Skills are self-reported by students as part of their activity logging. Percentage shows share of active students who have logged this skill — directly relevant to employability and UCAS personal statements.</p>
           <div className="grid sm:grid-cols-2 gap-4">
-            {DEMO.topSkills.map((s) => (
+            {DEMO.topSkills.map((s, idx) => (
               <div key={s.skill} className="flex items-center gap-3">
                 <div className="shrink-0">
                   <BookOpen className="w-4 h-4 text-primary" />
@@ -263,7 +380,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                     <p className="text-sm font-bold text-primary">{s.pct}%</p>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-primary/60" style={{ width: `${s.pct}%` }} />
+                    <AnimatedSkillBar pct={s.pct} delay={idx * 80} />
                   </div>
                 </div>
               </div>

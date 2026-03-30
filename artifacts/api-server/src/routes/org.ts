@@ -389,4 +389,161 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
   }
 });
 
+router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    const members = await db.query.orgMembersTable.findMany({
+      where: eq(orgMembersTable.orgId, membership.orgId),
+    });
+    const memberIds = members.map(m => m.userId);
+
+    if (memberIds.length === 0) {
+      res.json({ monthly: [] });
+      return;
+    }
+
+    const fromParam = req.query.from;
+    const toParam = req.query.to;
+    const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
+    const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
+    const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
+    const to = toRaw && !isNaN(toRaw.getTime()) ? endOfDay(toRaw) : undefined;
+
+    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
+    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+
+    const records = await db.select({
+      createdAt: impactRecordsTable.createdAt,
+      resultJson: impactRecordsTable.resultJson,
+    }).from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+
+    const monthMap: Record<string, number> = {};
+    for (const r of records) {
+      const date = new Date(r.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const result = parseResultJsonOrg(r.resultJson);
+      monthMap[key] = (monthMap[key] ?? 0) + result.totalValue;
+    }
+
+    const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const periodFrom = from ?? (records.length > 0
+      ? new Date(Math.min(...records.map(r => new Date(r.createdAt).getTime())))
+      : new Date());
+    const periodTo = to ?? new Date();
+
+    const startYear = periodFrom.getFullYear();
+    const startMonth = periodFrom.getMonth();
+    const endYear = periodTo.getFullYear();
+    const endMonth = periodTo.getMonth();
+
+    const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+    const multiYear = startYear !== endYear || totalMonths > 12;
+
+    const monthly: Array<{ month: string; value: number }> = [];
+    let runningTotal = 0;
+    for (let y = startYear; y <= endYear; y++) {
+      const mStart = y === startYear ? startMonth : 0;
+      const mEnd = y === endYear ? endMonth : 11;
+      for (let m = mStart; m <= mEnd; m++) {
+        const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+        runningTotal += monthMap[key] ?? 0;
+        const label = multiYear ? `${MONTH_SHORT[m]} '${String(y).slice(2)}` : MONTH_SHORT[m]!;
+        monthly.push({
+          month: label,
+          value: Math.round(runningTotal * 100) / 100,
+        });
+      }
+    }
+
+    res.json({ monthly });
+  } catch (err) {
+    console.error("Org monthly stats error:", err);
+    res.status(500).json({ error: "Failed to load monthly data" });
+  }
+});
+
+router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    const members = await db.query.orgMembersTable.findMany({
+      where: eq(orgMembersTable.orgId, membership.orgId),
+    });
+    const memberIds = members.map(m => m.userId);
+
+    if (memberIds.length === 0) {
+      res.json({ regions: [] });
+      return;
+    }
+
+    const fromParam = req.query.from;
+    const toParam = req.query.to;
+    const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
+    const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
+    const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
+    const to = toRaw && !isNaN(toRaw.getTime()) ? endOfDay(toRaw) : undefined;
+
+    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
+    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+
+    const records = await db.select({
+      userId: impactRecordsTable.userId,
+      region: impactRecordsTable.region,
+      resultJson: impactRecordsTable.resultJson,
+    }).from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+
+    const regionMap: Record<string, { userIds: Set<string>; hours: number; value: number }> = {};
+    for (const r of records) {
+      const regionName = r.region ?? "Other";
+      if (!regionMap[regionName]) regionMap[regionName] = { userIds: new Set(), hours: 0, value: 0 };
+      regionMap[regionName].userIds.add(r.userId);
+      const result = parseResultJsonOrg(r.resultJson);
+      regionMap[regionName].hours += result.totalHours;
+      regionMap[regionName].value += result.totalValue;
+    }
+
+    const ORG_COST_PER_VOLUNTEER = 475;
+    const totalMembers = Object.values(regionMap).reduce((sum, r) => sum + r.userIds.size, 0) || 1;
+    const regions = Object.entries(regionMap)
+      .map(([region, data]) => {
+        const investment = data.userIds.size * ORG_COST_PER_VOLUNTEER;
+        const sroi = investment > 0 ? Math.round((data.value / investment) * 100) / 100 : null;
+        return {
+          region,
+          members: data.userIds.size,
+          hours: Math.round(data.hours),
+          value: Math.round(data.value * 100) / 100,
+          sroi,
+          pct: Math.round((data.userIds.size / totalMembers) * 100),
+        };
+      })
+      .sort((a, b) => b.members - a.members);
+
+    res.json({ regions });
+  } catch (err) {
+    console.error("Org regions stats error:", err);
+    res.status(500).json({ error: "Failed to load region data" });
+  }
+});
+
 export default router;
