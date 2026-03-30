@@ -50,6 +50,8 @@ export interface ActivitySelectionDraft {
   quantifyIndex: number;
 }
 
+export type ActivityMode = 'pick' | 'describe';
+
 interface WizardState {
   location: string;
   locationMeta: LocationMeta | null;
@@ -61,6 +63,7 @@ interface WizardState {
   customActivities: CustomActivityDetail[];
   result: ImpactResult | null;
   activitySelection: ActivitySelectionDraft;
+  activityMode: ActivityMode;
 }
 
 export interface HistoryRecord {
@@ -92,6 +95,7 @@ interface WizardContextType extends WizardState {
   clearDraft: () => void;
   hasDraft: boolean;
   setActivitySelection: (sel: Partial<ActivitySelectionDraft>) => void;
+  setActivityMode: (mode: ActivityMode) => void;
 }
 
 const defaultInput: ImpactInput = {
@@ -120,6 +124,7 @@ const defaultState: WizardState = {
   customActivities: [],
   result: null,
   activitySelection: defaultActivitySelection,
+  activityMode: 'pick',
 };
 
 const DRAFT_KEY = 'wizard_draft_v1';
@@ -180,6 +185,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         customActivities: draft.customActivities ?? [],
         result: null,
         activitySelection: draft.activitySelection ?? defaultActivitySelection,
+        activityMode: (draft.activityMode as ActivityMode | undefined) ?? 'pick',
       },
       hasDraft: true,
     };
@@ -201,6 +207,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [customActivities, setCustomActivities] = useState<CustomActivityDetail[]>(initialState.customActivities);
   const [result, setResultState] = useState<ImpactResult | null>(null);
   const [activitySelection, setActivitySelectionState] = useState<ActivitySelectionDraft>(initialState.activitySelection);
+  const [activityMode, setActivityModeState] = useState<ActivityMode>(initialState.activityMode);
 
   const setActivitySelection = useCallback((sel: Partial<ActivitySelectionDraft>) => {
     setActivitySelectionState(prev => ({ ...prev, ...sel }));
@@ -213,12 +220,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection });
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode });
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -268,9 +275,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setCustomActivities(prev => prev.filter(a => a.activityId !== activityId));
   };
 
+  const setActivityMode = (mode: ActivityMode) => setActivityModeState(mode);
+
   const setResult = (r: ImpactResult) => {
     setResultState(r);
     setActivitySelectionState(defaultActivitySelection);
+    setActivityModeState('pick');
     removeDraft();
     setHasDraft(false);
   };
@@ -316,6 +326,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setCustomActivities([]);
     setResultState(null);
     setActivitySelectionState(defaultActivitySelection);
+    setActivityModeState('pick');
     removeDraft();
     setHasDraft(false);
   };
@@ -331,16 +342,17 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setCustomActivities([]);
     setResultState(null);
     setActivitySelectionState(defaultActivitySelection);
+    setActivityModeState('pick');
     removeDraft();
     setHasDraft(false);
   }, []);
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection,
+      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, reset,
-      clearDraft, hasDraft, setActivitySelection,
+      clearDraft, hasDraft, setActivitySelection, setActivityMode,
     }}>
       {children}
     </WizardContext.Provider>

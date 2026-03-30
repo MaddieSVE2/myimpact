@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,11 +48,10 @@ interface AnalysedActivity {
 }
 
 type Phase = "select" | "quantify";
-type ActivityMode = "pick" | "describe";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection } = useWizard();
+  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -61,7 +60,11 @@ export default function ActivitiesStep() {
 
   const phase = activitySelection.phase;
   const quantifyIndex = activitySelection.quantifyIndex;
-  const [activityMode, setActivityMode] = useState<ActivityMode>("pick");
+  const [activityMode, setActivityModeLocal] = useState<ActivityMode>(wizardActivityMode);
+  const setActivityMode = (mode: ActivityMode) => {
+    setActivityModeLocal(mode);
+    setWizardActivityMode(mode);
+  };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(activitySelection.selectedIds)
   );
@@ -417,37 +420,59 @@ export default function ActivitiesStep() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Mode toggle */}
-            <div className="flex gap-1 p-1 bg-muted rounded-lg mb-5 w-fit">
-              <button
-                onClick={() => {
-                  if (activityMode === "describe" && describeText.trim()) {
-                    setPickSearch(describeText.trim());
-                  }
-                  setActivityMode("pick");
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all",
-                  activityMode === "pick"
-                    ? "bg-white text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <ListChecks className="w-4 h-4" />
-                Pick activities
-              </button>
-              <button
-                onClick={() => setActivityMode("describe")}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all",
-                  activityMode === "describe"
-                    ? "bg-white text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <MessageSquare className="w-4 h-4" />
-                Describe what I do
-              </button>
+            {/* Mode choice cards */}
+            <div className="mb-5">
+              <p className="text-sm font-medium text-foreground mb-3">How would you like to add your activities?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActivityMode("pick")}
+                  aria-pressed={activityMode === "pick"}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150 select-none",
+                    activityMode === "pick"
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-white hover:border-primary/40 hover:bg-primary/3"
+                  )}
+                >
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-lg shrink-0",
+                    activityMode === "pick" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    <ListChecks className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className={cn("text-sm font-semibold leading-snug", activityMode === "pick" ? "text-primary" : "text-foreground")}>
+                      Pick activities
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Browse a list and tick what you do.</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivityMode("describe")}
+                  aria-pressed={activityMode === "describe"}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150 select-none",
+                    activityMode === "describe"
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-white hover:border-primary/40 hover:bg-primary/3"
+                  )}
+                >
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-lg shrink-0",
+                    activityMode === "describe" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className={cn("text-sm font-semibold leading-snug", activityMode === "describe" ? "text-primary" : "text-foreground")}>
+                      Describe what I do
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Write freely and let AI find your matches.</p>
+                  </div>
+                </button>
+              </div>
             </div>
 
             <AnimatePresence mode="wait">
