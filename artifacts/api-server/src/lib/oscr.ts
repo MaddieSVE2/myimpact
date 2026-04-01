@@ -112,6 +112,8 @@ function buildActivityKeywords(activityName: string): string[] {
     ["education", ["education", "learning", "tutoring", "literacy", "numeracy", "teaching"]],
     ["community", ["community", "local", "neighbourhood", "civic"]],
     ["military", ["armed forces", "veterans", "military", "ex-service"]],
+    ["volunteering", ["community", "volunteering", "voluntary", "local", "civic", "neighbourhood"]],
+    ["volunteer", ["community", "volunteering", "voluntary", "local", "civic", "neighbourhood"]],
   ];
 
   for (const [key, keywords] of KEYWORD_MAP) {
@@ -136,7 +138,7 @@ function cleanLocation(location: string): string {
 
 async function fetchPage(page: number, apiKey: string): Promise<OSCRPage> {
   const resp = await fetch(`${OSCR_API_BASE}/all_charities?page=${page}`, {
-    headers: { "functions-key": apiKey },
+    headers: { "x-functions-key": apiKey },
   });
   if (!resp.ok) return {};
   return (await resp.json()) as OSCRPage;
@@ -145,7 +147,7 @@ async function fetchPage(page: number, apiKey: string): Promise<OSCRPage> {
 async function fetchAnnualReturns(charityId: string, apiKey: string): Promise<OSCRAnnualReturn[]> {
   try {
     const resp = await fetch(`${OSCR_API_BASE}/annualreturns?charityid=${encodeURIComponent(charityId)}`, {
-      headers: { "functions-key": apiKey },
+      headers: { "x-functions-key": apiKey },
     });
     if (!resp.ok) return [];
     const data = await resp.json();
