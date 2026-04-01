@@ -50,12 +50,12 @@ router.post("/suggest", async (req, res) => {
 
     if (scotland) {
       try {
-        const oscrResults = await searchOSCRCharities(
-          location,
-          activityName,
-          oscrApiKey,
-          3
-        );
+        const oscrResults = await Promise.race([
+          searchOSCRCharities(location, activityName, oscrApiKey, 3),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("OSCR timeout")), 12000)
+          ),
+        ]);
         registerPlaces = oscrResults.map(c => ({
           name: c.name,
           description: c.description,

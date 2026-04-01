@@ -19,8 +19,9 @@
  */
 
 const OSCR_API_BASE = "https://oscrapi.azurewebsites.net/api";
-const BATCH_SIZE = 5;
-const MAX_PAGES = 20;
+const BATCH_SIZE = 4;
+const MAX_PAGES = 4;
+const TIMEOUT_MS = 12000;
 
 export interface OSCRCharity {
   name: string;
@@ -203,7 +204,7 @@ export async function searchOSCRCharities(
     let nextPage = 1;
     let bothMatches: OSCRRecord[] = [];
 
-    while (bothMatches.length < maxResults * 5 && nextPage <= Math.min(totalPages, MAX_PAGES)) {
+    while (bothMatches.length < maxResults && nextPage <= Math.min(totalPages, MAX_PAGES)) {
       const batchNums = Array.from(
         { length: Math.min(BATCH_SIZE, Math.min(totalPages, MAX_PAGES) - nextPage + 1) },
         (_, i) => nextPage + i
@@ -224,19 +225,7 @@ export async function searchOSCRCharities(
 
     if (bothMatches.length === 0) return [];
 
-    const incomeResults = await Promise.all(
-      bothMatches.map(async (r): Promise<{ record: OSCRRecord; income: number }> => {
-        const charityId = r.id ?? "";
-        const income = charityId
-          ? getMostRecentIncome(await fetchAnnualReturns(charityId, apiKey))
-          : 0;
-        return { record: r, income };
-      })
-    );
-
-    incomeResults.sort((a, b) => b.income - a.income);
-
-    const candidates = incomeResults.slice(0, maxResults).map(x => x.record);
+    const candidates = bothMatches.slice(0, maxResults);
 
     return candidates.map((r): OSCRCharity => {
       const regNum = r.charityNumber ?? "";
