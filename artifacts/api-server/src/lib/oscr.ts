@@ -11,11 +11,14 @@
  *   2. Activity: objectives, purposes, or typesOfActivities contains a keyword
  *      derived from the activity name.
  *
+ * Candidates are ranked by most recent GrossIncome (from annual returns) descending
+ * before slicing to maxResults.
+ *
  * If the API key is absent or no results match, returns [] so the route falls
  * back to AI suggestions.
  */
 
-const OSCR_API_BASE = "https://oscrapi.azurewebsites.net/api/all_charities";
+const OSCR_API_BASE = "https://oscrapi.azurewebsites.net/api";
 const BATCH_SIZE = 5;
 const MAX_PAGES = 20;
 
@@ -28,6 +31,7 @@ export interface OSCRCharity {
 }
 
 interface OSCRRecord {
+  id?: string;
   charityName?: string;
   charityNumber?: string;
   website?: string;
@@ -45,26 +49,75 @@ interface OSCRPage {
   data?: OSCRRecord[];
 }
 
+interface OSCRAnnualReturn {
+  GrossIncome?: number;
+  Year?: number;
+  [key: string]: unknown;
+}
+
 function buildActivityKeywords(activityName: string): string[] {
   const lower = activityName.toLowerCase();
   const KEYWORD_MAP: Array<[string, string[]]> = [
-    ["food bank", ["food", "foodbank", "hunger", "poverty"]],
-    ["conservation", ["conservation", "wildlife", "nature", "environment"]],
-    ["mental health", ["mental health", "wellbeing", "counselling", "therapy"]],
-    ["youth", ["youth", "young people", "children", "mentoring", "junior"]],
-    ["elderly", ["elderly", "older", "age", "senior", "care home"]],
-    ["befriending", ["befriending", "companionship", "loneliness", "isolation"]],
-    ["education", ["education", "tutoring", "learning", "literacy", "numeracy"]],
-    ["sport", ["sport", "athletics", "fitness", "recreation"]],
-    ["arts", ["arts", "creative", "theatre", "music", "culture"]],
-    ["employment", ["employment", "job", "career", "skills", "training"]],
-    ["homeless", ["homeless", "housing", "shelter", "refuge"]],
-    ["disability", ["disability", "disabled", "accessibility"]],
-    ["community garden", ["garden", "allotment", "growing", "horticulture"]],
+    // Health
+    ["blood donation", ["blood", "transfusion", "donor", "nhs blood"]],
+    ["mental health", ["mental health", "wellbeing", "counselling", "therapy", "mind", "depression", "anxiety"]],
+    ["medical", ["medical", "health", "nhs", "clinical"]],
+    // Caring / befriending
+    ["befriend", ["befriending", "companionship", "loneliness", "isolation", "visiting"]],
+    ["caring", ["caring", "carer", "care", "support", "unpaid care"]],
+    ["elderly", ["elderly", "older people", "age", "senior", "care home", "dementia"]],
+    ["visiting isolated", ["befriending", "loneliness", "isolation", "visiting", "companionship"]],
+    ["family caring", ["carer", "care", "family support", "disability", "unpaid"]],
+    // Food / poverty
+    ["food bank", ["food bank", "foodbank", "food poverty", "hunger", "poverty relief", "trussell"]],
+    ["food waste", ["food", "waste", "surplus", "redistribution"]],
+    // Environment / nature
+    ["recycling", ["recycling", "waste", "environment", "sustainability", "circular"]],
+    ["litter", ["litter", "clean up", "environment", "cleaner communities"]],
+    ["wildlife conservation", ["conservation", "wildlife", "nature", "biodiversity", "habitat", "environment"]],
+    ["conservation", ["conservation", "wildlife", "nature", "environment", "biodiversity"]],
+    ["community garden", ["garden", "allotment", "growing", "horticulture", "green space", "biodiversity"]],
+    ["tree planting", ["trees", "woodland", "reforestation", "green space", "environment"]],
+    ["energy saving", ["energy", "fuel poverty", "climate", "sustainability", "renewable"]],
+    ["eco transport", ["cycling", "walking", "sustainable transport", "active travel"]],
+    ["sustainable transport", ["cycling", "walking", "sustainable transport", "active travel"]],
+    // Community
+    ["fundraising", ["fundraising", "fund raising", "charity events", "donations", "sponsorship"]],
+    ["sports coaching", ["sport", "athletics", "coaching", "fitness", "recreation", "active"]],
+    ["sport", ["sport", "athletics", "coaching", "fitness", "recreation", "active"]],
+    ["arts", ["arts", "creative", "theatre", "music", "culture", "performing arts", "visual arts"]],
+    ["music", ["music", "performing arts", "arts", "culture", "choir"]],
+    ["community social", ["social club", "community group", "companionship", "loneliness"]],
+    ["charity shop", ["charity shop", "reuse", "recycling", "thrift", "second hand"]],
+    ["animal", ["animal welfare", "animals", "pets", "veterinary", "wildlife", "rescue"]],
+    // Education / mentoring / digital
+    ["mentoring", ["mentoring", "young people", "youth", "coaching", "guidance"]],
+    ["youth mentoring", ["mentoring", "young people", "youth", "coaching", "guidance", "junior"]],
+    ["youth", ["youth", "young people", "children", "junior", "mentoring"]],
+    ["tutoring", ["education", "tutoring", "learning", "literacy", "numeracy", "teaching"]],
+    ["literacy", ["literacy", "reading", "writing", "numeracy", "education"]],
+    ["digital skills", ["digital", "technology", "online", "internet", "computer skills", "digital inclusion"]],
+    ["digital coaching", ["digital", "technology", "online", "internet", "computer skills", "digital inclusion"]],
+    ["employability", ["employability", "employment", "jobs", "careers", "skills", "work", "training"]],
+    ["employment", ["employment", "job", "career", "skills", "training", "employability"]],
+    ["job club", ["employment", "job", "career", "skills", "training", "employability"]],
+    ["coding", ["digital", "technology", "coding", "stem", "computing", "programming", "education"]],
+    ["stem", ["stem", "science", "technology", "engineering", "maths", "education"]],
+    ["duke of edinburgh", ["youth", "young people", "volunteering", "skills", "dofe"]],
+    // Housing / homelessness
+    ["homeless", ["homeless", "housing", "shelter", "refuge", "rough sleeping", "homelessness"]],
+    // Disability
+    ["disability", ["disability", "disabled", "accessibility", "inclusion", "impairment"]],
+    // General
+    ["education", ["education", "learning", "tutoring", "literacy", "numeracy", "teaching"]],
+    ["community", ["community", "local", "neighbourhood", "civic"]],
+    ["military", ["armed forces", "veterans", "military", "ex-service"]],
   ];
+
   for (const [key, keywords] of KEYWORD_MAP) {
     if (lower.includes(key)) return keywords;
   }
+
   return activityName
     .toLowerCase()
     .replace(/volunteering|volunteer|community|general/gi, "")
@@ -82,11 +135,30 @@ function cleanLocation(location: string): string {
 }
 
 async function fetchPage(page: number, apiKey: string): Promise<OSCRPage> {
-  const resp = await fetch(`${OSCR_API_BASE}?page=${page}`, {
+  const resp = await fetch(`${OSCR_API_BASE}/all_charities?page=${page}`, {
     headers: { "functions-key": apiKey },
   });
   if (!resp.ok) return {};
   return (await resp.json()) as OSCRPage;
+}
+
+async function fetchAnnualReturns(charityId: string, apiKey: string): Promise<OSCRAnnualReturn[]> {
+  try {
+    const resp = await fetch(`${OSCR_API_BASE}/annualreturns?charityid=${encodeURIComponent(charityId)}`, {
+      headers: { "functions-key": apiKey },
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function getMostRecentIncome(returns: OSCRAnnualReturn[]): number {
+  if (returns.length === 0) return 0;
+  const sorted = [...returns].sort((a, b) => (b.Year ?? 0) - (a.Year ?? 0));
+  return sorted[0].GrossIncome ?? 0;
 }
 
 function recordMatchesLocation(record: OSCRRecord, locationWords: string[]): boolean {
@@ -129,7 +201,7 @@ export async function searchOSCRCharities(
     let nextPage = 1;
     let bothMatches: OSCRRecord[] = [];
 
-    while (bothMatches.length < maxResults && nextPage <= Math.min(totalPages, MAX_PAGES)) {
+    while (bothMatches.length < maxResults * 5 && nextPage <= Math.min(totalPages, MAX_PAGES)) {
       const batchNums = Array.from(
         { length: Math.min(BATCH_SIZE, Math.min(totalPages, MAX_PAGES) - nextPage + 1) },
         (_, i) => nextPage + i
@@ -149,9 +221,22 @@ export async function searchOSCRCharities(
     }
 
     if (bothMatches.length === 0) return [];
-    const candidates = bothMatches;
 
-    return candidates.slice(0, maxResults).map((r): OSCRCharity => {
+    const incomeResults = await Promise.all(
+      bothMatches.map(async (r): Promise<{ record: OSCRRecord; income: number }> => {
+        const charityId = r.id ?? "";
+        const income = charityId
+          ? getMostRecentIncome(await fetchAnnualReturns(charityId, apiKey))
+          : 0;
+        return { record: r, income };
+      })
+    );
+
+    incomeResults.sort((a, b) => b.income - a.income);
+
+    const candidates = incomeResults.slice(0, maxResults).map(x => x.record);
+
+    return candidates.map((r): OSCRCharity => {
       const regNum = r.charityNumber ?? "";
       const registerUrl = regNum
         ? `https://www.oscr.org.uk/about-charities/search-the-register/charity-details?number=${regNum}`
