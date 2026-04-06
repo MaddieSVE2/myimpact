@@ -40,6 +40,7 @@ export interface LocationMeta {
   outwardCode: string;
   lat: number;
   lng: number;
+  adminDistrict: string;
 }
 
 export interface ActivitySelectionDraft {

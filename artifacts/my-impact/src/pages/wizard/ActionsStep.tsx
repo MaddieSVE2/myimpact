@@ -31,6 +31,7 @@ async function lookupPostcode(raw: string) {
     outwardCode: (r.outcode ?? postcode.slice(0, postcode.length - 3)) as string,
     lat: r.latitude as number,
     lng: r.longitude as number,
+    adminDistrict: (r.admin_district ?? r.admin_county ?? r.region ?? "") as string,
   };
 }
 

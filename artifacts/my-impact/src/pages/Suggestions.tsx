@@ -24,7 +24,7 @@ interface TileLocalState {
 }
 
 export default function Suggestions() {
-  const { input, interests, location, result } = useWizard();
+  const { input, interests, location, locationMeta, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
 
   // Per-tile local state: activityId → TileLocalState
@@ -66,10 +66,13 @@ export default function Suggestions() {
 
     try {
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      // Prefer the resolved council name over the raw postcode so Scottish/English
+      // charity register detection works correctly (e.g. "City of Edinburgh" not "EH1 1AB")
+      const searchLocation = locationMeta?.adminDistrict || location?.trim();
       const res = await fetch(`${base}/api/local-charities/suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location: location?.trim(), activityName }),
+        body: JSON.stringify({ location: searchLocation, activityName }),
       });
       if (!res.ok) throw new Error("API error");
       const data = await res.json();
