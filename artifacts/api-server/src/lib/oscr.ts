@@ -59,62 +59,61 @@ interface OSCRAnnualReturn {
 function buildActivityKeywords(activityName: string): string[] {
   const lower = activityName.toLowerCase();
   const KEYWORD_MAP: Array<[string, string[]]> = [
-    // Health
-    ["blood donation", ["blood", "transfusion", "donor", "nhs blood"]],
-    ["mental health", ["mental health", "wellbeing", "counselling", "therapy", "mind", "depression", "anxiety"]],
-    ["medical", ["medical", "health", "nhs", "clinical"]],
-    // Caring / befriending
-    ["befriend", ["befriending", "companionship", "loneliness", "isolation", "visiting"]],
-    ["caring", ["caring", "carer", "care", "support", "unpaid care"]],
-    ["elderly", ["elderly", "older people", "age", "senior", "care home", "dementia"]],
-    ["visiting isolated", ["befriending", "loneliness", "isolation", "visiting", "companionship"]],
-    ["family caring", ["carer", "care", "family support", "disability", "unpaid"]],
-    // Food / poverty
-    ["food bank", ["food bank", "foodbank", "food poverty", "hunger", "poverty relief", "trussell"]],
-    ["food waste", ["food", "waste", "surplus", "redistribution"]],
-    // Environment / nature
-    ["recycling", ["recycling", "waste", "environment", "sustainability", "circular"]],
-    ["litter", ["litter", "clean up", "environment", "cleaner communities"]],
-    ["wildlife conservation", ["conservation", "wildlife", "nature", "biodiversity", "habitat", "environment"]],
-    ["conservation", ["conservation", "wildlife", "nature", "environment", "biodiversity"]],
-    ["community garden", ["garden", "allotment", "growing", "horticulture", "green space", "biodiversity"]],
-    ["tree planting", ["trees", "woodland", "reforestation", "green space", "environment"]],
-    ["energy saving", ["energy", "fuel poverty", "climate", "sustainability", "renewable"]],
-    ["eco transport", ["cycling", "walking", "sustainable transport", "active travel"]],
-    ["sustainable transport", ["cycling", "walking", "sustainable transport", "active travel"]],
-    // Community
-    ["fundraising", ["fundraising", "fund raising", "charity events", "donations", "sponsorship"]],
-    ["sports coaching", ["sport", "athletics", "coaching", "fitness", "recreation", "active"]],
-    ["sport", ["sport", "athletics", "coaching", "fitness", "recreation", "active"]],
-    ["arts", ["arts", "creative", "theatre", "music", "culture", "performing arts", "visual arts"]],
-    ["music", ["music", "performing arts", "arts", "culture", "choir"]],
-    ["community social", ["social club", "community group", "companionship", "loneliness"]],
-    ["charity shop", ["charity shop", "reuse", "recycling", "thrift", "second hand"]],
-    ["animal", ["animal welfare", "animals", "pets", "veterinary", "wildlife", "rescue"]],
-    // Education / mentoring / digital
-    ["mentoring", ["mentoring", "young people", "youth", "coaching", "guidance"]],
-    ["youth mentoring", ["mentoring", "young people", "youth", "coaching", "guidance", "junior"]],
-    ["youth", ["youth", "young people", "children", "junior", "mentoring"]],
-    ["tutoring", ["education", "tutoring", "learning", "literacy", "numeracy", "teaching"]],
-    ["literacy", ["literacy", "reading", "writing", "numeracy", "education"]],
-    ["digital skills", ["digital", "technology", "online", "internet", "computer skills", "digital inclusion"]],
-    ["digital coaching", ["digital", "technology", "online", "internet", "computer skills", "digital inclusion"]],
-    ["employability", ["employability", "employment", "jobs", "careers", "skills", "work", "training"]],
-    ["employment", ["employment", "job", "career", "skills", "training", "employability"]],
-    ["job club", ["employment", "job", "career", "skills", "training", "employability"]],
-    ["coding", ["digital", "technology", "coding", "stem", "computing", "programming", "education"]],
-    ["stem", ["stem", "science", "technology", "engineering", "maths", "education"]],
-    ["duke of edinburgh", ["youth", "young people", "volunteering", "skills", "dofe"]],
+    // Health — specific clinical/service terms only
+    ["blood donation", ["blood donation", "blood donor", "blood transfusion", "nhs blood"]],
+    ["mental health", ["mental health", "counselling", "therapy", "depression", "anxiety", "psychiatric", "wellbeing support"]],
+    ["medical", ["medical", "clinical", "nhs", "hospital", "patient"]],
+    // Caring / befriending — specific outcome terms
+    ["befriend", ["befriending", "companionship", "loneliness", "social isolation", "visiting volunteers"]],
+    ["caring", ["unpaid carer", "carer support", "informal carer", "family carer"]],
+    ["elderly", ["elderly", "older people", "older adults", "dementia", "care home", "sheltered housing"]],
+    ["visiting isolated", ["befriending", "social isolation", "loneliness", "visiting volunteer"]],
+    ["family caring", ["family carer", "unpaid carer", "carer support", "disability support"]],
+    // Food / poverty — specific named services
+    ["food bank", ["food bank", "foodbank", "food parcel", "food poverty", "emergency food", "trussell"]],
+    ["food waste", ["food waste", "surplus food", "food redistribution", "food sharing"]],
+    // Environment / nature — SPECIFIC terms only, no broad "environment"
+    ["recycling", ["recycling", "household waste", "waste reduction", "zero waste", "circular economy", "reuse"]],
+    ["litter", ["litter picking", "litter collection", "street clean", "beach clean", "clean-up"]],
+    ["wildlife conservation", ["wildlife", "conservation volunteer", "nature reserve", "habitat restoration", "biodiversity", "species"]],
+    ["conservation", ["wildlife", "nature reserve", "habitat", "biodiversity", "conservation volunteer"]],
+    ["community garden", ["community garden", "allotment", "growing food", "horticulture", "urban growing", "community growing"]],
+    ["tree planting", ["tree planting", "woodland creation", "reforestation", "forestry volunteer", "tree nursery"]],
+    ["energy saving", ["fuel poverty", "energy efficiency", "insulation", "retrofit", "warm homes", "heating costs"]],
+    ["eco transport", ["cycling", "active travel", "walking group", "sustainable transport", "car sharing"]],
+    ["sustainable transport", ["cycling", "active travel", "walking", "sustainable transport"]],
+    // Community — specific activity terms
+    ["fundraising", ["fundraising", "fund raising", "sponsored", "charity event", "charity run"]],
+    ["sports coaching", ["sports coaching", "sports club", "athletics", "fitness coaching", "recreational sport"]],
+    ["sport", ["sports club", "athletics", "sporting", "fitness", "recreational sport", "active"]],
+    ["arts", ["arts", "creative", "theatre", "performing arts", "visual arts", "cultural"]],
+    ["music", ["music", "choir", "orchestra", "band", "singing", "performing arts"]],
+    ["community social", ["social club", "social group", "community café", "lunch club", "befriending", "isolation"]],
+    ["charity shop", ["charity shop", "second hand", "thrift", "reuse", "donated goods"]],
+    ["animal", ["animal welfare", "animal rescue", "pets", "veterinary", "dog rescue", "cat rescue"]],
+    // Education / mentoring / digital — specific programme terms
+    ["mentoring", ["mentoring", "mentor", "young people", "guidance", "personal development"]],
+    ["youth mentoring", ["mentoring", "youth mentor", "young people", "guidance", "personal development"]],
+    ["youth", ["youth", "young people", "children", "junior", "youth club", "after school"]],
+    ["tutoring", ["tutoring", "tuition", "literacy support", "numeracy", "homework", "reading support"]],
+    ["literacy", ["literacy", "reading", "writing skills", "numeracy", "phonics", "adult literacy"]],
+    ["digital skills", ["digital inclusion", "digital skills", "computer skills", "online safety", "internet access"]],
+    ["digital coaching", ["digital inclusion", "digital skills", "computer training", "online skills"]],
+    ["employability", ["employability", "employment support", "job skills", "career guidance", "back to work"]],
+    ["employment", ["employment support", "job club", "career guidance", "employability", "back to work"]],
+    ["job club", ["job club", "employment support", "cv help", "interview skills", "job search"]],
+    ["coding", ["coding", "programming", "computing", "stem", "software", "digital skills"]],
+    ["stem", ["stem", "science", "engineering", "maths", "computing", "robotics"]],
+    ["duke of edinburgh", ["duke of edinburgh", "dofe", "d of e", "youth award", "bronze award"]],
     // Housing / homelessness
-    ["homeless", ["homeless", "housing", "shelter", "refuge", "rough sleeping", "homelessness"]],
+    ["homeless", ["homeless", "homelessness", "rough sleeping", "housing support", "night shelter", "refuge"]],
     // Disability
-    ["disability", ["disability", "disabled", "accessibility", "inclusion", "impairment"]],
-    // General
-    ["education", ["education", "learning", "tutoring", "literacy", "numeracy", "teaching"]],
-    ["community", ["community", "local", "neighbourhood", "civic"]],
-    ["military", ["armed forces", "veterans", "military", "ex-service"]],
-    ["volunteering", ["community", "volunteering", "voluntary", "local", "civic", "neighbourhood"]],
-    ["volunteer", ["community", "volunteering", "voluntary", "local", "civic", "neighbourhood"]],
+    ["disability", ["disability", "disabled people", "learning disability", "physical disability", "accessibility"]],
+    // General — kept deliberately broad only for catch-alls
+    ["education", ["education", "learning", "tutoring", "literacy", "teaching", "training"]],
+    ["military", ["armed forces", "veterans", "ex-service", "military", "forces"]],
+    ["volunteering", ["volunteering", "volunteer programme", "voluntary work", "community action"]],
+    ["volunteer", ["volunteering", "volunteer programme", "voluntary work", "community action"]],
   ];
 
   for (const [key, keywords] of KEYWORD_MAP) {
