@@ -426,6 +426,11 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
+    if (membership.role !== "manager") {
+      res.status(403).json({ error: "Only organisation managers can access org statistics." });
+      return;
+    }
+
     const fromParam = req.query.from;
     const toParam = req.query.to;
     const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;

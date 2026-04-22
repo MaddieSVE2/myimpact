@@ -19,6 +19,7 @@ interface OrgInfo {
   id: string;
   name: string;
   type: string;
+  role: string;
 }
 
 interface OrgStats {
@@ -606,6 +607,7 @@ function DownloadPdfButton({ from, to }: { from: string; to: string }) {
 export default function OrgPortal() {
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const inOrg = !!orgData?.org;
+  const isManager = orgData?.org?.role === "manager";
 
   const [preset, setPreset] = useState<PresetKey>("all");
   const [customFrom, setCustomFrom] = useState("");
@@ -620,10 +622,10 @@ export default function OrgPortal() {
 
   const { from, to } = getDateRange();
 
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useOrgStats(inOrg, from, to);
-  const { data: monthlyData, isLoading: monthlyLoading } = useOrgMonthly(inOrg, from, to);
-  const { data: regionsData, isLoading: regionsLoading } = useOrgRegions(inOrg, from, to);
-  const { data: joinLinkData } = useJoinLink(inOrg);
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useOrgStats(inOrg && isManager, from, to);
+  const { data: monthlyData, isLoading: monthlyLoading } = useOrgMonthly(inOrg && isManager, from, to);
+  const { data: regionsData, isLoading: regionsLoading } = useOrgRegions(inOrg && isManager, from, to);
+  const { data: joinLinkData } = useJoinLink(inOrg && isManager);
 
   function handlePresetChange(key: PresetKey) {
     setPreset(key);
@@ -659,10 +661,10 @@ export default function OrgPortal() {
           {inOrg && (
             <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold capitalize">{orgData!.org!.type}</span>
           )}
-          {inOrg && joinLinkData && (
+          {inOrg && isManager && joinLinkData && (
             <CopyJoinLinkButton orgId={joinLinkData.orgId} inviteCode={joinLinkData.inviteCode} />
           )}
-          {inOrg && (
+          {inOrg && isManager && (
             <DownloadPdfButton from={from} to={to} />
           )}
         </div>
@@ -670,6 +672,20 @@ export default function OrgPortal() {
 
       {!inOrg ? (
         <JoinOrgPanel />
+      ) : !isManager ? (
+        <motion.div
+          className="bg-white border border-border rounded-xl p-8 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <ShieldCheck className="w-10 h-10 text-primary/40 mx-auto mb-4" />
+          <p className="text-base font-display font-semibold text-foreground mb-1">
+            You're a member of {orgData!.org!.name}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Organisation analytics, reports, and the join link are only available to your organisation manager. Contact them if you need access.
+          </p>
+        </motion.div>
       ) : statsLoading ? (
         <div className="py-16 flex justify-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />

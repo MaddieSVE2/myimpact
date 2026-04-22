@@ -178,12 +178,29 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   const userId = req.user!.id;
+  const userEmail = req.user!.email;
+
+  const registration = await db.query.orgRegistrationsTable.findFirst({
+    where: and(
+      eq(orgRegistrationsTable.inviteCode, inviteCode.trim().toUpperCase()),
+      eq(orgRegistrationsTable.status, "approved"),
+    ),
+    columns: { contactEmail: true },
+  });
+
+  const shouldBeManager = registration?.contactEmail?.toLowerCase() === userEmail.toLowerCase();
+  const role = shouldBeManager ? "manager" : "member";
 
   const existing = await db.query.orgMembersTable.findFirst({
     where: (t, { and }) => and(eq(t.orgId, org.id), eq(t.userId, userId)),
   });
 
   if (existing) {
+    if (shouldBeManager && existing.role !== "manager") {
+      await db.update(orgMembersTable)
+        .set({ role: "manager" })
+        .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
+    }
     res.json({ ok: true, orgName: org.name, alreadyMember: true });
     return;
   }
@@ -196,7 +213,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  await db.insert(orgMembersTable).values({ orgId: org.id, userId });
+  await db.insert(orgMembersTable).values({ orgId: org.id, userId, role });
 
   res.json({ ok: true, orgName: org.name, alreadyMember: false });
 });
@@ -222,7 +239,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  res.json({ org: { id: org.id, name: org.name, type: org.type } });
+  res.json({ org: { id: org.id, name: org.name, type: org.type, role: membership.role } });
 });
 
 router.get("/my-join-link", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -234,6 +251,11 @@ router.get("/my-join-link", authenticate, async (req: AuthenticatedRequest, res)
 
   if (!membership) {
     res.status(404).json({ error: "You are not a member of any organisation." });
+    return;
+  }
+
+  if (membership.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can access the join link." });
     return;
   }
 
@@ -302,6 +324,11 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
 
     if (!membership) {
       res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    if (membership.role !== "manager") {
+      res.status(403).json({ error: "Only organisation managers can download the report." });
       return;
     }
 
@@ -419,6 +446,11 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
 
+    if (membership.role !== "manager") {
+      res.status(403).json({ error: "Only organisation managers can access analytics." });
+      return;
+    }
+
     const members = await db.query.orgMembersTable.findMany({
       where: eq(orgMembersTable.orgId, membership.orgId),
     });
@@ -500,6 +532,11 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
     });
     if (!membership) {
       res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+
+    if (membership.role !== "manager") {
+      res.status(403).json({ error: "Only organisation managers can access analytics." });
       return;
     }
 

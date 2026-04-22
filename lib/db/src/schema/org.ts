@@ -12,6 +12,7 @@ export const organisationsTable = pgTable("organisations", {
 export const orgMembersTable = pgTable("org_members", {
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
   userId: text("user_id").notNull().references(() => usersTable.id),
+  role: text("role").notNull().default("member"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (table) => ({
   userUnique: unique("org_members_user_unique").on(table.userId),
