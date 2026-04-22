@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Mail, ArrowRight, CheckCircle, X, Building2 } from "lucide-react";
 
 export default function Login() {
-  const { requestMagicLink, demoLogin } = useAuth();
+  const { requestMagicLink } = useAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -36,15 +36,6 @@ export default function Login() {
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
-      try {
-        const { orgRedirect } = await demoLogin(normalizedEmail);
-        navigate(postLoginTo ?? (orgRedirect ? "/org" : "/history"));
-        return;
-      } catch (instantErr: any) {
-        if (instantErr?.status !== 403) {
-          throw instantErr;
-        }
-      }
       await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
       setSent(true);
     } catch (err: any) {

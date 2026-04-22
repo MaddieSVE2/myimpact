@@ -60,6 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const demoLogin = async (email: string): Promise<DemoLoginResult> => {
+    if (import.meta.env.VITE_ENABLE_DEMO_LOGIN !== "true") {
+      const err = new Error("Demo login is not available") as Error & { status: number };
+      err.status = 403;
+      throw err;
+    }
     const res = await fetch(`${BASE}/api/auth/demo-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

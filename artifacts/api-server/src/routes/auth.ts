@@ -7,10 +7,16 @@ import { getUncachableResendClient } from "../lib/resend.js";
 
 const router: IRouter = Router();
 
-function getAppUrl(req: any): string {
-  const proto = req.headers["x-forwarded-proto"] || req.protocol;
-  const host = req.headers["x-forwarded-host"] || req.get("host");
-  return `${proto}://${host}`;
+function getAppUrl(): string {
+  const appUrl =
+    process.env.APP_URL ??
+    (process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : null);
+  if (!appUrl) {
+    throw new Error("APP_URL environment variable is not set");
+  }
+  return appUrl.replace(/\/$/, "");
 }
 
 function issueSession(res: any, user: { id: string; email: string }) {
@@ -19,7 +25,7 @@ function issueSession(res: any, user: { id: string; email: string }) {
   res.cookie("mi_session", token, {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: "lax",
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: "/",
   });
@@ -80,7 +86,14 @@ router.post("/request", async (req, res) => {
     confirmed: false,
   });
 
-  const appUrl = getAppUrl(req);
+  let appUrl: string;
+  try {
+    appUrl = getAppUrl();
+  } catch {
+    res.status(500).json({ error: "Server misconfiguration. Please try again later." });
+    return;
+  }
+
   const confirmUrl = safeReturnTo
     ? `${appUrl}/auth/confirm?token=${token}&returnTo=${encodeURIComponent(safeReturnTo)}`
     : `${appUrl}/auth/confirm?token=${token}`;
@@ -211,6 +224,11 @@ const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
 };
 
 router.post("/demo-login", async (req, res) => {
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN !== "true") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
   const { email } = req.body;
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
@@ -313,7 +331,7 @@ router.patch("/me", async (req: any, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie("mi_session", { path: "/", secure: true, sameSite: "none" });
+  res.clearCookie("mi_session", { path: "/", secure: true, sameSite: "lax" });
   res.json({ ok: true });
 });
 
