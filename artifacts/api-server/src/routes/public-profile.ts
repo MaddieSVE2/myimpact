@@ -26,10 +26,10 @@ function validateSlug(slug: string): string | null {
   return null;
 }
 
-function generateDefaultSlug(displayName: string | null | undefined, email: string): string {
+function generateDefaultSlug(displayName: string | null | undefined): string {
   const base = displayName
     ? displayName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, "")
-    : email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+    : "";
   const safeName = base.slice(0, 10) || "user";
   const suffix = randomBytes(3).toString("hex");
   return `${safeName}-${suffix}`;
@@ -94,7 +94,7 @@ router.post("/enable", authenticate, async (req: AuthenticatedRequest, res: Resp
 
   const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
 
-  let slug = generateDefaultSlug(user?.displayName, user?.email ?? userId);
+  let slug = generateDefaultSlug(user?.displayName);
 
   // Ensure uniqueness
   let attempts = 0;
@@ -103,7 +103,7 @@ router.post("/enable", authenticate, async (req: AuthenticatedRequest, res: Resp
       where: eq(publicProfilesTable.slug, slug),
     });
     if (!collision) break;
-    slug = generateDefaultSlug(user?.displayName, user?.email ?? userId);
+    slug = generateDefaultSlug(user?.displayName);
     attempts++;
   }
 
