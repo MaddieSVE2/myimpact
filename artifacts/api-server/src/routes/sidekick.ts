@@ -1,7 +1,15 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { createRateLimiter } from "../lib/rateLimiter.js";
+import { authenticate } from "../middleware/authenticate.js";
 
 const router = Router();
+
+const sidekickRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: "Too many requests to Sidekick. Please slow down.",
+});
 
 const SYSTEM_PROMPT = `You are Sidekick, an AI assistant built into My Impact — a personal social value calculator for people who want to see and communicate the positive difference they make.
 
@@ -154,7 +162,11 @@ TONE AND STYLE:
 
 If the user shares their impact data (score, activities, SDGs), use it to make your response specific to them.`;
 
-router.post("/chat", async (req, res) => {
+const MAX_MESSAGES = 20;
+const MAX_MESSAGE_CHARS = 2000;
+const MAX_COMPLETION_TOKENS = 1024;
+
+router.post("/chat", authenticate, sidekickRateLimit, async (req, res) => {
   try {
     const { messages, context } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -170,6 +182,18 @@ router.post("/chat", async (req, res) => {
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: "messages array is required" });
       return;
+    }
+
+    if (messages.length > MAX_MESSAGES) {
+      res.status(400).json({ error: `Too many messages: maximum is ${MAX_MESSAGES}.` });
+      return;
+    }
+
+    for (const msg of messages) {
+      if (typeof msg.content !== "string" || msg.content.length > MAX_MESSAGE_CHARS) {
+        res.status(400).json({ error: `Each message must be a string of at most ${MAX_MESSAGE_CHARS} characters.` });
+        return;
+      }
     }
 
     const systemMessages: { role: "system"; content: string }[] = [
@@ -216,7 +240,7 @@ router.post("/chat", async (req, res) => {
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5-mini",
-      max_completion_tokens: 8192,
+      max_completion_tokens: MAX_COMPLETION_TOKENS,
       messages: chatMessages,
       stream: true,
     });

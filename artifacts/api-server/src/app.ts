@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import router from "./routes";
+import { createRateLimiter } from "./lib/rateLimiter.js";
 
 const app: Express = express();
 
@@ -38,6 +39,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/api", router);
+// Global per-IP rate limit: 200 requests per minute across all /api routes.
+// This is a broad backstop; individual routes apply stricter limits.
+const globalApiRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 200,
+  message: "Too many requests. Please slow down.",
+});
+
+app.use("/api", globalApiRateLimit, router);
 
 export default app;

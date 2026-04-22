@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { createRateLimiter } from "../lib/rateLimiter.js";
+import { authenticate } from "../middleware/authenticate.js";
 import proxiesData from "../lib/proxyData.json";
 import { ACTIVITIES } from "../lib/impactData";
 
@@ -54,7 +56,13 @@ const FUNDRAISING_RE = /fund[\s-]?rais/i;
 
 const router = Router();
 
-router.post("/analyse", async (req, res) => {
+const customActivityRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: "Too many requests. Please slow down.",
+});
+
+router.post("/analyse", authenticate, customActivityRateLimit, async (req, res) => {
   try {
     const { name } = req.body as { name: string };
 
@@ -151,7 +159,7 @@ ${candidateList || "No candidates found."}`,
   }
 });
 
-router.post("/parse-description", async (req, res) => {
+router.post("/parse-description", authenticate, customActivityRateLimit, async (req, res) => {
   try {
     const { description } = req.body as { description: string };
 

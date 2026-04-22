@@ -2,8 +2,15 @@ import { Router, type IRouter } from "express";
 import { db, feedbackTable } from "@workspace/db";
 import { attachUserIfPresent, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { createRateLimiter } from "../lib/rateLimiter.js";
 
 const router: IRouter = Router();
+
+const feedbackRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many feedback submissions. Please wait before trying again.",
+});
 
 const ADMIN_EMAIL = "maddie@socialvalueengine.com";
 
@@ -16,7 +23,7 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-router.post("/", attachUserIfPresent, async (req: AuthenticatedRequest, res) => {
+router.post("/", feedbackRateLimit, attachUserIfPresent, async (req: AuthenticatedRequest, res) => {
   const body = req.body as Record<string, unknown>;
 
   const message = typeof body.message === "string" ? body.message.trim() : "";

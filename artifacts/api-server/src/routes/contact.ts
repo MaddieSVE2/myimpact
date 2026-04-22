@@ -1,13 +1,20 @@
 import { Router, type IRouter } from "express";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { createRateLimiter } from "../lib/rateLimiter.js";
 
 const router: IRouter = Router();
+
+const contactRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many contact requests. Please wait before trying again.",
+});
 
 function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 }
 
-router.post("/", async (req, res) => {
+router.post("/", contactRateLimit, async (req, res) => {
   const { name, email, message } = req.body;
 
   if (!name || typeof name !== "string" || !name.trim()) {
@@ -56,28 +63,6 @@ router.post("/", async (req, res) => {
       console.error("Resend error sending contact notification:", notifyError);
       res.status(500).json({ error: "Failed to send your message. Please try again." });
       return;
-    }
-
-    const { error: confirmError } = await client.emails.send({
-      from: fromEmail,
-      to: safeEmail,
-      subject: "We've received your message — My Impact",
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
-          <h2 style="color:#213547;margin-top:0;">Thanks for getting in touch, ${escHtml(safeName)}!</h2>
-          <p style="color:#444;line-height:1.6;margin-top:0;">We've received your message and will get back to you as soon as we can — usually within 1–2 working days.</p>
-          <div style="background:white;border-radius:8px;padding:20px 24px;margin:24px 0;">
-            <h3 style="color:#213547;margin-top:0;font-size:15px;">Your message</h3>
-            <p style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escHtml(safeMessage)}</p>
-          </div>
-          <p style="color:#444;line-height:1.6;">If your question is urgent, you can reply directly to this email.</p>
-          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="https://myimpact.replit.app" style="color:#aaa;">myimpact.replit.app</a></p>
-        </div>
-      `,
-    });
-
-    if (confirmError) {
-      console.error("Resend error sending contact confirmation:", confirmError);
     }
   } catch (err) {
     console.error("Contact form email error:", err);

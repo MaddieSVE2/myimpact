@@ -1,9 +1,17 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { createRateLimiter } from "../lib/rateLimiter.js";
+import { authenticate } from "../middleware/authenticate.js";
 import { searchCharities } from "../lib/charity-commission";
 import { searchOSCRCharities } from "../lib/oscr";
 
 const router = Router();
+
+const localCharitiesRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: "Too many requests. Please slow down.",
+});
 
 const SCOTTISH_TERMS = new Set([
   "aberdeen", "aberdeenshire", "angus", "argyll", "bute", "clackmannanshire",
@@ -21,7 +29,7 @@ function isScottishLocation(location: string): boolean {
   return Array.from(SCOTTISH_TERMS).some(t => lower.includes(t));
 }
 
-router.post("/suggest", async (req, res) => {
+router.post("/suggest", authenticate, localCharitiesRateLimit, async (req, res) => {
   try {
     const { location, activityName } = req.body as {
       location: string;
