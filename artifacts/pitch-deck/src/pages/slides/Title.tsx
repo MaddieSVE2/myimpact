@@ -11,11 +11,13 @@ export default function Title() {
       />
       <div className="absolute inset-0 bg-gradient-to-tr from-text/90 via-text/60 to-text/30" />
 
-      <div className="absolute top-[6vh] left-[6vw] flex items-center gap-[1vw]">
-        <div className="w-[1vw] h-[1vw] rounded-full bg-primary" />
-        <span className="font-body text-[1.3vw] font-medium uppercase tracking-[0.25em] text-bg/85">
-          My Impact
-        </span>
+      <div className="absolute top-[6vh] left-[6vw]">
+        <img
+          src={`${base}myimpact-logo.png`}
+          crossOrigin="anonymous"
+          alt="My Impact"
+          className="h-[8vh] w-auto"
+        />
       </div>
 
       <div className="absolute bottom-[10vh] left-[6vw] right-[8vw]">

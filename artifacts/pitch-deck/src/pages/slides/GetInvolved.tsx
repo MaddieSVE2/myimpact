@@ -1,14 +1,18 @@
+const base = import.meta.env.BASE_URL;
+
 export default function GetInvolved() {
   return (
     <div className="slide relative w-screen h-screen overflow-hidden bg-text">
       <div className="absolute top-[-15vh] right-[-15vw] w-[55vw] h-[55vw] rounded-full bg-primary/20 blur-3xl" />
       <div className="absolute bottom-[-10vh] left-[-10vw] w-[40vw] h-[40vw] rounded-full bg-accent/15 blur-3xl" />
 
-      <div className="absolute top-[6vh] left-[6vw] flex items-center gap-[1vw]">
-        <div className="w-[1vw] h-[1vw] rounded-full bg-primary" />
-        <span className="font-body text-[1.3vw] font-medium uppercase tracking-[0.25em] text-bg/85">
-          My Impact
-        </span>
+      <div className="absolute top-[6vh] left-[6vw]">
+        <img
+          src={`${base}myimpact-logo.png`}
+          crossOrigin="anonymous"
+          alt="My Impact"
+          className="h-[8vh] w-auto"
+        />
       </div>
 
       <div className="absolute top-[28vh] left-[6vw] right-[8vw]">
