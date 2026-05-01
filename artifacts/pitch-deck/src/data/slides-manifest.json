@@ -32,19 +32,19 @@
     "speakerNotes": ""
   },
   {
-    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0005",
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
     "position": 5,
-    "filepath": "src/pages/slides/Personas.tsx",
-    "title": "Personalised journeys",
-    "description": "Six tailored personas.",
+    "filepath": "src/pages/slides/ForOrganisations.tsx",
+    "title": "For organisations",
+    "description": "Branded portal and live aggregate impact dashboard.",
     "speakerNotes": ""
   },
   {
-    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0010",
     "position": 6,
-    "filepath": "src/pages/slides/ForOrganisations.tsx",
-    "title": "For organisations",
-    "description": "A live dashboard of aggregate impact.",
+    "filepath": "src/pages/slides/CommercialOpportunity.tsx",
+    "title": "The opportunity",
+    "description": "The commercial case for organisations — funding, retention, recruitment, reporting.",
     "speakerNotes": ""
   },
   {
@@ -64,8 +64,16 @@
     "speakerNotes": ""
   },
   {
-    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0011",
     "position": 9,
+    "filepath": "src/pages/slides/AboutSVE.tsx",
+    "title": "About the Social Value Engine",
+    "description": "The accredited UK methodology behind My Impact.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
+    "position": 10,
     "filepath": "src/pages/slides/GetInvolved.tsx",
     "title": "Get involved",
     "description": "Closing — try it, partner with us.",

@@ -23,8 +23,8 @@
   --slide-slate: #213547;
   --slide-sky: #A8C8DA;         /* light blue */
   --slide-card: #FFFFFF;
-  --font-display-family: "Outfit", system-ui, sans-serif;
-  --font-body-family: "DM Sans", system-ui, sans-serif;
+  --font-display-family: "Fraunces", Georgia, serif;
+  --font-body-family: "Inter", system-ui, sans-serif;
   color-scheme: light;
 }
 

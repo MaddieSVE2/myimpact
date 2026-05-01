@@ -58,12 +58,12 @@ export default function Today() {
         <div className="mt-[6vh] inline-flex items-center gap-[1vw] px-[2vw] py-[1.5vh] bg-text rounded-full self-start">
           <div className="w-[0.8vw] h-[0.8vw] rounded-full bg-primary" />
           <a
-            href="https://myimpact.replit.app"
+            href="https://myimpact.uk"
             target="_blank"
             rel="noopener noreferrer"
             className="font-body text-[1.3vw] font-semibold text-bg"
           >
-            myimpact.replit.app
+            myimpact.uk
           </a>
         </div>
       </div>

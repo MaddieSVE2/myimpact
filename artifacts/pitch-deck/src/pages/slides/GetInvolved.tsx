@@ -27,12 +27,12 @@ export default function GetInvolved() {
             Try it
           </p>
           <a
-            href="https://myimpact.replit.app"
+            href="https://myimpact.uk"
             target="_blank"
             rel="noopener noreferrer"
             className="font-display font-bold text-[2.5vw] text-bg block leading-tight"
           >
-            myimpact.replit.app
+            myimpact.uk
           </a>
         </div>
         <div>

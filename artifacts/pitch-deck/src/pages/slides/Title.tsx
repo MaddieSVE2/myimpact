@@ -19,24 +19,26 @@ export default function Title() {
       </div>
 
       <div className="absolute bottom-[10vh] left-[6vw] right-[8vw]">
-        <p className="font-body text-[1.4vw] uppercase tracking-[0.3em] text-primary mb-[3vh]">
-          Pitch deck · 2026
+        <p className="font-body text-[1.2vw] uppercase tracking-[0.3em] text-accent mb-[3vh]">
+          Powered by The Social Value Engine
         </p>
-        <h1 className="font-display font-black text-[8vw] leading-[0.92] tracking-tight text-bg" style={{ textWrap: "balance" }}>
-          You already make a
-          <span className="block text-primary italic">difference.</span>
+        <h1 className="font-display font-black text-[7.5vw] leading-[0.95] tracking-tight text-bg" style={{ textWrap: "balance" }}>
+          You already make a difference.
+          <span className="block">
+            Now <span className="italic text-primary">prove it.</span>
+          </span>
         </h1>
-        <p className="font-body text-[1.6vw] text-bg/85 mt-[4vh] max-w-[55vw] leading-relaxed">
-          My Impact turns everyday community contributions into a measurable financial figure — backed by the Social Value Engine.
+        <p className="font-body text-[1.5vw] text-bg/85 mt-[4vh] max-w-[55vw] leading-relaxed">
+          My Impact calculates what your community contribution is worth, in pounds — so you can finally see the difference you make.
         </p>
       </div>
 
       <div className="absolute bottom-[6vh] right-[6vw] text-right">
         <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/60">
-          Powered by
+          Pitch deck · 2026
         </p>
-        <p className="font-display font-semibold text-[1.5vw] text-bg">
-          The Social Value Engine
+        <p className="font-display italic font-semibold text-[1.5vw] text-bg">
+          myimpact.uk
         </p>
       </div>
     </div>
