@@ -5,7 +5,7 @@ export default function CommercialOpportunity() {
 
       <div className="absolute top-[6vh] left-[6vw] flex items-center gap-[1vw]">
         <span className="font-body text-[1.1vw] font-semibold uppercase tracking-[0.25em] text-primary">
-          05 · The opportunity
+          08 · The opportunity
         </span>
         <div className="w-[6vw] h-[1px] bg-primary/50" />
       </div>

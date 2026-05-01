@@ -32,8 +32,32 @@
     "speakerNotes": ""
   },
   {
-    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0012",
     "position": 5,
+    "filepath": "src/pages/slides/Sidekick.tsx",
+    "title": "Sidekick",
+    "description": "AI assistant that explains your impact and turns it into words.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0013",
+    "position": 6,
+    "filepath": "src/pages/slides/InspireMe.tsx",
+    "title": "Ideas for you",
+    "description": "Personalised activity suggestions, each priced by social value.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0014",
+    "position": 7,
+    "filepath": "src/pages/slides/PersonalToolkit.tsx",
+    "title": "Your personal toolkit",
+    "description": "Journal, milestones and badges, plus PDF and PNG exports.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
+    "position": 8,
     "filepath": "src/pages/slides/ForOrganisations.tsx",
     "title": "For organisations",
     "description": "Branded portal and live aggregate impact dashboard.",
@@ -41,7 +65,7 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0010",
-    "position": 6,
+    "position": 9,
     "filepath": "src/pages/slides/CommercialOpportunity.tsx",
     "title": "The opportunity",
     "description": "The commercial case for organisations · funding, retention, recruitment, reporting.",
@@ -49,7 +73,7 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0007",
-    "position": 7,
+    "position": 10,
     "filepath": "src/pages/slides/Methodology.tsx",
     "title": "The method",
     "description": "Built on real evidence · SVE, SDGs, and verified charity data.",
@@ -57,7 +81,7 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0008",
-    "position": 8,
+    "position": 11,
     "filepath": "src/pages/slides/Today.tsx",
     "title": "Where we are",
     "description": "Live today, pilots running across the UK.",
@@ -65,7 +89,7 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0011",
-    "position": 9,
+    "position": 12,
     "filepath": "src/pages/slides/AboutSVE.tsx",
     "title": "About the Social Value Engine",
     "description": "The accredited UK methodology behind My Impact.",
@@ -73,7 +97,7 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
-    "position": 10,
+    "position": 13,
     "filepath": "src/pages/slides/GetInvolved.tsx",
     "title": "Get involved",
     "description": "Closing · try it, partner with us.",
