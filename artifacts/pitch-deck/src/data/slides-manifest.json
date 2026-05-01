@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0001",
+    "position": 1,
+    "filepath": "src/pages/slides/Title.tsx",
+    "title": "My Impact",
+    "description": "Title slide — hero with tagline.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0002",
+    "position": 2,
+    "filepath": "src/pages/slides/Problem.tsx",
+    "title": "The problem",
+    "description": "Most community contribution is invisible.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0003",
+    "position": 3,
+    "filepath": "src/pages/slides/Solution.tsx",
+    "title": "The solution",
+    "description": "A personal record of social value created.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0004",
+    "position": 4,
+    "filepath": "src/pages/slides/HowItWorks.tsx",
+    "title": "How it works",
+    "description": "Three steps from contribution to measurable impact.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0005",
+    "position": 5,
+    "filepath": "src/pages/slides/Personas.tsx",
+    "title": "Personalised journeys",
+    "description": "Six tailored personas.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
+    "position": 6,
+    "filepath": "src/pages/slides/ForOrganisations.tsx",
+    "title": "For organisations",
+    "description": "A live dashboard of aggregate impact.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0007",
+    "position": 7,
+    "filepath": "src/pages/slides/Methodology.tsx",
+    "title": "The method",
+    "description": "Built on real evidence — SVE, SDGs, and verified charity data.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0008",
+    "position": 8,
+    "filepath": "src/pages/slides/Today.tsx",
+    "title": "Where we are",
+    "description": "Live today, pilots running across the UK.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
+    "position": 9,
+    "filepath": "src/pages/slides/GetInvolved.tsx",
+    "title": "Get involved",
+    "description": "Closing — try it, partner with us.",
+    "speakerNotes": ""
+  }
+]

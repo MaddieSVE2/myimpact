@@ -1,5 +1,22 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "U-pEl03qiR00-kojtnquW"
+uri = "file://artifacts/pitch-deck/public/hero.png"
+type = "image"
+title = "community impact hero"
+
+[[generated]]
+id = "I8fCDu2NwbTkt1rCjV0X3"
+uri = "file://artifacts/pitch-deck/public/hands.png"
+type = "image"
+title = "hands seedling"
+
+[[generated]]
+id = "8YhBz9ejYxs62sT82H-JE"
+uri = "file://artifacts/pitch-deck/public/community.png"
+type = "image"
+title = "community cafe"
 
 [[outputs]]
 id = "-c4lkqNDuCuZSV6KWeRB7"
