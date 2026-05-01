@@ -9,8 +9,8 @@ export default function PersonalToolkit() {
       </div>
 
       <h2 className="absolute top-[16vh] left-[6vw] right-[8vw] font-display font-bold text-[4.6vw] leading-[1] tracking-tight text-text" style={{ textWrap: "balance" }}>
-        More than a calculator.
-        <span className="block text-primary italic">A record you can build on.</span>
+        Your impact,
+        <span className="block text-primary italic">built up over time.</span>
       </h2>
 
       <div className="absolute bottom-[8vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2vw]">

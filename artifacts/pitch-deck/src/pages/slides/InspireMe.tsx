@@ -12,8 +12,8 @@ export default function InspireMe() {
         </div>
 
         <h2 className="font-display font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
-          Not sure where
-          <span className="block text-primary italic">to start?</span>
+          Ideas,
+          <span className="block text-primary italic">picked for you.</span>
         </h2>
 
         <p className="font-body text-[1.4vw] text-text/75 mt-[4vh] leading-relaxed">

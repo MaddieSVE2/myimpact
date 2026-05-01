@@ -44,7 +44,7 @@
     "position": 6,
     "filepath": "src/pages/slides/InspireMe.tsx",
     "title": "Ideas for you",
-    "description": "Personalised activity suggestions, each priced by social value.",
+    "description": "Ideas, picked for you. Each one priced by social value.",
     "speakerNotes": ""
   },
   {
@@ -52,7 +52,7 @@
     "position": 7,
     "filepath": "src/pages/slides/PersonalToolkit.tsx",
     "title": "Your personal toolkit",
-    "description": "Journal, milestones and badges, plus PDF and PNG exports.",
+    "description": "Your impact, built up over time. Journal, milestones, badges and exports.",
     "speakerNotes": ""
   },
   {

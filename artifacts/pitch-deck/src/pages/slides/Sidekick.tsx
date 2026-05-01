@@ -9,7 +9,7 @@ export default function Sidekick() {
           <div className="w-[4vw] h-[1px] bg-primary/50" />
         </div>
 
-        <h2 className="font-display font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-display font-bold text-[4.2vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
           Your AI
           <span className="block text-primary italic">sidekick.</span>
         </h2>
@@ -63,15 +63,15 @@ export default function Sidekick() {
         </div>
       </div>
 
-      <div className="col-span-6 relative flex items-center justify-center bg-text/[0.04] border-l border-text/8 px-[3vw]">
-        <div className="absolute top-[5vh] left-[3vw] flex items-center gap-[0.8vw]">
+      <div className="col-span-6 relative flex items-end justify-center bg-text/[0.04] border-l border-text/8 px-[3vw] pb-[8vh]">
+        <div className="absolute bottom-[3vh] left-[3vw] flex items-center gap-[0.8vw]">
           <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-primary animate-pulse" />
           <span className="font-body text-[0.95vw] uppercase tracking-[0.25em] text-text/55">
             Live on myimpact.uk
           </span>
         </div>
 
-        <div className="relative w-full max-w-[34vw] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-text/10 bg-bg">
+        <div className="relative w-full max-w-[32vw] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-text/10 bg-bg">
           <div className="flex items-center gap-[0.8vw] px-[1.5vw] py-[1.4vh] bg-text border-b border-text/10">
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-primary flex items-center justify-center flex-shrink-0">
               <span className="font-display font-bold text-[1.1vw] text-bg">S</span>
