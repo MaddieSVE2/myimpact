@@ -14,11 +14,17 @@ interface DemoLoginResult {
   orgRedirect: boolean;
 }
 
+interface MagicLinkResult {
+  instantLogin: boolean;
+  user?: User;
+  orgRedirect?: boolean;
+}
+
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
-  requestMagicLink: (email: string, returnTo?: string) => Promise<void>;
+  requestMagicLink: (email: string, returnTo?: string) => Promise<MagicLinkResult>;
   demoLogin: (email: string) => Promise<DemoLoginResult>;
   updateProfile: (fields: { displayName: string | null }) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,7 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   user: null,
   isLoading: true,
-  requestMagicLink: async () => {},
+  requestMagicLink: async () => ({ instantLogin: false }),
   demoLogin: async () => { throw new Error("Not implemented") as Error & { status: number }; },
   updateProfile: async () => {},
   logout: async () => {},
@@ -46,17 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const requestMagicLink = async (email: string, returnTo?: string) => {
+  const requestMagicLink = async (email: string, returnTo?: string): Promise<MagicLinkResult> => {
     const res = await fetch(`${BASE}/api/auth/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ email, returnTo: returnTo ?? null }),
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json();
       throw new Error(data.error ?? "Failed to send magic link");
     }
+    if (data.instantLogin && data.user) {
+      const u: User = { ...data.user, displayName: data.user.displayName ?? null };
+      setUser(u);
+      return { instantLogin: true, user: u, orgRedirect: !!data.orgRedirect };
+    }
+    return { instantLogin: false };
   };
 
   const demoLogin = async (email: string): Promise<DemoLoginResult> => {

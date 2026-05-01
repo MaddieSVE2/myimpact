@@ -36,7 +36,13 @@ export default function Login() {
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
-      await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
+      const result = await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
+      if (result.instantLogin) {
+        // Demo persona: skip the "check your inbox" screen and go straight in.
+        const target = result.orgRedirect ? "/org" : postLoginTo ?? "/";
+        navigate(target);
+        return;
+      }
       setSent(true);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong. Please try again.");

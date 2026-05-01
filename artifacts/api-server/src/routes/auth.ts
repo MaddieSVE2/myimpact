@@ -45,6 +45,20 @@ router.post("/request", async (req, res) => {
       ? returnTo
       : null;
 
+  // Demo persona accounts: skip the magic link entirely and issue a session
+  // immediately. The list of persona emails is hardcoded below; anything else
+  // falls through to the normal magic link flow.
+  if (PERSONA_ACCOUNTS[normalizedEmail]) {
+    try {
+      const result = await loginPersonaAccount(res, normalizedEmail);
+      res.json({ ok: true, instantLogin: true, ...result });
+    } catch (err) {
+      console.error("Demo persona login failed:", err);
+      res.status(500).json({ error: "Demo sign-in failed. Please try again." });
+    }
+    return;
+  }
+
   let user = await db.query.usersTable.findFirst({
     where: eq(usersTable.email, normalizedEmail),
   });
@@ -223,19 +237,10 @@ const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
   "jobseeker@jobseeker.org": { situation: ["job_seeking"] },
 };
 
-router.post("/demo-login", async (req, res) => {
-  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN !== "true") {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  const { email } = req.body;
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-
+async function loginPersonaAccount(res: any, normalizedEmail: string) {
   const persona = PERSONA_ACCOUNTS[normalizedEmail];
   if (!persona) {
-    res.status(403).json({ error: "Instant login is not available for this email" });
-    return;
+    throw new Error(`Unknown persona account: ${normalizedEmail}`);
   }
 
   let user = await db.query.usersTable.findFirst({
@@ -282,7 +287,30 @@ router.post("/demo-login", async (req, res) => {
   }
 
   issueSession(res, user);
-  res.json({ ok: true, user: { id: user.id, email: user.email }, orgRedirect: normalizedEmail === "demo@demo.org" });
+  return {
+    user: { id: user.id, email: user.email },
+    orgRedirect: normalizedEmail === "demo@demo.org",
+  };
+}
+
+// Legacy direct demo-login endpoint, kept for back-compat. Use /api/auth/request
+// instead, which auto-detects persona emails.
+router.post("/demo-login", async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (!PERSONA_ACCOUNTS[normalizedEmail]) {
+    res.status(403).json({ error: "Instant login is not available for this email" });
+    return;
+  }
+
+  try {
+    const result = await loginPersonaAccount(res, normalizedEmail);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("Demo persona login failed:", err);
+    res.status(500).json({ error: "Demo sign-in failed. Please try again." });
+  }
 });
 
 router.get("/me", async (req: any, res) => {
