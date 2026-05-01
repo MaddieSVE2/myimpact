@@ -20,7 +20,7 @@
     "position": 3,
     "filepath": "src/pages/slides/Solution.tsx",
     "title": "The solution",
-    "description": "A personal record of social value created.",
+    "description": "A platform to measure, motivate and inspire. Make the invisible visible.",
     "speakerNotes": ""
   },
   {
@@ -28,7 +28,7 @@
     "position": 4,
     "filepath": "src/pages/slides/HowItWorks.tsx",
     "title": "How it works",
-    "description": "Three steps from contribution to measurable impact.",
+    "description": "Measure, motivate, inspire, in three steps.",
     "speakerNotes": ""
   },
   {

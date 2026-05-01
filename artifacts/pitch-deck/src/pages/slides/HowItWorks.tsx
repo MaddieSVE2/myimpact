@@ -9,10 +9,12 @@ export default function HowItWorks() {
       </div>
 
       <h2 className="absolute top-[16vh] left-[6vw] right-[8vw] font-display font-bold text-[5vw] leading-[1] tracking-tight text-text" style={{ textWrap: "balance" }}>
-        Three steps from
-        <span className="text-primary italic"> contribution </span>
-        to <span className="text-primary italic">measurable impact.</span>
+        Measure, motivate, inspire,
+        <span className="block text-primary italic">in three steps.</span>
       </h2>
+      <p className="absolute top-[34vh] left-[6vw] right-[8vw] font-body text-[1.4vw] text-text/70 max-w-[55vw] leading-relaxed">
+        From the moment someone signs up, the platform turns one good deed into a measurable, repeatable habit.
+      </p>
 
       <div className="absolute bottom-[10vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2vw]">
         <div className="bg-card p-[3vw] rounded-2xl border border-text/8">
