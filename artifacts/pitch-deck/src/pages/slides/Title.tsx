@@ -29,7 +29,7 @@ export default function Title() {
           </span>
         </h1>
         <p className="font-body text-[1.5vw] text-bg/85 mt-[4vh] max-w-[55vw] leading-relaxed">
-          My Impact calculates what your community contribution is worth, in pounds — so you can finally see the difference you make.
+          My Impact calculates what your community contribution is worth, in pounds, so you can finally see the difference you make.
         </p>
       </div>
 

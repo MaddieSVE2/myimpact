@@ -18,10 +18,10 @@ export default function AboutSVE() {
             <span className="block text-primary italic">behind My Impact.</span>
           </h2>
           <p className="font-body text-[1.4vw] text-text/75 mt-[4vh] leading-relaxed">
-            The Social Value Engine is the UK's accredited platform for social value measurement — research-backed, regularly updated, and used by charities, government bodies, and businesses across the country.
+            The Social Value Engine is the UK's accredited platform for social value measurement: research-backed, regularly updated, and used by charities, government bodies, and businesses across the country.
           </p>
           <p className="font-body text-[1.3vw] text-text/65 mt-[3vh] leading-relaxed">
-            My Impact brings that proven, professional methodology to individuals and small organisations for the first time — in plain language, in a few clicks.
+            My Impact brings that proven, professional methodology to individuals and small organisations for the first time, in plain language, in a few clicks.
           </p>
 
           <div className="mt-[5vh] inline-flex items-center gap-[1vw] px-[1.8vw] py-[1.2vh] border-2 border-text/15 rounded-full">

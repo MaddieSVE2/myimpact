@@ -4,7 +4,7 @@
     "position": 1,
     "filepath": "src/pages/slides/Title.tsx",
     "title": "My Impact",
-    "description": "Title slide — hero with tagline.",
+    "description": "Title slide · hero with tagline.",
     "speakerNotes": ""
   },
   {
@@ -44,7 +44,7 @@
     "position": 6,
     "filepath": "src/pages/slides/CommercialOpportunity.tsx",
     "title": "The opportunity",
-    "description": "The commercial case for organisations — funding, retention, recruitment, reporting.",
+    "description": "The commercial case for organisations · funding, retention, recruitment, reporting.",
     "speakerNotes": ""
   },
   {
@@ -52,7 +52,7 @@
     "position": 7,
     "filepath": "src/pages/slides/Methodology.tsx",
     "title": "The method",
-    "description": "Built on real evidence — SVE, SDGs, and verified charity data.",
+    "description": "Built on real evidence · SVE, SDGs, and verified charity data.",
     "speakerNotes": ""
   },
   {
@@ -76,7 +76,7 @@
     "position": 10,
     "filepath": "src/pages/slides/GetInvolved.tsx",
     "title": "Get involved",
-    "description": "Closing — try it, partner with us.",
+    "description": "Closing · try it, partner with us.",
     "speakerNotes": ""
   }
 ]

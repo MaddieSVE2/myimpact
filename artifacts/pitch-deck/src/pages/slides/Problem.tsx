@@ -33,7 +33,7 @@ export default function Problem() {
             £
           </p>
           <p className="font-body text-[1.4vw] text-text/75 mt-[2vh] leading-relaxed">
-            Communities create real economic value — but no one is counting it.
+            Communities create real economic value, but no one is counting it.
           </p>
         </div>
         <div>

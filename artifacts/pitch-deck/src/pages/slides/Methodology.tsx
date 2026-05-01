@@ -15,7 +15,7 @@ export default function Methodology() {
             <span className="text-primary italic"> evidence.</span>
           </h2>
           <p className="font-body text-[1.5vw] text-text/75 mt-[5vh] leading-relaxed">
-            Powered by the Social Value Engine — the same proxy values used by UK councils, universities and charities for social value reporting.
+            Powered by the Social Value Engine, the same proxy values used by UK councils, universities and charities for social value reporting.
           </p>
           <div className="mt-[5vh] flex items-center gap-[2vw]">
             <div>
@@ -38,7 +38,7 @@ export default function Methodology() {
             Real local charities, every time.
           </h3>
           <p className="font-body text-[1.3vw] text-text/70 mt-[3vh] leading-relaxed">
-            Postcode lookup routes users to verified local charities — OSCR for Scotland, the Charity Commission for England and Wales, with an AI fallback for niche causes.
+            Postcode lookup routes users to verified local charities. OSCR covers Scotland, the Charity Commission covers England and Wales, with an AI fallback for niche causes.
           </p>
           <div className="mt-[4vh] flex items-center gap-[1.5vw]">
             <div className="px-[1.2vw] py-[0.8vh] bg-primary/10 text-primary rounded-full font-body text-[1.1vw] font-semibold">

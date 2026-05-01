@@ -16,7 +16,7 @@ export default function CommercialOpportunity() {
           <span className="block text-primary italic">organisations can act on.</span>
         </h2>
         <p className="font-body text-[1.4vw] text-text/70 mt-[3vh] max-w-[55vw] leading-relaxed">
-          My Impact gives organisations the evidence they already need — for funders, for procurement, for retention, and for recruitment.
+          My Impact gives organisations the evidence they already need: for funders, for procurement, for retention, and for recruitment.
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export default function CommercialOpportunity() {
           <div>
             <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">Recruit with credibility</h3>
             <p className="font-body text-[1.15vw] text-text/65 mt-[1vh] leading-relaxed">
-              Show prospective volunteers, students or employees the real-world value they will create — backed by an accredited methodology.
+              Show prospective volunteers, students or employees the real-world value they will create, backed by an accredited methodology.
             </p>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function CommercialOpportunity() {
           <div>
             <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">Report with confidence</h3>
             <p className="font-body text-[1.15vw] text-text/65 mt-[1vh] leading-relaxed">
-              One source of truth for trustees, funders, regulators and annual reports — no more chasing spreadsheets each quarter.
+              One source of truth for trustees, funders, regulators and annual reports. No more chasing spreadsheets each quarter.
             </p>
           </div>
         </div>

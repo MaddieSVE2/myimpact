@@ -3,14 +3,21 @@ const base = import.meta.env.BASE_URL;
 export default function Today() {
   return (
     <div className="slide relative w-screen h-screen overflow-hidden bg-bg grid grid-cols-12">
-      <div className="col-span-5 relative">
-        <img
-          src={`${base}community.png`}
-          crossOrigin="anonymous"
-          alt="A community café in the UK"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-bg/40" />
+      <div className="col-span-5 relative bg-text flex items-center justify-center p-[3vw]">
+        <div className="absolute top-[5vh] left-[3vw] flex items-center gap-[0.8vw]">
+          <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-primary animate-pulse" />
+          <span className="font-body text-[0.95vw] uppercase tracking-[0.25em] text-bg/55">
+            Live now
+          </span>
+        </div>
+        <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-bg/10">
+          <img
+            src={`${base}site-about.png`}
+            crossOrigin="anonymous"
+            alt="Screenshot of the About page on myimpact.uk"
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+        </div>
       </div>
 
       <div className="col-span-7 flex flex-col justify-center px-[5vw]">

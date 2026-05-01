@@ -1,3 +1,5 @@
+const base = import.meta.env.BASE_URL;
+
 export default function ForOrganisations() {
   return (
     <div className="slide relative w-screen h-screen overflow-hidden bg-text">
@@ -11,50 +13,65 @@ export default function ForOrganisations() {
         <div className="w-[6vw] h-[1px] bg-primary/50" />
       </div>
 
-      <div className="absolute top-[14vh] left-[6vw] right-[8vw]">
-        <h2 className="font-display font-bold text-[5vw] leading-[0.95] tracking-tight text-bg max-w-[60vw]" style={{ textWrap: "balance" }}>
-          See the social value
-          <span className="text-primary italic"> your people create.</span>
-        </h2>
-        <p className="font-body text-[1.4vw] text-bg/75 mt-[3vh] max-w-[55vw] leading-relaxed">
-          A branded portal for charities, universities, employers and membership organisations — turning everyday contribution into reportable impact.
-        </p>
+      <div className="absolute top-[14vh] left-[6vw] right-[6vw] grid grid-cols-12 gap-[3vw]">
+        <div className="col-span-5 flex flex-col justify-start pt-[2vh]">
+          <h2 className="font-display font-bold text-[4.6vw] leading-[0.95] tracking-tight text-bg" style={{ textWrap: "balance" }}>
+            See the social value
+            <span className="block text-primary italic">your people create.</span>
+          </h2>
+          <p className="font-body text-[1.3vw] text-bg/75 mt-[3vh] leading-relaxed">
+            A branded portal for charities, universities, employers and membership organisations, turning everyday contribution into reportable impact.
+          </p>
+
+          <div className="mt-[5vh] grid grid-cols-2 gap-x-[1.5vw] gap-y-[2vh]">
+            <div className="flex items-baseline gap-[0.7vw]">
+              <span className="text-primary font-display font-black text-[1.4vw] leading-none">£</span>
+              <span className="font-body text-[1.05vw] text-bg/85">Aggregate value</span>
+            </div>
+            <div className="flex items-baseline gap-[0.7vw]">
+              <span className="text-accent font-display font-black text-[1.4vw] leading-none">↗</span>
+              <span className="font-body text-[1.05vw] text-bg/85">Monthly trends</span>
+            </div>
+            <div className="flex items-baseline gap-[0.7vw]">
+              <span className="text-sky font-display font-black text-[1.4vw] leading-none">◎</span>
+              <span className="font-body text-[1.05vw] text-bg/85">Regional spread</span>
+            </div>
+            <div className="flex items-baseline gap-[0.7vw]">
+              <span className="text-primary font-display font-black text-[1.05vw] leading-none">PDF</span>
+              <span className="font-body text-[1.05vw] text-bg/85">Funder-ready reports</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-7 relative">
+          <div className="absolute -top-[3vh] left-0 flex items-center gap-[0.8vw]">
+            <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-primary animate-pulse" />
+            <span className="font-body text-[0.95vw] uppercase tracking-[0.25em] text-bg/55">
+              Example dashboard
+            </span>
+          </div>
+          <div className="relative w-full aspect-[16/11] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-bg/10 bg-bg">
+            <img
+              src={`${base}site-org-dashboard.png`}
+              crossOrigin="anonymous"
+              alt="Screenshot of an organisation dashboard on myimpact.uk"
+              className="absolute inset-0 w-full h-full object-cover object-top"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="absolute bottom-[18vh] left-[6vw] right-[6vw] grid grid-cols-4 gap-[1.5vw]">
-        <div className="bg-bg/8 backdrop-blur border border-bg/15 rounded-2xl p-[1.5vw]">
-          <p className="font-display font-black text-[3vw] leading-none text-primary">£</p>
-          <p className="font-display font-bold text-[1.4vw] text-bg mt-[1.5vh] leading-tight">Aggregate value</p>
-          <p className="font-body text-[1vw] text-bg/70 mt-[1vh] leading-relaxed">Live total across every member.</p>
-        </div>
-        <div className="bg-bg/8 backdrop-blur border border-bg/15 rounded-2xl p-[1.5vw]">
-          <p className="font-display font-black text-[3vw] leading-none text-accent">↗</p>
-          <p className="font-display font-bold text-[1.4vw] text-bg mt-[1.5vh] leading-tight">Monthly trends</p>
-          <p className="font-body text-[1vw] text-bg/70 mt-[1vh] leading-relaxed">Track impact over time.</p>
-        </div>
-        <div className="bg-bg/8 backdrop-blur border border-bg/15 rounded-2xl p-[1.5vw]">
-          <p className="font-display font-black text-[3vw] leading-none text-sky">◎</p>
-          <p className="font-display font-bold text-[1.4vw] text-bg mt-[1.5vh] leading-tight">Regional spread</p>
-          <p className="font-body text-[1vw] text-bg/70 mt-[1vh] leading-relaxed">Where impact happens.</p>
-        </div>
-        <div className="bg-primary rounded-2xl p-[1.5vw]">
-          <p className="font-display font-black text-[3vw] leading-none text-text">PDF</p>
-          <p className="font-display font-bold text-[1.4vw] text-bg mt-[1.5vh] leading-tight">Funder-ready reports</p>
-          <p className="font-body text-[1vw] text-bg/85 mt-[1vh] leading-relaxed">Exportable for stakeholders.</p>
-        </div>
-      </div>
-
-      <div className="absolute bottom-[6vh] left-[6vw] right-[6vw] flex items-center gap-[2vw]">
-        <span className="font-body text-[0.95vw] uppercase tracking-[0.25em] text-bg/55">Built for</span>
-        <span className="font-display italic text-[1.3vw] text-bg/85">Charities</span>
+      <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center gap-[1.5vw] flex-wrap">
+        <span className="font-body text-[0.9vw] uppercase tracking-[0.25em] text-bg/55">Built for</span>
+        <span className="font-display italic text-[1.2vw] text-bg/85">Charities</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.3vw] text-bg/85">Universities</span>
+        <span className="font-display italic text-[1.2vw] text-bg/85">Universities</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.3vw] text-bg/85">Employers</span>
+        <span className="font-display italic text-[1.2vw] text-bg/85">Employers</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.3vw] text-bg/85">Membership bodies</span>
+        <span className="font-display italic text-[1.2vw] text-bg/85">Membership bodies</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.3vw] text-bg/85">Local authorities</span>
+        <span className="font-display italic text-[1.2vw] text-bg/85">Local authorities</span>
       </div>
     </div>
   );

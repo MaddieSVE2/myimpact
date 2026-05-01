@@ -28,7 +28,7 @@ export default function HowItWorks() {
             Tell us your situation
           </h3>
           <p className="font-body text-[1.3vw] text-text/70 mt-[2vh] leading-relaxed">
-            Student, carer, jobseeker, professional or retired — pick the journey that fits.
+            Student, carer, jobseeker, professional or retired. Pick the journey that fits.
           </p>
         </div>
 
@@ -45,7 +45,7 @@ export default function HowItWorks() {
             Log what you actually do
           </h3>
           <p className="font-body text-[1.3vw] text-text/70 mt-[2vh] leading-relaxed">
-            Volunteering, mentoring, fundraising, caring — pick from a curated list or describe it freely.
+            Volunteering, mentoring, fundraising, caring. Pick from a curated list or describe it freely.
           </p>
         </div>
 
