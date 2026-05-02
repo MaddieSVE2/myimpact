@@ -48,24 +48,50 @@ export default function AdvisoryGroup() {
           <p className="font-body text-[0.9vw] uppercase tracking-[0.25em] text-text/55 mb-[2vh]">
             Advisory members
           </p>
-          <div className="flex flex-col gap-[1.2vh]">
+          <div className="flex flex-col gap-[1vh]">
             {[
-              "Lucinda Yeadon",
-              "Al Garthwaite",
-              "Jesse Jackson, Loughborough College",
-              "Heather Arnatt, Voluntary Centre Services",
-              "Abigail Appleton, HCA",
-              "Chris Cowcher",
-              "James Tedder",
-            ].map((name) => (
+              {
+                name: "Lucinda Yeadon",
+                role: "Former Leeds City Councillor for Kirkstall Ward (2008–2018), including three years as Deputy Leader",
+              },
+              {
+                name: "Al Garthwaite",
+                role: "Councillor representing Headingley",
+              },
+              {
+                name: "Jesse Jackson",
+                role: "Loughborough College",
+              },
+              {
+                name: "Heather Arnatt",
+                role: "Voluntary Centre Services",
+              },
+              {
+                name: "Abigail Appleton",
+                role: "HCA",
+              },
+              {
+                name: "Chris Cowcher",
+                role: "Ex-Plunket UK",
+              },
+              {
+                name: "James Tedder",
+                role: "Loughborough College",
+              },
+            ].map(({ name, role }) => (
               <div
                 key={name}
-                className="px-[1.4vw] py-[1.2vh] rounded-2xl bg-card border border-text/8 flex items-center gap-[1vw]"
+                className="px-[1.4vw] py-[1vh] rounded-2xl bg-card border border-text/8 flex items-start gap-[1vw]"
               >
-                <span className="w-[0.6vw] h-[0.6vw] rounded-full bg-primary shrink-0" />
-                <span className="font-display font-bold text-[1.15vw] text-text leading-tight">
-                  {name}
-                </span>
+                <span className="w-[0.6vw] h-[0.6vw] rounded-full bg-primary shrink-0 mt-[0.7vh]" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-bold text-[1.1vw] text-text leading-tight">
+                    {name}
+                  </p>
+                  <p className="font-body text-[0.85vw] text-text/65 leading-snug mt-[0.3vh]">
+                    {role}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
