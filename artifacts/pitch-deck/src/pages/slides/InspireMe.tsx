@@ -42,24 +42,24 @@ export default function InspireMe() {
         </div>
       </div>
 
-      <div className="col-span-7 relative flex items-center justify-center bg-text/[0.04] border-l border-text/8 px-[3vw]">
-        <div className="absolute top-[5vh] left-[3vw] flex items-center gap-[0.8vw]">
+      <div className="col-span-7 relative flex items-center justify-center bg-text/[0.04] border-l border-text/8 px-[2vw] py-[8vh]">
+        <div className="absolute top-[4vh] left-[2.5vw] flex items-center gap-[0.8vw]">
           <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-primary animate-pulse" />
           <span className="font-body text-[0.95vw] uppercase tracking-[0.25em] text-text/55">
             Live on myimpact.uk
           </span>
         </div>
 
-        <div className="relative w-full max-w-[44vw] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-text/10 bg-bg">
+        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-text/10 bg-bg">
           <div className="flex items-center gap-[0.5vw] px-[1.2vw] py-[1.2vh] bg-text/5 border-b border-text/10">
             <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-[#FF5F57]" />
             <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-[#FEBC2E]" />
             <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-[#28C840]" />
-            <div className="ml-[1.5vw] flex-1 px-[1vw] py-[0.5vh] bg-bg rounded-md font-body text-[0.85vw] text-text/55">
+            <div className="ml-[1.5vw] flex-1 px-[1vw] py-[0.5vh] bg-bg rounded-md font-body text-[0.95vw] text-text/55">
               myimpact.uk/suggestions
             </div>
           </div>
-          <div className="relative" style={{ aspectRatio: "16 / 10" }}>
+          <div className="relative" style={{ aspectRatio: "16 / 11" }}>
             <img
               src={`${base}site-suggestions.png`}
               crossOrigin="anonymous"
@@ -70,14 +70,14 @@ export default function InspireMe() {
           </div>
         </div>
 
-        <div className="absolute bottom-[5vh] right-[3vw] bg-bg/95 backdrop-blur px-[2vw] py-[2vh] rounded-2xl shadow-xl border border-text/8 max-w-[18vw]">
-          <p className="font-body text-[0.85vw] uppercase tracking-[0.2em] text-muted mb-[0.8vh]">
+        <div className="absolute bottom-[4vh] right-[2.5vw] bg-bg/95 backdrop-blur px-[1.8vw] py-[1.8vh] rounded-2xl shadow-xl border border-text/8 max-w-[16vw]">
+          <p className="font-body text-[0.8vw] uppercase tracking-[0.2em] text-muted mb-[0.6vh]">
             Top suggestion
           </p>
-          <p className="font-display font-black text-[2.2vw] leading-none text-primary">
+          <p className="font-display font-black text-[2vw] leading-none text-primary">
             +£20,748
           </p>
-          <p className="font-body text-[0.95vw] text-text/70 mt-[1vh] leading-snug">
+          <p className="font-body text-[0.85vw] text-text/70 mt-[0.8vh] leading-snug">
             est. annual value, 3 hrs/week
           </p>
         </div>
