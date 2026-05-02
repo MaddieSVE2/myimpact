@@ -29,6 +29,7 @@ export interface OSCRCharity {
   description: string;
   website: string | null;
   registerUrl: string;
+  postcode: string | null;
 }
 
 interface OSCRRecord {
@@ -239,7 +240,14 @@ export async function searchOSCRCharities(
         : `Scottish registered charity`;
       const rawSite = r.website ?? "";
       const website = rawSite.startsWith("http") ? rawSite : null;
-      return { name: r.charityName ?? "Unknown charity", registrationNumber: regNum, description, website, registerUrl };
+      return {
+        name: r.charityName ?? "Unknown charity",
+        registrationNumber: regNum,
+        description,
+        website,
+        registerUrl,
+        postcode: r.postcode ?? null,
+      };
     });
   } catch (err) {
     console.error("OSCR API error:", err);

@@ -6,6 +6,7 @@ export interface CCCharity {
   description: string;
   website: string | null;
   registerUrl: string;
+  postcode: string | null;
 }
 
 const ACTIVITY_KEYWORDS: Record<string, string[]> = {
@@ -206,6 +207,7 @@ export async function searchCharities(
       description,
       website: d?.web && d.web.startsWith("http") ? d.web : null,
       registerUrl,
+      postcode: d?.address_post_code ?? null,
     });
   }
 

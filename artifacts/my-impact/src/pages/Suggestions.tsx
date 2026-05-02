@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
-import { useGetSuggestions } from "@workspace/api-client-react";
+import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface LocalPlace {
@@ -23,12 +23,50 @@ interface TileLocalState {
   places: LocalPlace[];
 }
 
+interface NearbyOpportunity {
+  name: string;
+  activityType: string;
+  distanceMiles: number;
+  description: string;
+  website: string | null;
+  registerUrl: string;
+  registrationNumber: string;
+  source: "register";
+}
+
+interface NearbyResponse {
+  nearby: NearbyOpportunity[];
+  location: { postcode: string; adminDistrict: string; country: string };
+}
+
+function formatActivityType(activity: string): string {
+  return activity.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatDistance(miles: number): string {
+  if (miles < 1) return "< 1 mi";
+  if (miles < 10) return `${miles.toFixed(1)} mi`;
+  return `${Math.round(miles)} mi`;
+}
+
 export default function Suggestions() {
   const { input, interests, location, locationMeta, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
+  const { data: profileData } = useGetProfile();
 
   // Per-tile local state: activityId → TileLocalState
   const [tileLocal, setTileLocal] = useState<Record<string, TileLocalState>>({});
+
+  // "Near you this week" state
+  const [nearbyState, setNearbyState] = useState<{
+    loading: boolean;
+    error: boolean;
+    data: NearbyResponse | null;
+  }>({ loading: false, error: false, data: null });
+
+  const profilePostcode = profileData?.profile?.postcode?.trim() ?? "";
+  const profileInterests = profileData?.profile?.interests ?? [];
+  const interestsForNearby = profileInterests.length > 0 ? profileInterests : interests;
 
   const interestLabels = interests
     .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
@@ -44,6 +82,36 @@ export default function Suggestions() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch "Near you this week" when we have a postcode in the profile
+  useEffect(() => {
+    if (!profilePostcode) {
+      setNearbyState({ loading: false, error: false, data: null });
+      return;
+    }
+    let cancelled = false;
+    setNearbyState({ loading: true, error: false, data: null });
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    fetch(`${base}/api/local-charities/nearby`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postcode: profilePostcode, interests: interestsForNearby }),
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error("nearby failed"))))
+      .then((data: NearbyResponse) => {
+        if (cancelled) return;
+        setNearbyState({ loading: false, error: false, data });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNearbyState({ loading: false, error: true, data: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profilePostcode, interestsForNearby.join(",")]);
 
   const handleToggleLocal = useCallback(async (activityId: string, activityName: string) => {
     // If already open, collapse
@@ -108,6 +176,106 @@ export default function Suggestions() {
           }
         </p>
       </div>
+
+      {/* Near you this week */}
+      {profileData ? (
+        !profilePostcode ? (
+          <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-dashed border-border bg-muted/40">
+            <div className="flex items-center gap-2 min-w-0">
+              <Compass className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground leading-snug">
+                Add your postcode to see opportunities near you.
+              </p>
+            </div>
+            <Link
+              href="/profile"
+              className="shrink-0 text-xs font-semibold text-primary hover:text-primary/80 whitespace-nowrap"
+            >
+              Add postcode →
+            </Link>
+          </div>
+        ) : (
+          <div className="mb-8">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Compass className="w-4 h-4" style={{ color: "#E8633A" }} aria-hidden="true" />
+                  <h2 className="text-sm font-semibold text-foreground">Near you this week</h2>
+                </div>
+                {nearbyState.data?.location.adminDistrict && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Charities operating in {nearbyState.data.location.adminDistrict}
+                  </p>
+                )}
+              </div>
+              <Link
+                href="/profile"
+                className="text-[11px] text-muted-foreground hover:text-foreground whitespace-nowrap"
+              >
+                Change postcode
+              </Link>
+            </div>
+
+            {nearbyState.loading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-4 bg-white border border-border rounded-lg">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Finding opportunities near {profilePostcode}…
+              </div>
+            ) : nearbyState.error ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-4 bg-white border border-border rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Couldn't load nearby opportunities right now.
+              </div>
+            ) : nearbyState.data && nearbyState.data.nearby.length > 0 ? (
+              <div className="space-y-2">
+                {nearbyState.data.nearby.map((n, i) => (
+                  <motion.a
+                    key={n.registrationNumber}
+                    href={n.website ?? n.registerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="block bg-white border border-border rounded-lg px-4 py-3 hover:border-foreground/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="text-sm font-semibold text-foreground leading-snug truncate">{n.name}</p>
+                          <span className="inline-flex items-center text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                            ✓ Registered
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                          <span className="px-1.5 py-0.5 rounded bg-muted font-medium uppercase tracking-wider">
+                            {formatActivityType(n.activityType)}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {formatDistance(n.distanceMiles)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">{n.description}</p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+                    </div>
+                  </motion.a>
+                ))}
+                <p className="text-[10px] text-muted-foreground/70 pt-1">
+                  Sorted by distance from {nearbyState.data.location.postcode}. Results from the official UK charity register.
+                </p>
+              </div>
+            ) : nearbyState.data ? (
+              <div className="p-4 bg-white border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  We couldn't find any registered charities matching your interests within 30 miles of {profilePostcode} right now. Browse the broader suggestions below for more ideas.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )
+      ) : null}
 
       {/* Activity suggestion tiles */}
       {isPending ? (
