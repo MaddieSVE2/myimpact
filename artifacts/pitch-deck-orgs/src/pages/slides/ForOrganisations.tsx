@@ -2,7 +2,7 @@ const base = import.meta.env.BASE_URL;
 
 export default function ForOrganisations() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-text">
+    <div className="relative w-screen h-screen overflow-hidden bg-text">
       <div className="absolute top-0 left-0 w-[40vw] h-[40vw] rounded-full bg-primary/15 blur-3xl" />
       <div className="absolute bottom-0 right-0 w-[30vw] h-[30vw] rounded-full bg-accent/10 blur-3xl" />
 

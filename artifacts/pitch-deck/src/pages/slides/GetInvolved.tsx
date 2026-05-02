@@ -2,7 +2,7 @@ const base = import.meta.env.BASE_URL;
 
 export default function GetInvolved() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-text">
+    <div className="relative w-screen h-screen overflow-hidden bg-text">
       <div className="absolute top-[-15vh] right-[-15vw] w-[55vw] h-[55vw] rounded-full bg-primary/20 blur-3xl" />
       <div className="absolute bottom-[-10vh] left-[-10vw] w-[40vw] h-[40vw] rounded-full bg-accent/15 blur-3xl" />
 

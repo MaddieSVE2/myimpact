@@ -1,6 +1,6 @@
 export default function Methodology() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[-10vh] right-[-5vw] w-[40vw] h-[40vw] rounded-full bg-accent/12 blur-3xl" />
       <div className="absolute bottom-[-10vh] left-[-5vw] w-[35vw] h-[35vw] rounded-full bg-primary/8 blur-3xl" />
 

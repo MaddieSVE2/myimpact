@@ -1,6 +1,6 @@
 export default function CommercialOpportunity() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-0 right-0 w-[40vw] h-[40vw] rounded-full bg-primary/10 blur-3xl" />
 
       <div className="absolute top-[6vh] left-[6vw] flex items-center gap-[1vw]">

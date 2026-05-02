@@ -1,6 +1,6 @@
 export default function HowItWorks() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[8vh] left-[6vw] flex items-center gap-[1vw]">
         <span className="font-body text-[1.2vw] font-semibold uppercase tracking-[0.25em] text-primary">
           03 · How it works

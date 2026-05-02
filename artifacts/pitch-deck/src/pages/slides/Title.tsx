@@ -2,7 +2,7 @@ const base = import.meta.env.BASE_URL;
 
 export default function Title() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-text">
+    <div className="relative w-screen h-screen overflow-hidden bg-text">
       <img
         src={`${base}hero.png`}
         crossOrigin="anonymous"

@@ -1,6 +1,6 @@
 export default function AdvisoryGroup() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[-10vh] left-[-10vw] w-[40vw] h-[40vw] rounded-full bg-primary/10 blur-3xl" />
       <div className="absolute bottom-[-10vh] right-[-10vw] w-[35vw] h-[35vw] rounded-full bg-accent/10 blur-3xl" />
 

@@ -2,7 +2,7 @@ const base = import.meta.env.BASE_URL;
 
 export default function InspireMe() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg grid grid-cols-12">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg grid grid-cols-12">
       <div className="col-span-5 relative flex flex-col justify-center px-[5vw]">
         <div className="flex items-center gap-[1vw] mb-[4vh]">
           <span className="font-body text-[1.15vw] font-semibold uppercase tracking-[0.25em] text-primary">

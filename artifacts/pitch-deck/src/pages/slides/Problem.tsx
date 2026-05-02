@@ -1,6 +1,6 @@
 export default function Problem() {
   return (
-    <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[-20vh] left-[-15vw] w-[55vw] h-[55vw] rounded-full bg-primary/6 blur-3xl" />
       <div className="absolute bottom-[-10vh] right-[-8vw] w-[30vw] h-[30vw] rounded-full bg-accent/8 blur-3xl" />
 
