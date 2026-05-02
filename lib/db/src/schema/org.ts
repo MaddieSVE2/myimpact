@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique, numeric, boolean, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, unique, numeric, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
 export const organisationsTable = pgTable("organisations", {
@@ -61,8 +61,70 @@ export const orgShareLinksTable = pgTable("org_share_links", {
   orgIdx: index("org_share_links_org_idx").on(t.orgId),
 }));
 
+// API keys minted by org managers. The raw key is shown ONCE at creation
+// time and never stored — only `keyHash` (sha256 of the raw key) is kept.
+export const orgApiKeysTable = pgTable("org_api_keys", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  // First 8 chars of the raw key, useful for the UI to display "mi_orgk_abcd1234…"
+  keyPrefix: text("key_prefix").notNull(),
+  scopes: text("scopes").array().notNull().default(["hours.write", "members.read", "stats.read"]),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_api_keys_org_idx").on(t.orgId),
+}));
+
+// Outbound webhook subscriptions. The `secret` is generated server-side and
+// used to sign delivery payloads with HMAC-SHA256.
+export const orgWebhooksTable = pgTable("org_webhooks", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  secret: text("secret").notNull(),
+  events: text("events").array().notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  // Set when retries are exhausted (24h window) and the endpoint is marked dead
+  deadAt: timestamp("dead_at"),
+  lastSuccessAt: timestamp("last_success_at"),
+  lastFailureAt: timestamp("last_failure_at"),
+  lastError: text("last_error"),
+  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_webhooks_org_idx").on(t.orgId),
+}));
+
+// Per-attempt delivery queue. The dispatcher polls rows where
+// `status = 'pending' AND nextAttemptAt <= now()`.
+export const webhookDeliveriesTable = pgTable("webhook_deliveries", {
+  id: text("id").primaryKey(),
+  webhookId: text("webhook_id").notNull().references(() => orgWebhooksTable.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  status: text("status").notNull().default("pending"), // pending | delivered | dead
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  firstAttemptAt: timestamp("first_attempt_at"),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  deliveredAt: timestamp("delivered_at"),
+  lastResponseStatus: integer("last_response_status"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pendingIdx: index("webhook_deliveries_pending_idx").on(t.status, t.nextAttemptAt),
+  webhookIdx: index("webhook_deliveries_webhook_idx").on(t.webhookId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
 export type OrgMatchRate = typeof orgMatchRatesTable.$inferSelect;
 export type OrgShareLink = typeof orgShareLinksTable.$inferSelect;
+export type OrgApiKey = typeof orgApiKeysTable.$inferSelect;
+export type OrgWebhook = typeof orgWebhooksTable.$inferSelect;
+export type WebhookDelivery = typeof webhookDeliveriesTable.$inferSelect;

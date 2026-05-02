@@ -13,6 +13,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
 import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
+import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 
 const router: IRouter = Router();
 
@@ -236,6 +237,33 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       .returning();
     record = inserted;
   }
+
+  // Fire `hours.logged` to any org webhooks subscribed for this user's org.
+  // Non-blocking — failures here must not affect the user-facing save.
+  (async () => {
+    try {
+      const membership = await db.query.orgMembersTable.findFirst({
+        where: eq(orgMembersTable.userId, userId),
+      });
+      if (!membership) return;
+      await enqueueOrgEvent({
+        orgId: membership.orgId,
+        eventType: "hours.logged",
+        payload: {
+          recordId: String(record.id),
+          member: { ref: userId, email: req.user!.email },
+          name: record.name,
+          period: record.periodLabel ?? null,
+          hours: body.impactResult.totalHours,
+          socialValueGBP: Math.round(body.impactResult.totalValue * 100) / 100,
+          attested: false,
+          loggedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error("[impact.save] failed to enqueue hours.logged:", err);
+    }
+  })();
 
   res.json({
     id: String(record.id),

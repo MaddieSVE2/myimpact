@@ -9,6 +9,7 @@ import { buildOrgDocument } from "../lib/orgPdf.js";
 import React from "react";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
+import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 
 const router: IRouter = Router();
 
@@ -186,6 +187,16 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   await db.insert(orgMembersTable).values({ orgId: org.id, userId, role });
+
+  enqueueOrgEvent({
+    orgId: org.id,
+    eventType: "member.joined",
+    payload: {
+      member: { ref: userId, email: userEmail },
+      role,
+      joinedAt: new Date().toISOString(),
+    },
+  }).catch(err => console.error("[org.join] failed to enqueue member.joined:", err));
 
   res.json({ ok: true, orgName: org.name, alreadyMember: false });
 });

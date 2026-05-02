@@ -48,6 +48,12 @@ export const impactRecordsTable = pgTable("impact_records", {
   outwardCode: text("outward_code"),
   lat: numeric("lat", { precision: 10, scale: 6 }),
   lng: numeric("lng", { precision: 10, scale: 6 }),
+  // Org-attestation fields. Set when the record was pushed via the org REST
+  // API on behalf of a member — these records bypass any verification queue
+  // and are flagged in the UI as "attested by <org>".
+  attestedByApiKeyId: text("attested_by_api_key_id"),
+  attestedAt: timestamp("attested_at"),
+  source: text("source").notNull().default("user"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

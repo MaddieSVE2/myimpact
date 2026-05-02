@@ -1,4 +1,5 @@
 import app from "./app";
+import { startWebhookDispatcher } from "./lib/webhookDispatcher.js";
 
 if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
   console.warn(
@@ -31,4 +32,5 @@ if (Number.isNaN(port) || port <= 0) {
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  startWebhookDispatcher();
 });
