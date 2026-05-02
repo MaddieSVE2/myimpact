@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Paperclip, X, Trash2, FileText, Loader2, AlertCircle } from "lucide-react";
+import { Camera, Paperclip, X, Trash2, FileText, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -41,6 +43,12 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+interface UsageData {
+  usedBytes: number;
+  capBytes: number;
+  maxFileSizeBytes: number;
+}
+
 export default function Attachments({
   recordId,
   journalId,
@@ -51,13 +59,47 @@ export default function Attachments({
   onChange,
 }: AttachmentsProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [items, setItems] = useState<AttachmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState<AttachmentItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const receiptInputRef = useRef<HTMLInputElement | null>(null);
+
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/api/attachments/usage`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as UsageData;
+      setUsage(data);
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  useEffect(() => { void fetchUsage(); }, [fetchUsage]);
+
+  const usagePct = usage ? Math.min(100, (usage.usedBytes / usage.capBytes) * 100) : 0;
+  const showStorageWarning = usage != null && usagePct >= 80;
+  const isStorageFull = usage != null && usagePct >= 95;
+
+  const goToSettings = useCallback(() => setLocation("/settings"), [setLocation]);
+
+  const showQuotaToast = useCallback((message: string) => {
+    toast({
+      title: "Storage full",
+      description: message,
+      variant: "destructive",
+      action: (
+        <ToastAction altText="Manage storage" onClick={goToSettings}>
+          Manage storage
+        </ToastAction>
+      ),
+    });
+  }, [toast, goToSettings]);
 
   const photos = items.filter(i => i.kind === "photo");
   const receipts = items.filter(i => i.kind === "receipt");
@@ -109,7 +151,12 @@ export default function Attachments({
       });
       if (!urlRes.ok) {
         const err = await urlRes.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(typeof err.error === "string" ? err.error : "Upload failed");
+        const message = typeof err.error === "string" ? err.error : "Upload failed";
+        if (urlRes.status === 413) {
+          showQuotaToast(`${message} Free up space by deleting old attachments.`);
+          return;
+        }
+        throw new Error(message);
       }
       const { uploadUrl, storageKey } = await urlRes.json() as { uploadUrl: string; storageKey: string };
 
@@ -135,9 +182,15 @@ export default function Attachments({
       });
       if (!regRes.ok) {
         const err = await regRes.json().catch(() => ({ error: "Save failed" }));
-        throw new Error(typeof err.error === "string" ? err.error : "Save failed");
+        const message = typeof err.error === "string" ? err.error : "Save failed";
+        if (regRes.status === 413) {
+          showQuotaToast(`${message} Free up space by deleting old attachments.`);
+          return;
+        }
+        throw new Error(message);
       }
       await refresh();
+      void fetchUsage();
       toast({ title: kind === "receipt" ? "Receipt added" : "Photo added" });
     } catch (e) {
       toast({
@@ -180,6 +233,7 @@ export default function Attachments({
       const res = await fetch(`${BASE}/api/attachments/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("delete failed");
       await refresh();
+      void fetchUsage();
     } catch {
       toast({ title: "Couldn't remove", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -213,6 +267,34 @@ export default function Attachments({
             {photos.length}/{photoLimit}
             {allowReceipt && (hasReceipt ? " · receipt ✓" : "")}
           </p>
+        </div>
+      )}
+
+      {/* Storage warning */}
+      {showStorageWarning && (
+        <div
+          className={`mb-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+            isStorageFull
+              ? "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200"
+              : "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+          }`}
+          role="status"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+          <div className="flex-1 leading-snug">
+            {isStorageFull
+              ? <>You're out of storage ({Math.round(usagePct)}% of {Math.round((usage?.capBytes ?? 0) / (1024 * 1024))} MB used). Delete old attachments to free space.</>
+              : <>You've used {Math.round(usagePct)}% of your storage. Tidy up old attachments before you hit the limit.</>
+            }
+            {" "}
+            <button
+              type="button"
+              onClick={goToSettings}
+              className="underline font-medium hover:no-underline"
+            >
+              Manage storage
+            </button>
+          </div>
         </div>
       )}
 
@@ -364,12 +446,6 @@ interface UsageBarProps {
   className?: string;
 }
 
-interface UsageData {
-  usedBytes: number;
-  capBytes: number;
-  maxFileSizeBytes: number;
-}
-
 export function StorageUsageBar({ className }: UsageBarProps) {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -398,6 +474,13 @@ export function StorageUsageBar({ className }: UsageBarProps) {
   const usedMb = (usage.usedBytes / (1024 * 1024)).toFixed(1);
   const capMb = Math.round(usage.capBytes / (1024 * 1024));
   const isFull = pct >= 95;
+  const isWarning = pct >= 80 && !isFull;
+
+  const pctColorClass = isFull
+    ? "text-red-600 dark:text-red-400"
+    : isWarning
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-foreground";
 
   return (
     <div className={className}>
@@ -405,17 +488,32 @@ export function StorageUsageBar({ className }: UsageBarProps) {
         <p className="text-xs text-muted-foreground">
           {usedMb} MB of {capMb} MB used
         </p>
-        <p className="text-xs font-medium text-foreground">{pct}%</p>
+        <p className={`text-xs font-medium ${pctColorClass}`}>{pct}%</p>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{
             width: `${pct}%`,
-            background: isFull ? "#dc2626" : pct > 75 ? "#f59e0b" : "#22c55e",
+            background: isFull ? "#dc2626" : isWarning ? "#f59e0b" : "#22c55e",
           }}
         />
       </div>
+      {(isWarning || isFull) && (
+        <div
+          className={`mt-2 flex items-start gap-1.5 text-[11px] leading-snug ${
+            isFull ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+          }`}
+          role="status"
+        >
+          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            {isFull
+              ? "You're out of storage. Delete old photos or receipts below to free space."
+              : "You're getting close to your storage limit. Consider tidying up old attachments."}
+          </span>
+        </div>
+      )}
       <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
         Photos and receipts are stored privately. Each file can be up to {Math.round(usage.maxFileSizeBytes / (1024 * 1024))} MB.
       </p>
