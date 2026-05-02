@@ -361,7 +361,7 @@ export default function Intro() {
       )}
 
       {/* ── GDP STATEMENT ── */}
-      <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
+      <section style={{ background: C.cream, padding: "clamp(28px, 4vw, 48px) 5% clamp(60px, 10vw, 120px)" }}>
         <FadeIn>
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p style={{ fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 24, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}>
