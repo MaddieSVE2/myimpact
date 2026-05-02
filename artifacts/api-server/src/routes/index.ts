@@ -23,6 +23,7 @@ import calendarRouter from "./calendar";
 import challengesRouter from "./challenges";
 import billingRouter from "./billing";
 import analyticsRouter from "./analytics";
+import testOnlyRouter from "./test-only";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,9 @@ router.use("/calendar", calendarRouter);
 router.use("/challenges", challengesRouter);
 router.use("/billing", billingRouter);
 router.use("/analytics", analyticsRouter);
+
+// Test-only endpoints are mounted unconditionally; the router itself
+// returns 404 for every request unless E2E_TEST_MODE=1 is set.
+router.use("/test", testOnlyRouter);
 
 export default router;

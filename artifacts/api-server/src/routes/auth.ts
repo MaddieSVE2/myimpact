@@ -137,6 +137,13 @@ router.post("/request", async (req, res) => {
     ? `${appUrl}/auth/confirm?token=${token}&returnTo=${encodeURIComponent(safeReturnTo)}`
     : `${appUrl}/auth/confirm?token=${token}`;
 
+  // E2E test mode: skip the actual email send. The token is still recorded
+  // and can be retrieved via the test-only /api/test/latest-token endpoint.
+  if (process.env.E2E_TEST_MODE === "1") {
+    res.json({ ok: true });
+    return;
+  }
+
   try {
     const { client, fromEmail } = await getUncachableResendClient();
     const { error: sendError } = await client.emails.send({

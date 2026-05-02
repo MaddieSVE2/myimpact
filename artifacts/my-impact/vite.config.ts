@@ -78,6 +78,18 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // E2E test mode: proxy /api to the standalone api-server so the dev
+    // stack matches the production same-origin layout. Off by default so
+    // local dev (where the Replit proxy handles routing) is unaffected.
+    proxy: process.env.VITE_E2E_API_PROXY
+      ? {
+          "/api": {
+            target: process.env.VITE_E2E_API_PROXY,
+            changeOrigin: true,
+            secure: false,
+          },
+        }
+      : undefined,
   },
   preview: {
     port,
