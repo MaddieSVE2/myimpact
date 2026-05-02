@@ -11,7 +11,7 @@ export default function Methodology() {
       <div className="absolute top-[18vh] left-[6vw] right-[8vw] grid grid-cols-12 gap-[3vw]">
         <div className="col-span-6">
           <h2 className="font-display font-bold text-[5vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
-            Built on real
+            Grounded in
             <span className="text-primary italic"> evidence.</span>
           </h2>
           <p className="font-body text-[1.5vw] text-text/75 mt-[5vh] leading-relaxed">

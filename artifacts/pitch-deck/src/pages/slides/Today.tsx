@@ -41,10 +41,10 @@ export default function Today() {
         </div>
 
         <h2 className="font-display font-bold text-[4.8vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
-          Live, today.
+          Up and running.
         </h2>
         <p className="font-body text-[1.4vw] text-text/75 mt-[3vh] leading-relaxed">
-          Pilots running with universities, charities and community organisations across the UK.
+          Pilots in progress with universities, charities and community organisations across the UK.
         </p>
 
         <div className="mt-[5vh] grid grid-cols-2 gap-x-[2vw] gap-y-[2vh]">

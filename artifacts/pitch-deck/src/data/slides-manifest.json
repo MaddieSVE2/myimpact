@@ -32,16 +32,8 @@
     "speakerNotes": ""
   },
   {
-    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0012",
-    "position": 5,
-    "filepath": "src/pages/slides/Sidekick.tsx",
-    "title": "Sidekick",
-    "description": "AI assistant that explains your impact and turns it into words.",
-    "speakerNotes": ""
-  },
-  {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0013",
-    "position": 6,
+    "position": 5,
     "filepath": "src/pages/slides/InspireMe.tsx",
     "title": "Ideas for you",
     "description": "Ideas, picked for you. Each one priced by social value.",
@@ -49,10 +41,18 @@
   },
   {
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0014",
-    "position": 7,
+    "position": 6,
     "filepath": "src/pages/slides/PersonalToolkit.tsx",
     "title": "Your personal toolkit",
     "description": "Your impact, built up over time. Journal, milestones, badges and exports.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0012",
+    "position": 7,
+    "filepath": "src/pages/slides/Sidekick.tsx",
+    "title": "Sidekick",
+    "description": "AI assistant that explains your impact and turns it into words.",
     "speakerNotes": ""
   },
   {
@@ -67,8 +67,8 @@
     "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0010",
     "position": 9,
     "filepath": "src/pages/slides/CommercialOpportunity.tsx",
-    "title": "The opportunity",
-    "description": "The commercial case for organisations · funding, retention, recruitment, reporting.",
+    "title": "How organisations use My Impact",
+    "description": "Six ways organisations put My Impact to work · employee recognition, student support, impact reporting, CSR alignment, employer branding, and volunteer recognition & mobilisation.",
     "speakerNotes": ""
   },
   {
@@ -76,7 +76,7 @@
     "position": 10,
     "filepath": "src/pages/slides/Methodology.tsx",
     "title": "The method",
-    "description": "Built on real evidence · SVE, SDGs, and verified charity data.",
+    "description": "Grounded in evidence · SVE, SDGs, and verified charity data.",
     "speakerNotes": ""
   },
   {
@@ -84,7 +84,7 @@
     "position": 11,
     "filepath": "src/pages/slides/Today.tsx",
     "title": "Where we are",
-    "description": "Live today, pilots running across the UK.",
+    "description": "Up and running, with pilots across the UK.",
     "speakerNotes": ""
   },
   {

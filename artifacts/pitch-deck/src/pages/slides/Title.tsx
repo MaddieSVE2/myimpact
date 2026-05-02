@@ -27,7 +27,7 @@ export default function Title() {
         <h1 className="font-display font-black text-[7.5vw] leading-[0.95] tracking-tight text-bg" style={{ textWrap: "balance" }}>
           You already make a difference.
           <span className="block">
-            Now <span className="italic text-primary">prove it.</span>
+            Now <span className="italic text-primary">see what it's worth.</span>
           </span>
         </h1>
         <p className="font-body text-[1.5vw] text-bg/85 mt-[4vh] max-w-[55vw] leading-relaxed">

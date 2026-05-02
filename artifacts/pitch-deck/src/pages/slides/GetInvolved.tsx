@@ -20,7 +20,7 @@ export default function GetInvolved() {
           Get involved
         </p>
         <h2 className="font-display font-black text-[7.5vw] leading-[0.92] tracking-tight text-bg" style={{ textWrap: "balance" }}>
-          Prove the
+          Show the
           <span className="block text-primary italic">difference you make.</span>
         </h2>
       </div>

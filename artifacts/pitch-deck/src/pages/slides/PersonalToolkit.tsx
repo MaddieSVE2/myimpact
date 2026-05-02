@@ -3,7 +3,7 @@ export default function PersonalToolkit() {
     <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[8vh] left-[6vw] flex items-center gap-[1vw]">
         <span className="font-body text-[1.2vw] font-semibold uppercase tracking-[0.25em] text-primary">
-          06 · Your personal toolkit
+          05 · Your personal toolkit
         </span>
         <div className="w-[6vw] h-[1px] bg-primary/50" />
       </div>
@@ -59,7 +59,7 @@ export default function PersonalToolkit() {
             Milestones &amp; badges
           </h3>
           <p className="font-body text-[1.1vw] text-bg/75 mt-[1.5vh] leading-relaxed flex-1">
-            Gamified thresholds at £100, £500, £1,000 and £5,000, plus discoverable badges that reward consistency and breadth.
+            Recognised milestones at £100, £500, £1,000 and £5,000, alongside badges that quietly reward consistency and breadth.
           </p>
 
           <div className="mt-[2.5vh] flex items-center gap-[0.8vw]">
@@ -97,7 +97,7 @@ export default function PersonalToolkit() {
             Export &amp; share
           </h3>
           <p className="font-body text-[1.1vw] text-text/70 mt-[1.5vh] leading-relaxed flex-1">
-            Download your impact as a polished PDF report or a shareable PNG image. Use it on a CV, in an application, or on social.
+            Download your impact as a considered PDF report or a shareable PNG image. Add it to a CV, an application, or share it online.
           </p>
 
           <div className="mt-[2.5vh] flex gap-[0.8vw]">
