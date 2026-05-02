@@ -5,7 +5,7 @@ import {
   impactRecordsTable,
   journalEntriesTable,
 } from "@workspace/db";
-import { and, eq, sum, desc } from "drizzle-orm";
+import { and, eq, sum, desc, inArray, sql } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import {
   generateAttachmentKey,
@@ -342,6 +342,83 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
     journalId: inserted.journalId,
     createdAt: inserted.createdAt.toISOString(),
   });
+});
+
+/**
+ * Bulk photo counts for the requesting user across many records and/or
+ * journal entries. Used by History and Journal to render a small "n photos"
+ * indicator without firing one request per row.
+ *
+ * Query params:
+ *   recordIds=1,2,3
+ *   journalIds=4,5,6
+ *
+ * Response:
+ *   { records: { "1": 3, "2": 0, ... }, journals: { "4": 1, ... } }
+ *
+ * Only photo-kind attachments are counted (receipts are excluded).
+ * IDs not owned by the user simply don't appear in the result.
+ */
+const MAX_BULK_IDS = 200;
+
+router.get("/counts", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const recordIdsRaw = typeof req.query.recordIds === "string" ? req.query.recordIds : "";
+  const journalIdsRaw = typeof req.query.journalIds === "string" ? req.query.journalIds : "";
+
+  const parseList = (s: string): number[] => {
+    if (!s) return [];
+    const seen = new Set<number>();
+    for (const part of s.split(",")) {
+      const n = parseInt(part.trim(), 10);
+      if (Number.isFinite(n) && n > 0) seen.add(n);
+    }
+    return Array.from(seen).slice(0, MAX_BULK_IDS);
+  };
+
+  const recordIds = parseList(recordIdsRaw);
+  const journalIds = parseList(journalIdsRaw);
+
+  const records: Record<string, number> = {};
+  const journals: Record<string, number> = {};
+
+  if (recordIds.length > 0) {
+    const rows = await db
+      .select({
+        recordId: attachmentsTable.recordId,
+        c: sql<number>`count(*)::int`,
+      })
+      .from(attachmentsTable)
+      .where(and(
+        eq(attachmentsTable.userId, userId),
+        eq(attachmentsTable.kind, "photo"),
+        inArray(attachmentsTable.recordId, recordIds),
+      ))
+      .groupBy(attachmentsTable.recordId);
+    for (const r of rows) {
+      if (r.recordId != null) records[String(r.recordId)] = Number(r.c);
+    }
+  }
+
+  if (journalIds.length > 0) {
+    const rows = await db
+      .select({
+        journalId: attachmentsTable.journalId,
+        c: sql<number>`count(*)::int`,
+      })
+      .from(attachmentsTable)
+      .where(and(
+        eq(attachmentsTable.userId, userId),
+        eq(attachmentsTable.kind, "photo"),
+        inArray(attachmentsTable.journalId, journalIds),
+      ))
+      .groupBy(attachmentsTable.journalId);
+    for (const r of rows) {
+      if (r.journalId != null) journals[String(r.journalId)] = Number(r.c);
+    }
+  }
+
+  res.json({ records, journals });
 });
 
 router.get("/list", authenticate, async (req: AuthenticatedRequest, res) => {

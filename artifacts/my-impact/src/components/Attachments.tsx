@@ -101,6 +101,11 @@ export default function Attachments({
     });
   }, [toast, goToSettings]);
 
+  // Keep a stable ref so callers can pass an inline `onChange` arrow
+  // without re-running the fetch effect on every parent render.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
   const photos = items.filter(i => i.kind === "photo");
   const receipts = items.filter(i => i.kind === "receipt");
   const photoLimit = maxImages ?? (journalId != null ? 1 : 4);
@@ -118,13 +123,13 @@ export default function Attachments({
       if (!res.ok) throw new Error("list failed");
       const data = (await res.json()) as { attachments: AttachmentItem[] };
       setItems(data.attachments);
-      onChange?.(data.attachments);
+      onChangeRef.current?.(data.attachments);
     } catch {
       // best-effort
     } finally {
       setLoading(false);
     }
-  }, [queryString, onChange]);
+  }, [queryString]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 

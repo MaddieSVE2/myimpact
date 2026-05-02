@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn } from "lucide-react";
+import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
@@ -150,6 +150,18 @@ function apiEntryToFeedItem(e: ApiEntryShape): FeedItem {
   };
 }
 
+function PhotoBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground/80 shrink-0"
+      aria-label={`${count} ${count === 1 ? "photo" : "photos"} attached`}
+    >
+      <Camera className="w-3 h-3" aria-hidden="true" /> {count}
+    </span>
+  );
+}
+
 function ActivityCardItem({
   card,
   onDelete,
@@ -256,9 +268,34 @@ export default function Journal() {
   const [draft, setDraft] = useState("");
   const [prompt] = useState(randomPrompt);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
   const migrated = useRef(false);
 
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  async function refreshPhotoCounts(items: FeedItem[]) {
+    const ids: number[] = [];
+    for (const it of items) {
+      if (it.type !== "entry") continue;
+      const n = parseInt(it.id, 10);
+      if (Number.isFinite(n) && n > 0) ids.push(n);
+    }
+    if (ids.length === 0) {
+      setPhotoCounts({});
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${BASE}/api/attachments/counts?journalIds=${encodeURIComponent(ids.join(","))}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("counts failed");
+      const data = await res.json() as { journals: Record<string, number> };
+      setPhotoCounts(data.journals ?? {});
+    } catch {
+      setPhotoCounts({});
+    }
+  }
 
   async function fetchEntries() {
     setLoadingEntries(true);
@@ -266,13 +303,14 @@ export default function Journal() {
       const res = await fetch(`${BASE}/api/journal`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json() as { entries: unknown[] };
-      setEntries(
-        data.entries
-          .filter(isApiEntry)
-          .map(apiEntryToFeedItem)
-      );
+      const items = data.entries
+        .filter(isApiEntry)
+        .map(apiEntryToFeedItem);
+      setEntries(items);
+      void refreshPhotoCounts(items);
     } catch {
       setEntries([]);
+      setPhotoCounts({});
     } finally {
       setLoadingEntries(false);
     }
@@ -512,6 +550,7 @@ export default function Journal() {
                 );
               }
               const entry = item as JournalEntry;
+              const entryPhotoCount = photoCounts[entry.id] ?? 0;
               return (
                 <motion.div
                   key={entry.id}
@@ -523,18 +562,32 @@ export default function Journal() {
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <p className="text-xs text-primary italic">"{entry.prompt}"</p>
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <PhotoBadge count={entryPhotoCount} />
+                      <button
+                        onClick={() => handleDelete(entry.id)}
+                        className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
                   {(() => {
                     const numericId = parseInt(entry.id, 10);
                     return Number.isFinite(numericId) ? (
-                      <Attachments journalId={numericId} maxImages={1} label="Photo" />
+                      <Attachments
+                        journalId={numericId}
+                        maxImages={1}
+                        label="Photo"
+                        onChange={atts => {
+                          const next = atts.filter(a => a.kind === "photo").length;
+                          setPhotoCounts(prev => {
+                            if (prev[entry.id] === next) return prev;
+                            return { ...prev, [entry.id]: next };
+                          });
+                        }}
+                      />
                     ) : null;
                   })()}
                   <p className="text-[11px] text-muted-foreground mt-3">

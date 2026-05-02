@@ -10,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -190,6 +190,27 @@ export default function History() {
   (matchInfo?.matches ?? []).forEach(m => matchByRecordId.set(m.recordId, m));
   const orgName = matchInfo?.org?.name ?? null;
   const lifetimeMatched = (matchInfo?.matches ?? []).reduce((s, m) => s + m.matchedValue, 0);
+
+  const numericRecordIds: number[] = isAuthenticated
+    ? (serverData?.records ?? [])
+        .map(r => parseInt(String(r.id), 10))
+        .filter(n => Number.isFinite(n))
+    : [];
+  const recordIdsKey = numericRecordIds.join(",");
+  const { data: attachmentCounts } = useQuery<{ records: Record<string, number> }>({
+    queryKey: ["attachment-counts-records", recordIdsKey],
+    enabled: isAuthenticated && numericRecordIds.length > 0,
+    queryFn: async () => {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(
+        `${BASE}/api/attachments/counts?recordIds=${encodeURIComponent(recordIdsKey)}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("Failed to load attachment counts");
+      return res.json();
+    },
+  });
+  const photoCountByRecordId = attachmentCounts?.records ?? {};
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -468,6 +489,7 @@ export default function History() {
               const isEditing = editingId === record.id;
               const isDeleting = deletingId === record.id;
               const activityCount = record.impactResult?.activityBreakdowns?.length ?? 0;
+              const photoCount = photoCountByRecordId[String(record.id)] ?? 0;
               const match = matchByRecordId.get(record.id);
               const loggedValue = record.impactResult?.totalValue ?? 0;
               const matchedValue = match?.matchedValue ?? 0;
@@ -546,6 +568,14 @@ export default function History() {
                           })}
                           {activityCount > 0 && (
                             <span className="ml-2 text-muted-foreground/60">· {activityCount} {activityCount === 1 ? "activity" : "activities"}</span>
+                          )}
+                          {photoCount > 0 && (
+                            <span
+                              className="ml-2 inline-flex items-center gap-0.5 text-muted-foreground/80"
+                              aria-label={`${photoCount} ${photoCount === 1 ? "photo" : "photos"} attached`}
+                            >
+                              · <Camera className="w-3 h-3 inline" aria-hidden="true" /> {photoCount}
+                            </span>
                           )}
                         </p>
                         {match && orgName && (
