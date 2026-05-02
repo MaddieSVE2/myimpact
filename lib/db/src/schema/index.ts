@@ -5,3 +5,4 @@ export * from "./journal";
 export * from "./public-profile";
 export * from "./attachments";
 export * from "./calendar";
+export * from "./challenges";

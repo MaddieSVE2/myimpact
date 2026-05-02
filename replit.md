@@ -115,6 +115,21 @@ Magic link authentication via Resend (no passwords):
 - `GET /api/impact/history` — retrieve historical records for authenticated user
 - `GET /api/impact/org-stats` — aggregate stats for org portal
 - `POST /api/sidekick/chat` — streaming AI chat endpoint (SSE), uses OpenAI via Replit AI Integrations
+- `POST /api/challenges` — create a group/team challenge (personal or org-scoped)
+- `GET /api/challenges/mine` — list challenges the current user owns or participates in
+- `GET /api/challenges/by-code/:code` — preview a challenge by invite code
+- `GET /api/challenges/:id` — full challenge with progress + leaderboard
+- `POST /api/challenges/join` — join via invite code
+- `POST /api/challenges/:id/leave` — leave a challenge (owners cannot leave)
+- `DELETE /api/challenges/:id` — owner deletes their challenge
+- `POST /api/challenges/:id/send-summary` — owner emails end-of-challenge summary
+
+### Challenges feature
+- Schema: `challengesTable` + `challengeParticipantsTable` (`lib/db/src/schema/challenges.ts`, migration `0008_challenges.sql`)
+- Routes: `/challenges` (list), `/challenges/:id` (detail), `/challenges/join?code=XYZ` (public join page)
+- Personal scope: invite-only via 8-char code; org scope: created by managers, all current org members auto-added
+- Records contributing to the total are filtered to those created between `startDate` and `endDate`
+- End-of-challenge celebration card shows on detail when ended; owner can send a one-time email summary via Resend
 
 ## Sidekick AI
 

@@ -46,6 +46,9 @@ import Feedback from "@/pages/Feedback";
 import PublicProfile from "@/pages/PublicProfile";
 import OrgSharePage from "@/pages/OrgSharePage";
 import AnnualRecap from "@/pages/AnnualRecap";
+import Challenges from "@/pages/Challenges";
+import ChallengeDetail from "@/pages/ChallengeDetail";
+import ChallengeJoin from "@/pages/ChallengeJoin";
 
 const queryClient = new QueryClient();
 
@@ -263,6 +266,15 @@ function AppRouter() {
             <Route path="/org/share/:slug" component={OrgSharePage} />
             <Route path="/org">
               {() => <OrgGuestRoute />}
+            </Route>
+
+            {/* Challenges */}
+            <Route path="/challenges/join" component={ChallengeJoin} />
+            <Route path="/challenges/:id">
+              {() => <PrivateRoute component={ChallengeDetail} />}
+            </Route>
+            <Route path="/challenges">
+              {() => <PrivateRoute component={Challenges} />}
             </Route>
 
             <Route path="/admin" component={Admin} />

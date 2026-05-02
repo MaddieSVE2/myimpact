@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -348,6 +348,14 @@ export function Navbar() {
                         </Link>
                         <div className="my-1 border-t border-border" />
                         {/* Organisation */}
+                        <Link
+                          href="/challenges"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <Trophy className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          Challenges
+                        </Link>
                         {!orgLoading && (
                           <Link
                             href="/org"
