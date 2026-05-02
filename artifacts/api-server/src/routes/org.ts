@@ -10,6 +10,7 @@ import React from "react";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
+import { featureCap } from "../lib/featureFlags.js";
 
 const router: IRouter = Router();
 
@@ -599,6 +600,18 @@ router.post("/share-links", authenticate, shareLinkCreateRateLimit, async (req: 
       return;
     }
     expiresAt = parsed;
+  }
+
+  // Enforce the per-tier share-link cap (only enforced once PRICING_ENABLED
+  // is on — see featureCap). Counts only links that are still usable.
+  const cap = await featureCap(result.membership.orgId, "shareLinkCap");
+  if (cap !== null) {
+    const existingLinks = await db.select().from(orgShareLinksTable).where(eq(orgShareLinksTable.orgId, result.membership.orgId));
+    const activeCount = existingLinks.filter(l => !l.revokedAt && (!l.expiresAt || l.expiresAt.getTime() > Date.now())).length;
+    if (activeCount >= cap) {
+      res.status(402).json({ error: `You've reached your plan's limit of ${cap} active share link${cap === 1 ? "" : "s"}. Upgrade or revoke an existing link to create a new one.` });
+      return;
+    }
   }
 
   // Generate a unique slug (collisions are vanishingly rare but loop a few times).

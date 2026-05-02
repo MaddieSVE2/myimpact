@@ -21,6 +21,8 @@
     }
   },
   "dependencies": {
-    "@replit/connectors-sdk": "^0.3.0"
+    "@replit/connectors-sdk": "^0.3.0",
+    "stripe": "^22.1.0",
+    "stripe-replit-sync": "^1.0.0"
   }
 }

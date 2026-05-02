@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { createRateLimiter } from "./lib/rateLimiter.js";
+import { billingWebhookHandler, billingWebhookRawParser } from "./routes/billing.js";
 
 const app: Express = express();
 
@@ -35,6 +36,10 @@ app.use(
     credentials: true,
   })
 );
+// Stripe webhook MUST be registered BEFORE express.json() so the raw body
+// is preserved for signature verification.
+app.post("/api/billing/webhook", billingWebhookRawParser, billingWebhookHandler);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

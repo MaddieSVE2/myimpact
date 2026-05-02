@@ -19,6 +19,7 @@ import publicProfileRouter from "./public-profile";
 import attachmentsRouter from "./attachments";
 import calendarRouter from "./calendar";
 import challengesRouter from "./challenges";
+import billingRouter from "./billing";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use("/public-profile", publicProfileRouter);
 router.use("/attachments", attachmentsRouter);
 router.use("/calendar", calendarRouter);
 router.use("/challenges", challengesRouter);
+router.use("/billing", billingRouter);
 
 export default router;

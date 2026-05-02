@@ -31,6 +31,7 @@ import Milestones from "@/pages/Milestones";
 import OrgPortal from "@/pages/OrgPortal";
 import OrgRegister from "@/pages/OrgRegister";
 import OrgDemoPage from "@/pages/OrgDemoPage";
+import Pricing from "@/pages/Pricing";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
@@ -225,6 +226,7 @@ function AppRouter() {
             <Route path="/methodology" component={Methodology} />
             <Route path="/whats-new" component={WhatsNew} />
             <Route path="/privacy" component={Privacy} />
+            <Route path="/pricing" component={Pricing} />
 
             {/* Wizard routes — open to all */}
             <Route path="/wizard/actions" component={ActionsStep} />

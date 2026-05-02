@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Share2, Eye, X, Copy, Check, AlertCircle, Webhook, Code2, Trash2 } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Share2, Eye, X, Copy, Check, AlertCircle, Webhook, Code2, Trash2, CreditCard, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import {
@@ -1323,7 +1323,8 @@ function DeveloperApiSection() {
           <div>
             <p className="font-semibold mb-1">Authentication</p>
             <p className="text-muted-foreground mb-1.5">All endpoints require a Bearer token in the <code className="font-mono bg-muted/30 px-1">Authorization</code> header. Each key is rate-limited to 120 requests/min.</p>
-            <CopyableCode value={`curl -H "Authorization: Bearer mi_orgk_…" \\\n  https://app.myimpact.uk/api/v1/org/me`} />
+            <CopyableCode value={`curl -H "Authorization: Bearer mi_orgk_…" \\
+  https://app.myimpact.uk/api/v1/org/me`} />
           </div>
 
           <div>
@@ -1346,7 +1347,18 @@ function DeveloperApiSection() {
             <p className="text-muted-foreground mb-1.5">
               Push attested hours on behalf of a member. Records created via this endpoint are flagged <strong>attested</strong> and skip the user-side verification queue.
             </p>
-            <CopyableCode value={`curl -X POST https://app.myimpact.uk/api/v1/org/hours \\\n  -H "Authorization: Bearer mi_orgk_…" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "memberEmail": "alex@example.com",\n    "hours": 4,\n    "occurredAt": "2026-04-12T10:00:00Z",\n    "category": "Education",\n    "activityName": "Reading mentor session",\n    "valuePerHourGBP": 17,\n    "externalRef": "shift-12345"\n  }'`} />
+            <CopyableCode value={`curl -X POST https://app.myimpact.uk/api/v1/org/hours \\
+  -H "Authorization: Bearer mi_orgk_…" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "memberEmail": "alex@example.com",
+    "hours": 4,
+    "occurredAt": "2026-04-12T10:00:00Z",
+    "category": "Education",
+    "activityName": "Reading mentor session",
+    "valuePerHourGBP": 17,
+    "externalRef": "shift-12345"
+  }'`} />
           </div>
 
           <div>
@@ -1367,7 +1379,16 @@ function DeveloperApiSection() {
               <code className="font-mono bg-muted/30 px-1">t=&lt;ts&gt;,v1=&lt;hex&gt;</code>. Compute
               <code className="font-mono bg-muted/30 px-1">HMAC-SHA256(secret, "&lt;ts&gt;." + body)</code> and compare in constant time.
             </p>
-            <CopyableCode value={`# Node.js example\nconst { createHmac, timingSafeEqual } = require("crypto");\nconst raw = req.rawBody.toString();\nconst sig = req.header("X-MyImpact-Signature") || "";\nconst [tPart, vPart] = sig.split(",");\nconst ts = tPart.split("=")[1];\nconst expected = createHmac("sha256", SECRET).update(\`\${ts}.\${raw}\`).digest("hex");\nif (!timingSafeEqual(Buffer.from(expected), Buffer.from(vPart.split("=")[1]))) {\n  return res.status(400).send("bad signature");\n}`} />
+            <CopyableCode value={`# Node.js example
+const { createHmac, timingSafeEqual } = require("crypto");
+const raw = req.rawBody.toString();
+const sig = req.header("X-MyImpact-Signature") || "";
+const [tPart, vPart] = sig.split(",");
+const ts = tPart.split("=")[1];
+const expected = createHmac("sha256", SECRET).update(\`\${ts}.\${raw}\`).digest("hex");
+if (!timingSafeEqual(Buffer.from(expected), Buffer.from(vPart.split("=")[1]))) {
+  return res.status(400).send("bad signature");
+}`} />
           </div>
 
           <div>
@@ -1381,6 +1402,195 @@ function DeveloperApiSection() {
     </motion.div>
   );
 }
+
+// ── Billing & plan section ──────────────────────────────────────────────────
+// Shows the org's current tier, payment status, and entry points to
+// upgrade / manage / cancel via Stripe Checkout + Billing Portal. Hidden
+// behind the same `pricingPublic` flag as the public pricing page so it can
+// be staged before go-live without confusing existing customers.
+
+interface SubscriptionSnapshot {
+  orgId: string;
+  orgName: string;
+  tier: "free" | "team" | "org" | "enterprise";
+  tierName: string;
+  status: string;
+  source: "override" | "subscription" | "default";
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  enforcing: boolean;
+  features: {
+    memberCap: number | null;
+    shareLinkCap: number | null;
+    matchProgramme: boolean;
+    brandedReports: boolean;
+    regionalAnalytics: boolean;
+    webhookApi: boolean;
+    sso: boolean;
+    prioritySupport: boolean;
+  };
+}
+
+interface TiersSummary {
+  pricingPublic: boolean;
+  stripeConfigured: boolean;
+}
+
+function BillingSection() {
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: tiersInfo } = useQuery<TiersSummary>({
+    queryKey: ["billing-tiers-summary"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/billing/tiers`);
+      if (!res.ok) throw new Error("Failed to load");
+      const json = await res.json();
+      return { pricingPublic: json.pricingPublic, stripeConfigured: json.stripeConfigured };
+    },
+  });
+
+  const { data: sub, isLoading } = useQuery<SubscriptionSnapshot>({
+    queryKey: ["billing-subscription"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/billing/subscription`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load subscription");
+      return res.json();
+    },
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/billing/portal`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not open billing portal");
+      return json as { url: string };
+    },
+    onSuccess: (d) => { window.location.href = d.url; },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  // Hide entirely until pricing is public OR an override is in effect (so
+  // design partners can preview without exposing the section to everyone).
+  if (!tiersInfo?.pricingPublic && sub?.source !== "override") return null;
+
+  if (isLoading || !sub) {
+    return (
+      <div className="bg-white border border-border rounded-xl p-5 mb-6">
+        <p className="text-xs text-muted-foreground">Loading plan…</p>
+      </div>
+    );
+  }
+
+  const isPaid = sub.tier !== "free" && sub.tier !== "enterprise";
+  const showPaymentWarning = sub.status === "past_due" || sub.status === "unpaid";
+
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.12 }}
+      data-testid="billing-section"
+    >
+      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <CreditCard className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Plan & billing</h3>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-base font-display font-semibold text-foreground">{sub.tierName}</p>
+            <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${
+              sub.status === "active" || sub.status === "trialing"
+                ? "bg-green-100 text-green-700"
+                : showPaymentWarning
+                ? "bg-amber-100 text-amber-800"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {sub.status}
+            </span>
+            {sub.source === "override" && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                staff override
+              </span>
+            )}
+          </div>
+          {sub.currentPeriodEnd && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {sub.cancelAtPeriodEnd ? "Cancels on " : "Renews on "}
+              {new Date(sub.currentPeriodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {!isPaid && (
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+              data-testid="button-view-pricing"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              See plans
+            </Link>
+          )}
+          {isPaid && (
+            <button
+              type="button"
+              onClick={() => { setError(null); portalMutation.mutate(); }}
+              disabled={portalMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-60"
+              data-testid="button-manage-billing"
+            >
+              {portalMutation.isPending ? "Opening…" : "Manage billing"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showPaymentWarning && (
+        <div className="px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-2 mb-3">
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>
+            We couldn't take your last payment. Please update your card in the billing portal — your plan will be downgraded if it stays unpaid.
+          </span>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+        <div className="px-3 py-2 rounded-lg bg-muted/30">
+          <p className="text-muted-foreground uppercase tracking-wider">Member cap</p>
+          <p className="font-semibold text-foreground mt-0.5">
+            {sub.features.memberCap === null ? "Unlimited" : sub.features.memberCap.toLocaleString("en-GB")}
+          </p>
+        </div>
+        <div className="px-3 py-2 rounded-lg bg-muted/30">
+          <p className="text-muted-foreground uppercase tracking-wider">Share links</p>
+          <p className="font-semibold text-foreground mt-0.5">
+            {sub.features.shareLinkCap === null ? "Unlimited" : sub.features.shareLinkCap.toLocaleString("en-GB")}
+          </p>
+        </div>
+        <div className="px-3 py-2 rounded-lg bg-muted/30">
+          <p className="text-muted-foreground uppercase tracking-wider">SSO</p>
+          <p className="font-semibold text-foreground mt-0.5">
+            {sub.features.sso ? "Included" : "—"}
+          </p>
+        </div>
+        <div className="px-3 py-2 rounded-lg bg-muted/30">
+          <p className="text-muted-foreground uppercase tracking-wider">API & webhooks</p>
+          <p className="font-semibold text-foreground mt-0.5">
+            {sub.features.webhookApi ? "Included" : "—"}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 
 function DownloadPdfButton({ from, to }: { from: string; to: string }) {
   const [loading, setLoading] = useState(false);
@@ -1859,6 +2069,8 @@ export default function OrgPortal() {
               <p className="text-xs text-muted-foreground mt-1">volunteering hours</p>
             </div>
           </motion.div>
+
+          <BillingSection />
 
           <MatchProgrammeSection from={from} to={to} />
 

@@ -120,6 +120,25 @@ export const webhookDeliveriesTable = pgTable("webhook_deliveries", {
   webhookIdx: index("webhook_deliveries_webhook_idx").on(t.webhookId),
 }));
 
+// org_subscriptions: mirrors Stripe subscription state locally so the app can
+// resolve a tier (and gated features) without hitting Stripe on every request.
+// `tier` is the canonical app concept (free | team | org | enterprise). `status`
+// follows Stripe's vocabulary (active | trialing | past_due | canceled | unpaid).
+// `override` lets staff pin a tier for design partners regardless of Stripe.
+export const orgSubscriptionsTable = pgTable("org_subscriptions", {
+  orgId: text("org_id").primaryKey().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  tier: text("tier").notNull().default("free"),
+  status: text("status").notNull().default("active"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  override: text("override"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  customerIdx: index("org_subscriptions_customer_idx").on(t.stripeCustomerId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
@@ -128,3 +147,4 @@ export type OrgShareLink = typeof orgShareLinksTable.$inferSelect;
 export type OrgApiKey = typeof orgApiKeysTable.$inferSelect;
 export type OrgWebhook = typeof orgWebhooksTable.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveriesTable.$inferSelect;
+export type OrgSubscription = typeof orgSubscriptionsTable.$inferSelect;
