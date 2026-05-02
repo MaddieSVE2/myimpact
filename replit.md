@@ -145,3 +145,47 @@ Users can publish a shareable public profile at `/profile/:slug`:
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API client from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push schema changes to database
+
+## Database Backups
+
+The DB is dumped via `pg_dump` and uploaded to App Storage under `backups/` with
+a timestamped filename (`myimpact-db-backup-YYYY-MM-DDThhmm.sql`).
+
+Scripts (in `artifacts/api-server/src/scripts/backup-db.ts`):
+
+- `pnpm --filter @workspace/api-server run backup:db` — one-off manual backup.
+  Optional flags: `--gzip` (also write a local `.gz` copy), `--prune --keep N`
+  (delete older snapshots, keeping the latest N), `--notify --notify-email <addr>`
+  (email a summary via Resend; falls back to `BACKUP_NOTIFY_EMAIL`).
+- `pnpm --filter @workspace/api-server run backup:scheduled` — used by the
+  weekly scheduled deployment. Equivalent to
+  `backup:db --prune --keep 12 --notify` and reads the recipient address from
+  the `BACKUP_NOTIFY_EMAIL` environment variable.
+- `pnpm --filter @workspace/api-server run backup:fetch [filename]` — list
+  backups in App Storage and download the latest (or a specific one) to
+  `/tmp/myimpact-backups/`.
+
+### Scheduled weekly backup (production)
+
+The api-server is published as an `autoscale` deployment, so the weekly backup
+runs as a **separate Scheduled Deployment** in the same project:
+
+1. In the Publishing tool, create a new deployment and choose
+   **Scheduled** as the deployment type.
+2. **Schedule:** weekly, e.g. `0 2 * * 0` (Sundays at 02:00 UTC).
+3. **Build command:** `pnpm install --frozen-lockfile`
+4. **Run command:** `pnpm --filter @workspace/api-server run backup:scheduled`
+5. **Environment variables** (set on the scheduled deployment):
+   - `DATABASE_URL` — production database URL (same as the autoscale deployment)
+   - `PRIVATE_OBJECT_DIR` — production App Storage dir (same as autoscale)
+   - `RESEND_API_KEY` — for email notifications (same as autoscale)
+   - `BACKUP_NOTIFY_EMAIL` — recipient address for the success/failure summary
+
+Behaviour each run:
+
+- A new timestamped snapshot is uploaded to `backups/` in App Storage.
+- Older snapshots are pruned so only the **latest 12 weeks** are retained.
+  Adjust by editing the `--keep` value in the `backup:scheduled` script.
+- An email is sent to `BACKUP_NOTIFY_EMAIL` with the object key, size, table
+  count, and total rows (or a failure email with the error if `pg_dump` /
+  upload fails).

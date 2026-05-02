@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:demo": "tsx ./src/scripts/seed-demo.ts",
     "backup:db": "tsx ./src/scripts/backup-db.ts",
+    "backup:scheduled": "tsx ./src/scripts/backup-db.ts --prune --keep 12 --notify",
     "backup:fetch": "tsx ./src/scripts/fetch-backup.ts"
   },
   "dependencies": {

@@ -7,6 +7,7 @@ import path from "path";
 import { Storage } from "@google-cloud/storage";
 import { db, pool } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { getUncachableResendClient } from "../lib/resend.js";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
@@ -131,7 +132,95 @@ async function getRowCounts(): Promise<Array<{ table: string; rows: number }>> {
   return out;
 }
 
-async function main() {
+interface PruneResult {
+  kept: string[];
+  deleted: string[];
+}
+
+async function pruneOldBackups(
+  bucketName: string,
+  backupsPrefix: string,
+  keep: number,
+): Promise<PruneResult> {
+  const [files] = await storage.bucket(bucketName).getFiles({ prefix: backupsPrefix });
+  // Only consider .sql files (ignore any stray .gz copies)
+  const sqlFiles = files.filter((f) => f.name.endsWith(".sql"));
+  // Sort descending by name — names are timestamped (YYYY-MM-DDTHHMM) so
+  // lexical ordering matches chronological ordering.
+  sqlFiles.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+  const kept = sqlFiles.slice(0, keep).map((f) => f.name);
+  const toDelete = sqlFiles.slice(keep);
+  const deleted: string[] = [];
+  for (const file of toDelete) {
+    await file.delete({ ignoreNotFound: true });
+    deleted.push(file.name);
+  }
+  return { kept, deleted };
+}
+
+interface NotifyOptions {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+async function sendNotification(opts: NotifyOptions): Promise<void> {
+  const { client, fromEmail } = await getUncachableResendClient();
+  const { error } = await client.emails.send({
+    from: fromEmail,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+  });
+  if (error) {
+    throw new Error(
+      `Resend delivery failed: ${typeof error === "string" ? error : JSON.stringify(error)}`,
+    );
+  }
+}
+
+function parseKeepArg(args: string[]): number {
+  const idx = args.findIndex((a) => a === "--keep" || a.startsWith("--keep="));
+  if (idx === -1) return 12;
+  const raw = args[idx]!.includes("=") ? args[idx]!.split("=")[1] : args[idx + 1];
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`--keep expects a positive integer, got "${raw}".`);
+  }
+  return n;
+}
+
+function parseNotifyEmailArg(args: string[]): string | undefined {
+  const idx = args.findIndex((a) => a === "--notify-email" || a.startsWith("--notify-email="));
+  if (idx === -1) return undefined;
+  const raw = args[idx]!.includes("=")
+    ? args[idx]!.split("=")[1]
+    : args[idx + 1];
+  if (!raw || !raw.includes("@")) {
+    throw new Error(`--notify-email expects a valid email, got "${raw}".`);
+  }
+  return raw;
+}
+
+interface RunOptions {
+  wantGzip: boolean;
+  wantPrune: boolean;
+  keep: number;
+  wantNotify: boolean;
+  notifyEmail?: string;
+}
+
+interface RunSummary {
+  bucketName: string;
+  objectName: string;
+  objectKey: string;
+  sizeBytes: number;
+  totalRows: number;
+  tableCount: number;
+  pruned?: PruneResult;
+}
+
+async function runBackup(options: RunOptions): Promise<RunSummary> {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not set.");
   }
@@ -143,22 +232,20 @@ async function main() {
   }
   const { bucket: bucketName, prefix } = parseObjectStorageDir(privateDir);
 
-  const args = new Set(process.argv.slice(2));
-  const wantGzip = args.has("--gzip") || args.has("--downloadable");
-
   const stamp = timestamp();
   const sqlFileName = `myimpact-db-backup-${stamp}.sql`;
   const localDir = path.resolve("backups");
   const sqlPath = path.join(localDir, sqlFileName);
   await mkdir(localDir, { recursive: true });
 
-  console.log(`\n[1/4] Running pg_dump → ${sqlPath}`);
+  const totalSteps = options.wantPrune ? 5 : 4;
+  console.log(`\n[1/${totalSteps}] Running pg_dump → ${sqlPath}`);
   await runPgDump(process.env.DATABASE_URL, sqlPath);
 
   const stats = await stat(sqlPath);
   console.log(`      Wrote ${formatBytes(stats.size)} (${stats.size} bytes)`);
 
-  console.log(`\n[2/4] Collecting per-table row counts...`);
+  console.log(`\n[2/${totalSteps}] Collecting per-table row counts...`);
   const counts = await getRowCounts();
   const widest = Math.max(...counts.map((c) => c.table.length));
   for (const c of counts) {
@@ -171,7 +258,7 @@ async function main() {
   const objectName = `${prefix}/backups/${fileName}`;
   const objectKey = `/${bucketName}/${objectName}`;
 
-  console.log(`\n[3/4] Uploading to App Storage`);
+  console.log(`\n[3/${totalSteps}] Uploading to App Storage`);
   console.log(`      gs://${bucketName}/${objectName}`);
   const uploadStream = storage
     .bucket(bucketName)
@@ -189,7 +276,7 @@ async function main() {
     });
   await pipeline(createReadStream(sqlPath), uploadStream);
 
-  console.log(`\n[4/4] Verifying upload...`);
+  console.log(`\n[4/${totalSteps}] Verifying upload...`);
   const [exists] = await storage.bucket(bucketName).file(objectName).exists();
   if (!exists) {
     throw new Error("Upload verification failed: object not found in bucket.");
@@ -197,8 +284,22 @@ async function main() {
   const [meta] = await storage.bucket(bucketName).file(objectName).getMetadata();
   console.log(`      Confirmed: ${meta.size} bytes in App Storage.`);
 
+  let pruned: PruneResult | undefined;
+  if (options.wantPrune) {
+    console.log(`\n[5/${totalSteps}] Pruning old backups (keeping last ${options.keep})...`);
+    const backupsPrefix = `${prefix}/backups/`;
+    pruned = await pruneOldBackups(bucketName, backupsPrefix, options.keep);
+    console.log(`      Kept ${pruned.kept.length} backup(s); deleted ${pruned.deleted.length}.`);
+    for (const k of pruned.kept) {
+      console.log(`      keep    ${k}`);
+    }
+    for (const d of pruned.deleted) {
+      console.log(`      delete  ${d}`);
+    }
+  }
+
   let gzPath: string | null = null;
-  if (wantGzip) {
+  if (options.wantGzip) {
     gzPath = `${sqlPath}.gz`;
     console.log(`\n[+]   Writing gzipped copy → ${gzPath}`);
     await pipeline(createReadStream(sqlPath), createGzip(), createWriteStream(gzPath));
@@ -215,7 +316,130 @@ async function main() {
   console.log(`   Tables backed up:  ${counts.length}`);
   console.log(`   Total rows:        ${totalRows}\n`);
 
+  return {
+    bucketName,
+    objectName,
+    objectKey,
+    sizeBytes: stats.size,
+    totalRows,
+    tableCount: counts.length,
+    pruned,
+  };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildSuccessEmail(summary: RunSummary): string {
+  const prunedSection = summary.pruned
+    ? `
+        <p style="margin:16px 0 4px;color:#213547;"><strong>Retention:</strong></p>
+        <p style="margin:0 0 4px;color:#444;font-size:14px;">
+          Kept ${summary.pruned.kept.length} backup(s); deleted ${summary.pruned.deleted.length} older one(s).
+        </p>`
+    : "";
+  return `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+      <h2 style="margin:0 0 8px;color:#213547;font-size:20px;">My Impact — weekly backup succeeded</h2>
+      <p style="margin:0 0 16px;color:#444;font-size:14px;">
+        The scheduled database backup ran successfully and the snapshot was uploaded to App Storage.
+      </p>
+      <table style="border-collapse:collapse;font-size:14px;color:#213547;">
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">When (UTC)</td><td>${escapeHtml(new Date().toISOString())}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Object</td><td><code>${escapeHtml(summary.objectKey)}</code></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Size</td><td>${formatBytes(summary.sizeBytes)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Tables</td><td>${summary.tableCount}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Total rows</td><td>${summary.totalRows}</td></tr>
+      </table>
+      ${prunedSection}
+      <p style="margin:24px 0 0;color:#888;font-size:12px;">
+        Sent automatically by the My Impact backup job.
+      </p>
+    </div>
+  `;
+}
+
+function buildFailureEmail(error: unknown): string {
+  const msg = error instanceof Error ? error.stack || error.message : String(error);
+  return `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+      <h2 style="margin:0 0 8px;color:#a40000;font-size:20px;">My Impact — weekly backup FAILED</h2>
+      <p style="margin:0 0 12px;color:#444;font-size:14px;">
+        The scheduled database backup did not complete. The most recent successful snapshot in App Storage is unaffected,
+        but no new snapshot was added for this run. Please investigate so the schedule resumes cleanly next week.
+      </p>
+      <p style="margin:0 0 4px;color:#666;font-size:13px;">When (UTC): ${escapeHtml(new Date().toISOString())}</p>
+      <pre style="background:#f6f6f6;padding:12px;border-radius:6px;font-size:12px;color:#a40000;white-space:pre-wrap;word-break:break-word;">${escapeHtml(msg)}</pre>
+    </div>
+  `;
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const argSet = new Set(argv);
+  const wantGzip = argSet.has("--gzip") || argSet.has("--downloadable");
+  const wantPrune = argSet.has("--prune");
+  const wantNotify = argSet.has("--notify");
+  const keep = parseKeepArg(argv);
+  const notifyEmail =
+    parseNotifyEmailArg(argv) ?? process.env.BACKUP_NOTIFY_EMAIL ?? undefined;
+
+  if (wantNotify && !notifyEmail) {
+    throw new Error(
+      "--notify was passed but no recipient was provided. " +
+        "Set BACKUP_NOTIFY_EMAIL or pass --notify-email <address>.",
+    );
+  }
+
+  let summary: RunSummary | null = null;
+  let runError: unknown = null;
+
+  try {
+    summary = await runBackup({
+      wantGzip,
+      wantPrune,
+      keep,
+      wantNotify,
+      notifyEmail,
+    });
+  } catch (err) {
+    runError = err;
+  }
+
+  if (wantNotify && notifyEmail) {
+    try {
+      if (summary) {
+        await sendNotification({
+          to: notifyEmail,
+          subject: "My Impact — weekly DB backup succeeded",
+          html: buildSuccessEmail(summary),
+        });
+        console.log(`📧 Success notification sent to ${notifyEmail}.`);
+      } else {
+        await sendNotification({
+          to: notifyEmail,
+          subject: "My Impact — weekly DB backup FAILED",
+          html: buildFailureEmail(runError),
+        });
+        console.log(`📧 Failure notification sent to ${notifyEmail}.`);
+      }
+    } catch (notifyErr) {
+      console.error("Failed to send backup notification email:", notifyErr);
+      // Do not let a notification failure mask the original outcome.
+    }
+  }
+
   await pool.end();
+
+  if (runError) {
+    throw runError;
+  }
 }
 
 main().catch(async (err) => {
