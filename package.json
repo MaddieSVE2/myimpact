@@ -6,14 +6,15 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"./tests/**\" --if-present run typecheck",
     "lhci": "pnpm --filter @workspace/my-impact run build && lhci autorun",
     "lhci:collect": "pnpm --filter @workspace/my-impact run build && lhci collect",
     "lhci:assert": "lhci assert",
     "lhci:open": "lhci open",
     "test:e2e": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test",
     "test:e2e:headed": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:headed",
-    "test:e2e:ui": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:ui"
+    "test:e2e:ui": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:ui",
+    "test:e2e:sso": "pnpm --filter @workspace/sso-e2e test"
   },
   "private": true,
   "devDependencies": {
