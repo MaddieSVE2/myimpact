@@ -1,11 +1,21 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, ChevronRight, Sparkles, X, Bot } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, Check, MessageSquare, LayoutGrid } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import {
+  SIDEKICK_TEMPLATES,
+  SIDEKICK_CATEGORY_LABELS,
+  buildRegeneratePrompt,
+  resolvePersona,
+  templatesForPersona,
+  type SidekickTemplate,
+  type SidekickTemplateCategory,
+  type SidekickUserContext,
+} from "@/lib/sidekick-templates";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -25,6 +35,14 @@ function useMyOrgMembership(enabled: boolean) {
 interface Message {
   role: "user" | "assistant";
   content: string;
+  /**
+   * If this assistant message was generated from a template, store the
+   * original template id and the prompt that produced it so we can offer
+   * "regenerate with a different angle".
+   */
+  templateId?: string;
+  templatePrompt?: string;
+  regenerateAttempt?: number;
 }
 
 const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
@@ -241,11 +259,15 @@ function getInstantAnswer(text: string): string | null {
   return null;
 }
 
+type SidekickTab = "chat" | "templates";
+
 export function Sidekick() {
   const { open, setOpen } = useSidekick();
+  const [tab, setTab] = useState<SidekickTab>("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -286,6 +308,46 @@ export function Sidekick() {
     return baseQuickActions;
   })();
 
+  const persona = useMemo(
+    () =>
+      resolvePersona({
+        interests,
+        situations,
+        careerBreak,
+        isOrgManager,
+      }),
+    [interests, situations, careerBreak, isOrgManager]
+  );
+
+  const templateUserContext = useMemo<SidekickUserContext>(() => {
+    const breakdowns = result?.activityBreakdowns ?? [];
+    const sorted = [...breakdowns].sort((a, b) => (b.impactValue ?? 0) - (a.impactValue ?? 0));
+    const top = sorted[0]?.activityName;
+    const recent = sorted.slice(0, 3).map((b) => b.activityName).filter(Boolean);
+    const sdgs = result?.sdgBreakdowns ?? [];
+    const topSdg = sdgs[0]?.sdg;
+    return {
+      persona,
+      totalValue: result?.totalValue,
+      totalHours: result?.totalHours,
+      topActivity: top,
+      recentActivities: recent.length > 0 ? recent : undefined,
+      topSdg,
+    };
+  }, [persona, result]);
+
+  const visibleTemplates = useMemo(() => templatesForPersona(persona), [persona]);
+
+  const groupedTemplates = useMemo(() => {
+    const groups = new Map<SidekickTemplateCategory, SidekickTemplate[]>();
+    for (const t of visibleTemplates) {
+      const arr = groups.get(t.category) ?? [];
+      arr.push(t);
+      groups.set(t.category, arr);
+    }
+    return groups;
+  }, [visibleTemplates]);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -309,7 +371,10 @@ export function Sidekick() {
   };
 
   const sendMessage = useCallback(
-    async (userText: string) => {
+    async (
+      userText: string,
+      meta?: { templateId?: string; templatePrompt?: string; regenerateAttempt?: number }
+    ) => {
       if (!userText.trim() || streaming) return;
 
       const newMessages: Message[] = [...messages, { role: "user", content: userText }];
@@ -318,14 +383,26 @@ export function Sidekick() {
 
       const assistantIndex = newMessages.length;
 
-      const instant = getInstantAnswer(userText);
-      if (instant !== null) {
-        setMessages((prev) => [...prev, { role: "assistant", content: instant }]);
-        return;
+      // Instant answers only apply to free-typed quick questions, not template prompts.
+      if (!meta?.templateId) {
+        const instant = getInstantAnswer(userText);
+        if (instant !== null) {
+          setMessages((prev) => [...prev, { role: "assistant", content: instant }]);
+          return;
+        }
       }
 
       setStreaming(true);
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "",
+          templateId: meta?.templateId,
+          templatePrompt: meta?.templatePrompt,
+          regenerateAttempt: meta?.regenerateAttempt,
+        },
+      ]);
 
       abortRef.current = new AbortController();
 
@@ -334,7 +411,7 @@ export function Sidekick() {
         const res = await fetch(`${base}/api/sidekick/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newMessages, context: buildContext() }),
+          body: JSON.stringify({ messages: newMessages.map(({ role, content }) => ({ role, content })), context: buildContext() }),
           signal: abortRef.current.signal,
         });
 
@@ -373,6 +450,7 @@ export function Sidekick() {
                     const updated = [...prev];
                     if (!updated[assistantIndex]?.content) {
                       updated[assistantIndex] = {
+                        ...updated[assistantIndex],
                         role: "assistant",
                         content: "Sorry, I couldn't get a response. Please try again.",
                       };
@@ -386,6 +464,7 @@ export function Sidekick() {
                   setMessages((prev) => {
                     const updated = [...prev];
                     updated[assistantIndex] = {
+                      ...updated[assistantIndex],
                       role: "assistant",
                       content: (updated[assistantIndex]?.content ?? "") + parsed.delta,
                     };
@@ -404,6 +483,7 @@ export function Sidekick() {
           setMessages((prev) => {
             const updated = [...prev];
             updated[assistantIndex] = {
+              ...updated[assistantIndex],
               role: "assistant",
               content: "Sorry, I couldn't get a response. Please try again.",
             };
@@ -417,6 +497,41 @@ export function Sidekick() {
     },
     [messages, streaming, result, interests, situations, isOrgManager]
   );
+
+  const fireTemplate = useCallback(
+    (template: SidekickTemplate) => {
+      const prompt = template.build(templateUserContext);
+      setTab("chat");
+      sendMessage(prompt, { templateId: template.id, templatePrompt: prompt, regenerateAttempt: 0 });
+    },
+    [templateUserContext, sendMessage]
+  );
+
+  const regenerateTemplate = useCallback(
+    (msg: Message) => {
+      if (!msg.templateId || !msg.templatePrompt) return;
+      const nextAttempt = (msg.regenerateAttempt ?? 0) + 1;
+      const newPrompt = buildRegeneratePrompt(msg.templatePrompt, nextAttempt - 1);
+      sendMessage(newPrompt, {
+        templateId: msg.templateId,
+        templatePrompt: msg.templatePrompt,
+        regenerateAttempt: nextAttempt,
+      });
+    },
+    [sendMessage]
+  );
+
+  const handleCopy = useCallback(async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      window.setTimeout(() => {
+        setCopiedIndex((v) => (v === index ? null : v));
+      }, 1800);
+    } catch {
+      // ignore clipboard errors silently
+    }
+  }, []);
 
   const handleSubmit = () => sendMessage(input);
 
@@ -432,6 +547,72 @@ export function Sidekick() {
     setMessages([]);
     setStreaming(false);
   };
+
+  const templatesBody = (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#FFF7F3" }}>
+        <p className="font-medium text-foreground mb-1">One-tap writing prompts</p>
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          Tap a card to draft something with your numbers. We'll personalise it to your situation and let you copy or try a different angle.
+        </p>
+      </div>
+
+      {Array.from(groupedTemplates.entries()).map(([category, templates]) => (
+        <div key={category} className="flex flex-col gap-2">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            {SIDEKICK_CATEGORY_LABELS[category]}
+          </p>
+          {templates.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => fireTemplate(t)}
+              disabled={streaming}
+              className="text-left px-3.5 py-3 rounded-lg border border-border hover:border-[#F06127] hover:bg-[#FFF7F3] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid={`template-${t.id}`}
+            >
+              <p className="text-[13px] font-medium text-foreground leading-snug">{t.label}</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{t.description}</p>
+            </button>
+          ))}
+        </div>
+      ))}
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+        Drafts use your current score and recent activity. AI responses are for guidance only.
+      </p>
+    </div>
+  );
+
+  const tabsBar = (
+    <div className="flex border-b border-border shrink-0">
+      <button
+        onClick={() => setTab("chat")}
+        className={cn(
+          "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-medium border-b-2 transition-colors",
+          tab === "chat"
+            ? "border-[#F06127] text-[#F06127]"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        )}
+        data-testid="sidekick-tab-chat"
+      >
+        <MessageSquare className="w-3.5 h-3.5" />
+        Chat
+      </button>
+      <button
+        onClick={() => setTab("templates")}
+        className={cn(
+          "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-medium border-b-2 transition-colors",
+          tab === "templates"
+            ? "border-[#F06127] text-[#F06127]"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        )}
+        data-testid="sidekick-tab-templates"
+      >
+        <LayoutGrid className="w-3.5 h-3.5" />
+        Templates
+      </button>
+    </div>
+  );
 
   const chatBody = (
     <>
@@ -468,95 +649,140 @@ export function Sidekick() {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {messages.length === 0 ? (
-          <>
-            <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#FFF7F3" }}>
-              <p className="font-medium text-foreground mb-1">Hey! I'm Sidekick 👋</p>
-              <p className="text-muted-foreground text-[13px] leading-relaxed">
-                I can help you understand your social value, discover new ways to make an impact, and explain how everything is calculated.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Quick questions</p>
-              {quickActions.map((action) => (
-                <button
-                  key={action}
-                  onClick={() => sendMessage(action)}
-                  className="text-left px-3.5 py-2.5 rounded-lg border border-border text-[13px] text-foreground hover:border-[#F06127] hover:bg-[#FFF7F3] transition-all"
-                >
-                  {action}
-                </button>
-              ))}
-            </div>
-            <div className="mt-auto pt-2 text-[11px] text-muted-foreground leading-relaxed">
-              Powered by <span className="font-medium text-foreground">the Social Value Engine</span>. AI responses are for guidance only.
-            </div>
-          </>
-        ) : (
-          <>
-            {messages.map((msg, i) => (
-              <div key={i} className={cn("flex flex-col", msg.role === "user" ? "items-end" : "items-start")}>
-                <div
-                  className={cn(
-                    "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
-                    msg.role === "user" ? "text-white rounded-br-sm" : "bg-[#f4f4f5] text-foreground rounded-bl-sm"
-                  )}
-                  style={msg.role === "user" ? { backgroundColor: "#F06127" } : undefined}
-                >
-                  {msg.content || (
-                    <span className="flex items-center gap-1 py-0.5" aria-label="Assistant is typing">
-                      {[0, 1, 2].map((i) => (
-                        <span
-                          key={i}
-                          className="w-2 h-2 rounded-full bg-gray-500 inline-block"
-                          style={{
-                            animation: "sidekick-bounce 1.2s ease-in-out infinite",
-                            animationDelay: `${i * 0.2}s`,
-                          }}
-                        />
-                      ))}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
+      {tabsBar}
 
-      {/* Input */}
-      <div className="px-4 py-3.5 border-t border-border bg-white shrink-0">
-        <div className="flex gap-2 items-end">
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask Sidekick anything…"
-            disabled={streaming}
-            className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
-            style={{ fontFamily: "inherit" }}
-            onInput={(e) => {
-              const el = e.currentTarget;
-              el.style.height = "auto";
-              el.style.height = Math.min(el.scrollHeight, 120) + "px";
-            }}
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!input.trim() || streaming}
-            className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
-            style={{ backgroundColor: "#F06127" }}
-            aria-label="Send message"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      {tab === "templates" ? (
+        templatesBody
+      ) : (
+        <>
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+            {messages.length === 0 ? (
+              <>
+                <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#FFF7F3" }}>
+                  <p className="font-medium text-foreground mb-1">Hey! I'm Sidekick 👋</p>
+                  <p className="text-muted-foreground text-[13px] leading-relaxed">
+                    I can help you understand your social value, discover new ways to make an impact, and explain how everything is calculated.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Quick questions</p>
+                  {quickActions.map((action) => (
+                    <button
+                      key={action}
+                      onClick={() => sendMessage(action)}
+                      className="text-left px-3.5 py-2.5 rounded-lg border border-border text-[13px] text-foreground hover:border-[#F06127] hover:bg-[#FFF7F3] transition-all"
+                    >
+                      {action}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-auto pt-2 text-[11px] text-muted-foreground leading-relaxed">
+                  Powered by <span className="font-medium text-foreground">the Social Value Engine</span>. AI responses are for guidance only.
+                </div>
+              </>
+            ) : (
+              <>
+                {messages.map((msg, i) => {
+                  const isAssistant = msg.role === "assistant";
+                  const hasContent = !!msg.content;
+                  const showTemplateActions =
+                    isAssistant && hasContent && !!msg.templateId && !streaming;
+                  return (
+                    <div key={i} className={cn("flex flex-col", msg.role === "user" ? "items-end" : "items-start")}>
+                      <div
+                        className={cn(
+                          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
+                          msg.role === "user" ? "text-white rounded-br-sm" : "bg-[#f4f4f5] text-foreground rounded-bl-sm"
+                        )}
+                        style={msg.role === "user" ? { backgroundColor: "#F06127" } : undefined}
+                      >
+                        {msg.content || (
+                          <span className="flex items-center gap-1 py-0.5" aria-label="Assistant is typing">
+                            {[0, 1, 2].map((i) => (
+                              <span
+                                key={i}
+                                className="w-2 h-2 rounded-full bg-gray-500 inline-block"
+                                style={{
+                                  animation: "sidekick-bounce 1.2s ease-in-out infinite",
+                                  animationDelay: `${i * 0.2}s`,
+                                }}
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                      {isAssistant && hasContent && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <button
+                            onClick={() => handleCopy(msg.content, i)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            aria-label="Copy reply"
+                            data-testid={`sidekick-copy-${i}`}
+                          >
+                            {copiedIndex === i ? (
+                              <>
+                                <Check className="w-3 h-3" /> Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" /> Copy
+                              </>
+                            )}
+                          </button>
+                          {showTemplateActions && (
+                            <button
+                              onClick={() => regenerateTemplate(msg)}
+                              disabled={streaming}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                              aria-label="Regenerate with a different angle"
+                              data-testid={`sidekick-regenerate-${i}`}
+                            >
+                              <RefreshCw className="w-3 h-3" /> Different angle
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="px-4 py-3.5 border-t border-border bg-white shrink-0">
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask Sidekick anything…"
+                disabled={streaming}
+                className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
+                style={{ fontFamily: "inherit" }}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                }}
+              />
+              <button
+                onClick={handleSubmit}
+                disabled={!input.trim() || streaming}
+                className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: "#F06127" }}
+                aria-label="Send message"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 
