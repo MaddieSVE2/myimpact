@@ -3,6 +3,7 @@ import { db, publicProfilesTable, usersTable, impactRecordsTable, journalEntries
 import { eq, desc, sum as drizzleSum, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { trackServerEvent } from "../lib/analytics.js";
 
 const router: IRouter = Router();
 
@@ -210,6 +211,16 @@ router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
     res.status(404).json({ error: "Profile not found." });
     return;
   }
+
+  // Track the public profile view. We log the slug (an opaque public
+  // identifier the user chose) but never the viewer's identity — public
+  // profiles are anonymous reads.
+  trackServerEvent({
+    eventName: "public_profile_view",
+    userId: profile.userId,
+    surface: "member",
+    props: { slug },
+  });
 
   // Compute totals via DB aggregates so all records are included (no arbitrary cap)
   let totalHours: number | null = null;

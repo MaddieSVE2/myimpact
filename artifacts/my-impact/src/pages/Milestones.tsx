@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetImpactHistory, useGetActivities } from "@workspace/api-client-react";
 import { computeBadges } from "@/lib/badges";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -118,6 +119,36 @@ export default function Milestones() {
   const lockedBadges = badges.filter(b => !b.earned);
   const lockedSecretBadges = lockedBadges.filter(b => b.secret);
   const lockedNonSecretBadges = lockedBadges.filter(b => !b.secret);
+
+  // Track each newly-earned badge exactly once per browser via localStorage,
+  // so refreshing the milestones page doesn't double-count.
+  const trackedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user?.id || earnedBadges.length === 0) return;
+    const storageKey = `mi_tracked_milestones_${user.id}`;
+    let already: Set<string>;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      already = new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      already = new Set();
+    }
+    const fresh: string[] = [];
+    for (const b of earnedBadges) {
+      if (already.has(b.id) || trackedRef.current.has(b.id)) continue;
+      trackedRef.current.add(b.id);
+      already.add(b.id);
+      fresh.push(b.id);
+      track(ANALYTICS_EVENTS.MILESTONE_EARNED, { badgeId: b.id, badgeName: b.name });
+    }
+    if (fresh.length > 0) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify([...already]));
+      } catch {
+        // Quota issues — non-fatal.
+      }
+    }
+  }, [user?.id, earnedBadges]);
 
   const currentTotal = latest?.impactResult.totalValue ?? 0;
 

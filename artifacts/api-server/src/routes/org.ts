@@ -10,6 +10,7 @@ import React from "react";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
+import { trackServerEvent } from "../lib/analytics.js";
 import { featureCap } from "../lib/featureFlags.js";
 import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
 
@@ -199,6 +200,13 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       joinedAt: new Date().toISOString(),
     },
   }).catch(err => console.error("[org.join] failed to enqueue member.joined:", err));
+
+  trackServerEvent({
+    eventName: "org_invite_accepted",
+    userId,
+    surface: "org",
+    props: { role, orgType: org.type ?? "unknown" },
+  });
 
   res.json({ ok: true, orgName: org.name, alreadyMember: false });
 });

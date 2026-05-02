@@ -23,6 +23,24 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   }
 }
 
+/**
+ * Best-effort session decode for endpoints that don't require auth (e.g.
+ * the analytics ingest endpoint, which needs to fire for guests too but
+ * should still attach the user id when one is present).
+ */
+export function decodeSessionCookie(req: Request): string | null {
+  const token = (req as Request & { cookies?: Record<string, string> }).cookies?.mi_session;
+  if (!token) return null;
+  try {
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) return null;
+    const payload = jwt.verify(token, secret) as { id?: string };
+    return typeof payload.id === "string" ? payload.id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function attachUserIfPresent(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
   const token = req.cookies?.mi_session;
   if (token) {

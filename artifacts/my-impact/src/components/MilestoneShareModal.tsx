@@ -4,6 +4,7 @@ import { Badge } from "@/lib/badges";
 import MilestoneShareCard, { CARD_SIZES } from "./MilestoneShareCard";
 import { X, Download, Linkedin, Twitter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 interface MilestoneShareModalProps {
   badge: Badge;
@@ -85,17 +86,20 @@ export default function MilestoneShareModal({ badge, totalValue, onClose }: Mile
   };
 
   const handleShareLinkedIn = () => {
+    track(ANALYTICS_EVENTS.SHARE_CLICK, { surface: "member", source: "milestone_modal", channel: "linkedin", badgeId: badge.id });
     const url = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=600");
   };
 
   const handleShareTwitter = () => {
+    track(ANALYTICS_EVENTS.SHARE_CLICK, { surface: "member", source: "milestone_modal", channel: "twitter", badgeId: badge.id });
     const twitterText = `I've just earned the ${badge.name} badge on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
   };
 
   const handleShareFacebook = () => {
+    track(ANALYTICS_EVENTS.SHARE_CLICK, { surface: "member", source: "milestone_modal", channel: "facebook", badgeId: badge.id });
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
   };

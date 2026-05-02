@@ -5,6 +5,7 @@ import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Heart, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { useCalculateImpact } from "@workspace/api-client-react";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
@@ -29,6 +30,11 @@ export default function ContributionsStep() {
     try {
       const res = await calculateMutation.mutateAsync({ data: finalInput as any });
       setResult(res);
+      track(ANALYTICS_EVENTS.WIZARD_STEP_COMPLETE, {
+        step: "contributions",
+        hasDonations: donations > 0,
+        hasExtraHours: hours > 0,
+      });
       setLocation("/results");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Something went wrong. Please try again.";

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import AdminFunnels from "@/components/AdminFunnels";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -296,6 +297,8 @@ export default function Admin() {
       <p className="mt-6 text-xs text-muted-foreground">
         {orgRequests.length} request{orgRequests.length !== 1 ? "s" : ""} total
       </p>
+
+      <AdminFunnels />
     </div>
   );
 }

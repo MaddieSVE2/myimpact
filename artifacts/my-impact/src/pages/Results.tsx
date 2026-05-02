@@ -23,6 +23,7 @@ import html2canvas from "html2canvas";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 // Metric tile — styled to match original My Impact design
 function MetricTile({
@@ -1183,11 +1184,17 @@ export default function Results() {
   const shareUrl = "https://myimpact.replit.com";
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    const hasNative = typeof navigator !== "undefined" && typeof navigator.share === "function";
+    track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel: hasNative ? "native" : "menu" });
+    if (hasNative) {
       await navigator.share({ title: "My Impact", text: shareText, url: shareUrl });
     } else {
       setShareOpen(o => !o);
     }
+  };
+
+  const trackResultsShare = (channel: "twitter" | "linkedin") => {
+    track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel });
   };
 
   const earnedBadges = computeBadges(
@@ -1582,6 +1589,7 @@ export default function Results() {
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackResultsShare("twitter")}
                   className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <Twitter className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" /> Share on X
@@ -1590,6 +1598,7 @@ export default function Results() {
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackResultsShare("linkedin")}
                   className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <Linkedin className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" /> Share on LinkedIn

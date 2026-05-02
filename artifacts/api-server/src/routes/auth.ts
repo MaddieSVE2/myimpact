@@ -5,6 +5,7 @@ import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { isProviderConfigured, type SsoProvider } from "../lib/oidc.js";
+import { trackServerEvent } from "../lib/analytics.js";
 
 const router: IRouter = Router();
 
@@ -223,6 +224,16 @@ router.post("/confirm", async (req, res) => {
     return;
   }
 
+  // Detect first-ever confirmation BEFORE we mark this token confirmed,
+  // so we can fire signup_complete on a brand-new account.
+  const priorConfirmed = await db.query.magicTokensTable.findFirst({
+    where: and(
+      eq(magicTokensTable.userId, record.userId),
+      eq(magicTokensTable.confirmed, true),
+    ),
+  });
+  const isFirstConfirm = !priorConfirmed;
+
   await db
     .update(magicTokensTable)
     .set({ confirmed: true, usedAt: new Date() })
@@ -241,6 +252,15 @@ router.post("/confirm", async (req, res) => {
     .update(magicTokensTable)
     .set({ confirmed: true, usedAt: new Date() })
     .where(eq(magicTokensTable.token, token));
+
+  if (isFirstConfirm) {
+    trackServerEvent({
+      eventName: "signup_complete",
+      userId: user.id,
+      surface: "member",
+      props: { method: "magic_link" },
+    });
+  }
 
   issueSession(res, user);
   res.json({ ok: true, user: { id: user.id, email: user.email } });

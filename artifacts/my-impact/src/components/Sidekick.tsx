@@ -6,6 +6,7 @@ import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
   SIDEKICK_TEMPLATES,
   SIDEKICK_CATEGORY_LABELS,
@@ -380,6 +381,12 @@ export function Sidekick() {
       const newMessages: Message[] = [...messages, { role: "user", content: userText }];
       setMessages(newMessages);
       setInput("");
+
+      // Funnel analytics: count every user-initiated sidekick message.
+      track(ANALYTICS_EVENTS.SIDEKICK_MESSAGE_SENT, {
+        fromTemplate: !!meta?.templateId,
+        isRegenerate: (meta?.regenerateAttempt ?? 0) > 0,
+      });
 
       const assistantIndex = newMessages.length;
 

@@ -22,6 +22,7 @@ import attachmentsRouter from "./attachments";
 import calendarRouter from "./calendar";
 import challengesRouter from "./challenges";
 import billingRouter from "./billing";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use("/attachments", attachmentsRouter);
 router.use("/calendar", calendarRouter);
 router.use("/challenges", challengesRouter);
 router.use("/billing", billingRouter);
+router.use("/analytics", analyticsRouter);
 
 export default router;

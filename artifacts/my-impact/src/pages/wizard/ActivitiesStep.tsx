@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash2, Sparkles, Loader2, ListChecks, MessageSquare, Search, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 interface PreviousActivity {
   activityId: string;
@@ -264,6 +265,11 @@ export default function ActivitiesStep() {
     });
     setPendingCustomActivities([]);
     setPendingCustomQuantities({});
+    track(ANALYTICS_EVENTS.WIZARD_STEP_COMPLETE, {
+      step: "activities",
+      activityCount: selectedList.length,
+      customActivityCount: pendingCustomActivities.length,
+    });
     setLocation("/wizard/contributions");
   };
 

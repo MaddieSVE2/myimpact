@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 const PAGE_NAMES: Record<string, string> = {
   "/": "Home",
@@ -39,12 +40,10 @@ export function usePageViewTracking() {
     const pageName = getPageName(location);
     if (!pageName) return;
 
-    const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
-    fetch(`${apiBase}/api/admin/track`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ page: pageName }),
-    }).catch(() => {});
+    // Org dashboard pages are tracked on the org surface so member-side
+    // funnels stay clean.
+    const surface = location === "/org" || location.startsWith("/org/") ? "org" : "member";
+
+    track(ANALYTICS_EVENTS.PAGE_VIEW, { page: pageName, surface });
   }, [location, isLoggedIn, isLoading]);
 }

@@ -15,6 +15,7 @@ import { buildEvidencePackDocument } from "../lib/evidencePackPdf.js";
 import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
+import { trackServerEvent } from "../lib/analytics.js";
 
 const router: IRouter = Router();
 
@@ -195,6 +196,15 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const periodLabel = body.period ?? null;
 
+  // Snapshot the user's existing record count BEFORE writing so we can
+  // emit `first_record_logged` on the very first save.
+  const priorCountRows = await db
+    .select({ id: impactRecordsTable.id })
+    .from(impactRecordsTable)
+    .where(eq(impactRecordsTable.userId, userId))
+    .limit(1);
+  const isFirstRecord = priorCountRows.length === 0;
+
   const newValues = {
     name: body.name,
     periodLabel,
@@ -237,6 +247,19 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       .values({ userId, ...newValues })
       .returning();
     record = inserted;
+  }
+
+  if (isFirstRecord) {
+    trackServerEvent({
+      eventName: "first_record_logged",
+      userId,
+      surface: "member",
+      props: {
+        totalValue: Math.round(body.impactResult.totalValue),
+        totalHours: Math.round(body.impactResult.totalHours),
+        activityCount: body.activities?.length ?? 0,
+      },
+    });
   }
 
   // Fire `hours.logged` to any org webhooks subscribed for this user's org.

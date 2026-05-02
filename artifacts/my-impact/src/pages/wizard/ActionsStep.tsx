@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
@@ -134,6 +135,12 @@ export default function ActionsStep() {
       ? `I live in ${location} and care most about: ${allInterests || 'making a positive difference'}.`
       : `I care most about: ${allInterests || 'making a positive difference'}.`;
     updateInput({ description });
+
+    track(ANALYTICS_EVENTS.WIZARD_STEP_COMPLETE, {
+      step: "actions",
+      hasLocation: !!location,
+      interestCount: interests.length,
+    });
 
     // Silently auto-save profile if logged in
     if (isLoggedIn) {
