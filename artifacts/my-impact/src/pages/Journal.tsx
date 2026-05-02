@@ -179,10 +179,7 @@ function ActivityCardItem({
       exit={{ opacity: 0, scale: 0.97 }}
       className="rounded-xl overflow-hidden group"
       style={{
-        borderLeft: "4px solid #F06127",
-        border: "1px solid #fde8dc",
-        borderLeftWidth: "4px",
-        borderLeftColor: "#F06127",
+        border: "2px solid #F06127",
         background: "#fff9f7",
       }}
     >

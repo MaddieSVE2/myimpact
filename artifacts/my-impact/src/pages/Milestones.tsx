@@ -215,8 +215,8 @@ export default function Milestones() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.07 }}
-                    className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2"
-                    style={{ borderTopColor: badge.colour, borderTopWidth: 3 }}
+                    className="bg-white rounded-xl p-4 flex flex-col gap-2"
+                    style={{ border: `2px solid ${badge.colour}` }}
                   >
                     <div className="flex items-start gap-3">
                       <span className="text-2xl shrink-0">{badge.emoji}</span>
