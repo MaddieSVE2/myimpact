@@ -8,6 +8,9 @@ out-tsc
 .expo
 .expo-shared
 
+# Lighthouse CI reports (regenerated on every run)
+.lighthouseci/
+
 # dependencies
 node_modules
 
