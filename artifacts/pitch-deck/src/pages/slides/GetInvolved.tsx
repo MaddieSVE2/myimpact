@@ -44,10 +44,10 @@ export default function GetInvolved() {
             Partner with us
           </p>
           <a
-            href="mailto:maddie@socialvalueengine.com"
+            href="mailto:hello@myimpact.uk"
             className="font-display font-bold text-[2.5vw] text-primary block leading-tight"
           >
-            maddie@socialvalueengine.com
+            hello@myimpact.uk
           </a>
         </div>
       </div>

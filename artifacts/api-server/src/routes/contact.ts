@@ -43,7 +43,7 @@ router.post("/", contactRateLimit, async (req, res) => {
 
     const { error: notifyError } = await client.emails.send({
       from: fromEmail,
-      to: "maddie@socialvalueengine.com",
+      to: "hello@myimpact.uk",
       replyTo: safeEmail,
       subject: `New contact form message from ${escHtml(safeName)}`,
       html: `

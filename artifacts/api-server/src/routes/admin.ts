@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 const router: IRouter = Router();
 
 const ADMIN_EMAILS = [
+  "hello@myimpact.uk",
   "maddie@socialvalueengine.com",
   "ivan.annibal@roseregeneration.co.uk",
 ];

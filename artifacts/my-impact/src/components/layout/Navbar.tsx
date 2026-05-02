@@ -170,7 +170,7 @@ export function Navbar() {
   const [showInvite, setShowInvite] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, logout } = useAuth();
-  const isAdmin = ["maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
+  const isAdmin = ["hello@myimpact.uk", "maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
     (user?.email ?? "").toLowerCase()
   );
   const { setOpen: openSidekick } = useSidekick();

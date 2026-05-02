@@ -853,7 +853,7 @@ export default function OrgPortal() {
               <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">Cohort analytics, challenge tools, branded reports, data export, and multi-programme views, from £2,500/year.</p>
             </div>
             <a
-              href="mailto:maddie@socialvalueengine.com?subject=MyImpact Organisation tier"
+              href="mailto:hello@myimpact.uk?subject=MyImpact Organisation tier"
               className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
               Get in touch <ArrowRight className="w-3.5 h-3.5" />

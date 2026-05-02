@@ -12,7 +12,7 @@ const feedbackRateLimit = createRateLimiter({
   message: "Too many feedback submissions. Please wait before trying again.",
 });
 
-const ADMIN_EMAIL = "maddie@socialvalueengine.com";
+const ADMIN_EMAIL = "hello@myimpact.uk";
 
 function escapeHtml(str: string): string {
   return str
