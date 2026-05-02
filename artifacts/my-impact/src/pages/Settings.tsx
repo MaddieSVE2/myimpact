@@ -271,7 +271,7 @@ export default function Settings() {
           <Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Organisation</h2>
         </div>
-        <div className="py-1">
+        <div className="py-1 divide-y divide-border">
           <Link
             href="/org"
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
@@ -282,6 +282,7 @@ export default function Settings() {
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
+          <PulseOptOutRow />
         </div>
       </section>
 
@@ -358,6 +359,92 @@ export default function Settings() {
         Sign out
       </button>
     </div>
+  );
+}
+
+function PulseOptOutRow() {
+  const { toast } = useToast();
+  const [optedOut, setOptedOut] = useState<boolean | null>(null);
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [available, setAvailable] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/org/surveys/opt-out`, { credentials: "include" });
+        if (res.status === 404) {
+          if (!cancelled) setAvailable(false);
+          return;
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setAvailable(true);
+          setOptedOut(!!data.optedOut);
+          setOrgName(data.orgName ?? null);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!available || optedOut === null) return null;
+
+  const handleToggle = async () => {
+    if (saving) return;
+    const next = !optedOut;
+    setSaving(true);
+    setOptedOut(next);
+    try {
+      const res = await fetch(`${BASE}/api/org/surveys/opt-out`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optedOut: next }),
+      });
+      if (!res.ok) throw new Error();
+      toast({
+        title: next ? "Pulse surveys turned off" : "Pulse surveys turned on",
+        description: next
+          ? `You won't see pulse prompts from ${orgName ?? "your organisation"}.`
+          : `You'll see new pulse prompts from ${orgName ?? "your organisation"} on your home page.`,
+      });
+    } catch {
+      setOptedOut(!next);
+      toast({ title: "Could not save", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleToggle}
+      aria-pressed={!optedOut}
+      disabled={saving}
+      className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
+      data-testid="toggle-pulse-opt-out"
+    >
+      <div className="pr-3">
+        <p className="text-sm font-medium text-foreground">Pulse surveys</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          30-second prompts from {orgName ?? "your organisation"} on your home page. Anonymous by default.
+        </p>
+      </div>
+      <div
+        className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+        style={{ background: !optedOut ? "#F06127" : "#d1d5db" }}
+      >
+        <span
+          className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+          style={{ transform: !optedOut ? "translateX(16px)" : "translateX(0)" }}
+        />
+      </div>
+    </button>
   );
 }
 

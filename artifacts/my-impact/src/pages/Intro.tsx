@@ -9,6 +9,7 @@ import RecapBanner from "@/components/RecapBanner";
 import CalendarHomeWidget from "@/components/CalendarHomeWidget";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
+import { PulseSurveyCard } from "@/components/PulseSurveyCard";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 import { useListRecurringTemplates } from "@workspace/api-client-react";
 
@@ -362,6 +363,7 @@ export default function Intro() {
       {hasQuickLogContent && (
         <section style={{ background: "white", padding: "32px 5% 0" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <PulseSurveyCard />
             <QuickLog showManageLink />
           </div>
         </section>

@@ -160,6 +160,48 @@ export const orgSsoConfigsTable = pgTable("org_sso_configs", {
   orgIdx: index("org_sso_configs_org_idx").on(table.orgId),
 }));
 
+// Pulse surveys created by org managers. Members see active surveys on their
+// home page; aggregated responses appear in the org dashboard.
+export const orgSurveysTable = pgTable("org_surveys", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  // 'meaningfulness' | 'wellbeing' | 'custom'
+  template: text("template").notNull(),
+  question: text("question").notNull(),
+  // 'one_off' | 'monthly' | 'quarterly'
+  schedule: text("schedule").notNull(),
+  anonymous: boolean("anonymous").notNull().default(true),
+  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  archivedAt: timestamp("archived_at"),
+}, (t) => ({
+  orgIdx: index("org_surveys_org_idx").on(t.orgId),
+}));
+
+export const orgSurveyResponsesTable = pgTable("org_survey_responses", {
+  id: text("id").primaryKey(),
+  surveyId: text("survey_id").notNull().references(() => orgSurveysTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => usersTable.id),
+  // 'once' for one_off, 'YYYY-MM' for monthly, 'YYYY-Qn' for quarterly
+  windowKey: text("window_key").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  surveyIdx: index("org_survey_responses_survey_idx").on(t.surveyId),
+  userWindowUnique: unique("org_survey_responses_user_window_unique").on(t.surveyId, t.userId, t.windowKey),
+}));
+
+// Per-org opt-out: a member can opt out of all surveys from their org without
+// affecting other features (dashboard contribution, etc.).
+export const orgSurveyOptOutsTable = pgTable("org_survey_opt_outs", {
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: unique("org_survey_opt_outs_pk").on(t.orgId, t.userId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
@@ -170,3 +212,6 @@ export type OrgWebhook = typeof orgWebhooksTable.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveriesTable.$inferSelect;
 export type OrgSubscription = typeof orgSubscriptionsTable.$inferSelect;
 export type OrgSsoConfig = typeof orgSsoConfigsTable.$inferSelect;
+export type OrgSurvey = typeof orgSurveysTable.$inferSelect;
+export type OrgSurveyResponse = typeof orgSurveyResponsesTable.$inferSelect;
+export type OrgSurveyOptOut = typeof orgSurveyOptOutsTable.$inferSelect;

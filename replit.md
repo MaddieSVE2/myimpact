@@ -78,6 +78,13 @@ Magic link authentication via Resend (no passwords):
 - `POST /api/org/sso/config` — manager-only: upsert an SSO config for a domain (provider, tenant ID, enforce flag)
 - `DELETE /api/org/sso/config/:id` — manager-only: remove an SSO config
 
+### Pulse surveys (Task #148)
+- Schema: `orgSurveysTable`, `orgSurveyResponsesTable`, `orgSurveyOptOutsTable` in `lib/db/src/schema/org.ts`; migration `lib/db/migrations/0011_org_pulse_surveys.sql`
+- Routes: `artifacts/api-server/src/routes/org-surveys.ts` mounted under `/api/org` — manager CRUD + results, member active/respond/opt-out
+- Templates: meaningfulness, wellbeing, custom; cadences: one_off / monthly / quarterly (window keys: `once`, `YYYY-MM`, `YYYY-Qn`)
+- UI: `PulseSurveysSection` (manager card in OrgPortal between stats and Match), `PulseSurveyCard` (home-page member prompt with localStorage dismiss), opt-out toggle in `Settings` Organisation section
+- Privacy: anonymous by default; comments hidden in manager view until a window has 5+ responses
+
 ### Challenges feature
 - Schema: `challengesTable` + `challengeParticipantsTable` (`lib/db/src/schema/challenges.ts`, migration `0008_challenges.sql`)
 - Routes: `/challenges` (list), `/challenges/:id` (detail), `/challenges/join?code=XYZ` (public join page)

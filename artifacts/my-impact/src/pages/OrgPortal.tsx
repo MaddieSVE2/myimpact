@@ -13,6 +13,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
+import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -2074,6 +2075,8 @@ export default function OrgPortal() {
           </motion.div>
 
           <BillingSection />
+
+          <PulseSurveysSection />
 
           <MatchProgrammeSection from={from} to={to} />
 
