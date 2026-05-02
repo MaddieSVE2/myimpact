@@ -5,7 +5,6 @@ export default function NextSteps() {
     <div className="slide relative w-screen h-screen overflow-hidden bg-text">
       <div className="absolute top-[-15vh] right-[-15vw] w-[55vw] h-[55vw] rounded-full bg-primary/20 blur-3xl" />
       <div className="absolute bottom-[-10vh] left-[-10vw] w-[40vw] h-[40vw] rounded-full bg-accent/15 blur-3xl" />
-
       <div className="absolute top-[6vh] left-[6vw]">
         <img
           src={`${base}myimpact-logo.png`}
@@ -14,7 +13,6 @@ export default function NextSteps() {
           className="h-[8vh] w-auto"
         />
       </div>
-
       <div className="absolute top-[28vh] left-[6vw] right-[8vw]">
         <p className="font-body text-[1.3vw] uppercase tracking-[0.3em] text-primary mb-[3vh]">
           Next steps
@@ -24,7 +22,6 @@ export default function NextSteps() {
           <span className="block text-primary italic">to your organisation.</span>
         </h2>
       </div>
-
       <div className="absolute bottom-[10vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2.5vw]">
         <div>
           <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
@@ -66,9 +63,7 @@ export default function NextSteps() {
           >
             hello@myimpact.uk
           </a>
-          <p className="font-body text-[1vw] text-bg/60 mt-[1.5vh] leading-snug">
-            A 20-minute call to scope what would work for you.
-          </p>
+          <p className="font-body text-[1vw] text-bg/60 mt-[1.5vh] leading-snug">A 30-minute call to scope what would work for you.</p>
         </div>
       </div>
     </div>
