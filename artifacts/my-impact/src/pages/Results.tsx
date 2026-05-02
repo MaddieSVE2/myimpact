@@ -11,6 +11,7 @@ import {
   Clipboard, ClipboardCheck, MessageSquare, FileText, Mountain
 } from "lucide-react";
 import { useSidekick } from "@/lib/sidekick-context";
+import Attachments from "@/components/Attachments";
 import { useSaveImpact } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -937,6 +938,7 @@ export default function Results() {
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [chosenPeriod, setChosenPeriod] = useState("");
@@ -1078,6 +1080,8 @@ export default function Results() {
       }
 
       setSaved(true);
+      const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
+      if (Number.isFinite(numericId)) setSavedRecordId(numericId);
       setShowSaveDialog(false);
       toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
     } catch {
@@ -1429,6 +1433,31 @@ export default function Results() {
 
       {/* Duke of Edinburgh panel — hidden for veterans */}
       {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
+
+      {/* Photo & receipt attachments — only after the record is saved */}
+      {savedRecordId != null && (
+        <motion.div
+          className="mb-6 bg-white border border-border rounded-xl p-5"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24 }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base" aria-hidden="true">📎</span>
+            <p className="text-sm font-semibold text-foreground">Add photos &amp; receipts</p>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+            Attach up to 4 photos to remember this period
+            {(input.donationsGBP ?? 0) > 0 ? ", or a PDF receipt for your donations" : ""}.
+            Files are stored privately and only visible to you.
+          </p>
+          <Attachments
+            recordId={savedRecordId}
+            allowReceipt={(input.donationsGBP ?? 0) > 0}
+            compact
+          />
+        </motion.div>
+      )}
 
       {/* Sidekick prompt */}
       <motion.div

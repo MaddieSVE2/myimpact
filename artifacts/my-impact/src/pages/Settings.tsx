@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
+import { StorageUsageBar } from "@/components/Attachments";
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
@@ -196,6 +197,20 @@ export default function Settings() {
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
+        </div>
+      </section>
+
+      {/* Storage usage section */}
+      <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <HardDrive className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Storage</h2>
+        </div>
+        <div className="px-5 py-5">
+          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+            Photos and donation receipts you attach to your records and journal entries are stored privately, just for you.
+          </p>
+          <StorageUsageBar />
         </div>
       </section>
 

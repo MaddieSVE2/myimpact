@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -61,7 +62,7 @@ type Breakdown = {
   hours: number;
 };
 
-function RecordDetail({ result }: { result: any }) {
+function RecordDetail({ result, recordId, hasDonations }: { result: any; recordId?: number; hasDonations?: boolean }) {
   if (!result) {
     return (
       <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
@@ -129,6 +130,16 @@ function RecordDetail({ result }: { result: any }) {
         </div>
         <p className="text-xs font-bold text-foreground">{formatCurrency(result.totalValue)} total value</p>
       </div>
+
+      {recordId != null && (
+        <div className="px-4 py-3 border-t border-border">
+          <Attachments
+            recordId={recordId}
+            allowReceipt={!!hasDonations}
+            label="Photos & receipts"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -595,7 +606,11 @@ export default function History() {
                         transition={{ duration: 0.22, ease: "easeInOut" }}
                         style={{ overflow: "hidden" }}
                       >
-                        <RecordDetail result={record.impactResult} />
+                        <RecordDetail
+                          result={record.impactResult}
+                          recordId={isAuthenticated ? (parseInt(String(record.id), 10) || undefined) : undefined}
+                          hasDonations={(record.impactResult?.donationsValue ?? 0) > 0}
+                        />
                         <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
                           {record.impactResult && record.activities?.length > 0 && (
                             <button

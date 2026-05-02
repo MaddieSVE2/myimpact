@@ -13,6 +13,7 @@ import contactRouter from "./contact";
 import feedbackRouter from "./feedback";
 import inviteRouter from "./invite";
 import publicProfileRouter from "./public-profile";
+import attachmentsRouter from "./attachments";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/contact", contactRouter);
 router.use("/feedback", feedbackRouter);
 router.use("/user/invite", inviteRouter);
 router.use("/public-profile", publicProfileRouter);
+router.use("/attachments", attachmentsRouter);
 
 export default router;

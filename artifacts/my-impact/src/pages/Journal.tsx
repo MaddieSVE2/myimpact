@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import Attachments from "@/components/Attachments";
 
 interface JournalEntry {
   id: string;
@@ -533,6 +534,12 @@ export default function Journal() {
                     </button>
                   </div>
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
+                  {(() => {
+                    const numericId = parseInt(entry.id, 10);
+                    return Number.isFinite(numericId) ? (
+                      <Attachments journalId={numericId} maxImages={1} label="Photo" />
+                    ) : null;
+                  })()}
                   <p className="text-[11px] text-muted-foreground mt-3">
                     {new Date(entry.createdAt).toLocaleDateString("en-GB", {
                       weekday: "short", day: "numeric", month: "long", year: "numeric",
