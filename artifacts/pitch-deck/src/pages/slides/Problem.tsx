@@ -78,11 +78,6 @@ export default function Problem() {
         </div>
       </div>
 
-      <div className="absolute bottom-[8vh] left-[6vw] w-[52vw]">
-        <p className="font-body text-[1.25vw] text-text/65 leading-relaxed">
-          Three places contribution should show up.
-        </p>
-      </div>
     </div>
   );
 }
