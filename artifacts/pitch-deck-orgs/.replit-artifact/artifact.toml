@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/pitch-deck-orgs/"
+title = "My Impact — For Organisations Pitch Deck"
+version = "1.0.0"
+id = "artifacts/pitch-deck-orgs"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/pitch-deck-orgs/" ]
+localPort = 18650
+
+[services.development]
+run = "pnpm --filter @workspace/pitch-deck-orgs run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pitch-deck-orgs", "run", "build" ]
+publicDir = "artifacts/pitch-deck-orgs/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18650"
+BASE_PATH = "/pitch-deck-orgs/"
