@@ -11,4 +11,9 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
+  // Hide our homemade SQL-migration tracking table from drizzle. Without
+  // this, drizzle sees `_migrations` as a foreign table and offers it as a
+  // potential rename source for every new schema table, blocking the post-
+  // merge script on an interactive prompt that never gets answered.
+  tablesFilter: ["!_migrations"],
 });
