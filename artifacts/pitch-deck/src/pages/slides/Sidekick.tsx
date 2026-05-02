@@ -25,10 +25,10 @@ export default function Sidekick() {
             </div>
             <div>
               <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
-                Make sense of your number
+                Understand your number
               </p>
-              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh]">
-                Ask why your impact is what it is, and what would lift it.
+              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
+                Ask why your impact is what it is, and what would increase it.
               </p>
             </div>
           </div>
@@ -39,10 +39,10 @@ export default function Sidekick() {
             </div>
             <div>
               <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
-                Turn impact into words
+                Put it into words
               </p>
-              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh]">
-                Draft CV bullets, UCAS statements, cover-letter lines from real activity.
+              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
+                CV bullets, UCAS statements and cover-letter lines, drafted from your real activity.
               </p>
             </div>
           </div>
@@ -53,10 +53,10 @@ export default function Sidekick() {
             </div>
             <div>
               <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
-                Suggest your next step
+                Know what to do next
               </p>
-              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh]">
-                Quick actions adapt to whichever page you are on.
+              <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
+                Context-aware suggestions wherever you are in the platform.
               </p>
             </div>
           </div>

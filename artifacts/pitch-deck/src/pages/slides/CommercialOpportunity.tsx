@@ -15,80 +15,56 @@ export default function CommercialOpportunity() {
           How organisations
           <span className="block text-primary italic">use My Impact.</span>
         </h2>
-        <p className="font-body text-[1.3vw] text-text/70 mt-[2.5vh] max-w-[60vw] leading-relaxed">
-          Six ways organisations put the platform to work — to recognise the people who quietly make a difference, report on impact, and rally volunteers around the work that matters.
+        <p className="font-body text-[1.3vw] text-text/70 mt-[2.5vh] max-w-[62vw] leading-relaxed">
+          Four ways organisations put My Impact to work, to recognise the people who quietly make a difference, evidence their impact, and strengthen their employer brand.
         </p>
       </div>
 
-      <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-x-[2vw] gap-y-[2.5vh]">
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-primary/10 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-primary leading-none">★</span>
+      <div className="absolute bottom-[6vh] left-[6vw] right-[6vw] grid grid-cols-2 gap-x-[3.5vw] gap-y-[3.5vh]">
+        <div className="flex gap-[1.4vw]">
+          <div className="shrink-0 w-[3.8vw] h-[3.8vw] rounded-2xl bg-primary/10 flex items-center justify-center">
+            <span className="font-display font-black text-[1.9vw] text-primary leading-none">★</span>
           </div>
           <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">Employee recognition</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
-              Surface the contribution your people make outside their job description, and recognise it openly.
+            <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">Employee recognition</h3>
+            <p className="font-body text-[1.1vw] text-text/65 mt-[1vh] leading-relaxed">
+              Surface the contribution your people make outside their job description, and acknowledge it openly.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-accent/15 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-accent leading-none">✎</span>
+        <div className="flex gap-[1.4vw]">
+          <div className="shrink-0 w-[3.8vw] h-[3.8vw] rounded-2xl bg-accent/15 flex items-center justify-center">
+            <span className="font-display font-black text-[1.9vw] text-accent leading-none">✎</span>
           </div>
           <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">Student support</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
-              Help students translate volunteering, mentoring and caring into something they can show on a CV or UCAS form.
+            <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">Student support</h3>
+            <p className="font-body text-[1.1vw] text-text/65 mt-[1vh] leading-relaxed">
+              Help students turn volunteering, mentoring and caring into something they can put on a CV or UCAS form.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-text/8 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-text leading-none">◧</span>
+        <div className="flex gap-[1.4vw]">
+          <div className="shrink-0 w-[3.8vw] h-[3.8vw] rounded-2xl bg-text/8 flex items-center justify-center">
+            <span className="font-display font-black text-[1.9vw] text-text leading-none">◧</span>
           </div>
           <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">Impact reporting</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
-              One source of truth for trustees, funders and annual reports, mapped to the UN Sustainable Development Goals.
+            <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">CSR and impact reporting</h3>
+            <p className="font-body text-[1.1vw] text-text/65 mt-[1vh] leading-relaxed">
+              Connect everyday contribution to your CSR commitments, with a single source of truth for trustees, funders and annual reports.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-sky/30 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-text leading-none">↺</span>
+        <div className="flex gap-[1.4vw]">
+          <div className="shrink-0 w-[3.8vw] h-[3.8vw] rounded-2xl bg-primary/10 flex items-center justify-center">
+            <span className="font-display font-black text-[1.9vw] text-primary leading-none">✦</span>
           </div>
           <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">CSR alignment</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
-              Connect everyday contribution to your CSR commitments, with figures that hold up under scrutiny.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-primary/10 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-primary leading-none">✦</span>
-          </div>
-          <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">Employer branding</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
+            <h3 className="font-display font-bold text-[1.7vw] text-text leading-tight">Employer branding</h3>
+            <p className="font-body text-[1.1vw] text-text/65 mt-[1vh] leading-relaxed">
               Show prospective hires the difference your people make, backed by an accredited UK methodology.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-[1.2vw]">
-          <div className="shrink-0 w-[3.4vw] h-[3.4vw] rounded-2xl bg-accent/15 flex items-center justify-center">
-            <span className="font-display font-black text-[1.7vw] text-accent leading-none">→</span>
-          </div>
-          <div>
-            <h3 className="font-display font-bold text-[1.45vw] text-text leading-tight">Volunteer recognition &amp; mobilisation</h3>
-            <p className="font-body text-[1vw] text-text/65 mt-[0.8vh] leading-relaxed">
-              Acknowledge volunteers properly, and rally them around the causes and campaigns that need them most.
             </p>
           </div>
         </div>

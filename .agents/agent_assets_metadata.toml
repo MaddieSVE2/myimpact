@@ -47,3 +47,9 @@ id = "ieFK-CsJyp7pavoPyHQQV"
 uri = "file://myimpact-db-backup-2026-05-02T0814.sql.gz"
 type = "unspecified"
 title = "My Impact DB backup — 2026-05-02 08:14 UTC (gzipped SQL)"
+
+[[outputs]]
+id = "NqiMmJp0p_Qv4lCN6777k"
+uri = "file://.local/outputs/My-Impact.pdf"
+type = "pdf"
+title = "My Impact.pdf"

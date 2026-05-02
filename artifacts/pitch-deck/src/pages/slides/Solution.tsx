@@ -12,12 +12,12 @@ export default function Solution() {
       </div>
 
       <div className="absolute top-[15vh] left-[6vw] right-[8vw]">
-        <h2 className="font-display font-bold text-[6.4vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
-          Make the invisible
-          <span className="block text-primary italic">visible.</span>
+        <h2 className="font-display font-bold text-[5vw] leading-[1.0] tracking-tight text-text" style={{ textWrap: "balance" }}>
+          What you do has a value.
+          <span className="block text-primary italic">My Impact calculates it.</span>
         </h2>
-        <p className="font-body text-[1.5vw] text-text/75 mt-[3.5vh] leading-relaxed max-w-[58vw]">
-          A platform to measure what matters, motivate consistent action, and inspire what comes next.
+        <p className="font-body text-[1.35vw] text-text/75 mt-[3.5vh] leading-relaxed max-w-[60vw]">
+          My Impact turns everyday volunteering, mentoring and caring into a verifiable figure, a growing habit, and a story you can tell.
         </p>
       </div>
 
