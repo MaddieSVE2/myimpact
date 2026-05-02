@@ -59,15 +59,12 @@ export default function InspireMe() {
               myimpact.uk/suggestions
             </div>
           </div>
-          <div className="relative" style={{ aspectRatio: "16 / 11" }}>
-            <img
-              src={`${base}site-suggestions.png`}
-              crossOrigin="anonymous"
-              alt="Screenshot of the personalised Ideas for you page on myimpact.uk"
-              className="absolute inset-y-0 left-0 h-full"
-              style={{ width: "103%", maxWidth: "none", objectFit: "cover", objectPosition: "left top" }}
-            />
-          </div>
+          <img
+            src={`${base}site-suggestions.png`}
+            crossOrigin="anonymous"
+            alt="Screenshot of the personalised Ideas for you page on myimpact.uk"
+            className="block w-full h-auto"
+          />
         </div>
 
         <div className="absolute bottom-[4vh] right-[2.5vw] bg-bg/95 backdrop-blur px-[1.8vw] py-[1.8vh] rounded-2xl shadow-xl border border-text/8 max-w-[16vw]">
