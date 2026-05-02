@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
+import CalendarHomeWidget from "@/components/CalendarHomeWidget";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
@@ -268,6 +269,9 @@ export default function Intro() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
+      {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
+      {isLoggedIn ? <CalendarHomeWidget /> : null}
+
       {/* ── ANNUAL RECAP DISCOVERY ── */}
       {showRecapBanner && (
         <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>

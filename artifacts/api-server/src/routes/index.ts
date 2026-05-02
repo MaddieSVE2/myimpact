@@ -14,6 +14,7 @@ import feedbackRouter from "./feedback";
 import inviteRouter from "./invite";
 import publicProfileRouter from "./public-profile";
 import attachmentsRouter from "./attachments";
+import calendarRouter from "./calendar";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/feedback", feedbackRouter);
 router.use("/user/invite", inviteRouter);
 router.use("/public-profile", publicProfileRouter);
 router.use("/attachments", attachmentsRouter);
+router.use("/calendar", calendarRouter);
 
 export default router;

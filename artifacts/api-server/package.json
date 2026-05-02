@@ -14,7 +14,9 @@
     "backup:fetch": "tsx ./src/scripts/fetch-backup.ts",
     "digest:send": "tsx ./src/scripts/send-monthly-digest.ts",
     "digest:scheduled": "tsx ./src/scripts/send-monthly-digest.ts --skip-recently-sent --notify",
-    "onboarding:emails": "tsx ./src/scripts/onboarding-emails.ts"
+    "onboarding:emails": "tsx ./src/scripts/onboarding-emails.ts",
+    "calendar:sync": "tsx ./src/scripts/sync-calendars.ts",
+    "calendar:scheduled": "tsx ./src/scripts/sync-calendars.ts --prune"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

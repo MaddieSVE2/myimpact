@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
+import CalendarSyncSection from "@/components/CalendarSyncSection";
 import { StorageUsageBar } from "@/components/Attachments";
 import { getRecapYear, clearRecapViewed } from "@/lib/recap-utils";
 import {
@@ -300,6 +301,9 @@ export default function Settings() {
 
       {/* Recurring templates section */}
       <TemplatesSettings />
+
+      {/* Calendar sync section */}
+      <CalendarSyncSection />
 
       {/* Public profile section */}
       <PublicProfileSettings />

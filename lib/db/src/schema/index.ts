@@ -4,3 +4,4 @@ export * from "./org";
 export * from "./journal";
 export * from "./public-profile";
 export * from "./attachments";
+export * from "./calendar";

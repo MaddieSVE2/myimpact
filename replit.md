@@ -31,6 +31,14 @@ A 3-step wizard that calculates a user's personal social value in GBP:
 - Plain-English accordion explanations of each metric
 - Save to history and get activity suggestions
 
+**Calendar sync**:
+- Settings → "Calendar sync" lets users connect Google Calendar or Microsoft Outlook via Replit Connectors (`google-calendar`, `outlook`) — no raw client secrets in this repo.
+- One source per provider per user; user picks a calendar and a comma-separated title filter (e.g. "volunteer, mentoring").
+- Tokens are obtained on demand from the connector proxy and never stored. The schema (`lib/db/src/schema/calendar.ts`) reserves encrypted token columns for a future per-user OAuth flow; the encryption helper at `artifacts/api-server/src/lib/encryption.ts` (AES-256-GCM, key from `CALENDAR_TOKEN_KEY` or `SESSION_SECRET`) is wired and ready when that lands.
+- Worker `pnpm --filter @workspace/api-server run calendar:scheduled` syncs all sources (window: −24h → +30d), upserts into `calendar_events`, prunes events older than 60 days. Recommended cadence: every 15-30 min via Replit Scheduled Deployment.
+- Home page widget (`CalendarHomeWidget`) shows the next 30 days of matched events for logged-in users, plus an in-app "Did you log this?" prompt 2h after each matched event ends. The "Log it" CTA navigates to `/wizard/actions?fromCalendar=<id>&title=<…>&hours=<…>`.
+- Disconnect deletes the source and (when no other source uses the connector) attempts a best-effort token revoke; for Outlook we surface the manual revoke URL.
+
 **Additional pages**:
 - `/history` — progress tracker showing impact over time, with employer match overlay (matched £ per record + lifetime matched stat)
 - `/suggestions` — personalised activity ideas to boost impact
