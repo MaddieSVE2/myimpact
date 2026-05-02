@@ -81,7 +81,6 @@ export default function Problem() {
       <div className="absolute bottom-[8vh] left-[6vw] w-[52vw]">
         <p className="font-body text-[1.25vw] text-text/65 leading-relaxed">
           Three places contribution should show up.
-          <span className="text-text"> None of them are listening.</span>
         </p>
       </div>
     </div>
