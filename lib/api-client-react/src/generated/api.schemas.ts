@@ -233,6 +233,54 @@ export interface AnnualRecapResponse {
   lifetimeTotalValue: number;
 }
 
+export type RecurringTemplateInputCadence =
+  (typeof RecurringTemplateInputCadence)[keyof typeof RecurringTemplateInputCadence];
+
+export const RecurringTemplateInputCadence = {
+  weekly: "weekly",
+  fortnightly: "fortnightly",
+  monthly: "monthly",
+} as const;
+
+export interface RecurringTemplateInput {
+  label: string;
+  cadence: RecurringTemplateInputCadence;
+  dayOfPeriod: number;
+  defaultActivities: SelectedActivity[];
+  defaultDonationsGBP: number;
+}
+
+export type RecurringTemplateCadence =
+  (typeof RecurringTemplateCadence)[keyof typeof RecurringTemplateCadence];
+
+export const RecurringTemplateCadence = {
+  weekly: "weekly",
+  fortnightly: "fortnightly",
+  monthly: "monthly",
+} as const;
+
+export interface RecurringTemplate {
+  id: string;
+  label: string;
+  cadence: RecurringTemplateCadence;
+  dayOfPeriod: number;
+  defaultActivities: SelectedActivity[];
+  defaultDonationsGBP: number;
+  anchorDate: string;
+  lastConfirmedAt?: string | null;
+  createdAt: string;
+  nextDueDate: string;
+  isDue: boolean;
+}
+
+export interface RecurringTemplatesResponse {
+  templates: RecurringTemplate[];
+}
+
+export interface DeleteRecurringTemplateResponse {
+  success: boolean;
+}
+
 export type GetImpactHistoryParams = {
   userId: string;
 };

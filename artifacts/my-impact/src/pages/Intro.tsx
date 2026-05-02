@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
+import { useAuth } from "@/lib/auth-context";
+import { QuickLog } from "@/components/QuickLog";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -257,6 +259,7 @@ function TestimonialsCarousel() {
 
 export default function Intro() {
   const { interests, situations } = useWizard();
+  const { isLoggedIn } = useAuth();
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
 
   return (
@@ -337,6 +340,16 @@ export default function Intro() {
 
 
       </section>
+
+      {/* ── QUICK LOG (logged-in users only) ── */}
+      {isLoggedIn && (
+        <section style={{ background: "white", padding: "32px 5% 0" }}>
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <QuickLog showManageLink />
+          </div>
+        </section>
+      )}
+
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <FadeIn>

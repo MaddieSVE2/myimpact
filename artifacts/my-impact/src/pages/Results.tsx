@@ -12,9 +12,12 @@ import {
 } from "lucide-react";
 import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
-import { useSaveImpact } from "@workspace/api-client-react";
+import { useSaveImpact, useCreateRecurringTemplate, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
 import { useAuth } from "@/lib/auth-context";
 import html2canvas from "html2canvas";
 import {
@@ -945,6 +948,15 @@ export default function Results() {
   const [customPeriod, setCustomPeriod] = useState("");
   const [statementCopied, setStatementCopied] = useState(false);
 
+  // Recurring template state — prompt opens after a successful save.
+  const [showRecurringPrompt, setShowRecurringPrompt] = useState(false);
+  const [recurringTemplateSaved, setRecurringTemplateSaved] = useState(false);
+  const [tplLabel, setTplLabel] = useState("");
+  const [tplCadence, setTplCadence] = useState<"weekly" | "fortnightly" | "monthly">("weekly");
+  const [tplDay, setTplDay] = useState<number>(new Date().getDay());
+  const createTemplateMutation = useCreateRecurringTemplate();
+  const queryClient = useQueryClient();
+
   // Compute period presets from today's date
   const now = new Date();
   const month = now.getMonth() + 1; // 1–12
@@ -1084,8 +1096,40 @@ export default function Results() {
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
       setShowSaveDialog(false);
       toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
+
+      // Offer to make this a recurring activity. Default the label to the
+      // period (or first activity name if no period was chosen).
+      if (!recurringTemplateSaved) {
+        const firstActivity = result.activityBreakdowns?.[0]?.activityName ?? "My regular activity";
+        setTplLabel(period || firstActivity);
+        setShowRecurringPrompt(true);
+      }
     } catch {
       toast({ title: "Unable to save", description: "Something went wrong. Are you logged in?", variant: "destructive" });
+    }
+  };
+
+  const handleSaveRecurringTemplate = async () => {
+    if (!tplLabel.trim()) return;
+    try {
+      await createTemplateMutation.mutateAsync({
+        data: {
+          label: tplLabel.trim(),
+          cadence: tplCadence,
+          dayOfPeriod: tplDay,
+          defaultActivities: input.activities,
+          defaultDonationsGBP: input.donationsGBP ?? 0,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      setRecurringTemplateSaved(true);
+      setShowRecurringPrompt(false);
+      toast({
+        title: "Saved as a regular activity",
+        description: "You'll see a quick-log card on your home and history pages when it's due.",
+      });
+    } catch {
+      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
     }
   };
 
@@ -1640,6 +1684,115 @@ export default function Results() {
                 style={{ background: "#213547" }}
               >
                 {saveMutation.isPending ? "Saving…" : "Save record"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Recurring template prompt — opens after a successful save */}
+      {showRecurringPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => setShowRecurringPrompt(false)}
+          data-testid="recurring-template-dialog"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F0612718" }}>
+                <Repeat className="w-4 h-4" style={{ color: "#F06127" }} aria-hidden="true" />
+              </div>
+              <h2 className="text-base font-semibold text-foreground">Make this a regular activity?</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-5">
+              We'll show a one-tap "quick log" card on your home and history pages when it's next due.
+            </p>
+
+            <label className="block text-xs font-medium text-foreground mb-1.5">Label</label>
+            <input
+              value={tplLabel}
+              onChange={(e) => setTplLabel(e.target.value)}
+              placeholder="e.g. Tuesday food bank shift"
+              className="w-full px-3 py-2.5 mb-4 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+              data-testid="recurring-template-label-input"
+            />
+
+            <label className="block text-xs font-medium text-foreground mb-1.5">How often?</label>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {(["weekly", "fortnightly", "monthly"] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setTplCadence(c);
+                    if (c === "monthly" && tplDay > 28) setTplDay(1);
+                    if ((c === "weekly" || c === "fortnightly") && tplDay > 6) setTplDay(new Date().getDay());
+                  }}
+                  className="px-3 py-2 rounded-md text-xs font-medium border transition-all capitalize"
+                  style={tplCadence === c
+                    ? { background: "#213547", color: "white", borderColor: "#213547" }
+                    : { background: "white", color: "hsl(var(--foreground))", borderColor: "hsl(var(--border))" }
+                  }
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            <label className="block text-xs font-medium text-foreground mb-1.5">
+              {tplCadence === "monthly" ? "Day of month" : "Day of week"}
+            </label>
+            {tplCadence === "monthly" ? (
+              <select
+                value={tplDay}
+                onChange={(e) => setTplDay(parseInt(e.target.value, 10))}
+                className="w-full px-3 py-2.5 mb-5 text-sm border border-border rounded-md"
+              >
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>{`Day ${d}`}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="grid grid-cols-7 gap-1 mb-5">
+                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setTplDay(i)}
+                    className="px-2 py-2 rounded-md text-xs font-medium border transition-all"
+                    style={tplDay === i
+                      ? { background: "#213547", color: "white", borderColor: "#213547" }
+                      : { background: "white", color: "hsl(var(--foreground))", borderColor: "hsl(var(--border))" }
+                    }
+                    aria-label={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i]}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setShowRecurringPrompt(false)}
+                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
+              >
+                Not now
+              </button>
+              <button
+                onClick={handleSaveRecurringTemplate}
+                disabled={createTemplateMutation.isPending || !tplLabel.trim()}
+                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: "#F06127" }}
+                data-testid="recurring-template-save-button"
+              >
+                {createTemplateMutation.isPending ? "Saving…" : "Make it regular"}
               </button>
             </div>
           </motion.div>

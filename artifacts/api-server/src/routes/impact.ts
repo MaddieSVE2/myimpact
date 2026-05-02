@@ -5,7 +5,7 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, journalEntriesTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, journalEntriesTable, recurringTemplatesTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, sql, isNotNull } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -673,6 +673,316 @@ function computeMilestoneCount(totalValue: number, totalHours: number, categoryC
   if (categoryCount >= 4) count++;
   return count;
 }
+
+// ============================================================================
+// Recurring activity templates
+// ============================================================================
+
+type Cadence = "weekly" | "fortnightly" | "monthly";
+
+function isValidCadence(value: unknown): value is Cadence {
+  return value === "weekly" || value === "fortnightly" || value === "monthly";
+}
+
+function startOfDayUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/**
+ * Compute the next due date (>= today, in UTC) for a template based on its
+ * cadence and dayOfPeriod. Skipping does not break the schedule because we
+ * always compute relative to today's calendar.
+ *
+ * weekly:      dayOfPeriod = 0–6 (Sun=0). Returns the next occurrence today or
+ *              within the next 6 days.
+ * fortnightly: dayOfPeriod = 0–6. Returns the next occurrence whose week
+ *              parity (relative to anchorDate) matches.
+ * monthly:     dayOfPeriod = 1–28. Returns this month's day if it hasn't
+ *              passed, otherwise next month's.
+ */
+function computeNextDueDate(cadence: Cadence, dayOfPeriod: number, anchor: Date, now: Date): Date {
+  const today = startOfDayUTC(now);
+
+  if (cadence === "monthly") {
+    const day = Math.max(1, Math.min(28, Math.round(dayOfPeriod)));
+    const candidate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), day));
+    if (candidate.getTime() >= today.getTime()) return candidate;
+    return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, day));
+  }
+
+  // weekly / fortnightly
+  const targetDow = ((Math.round(dayOfPeriod) % 7) + 7) % 7;
+  const todayDow = today.getUTCDay();
+  let offset = (targetDow - todayDow + 7) % 7;
+  let candidate = new Date(today);
+  candidate.setUTCDate(candidate.getUTCDate() + offset);
+
+  if (cadence === "fortnightly") {
+    const anchorMidnight = startOfDayUTC(anchor);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const weeksFromAnchor = Math.floor((candidate.getTime() - anchorMidnight.getTime()) / (7 * msPerDay));
+    if (((weeksFromAnchor % 2) + 2) % 2 !== 0) {
+      candidate = new Date(candidate);
+      candidate.setUTCDate(candidate.getUTCDate() + 7);
+    }
+  }
+
+  return candidate;
+}
+
+/**
+ * Compute the most recent scheduled occurrence on or before today. Used to
+ * determine whether the user has confirmed it yet.
+ */
+function computeLastScheduledDate(cadence: Cadence, dayOfPeriod: number, anchor: Date, now: Date): Date {
+  const today = startOfDayUTC(now);
+
+  if (cadence === "monthly") {
+    const day = Math.max(1, Math.min(28, Math.round(dayOfPeriod)));
+    const candidate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), day));
+    if (candidate.getTime() <= today.getTime()) return candidate;
+    return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, day));
+  }
+
+  const targetDow = ((Math.round(dayOfPeriod) % 7) + 7) % 7;
+  const todayDow = today.getUTCDay();
+  let offset = (todayDow - targetDow + 7) % 7;
+  let candidate = new Date(today);
+  candidate.setUTCDate(candidate.getUTCDate() - offset);
+
+  if (cadence === "fortnightly") {
+    const anchorMidnight = startOfDayUTC(anchor);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const weeksFromAnchor = Math.floor((candidate.getTime() - anchorMidnight.getTime()) / (7 * msPerDay));
+    if (((weeksFromAnchor % 2) + 2) % 2 !== 0) {
+      candidate = new Date(candidate);
+      candidate.setUTCDate(candidate.getUTCDate() - 7);
+    }
+  }
+
+  return candidate;
+}
+
+interface TemplateRow {
+  id: number;
+  userId: string;
+  label: string;
+  cadence: string;
+  dayOfPeriod: number;
+  anchorDate: Date;
+  defaultActivities: unknown;
+  defaultDonationsGBP: string;
+  lastConfirmedAt: Date | null;
+  createdAt: Date;
+}
+
+function serializeTemplate(row: TemplateRow, now: Date) {
+  const cadence = isValidCadence(row.cadence) ? row.cadence : "weekly";
+  const lastScheduled = computeLastScheduledDate(cadence, row.dayOfPeriod, row.anchorDate, now);
+  const nextDue = computeNextDueDate(cadence, row.dayOfPeriod, row.anchorDate, now);
+  const confirmed = row.lastConfirmedAt && row.lastConfirmedAt.getTime() >= lastScheduled.getTime();
+  const isDue = !confirmed && lastScheduled.getTime() <= startOfDayUTC(now).getTime();
+
+  return {
+    id: String(row.id),
+    label: row.label,
+    cadence,
+    dayOfPeriod: row.dayOfPeriod,
+    defaultActivities: Array.isArray(row.defaultActivities) ? row.defaultActivities : [],
+    defaultDonationsGBP: Number(row.defaultDonationsGBP),
+    anchorDate: row.anchorDate.toISOString(),
+    lastConfirmedAt: row.lastConfirmedAt ? row.lastConfirmedAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+    nextDueDate: nextDue.toISOString(),
+    isDue,
+  };
+}
+
+interface TemplateInputBody {
+  label?: unknown;
+  cadence?: unknown;
+  dayOfPeriod?: unknown;
+  defaultActivities?: unknown;
+  defaultDonationsGBP?: unknown;
+}
+
+function parseTemplateInput(raw: unknown): { ok: true; data: {
+  label: string;
+  cadence: Cadence;
+  dayOfPeriod: number;
+  defaultActivities: unknown[];
+  defaultDonationsGBP: number;
+} } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid body" };
+  const body = raw as TemplateInputBody;
+
+  const label = typeof body.label === "string" ? body.label.trim() : "";
+  if (!label) return { ok: false, error: "label is required" };
+  if (label.length > 120) return { ok: false, error: "label is too long" };
+
+  if (!isValidCadence(body.cadence)) {
+    return { ok: false, error: "cadence must be weekly, fortnightly, or monthly" };
+  }
+
+  const dayOfPeriodRaw = Number(body.dayOfPeriod);
+  if (!Number.isFinite(dayOfPeriodRaw)) return { ok: false, error: "dayOfPeriod is required" };
+  const dayOfPeriod = Math.round(dayOfPeriodRaw);
+  if (body.cadence === "monthly") {
+    if (dayOfPeriod < 1 || dayOfPeriod > 28) return { ok: false, error: "dayOfPeriod must be 1–28 for monthly" };
+  } else {
+    if (dayOfPeriod < 0 || dayOfPeriod > 6) return { ok: false, error: "dayOfPeriod must be 0–6 for weekly/fortnightly" };
+  }
+
+  if (!Array.isArray(body.defaultActivities)) {
+    return { ok: false, error: "defaultActivities must be an array" };
+  }
+
+  const donationsRaw = Number(body.defaultDonationsGBP ?? 0);
+  if (!Number.isFinite(donationsRaw) || donationsRaw < 0) {
+    return { ok: false, error: "defaultDonationsGBP must be a non-negative number" };
+  }
+
+  return {
+    ok: true,
+    data: {
+      label,
+      cadence: body.cadence,
+      dayOfPeriod,
+      defaultActivities: body.defaultActivities,
+      defaultDonationsGBP: donationsRaw,
+    },
+  };
+}
+
+router.get("/templates", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const rows = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(eq(recurringTemplatesTable.userId, userId))
+    .orderBy(desc(recurringTemplatesTable.createdAt));
+
+  const now = new Date();
+  const templates = rows.map((r) => serializeTemplate(r as TemplateRow, now));
+  res.json({ templates });
+});
+
+router.post("/templates", authenticate, async (req: AuthenticatedRequest, res) => {
+  const parsed = parseTemplateInput(req.body);
+  if (!parsed.ok) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+  const userId = req.user!.id;
+
+  const [inserted] = await db
+    .insert(recurringTemplatesTable)
+    .values({
+      userId,
+      label: parsed.data.label,
+      cadence: parsed.data.cadence,
+      dayOfPeriod: parsed.data.dayOfPeriod,
+      defaultActivities: parsed.data.defaultActivities,
+      defaultDonationsGBP: String(parsed.data.defaultDonationsGBP),
+    })
+    .returning();
+
+  res.json(serializeTemplate(inserted as TemplateRow, new Date()));
+});
+
+router.patch("/templates/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid template ID" });
+    return;
+  }
+
+  const parsed = parseTemplateInput(req.body);
+  if (!parsed.ok) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(recurringTemplatesTable)
+    .set({
+      label: parsed.data.label,
+      cadence: parsed.data.cadence,
+      dayOfPeriod: parsed.data.dayOfPeriod,
+      defaultActivities: parsed.data.defaultActivities,
+      defaultDonationsGBP: String(parsed.data.defaultDonationsGBP),
+    })
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .returning();
+
+  res.json(serializeTemplate(updated as TemplateRow, new Date()));
+});
+
+router.delete("/templates/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid template ID" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  await db
+    .delete(recurringTemplatesTable)
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)));
+
+  res.json({ success: true });
+});
+
+router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid template ID" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(recurringTemplatesTable)
+    .set({ lastConfirmedAt: new Date() })
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .returning();
+
+  res.json(serializeTemplate(updated as TemplateRow, new Date()));
+});
 
 async function renderPdf(impactResult: unknown, userName: string, date: string): Promise<Buffer> {
   const pdfData = parsePdfData(impactResult, userName, date);

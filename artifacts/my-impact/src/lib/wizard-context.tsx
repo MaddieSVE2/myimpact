@@ -92,6 +92,7 @@ interface WizardContextType extends WizardState {
   removeCustomActivity: (activityId: string) => void;
   setResult: (result: ImpactResult) => void;
   loadFromRecord: (record: HistoryRecord) => void;
+  loadFromTemplate: (activities: SelectedActivity[], donationsGBP: number) => void;
   reset: () => void;
   clearDraft: () => void;
   hasDraft: boolean;
@@ -316,6 +317,34 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setHasDraft(false);
   }, []);
 
+  const loadFromTemplate = useCallback((activities: SelectedActivity[], donationsGBP: number) => {
+    setResultState(null);
+    setInput({
+      description: '',
+      activities,
+      donationsGBP,
+      additionalVolunteerHours: 0,
+    });
+    // Mirror activities into selection draft so the activities step shows them
+    // as selected if the user navigates back to it.
+    const selectedIds = activities.map(a => a.activityId);
+    const quantities: Record<string, number> = {};
+    const hours: Record<string, number> = {};
+    for (const a of activities) {
+      quantities[a.activityId] = a.quantity;
+      hours[a.activityId] = a.hoursPerYear;
+    }
+    setActivitySelectionState({
+      selectedIds,
+      quantities,
+      hours,
+      phase: 'select',
+      quantifyIndex: 0,
+    });
+    removeDraft();
+    setHasDraft(false);
+  }, []);
+
   const reset = () => {
     setLocationState('');
     setLocationMetaState(null);
@@ -352,7 +381,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     <WizardContext.Provider value={{
       location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
-      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, reset,
+      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadFromTemplate, reset,
       clearDraft, hasDraft, setActivitySelection, setActivityMode,
     }}>
       {children}

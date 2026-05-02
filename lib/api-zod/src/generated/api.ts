@@ -408,6 +408,155 @@ export const GetAnnualRecapResponse = zod.object({
 });
 
 /**
+ * @summary List recurring activity templates for the authenticated user
+ */
+export const ListRecurringTemplatesResponse = zod.object({
+  templates: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+      dayOfPeriod: zod.number(),
+      defaultActivities: zod.array(
+        zod.object({
+          activityId: zod.string(),
+          quantity: zod.number(),
+          hoursPerYear: zod.number(),
+          description: zod.string().optional(),
+        }),
+      ),
+      defaultDonationsGBP: zod.number(),
+      anchorDate: zod.string(),
+      lastConfirmedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+      nextDueDate: zod.string(),
+      isDue: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a recurring activity template
+ */
+export const CreateRecurringTemplateBody = zod.object({
+  label: zod.string(),
+  cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+  dayOfPeriod: zod.number(),
+  defaultActivities: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      quantity: zod.number(),
+      hoursPerYear: zod.number(),
+      description: zod.string().optional(),
+    }),
+  ),
+  defaultDonationsGBP: zod.number(),
+});
+
+export const CreateRecurringTemplateResponse = zod.object({
+  id: zod.string(),
+  label: zod.string(),
+  cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+  dayOfPeriod: zod.number(),
+  defaultActivities: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      quantity: zod.number(),
+      hoursPerYear: zod.number(),
+      description: zod.string().optional(),
+    }),
+  ),
+  defaultDonationsGBP: zod.number(),
+  anchorDate: zod.string(),
+  lastConfirmedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  nextDueDate: zod.string(),
+  isDue: zod.boolean(),
+});
+
+/**
+ * @summary Update a recurring activity template
+ */
+export const UpdateRecurringTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateRecurringTemplateBody = zod.object({
+  label: zod.string(),
+  cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+  dayOfPeriod: zod.number(),
+  defaultActivities: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      quantity: zod.number(),
+      hoursPerYear: zod.number(),
+      description: zod.string().optional(),
+    }),
+  ),
+  defaultDonationsGBP: zod.number(),
+});
+
+export const UpdateRecurringTemplateResponse = zod.object({
+  id: zod.string(),
+  label: zod.string(),
+  cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+  dayOfPeriod: zod.number(),
+  defaultActivities: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      quantity: zod.number(),
+      hoursPerYear: zod.number(),
+      description: zod.string().optional(),
+    }),
+  ),
+  defaultDonationsGBP: zod.number(),
+  anchorDate: zod.string(),
+  lastConfirmedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  nextDueDate: zod.string(),
+  isDue: zod.boolean(),
+});
+
+/**
+ * @summary Delete a recurring activity template
+ */
+export const DeleteRecurringTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteRecurringTemplateResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Mark a template's current scheduled occurrence as confirmed
+ */
+export const ConfirmRecurringTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ConfirmRecurringTemplateResponse = zod.object({
+  id: zod.string(),
+  label: zod.string(),
+  cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+  dayOfPeriod: zod.number(),
+  defaultActivities: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      quantity: zod.number(),
+      hoursPerYear: zod.number(),
+      description: zod.string().optional(),
+    }),
+  ),
+  defaultDonationsGBP: zod.number(),
+  anchorDate: zod.string(),
+  lastConfirmedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  nextDueDate: zod.string(),
+  isDue: zod.boolean(),
+});
+
+/**
  * @summary Get current user profile
  */
 export const GetProfileResponse = zod.object({

@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
 import { StorageUsageBar } from "@/components/Attachments";
 import { getRecapYear, clearRecapViewed } from "@/lib/recap-utils";
+import {
+  useListRecurringTemplates,
+  useUpdateRecurringTemplate,
+  useDeleteRecurringTemplate,
+  getListRecurringTemplatesQueryKey,
+  type RecurringTemplate,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { describeCadence } from "@/components/QuickLog";
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
@@ -215,6 +224,9 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* Recurring templates section */}
+      <TemplatesSettings />
+
       {/* Public profile section */}
       <PublicProfileSettings />
 
@@ -268,5 +280,202 @@ export default function Settings() {
         Sign out
       </button>
     </div>
+  );
+}
+
+const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function TemplatesSettings() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const templatesQuery = useListRecurringTemplates();
+  const updateMutation = useUpdateRecurringTemplate();
+  const deleteMutation = useDeleteRecurringTemplate();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editCadence, setEditCadence] = useState<RecurringTemplate["cadence"]>("weekly");
+  const [editDay, setEditDay] = useState<number>(1);
+
+  const templates = templatesQuery.data?.templates ?? [];
+
+  const startEdit = (t: RecurringTemplate) => {
+    setEditingId(t.id);
+    setEditLabel(t.label);
+    setEditCadence(t.cadence);
+    setEditDay(t.dayOfPeriod);
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editLabel.trim()) return;
+    const existing = templates.find((t) => t.id === id);
+    if (!existing) return;
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        data: {
+          label: editLabel.trim(),
+          cadence: editCadence,
+          dayOfPeriod: editDay,
+          defaultActivities: existing.defaultActivities,
+          defaultDonationsGBP: existing.defaultDonationsGBP,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      setEditingId(null);
+      toast({ title: "Template updated" });
+    } catch {
+      toast({ title: "Could not update", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync({ id });
+      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      setConfirmingDeleteId(null);
+      toast({ title: "Template removed" });
+    } catch {
+      toast({ title: "Could not remove", variant: "destructive" });
+    }
+  };
+
+  return (
+    <section
+      className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden"
+      data-testid="templates-settings-section"
+    >
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <Repeat className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Recurring activities</h2>
+      </div>
+      <div className="px-5 py-4">
+        {templatesQuery.isLoading ? (
+          <p className="text-xs text-muted-foreground">Loading…</p>
+        ) : templates.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            After saving an impact record, you can mark it as a regular activity to get one-tap "quick log" reminders here and on your home page.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border -mx-5">
+            {templates.map((t) => {
+              const isEditing = editingId === t.id;
+              const isConfirmingDelete = confirmingDeleteId === t.id;
+              return (
+                <li key={t.id} className="px-5 py-3" data-testid={`template-row-${t.id}`}>
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <input
+                        value={editLabel}
+                        onChange={(e) => setEditLabel(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                        placeholder="Label"
+                      />
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={editCadence}
+                          onChange={(e) => {
+                            const c = e.target.value as RecurringTemplate["cadence"];
+                            setEditCadence(c);
+                            if (c === "monthly" && editDay > 28) setEditDay(1);
+                            if ((c === "weekly" || c === "fortnightly") && editDay > 6) setEditDay(1);
+                          }}
+                          className="px-2 py-2 text-xs border border-border rounded-md"
+                        >
+                          <option value="weekly">Weekly</option>
+                          <option value="fortnightly">Fortnightly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                        {editCadence === "monthly" ? (
+                          <select
+                            value={editDay}
+                            onChange={(e) => setEditDay(parseInt(e.target.value, 10))}
+                            className="px-2 py-2 text-xs border border-border rounded-md"
+                          >
+                            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                              <option key={d} value={d}>{`Day ${d}`}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select
+                            value={editDay}
+                            onChange={(e) => setEditDay(parseInt(e.target.value, 10))}
+                            className="px-2 py-2 text-xs border border-border rounded-md"
+                          >
+                            {DAYS_OF_WEEK.map((d, i) => (
+                              <option key={d} value={i}>{d}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted/20"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveEdit(t.id)}
+                          disabled={updateMutation.isPending}
+                          className="px-3 py-1.5 rounded-md bg-foreground text-white text-xs font-medium disabled:opacity-60"
+                        >
+                          {updateMutation.isPending ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{t.label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{describeCadence(t)}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => startEdit(t)}
+                          className="p-2 rounded-md hover:bg-muted/30 text-muted-foreground"
+                          aria-label="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmingDeleteId(isConfirmingDelete ? null : t.id)}
+                          className="p-2 rounded-md hover:bg-destructive/10 text-destructive"
+                          aria-label="Remove"
+                          data-testid={`template-delete-${t.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isConfirmingDelete && !isEditing && (
+                    <div className="mt-3 flex items-center justify-between bg-destructive/5 border border-destructive/20 rounded-md px-3 py-2">
+                      <p className="text-[11px] text-destructive font-medium">Remove this regular activity?</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setConfirmingDeleteId(null)}
+                          className="px-2.5 py-1 rounded-md border border-border text-[11px] font-medium hover:bg-muted/20"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          disabled={deleteMutation.isPending}
+                          className="px-2.5 py-1 rounded-md bg-destructive text-white text-[11px] font-medium disabled:opacity-60"
+                          data-testid={`template-delete-confirm-${t.id}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

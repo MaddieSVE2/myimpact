@@ -21,6 +21,7 @@ import type {
   AnnualRecapResponse,
   DeleteAllImpactRecordsResponse,
   DeleteImpactRecordResponse,
+  DeleteRecurringTemplateResponse,
   GetImpactHistoryParams,
   HealthStatus,
   ImpactHistoryResponse,
@@ -28,6 +29,9 @@ import type {
   ImpactResult,
   ProfileInput,
   ProfileResponse,
+  RecurringTemplate,
+  RecurringTemplateInput,
+  RecurringTemplatesResponse,
   SaveImpactInput,
   SavedImpact,
   SuggestionsInput,
@@ -892,6 +896,431 @@ export function useGetAnnualRecap<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List recurring activity templates for the authenticated user
+ */
+export const getListRecurringTemplatesUrl = () => {
+  return `/api/impact/templates`;
+};
+
+export const listRecurringTemplates = async (
+  options?: RequestInit,
+): Promise<RecurringTemplatesResponse> => {
+  return customFetch<RecurringTemplatesResponse>(
+    getListRecurringTemplatesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListRecurringTemplatesQueryKey = () => {
+  return [`/api/impact/templates`] as const;
+};
+
+export const getListRecurringTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRecurringTemplates>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRecurringTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListRecurringTemplatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listRecurringTemplates>>
+  > = ({ signal }) => listRecurringTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRecurringTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRecurringTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRecurringTemplates>>
+>;
+export type ListRecurringTemplatesQueryError = ErrorType<void>;
+
+/**
+ * @summary List recurring activity templates for the authenticated user
+ */
+
+export function useListRecurringTemplates<
+  TData = Awaited<ReturnType<typeof listRecurringTemplates>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRecurringTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRecurringTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a recurring activity template
+ */
+export const getCreateRecurringTemplateUrl = () => {
+  return `/api/impact/templates`;
+};
+
+export const createRecurringTemplate = async (
+  recurringTemplateInput: RecurringTemplateInput,
+  options?: RequestInit,
+): Promise<RecurringTemplate> => {
+  return customFetch<RecurringTemplate>(getCreateRecurringTemplateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(recurringTemplateInput),
+  });
+};
+
+export const getCreateRecurringTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRecurringTemplate>>,
+    TError,
+    { data: BodyType<RecurringTemplateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRecurringTemplate>>,
+  TError,
+  { data: BodyType<RecurringTemplateInput> },
+  TContext
+> => {
+  const mutationKey = ["createRecurringTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRecurringTemplate>>,
+    { data: BodyType<RecurringTemplateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRecurringTemplate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRecurringTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRecurringTemplate>>
+>;
+export type CreateRecurringTemplateMutationBody =
+  BodyType<RecurringTemplateInput>;
+export type CreateRecurringTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a recurring activity template
+ */
+export const useCreateRecurringTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRecurringTemplate>>,
+    TError,
+    { data: BodyType<RecurringTemplateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRecurringTemplate>>,
+  TError,
+  { data: BodyType<RecurringTemplateInput> },
+  TContext
+> => {
+  return useMutation(getCreateRecurringTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Update a recurring activity template
+ */
+export const getUpdateRecurringTemplateUrl = (id: string) => {
+  return `/api/impact/templates/${id}`;
+};
+
+export const updateRecurringTemplate = async (
+  id: string,
+  recurringTemplateInput: RecurringTemplateInput,
+  options?: RequestInit,
+): Promise<RecurringTemplate> => {
+  return customFetch<RecurringTemplate>(getUpdateRecurringTemplateUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(recurringTemplateInput),
+  });
+};
+
+export const getUpdateRecurringTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRecurringTemplate>>,
+    TError,
+    { id: string; data: BodyType<RecurringTemplateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRecurringTemplate>>,
+  TError,
+  { id: string; data: BodyType<RecurringTemplateInput> },
+  TContext
+> => {
+  const mutationKey = ["updateRecurringTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRecurringTemplate>>,
+    { id: string; data: BodyType<RecurringTemplateInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateRecurringTemplate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRecurringTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRecurringTemplate>>
+>;
+export type UpdateRecurringTemplateMutationBody =
+  BodyType<RecurringTemplateInput>;
+export type UpdateRecurringTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a recurring activity template
+ */
+export const useUpdateRecurringTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRecurringTemplate>>,
+    TError,
+    { id: string; data: BodyType<RecurringTemplateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateRecurringTemplate>>,
+  TError,
+  { id: string; data: BodyType<RecurringTemplateInput> },
+  TContext
+> => {
+  return useMutation(getUpdateRecurringTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Delete a recurring activity template
+ */
+export const getDeleteRecurringTemplateUrl = (id: string) => {
+  return `/api/impact/templates/${id}`;
+};
+
+export const deleteRecurringTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteRecurringTemplateResponse> => {
+  return customFetch<DeleteRecurringTemplateResponse>(
+    getDeleteRecurringTemplateUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteRecurringTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRecurringTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRecurringTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteRecurringTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRecurringTemplate>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRecurringTemplate(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRecurringTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRecurringTemplate>>
+>;
+
+export type DeleteRecurringTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a recurring activity template
+ */
+export const useDeleteRecurringTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRecurringTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRecurringTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteRecurringTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Mark a template's current scheduled occurrence as confirmed
+ */
+export const getConfirmRecurringTemplateUrl = (id: string) => {
+  return `/api/impact/templates/${id}/confirm`;
+};
+
+export const confirmRecurringTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<RecurringTemplate> => {
+  return customFetch<RecurringTemplate>(getConfirmRecurringTemplateUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getConfirmRecurringTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmRecurringTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmRecurringTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["confirmRecurringTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmRecurringTemplate>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return confirmRecurringTemplate(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmRecurringTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmRecurringTemplate>>
+>;
+
+export type ConfirmRecurringTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Mark a template's current scheduled occurrence as confirmed
+ */
+export const useConfirmRecurringTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmRecurringTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmRecurringTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getConfirmRecurringTemplateMutationOptions(options));
+};
 
 /**
  * @summary Get current user profile

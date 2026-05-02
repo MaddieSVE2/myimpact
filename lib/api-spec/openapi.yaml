@@ -202,6 +202,122 @@ paths:
                 $ref: "#/components/schemas/AnnualRecapResponse"
         "401":
           description: Not authenticated
+  /impact/templates:
+    get:
+      operationId: listRecurringTemplates
+      tags: [impact]
+      summary: List recurring activity templates for the authenticated user
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: List of templates with computed dueness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringTemplatesResponse"
+        "401":
+          description: Not authenticated
+    post:
+      operationId: createRecurringTemplate
+      tags: [impact]
+      summary: Create a recurring activity template
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringTemplateInput"
+      responses:
+        "200":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringTemplate"
+        "400":
+          description: Invalid input
+        "401":
+          description: Not authenticated
+  /impact/templates/{id}:
+    patch:
+      operationId: updateRecurringTemplate
+      tags: [impact]
+      summary: Update a recurring activity template
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringTemplateInput"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringTemplate"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteRecurringTemplate
+      tags: [impact]
+      summary: Delete a recurring activity template
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteRecurringTemplateResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+  /impact/templates/{id}/confirm:
+    post:
+      operationId: confirmRecurringTemplate
+      tags: [impact]
+      summary: Mark a template's current scheduled occurrence as confirmed
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmed template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringTemplate"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
   /profile:
     get:
       operationId: getProfile
@@ -806,3 +922,87 @@ components:
         - milestonesEarnedCount
         - lifetimeRecordCount
         - lifetimeTotalValue
+    RecurringTemplateInput:
+      type: object
+      properties:
+        label:
+          type: string
+        cadence:
+          type: string
+          enum:
+            - weekly
+            - fortnightly
+            - monthly
+        dayOfPeriod:
+          type: integer
+        defaultActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        defaultDonationsGBP:
+          type: number
+      required:
+        - label
+        - cadence
+        - dayOfPeriod
+        - defaultActivities
+        - defaultDonationsGBP
+    RecurringTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        cadence:
+          type: string
+          enum:
+            - weekly
+            - fortnightly
+            - monthly
+        dayOfPeriod:
+          type: integer
+        defaultActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        defaultDonationsGBP:
+          type: number
+        anchorDate:
+          type: string
+        lastConfirmedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        nextDueDate:
+          type: string
+        isDue:
+          type: boolean
+      required:
+        - id
+        - label
+        - cadence
+        - dayOfPeriod
+        - defaultActivities
+        - defaultDonationsGBP
+        - anchorDate
+        - createdAt
+        - nextDueDate
+        - isDue
+    RecurringTemplatesResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecurringTemplate"
+      required:
+        - templates
+    DeleteRecurringTemplateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success

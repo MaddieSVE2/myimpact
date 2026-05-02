@@ -16,6 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
+import { QuickLog } from "@/components/QuickLog";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -348,6 +349,8 @@ export default function History() {
           </button>
         )}
       </div>
+
+      <QuickLog showManageLink />
 
       {records.length === 0 ? (
         <div className="bg-white border border-dashed border-border rounded-xl py-16 text-center">
