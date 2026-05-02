@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable } from "@workspace/db";
+import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable, orgSsoConfigsTable } from "@workspace/db";
 import { eq, and, gt, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { isProviderConfigured, type SsoProvider } from "../lib/oidc.js";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,29 @@ router.post("/request", async (req, res) => {
     typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
       ? returnTo
       : null;
+
+  // Enterprise SSO enforcement: if the email's domain has an active
+  // org_sso_configs row with enforce_sso=true, refuse to send a magic
+  // link and tell the client which provider to redirect to. Persona
+  // demo accounts bypass this since they're not real domains.
+  const emailDomain = normalizedEmail.split("@")[1] ?? "";
+  if (emailDomain && !PERSONA_ACCOUNTS[normalizedEmail]) {
+    const ssoCfg = await db.query.orgSsoConfigsTable.findFirst({
+      where: eq(orgSsoConfigsTable.domain, emailDomain),
+    });
+    if (ssoCfg?.enforceSSO) {
+      const providerAvailable = isProviderConfigured(ssoCfg.provider as SsoProvider);
+      res.status(403).json({
+        error: providerAvailable
+          ? `Your organisation requires single sign-on. Please continue with ${ssoCfg.provider === "google" ? "Google" : "Microsoft"}.`
+          : "Your organisation requires single sign-on, but it isn't available right now. Please contact your admin.",
+        ssoRequired: true,
+        ssoProvider: ssoCfg.provider,
+        ssoAvailable: providerAvailable,
+      });
+      return;
+    }
+  }
 
   // Demo persona accounts: skip the magic link entirely and issue a session
   // immediately. The list of persona emails is hardcoded below; anything else

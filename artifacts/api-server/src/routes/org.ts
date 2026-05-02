@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, asc, desc, isNull } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -11,6 +11,7 @@ import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { featureCap } from "../lib/featureFlags.js";
+import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
 
 const router: IRouter = Router();
 
@@ -756,7 +757,9 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
 });
 
 // ---------------------------------------------------------------------------
-// Match programme — admin endpoints (managers only)
+// Manager-only helper — used by both the Match programme and Enterprise SSO
+// admin endpoints below. Returns the full membership row so callers can read
+// `.orgId`, `.role`, etc.
 // ---------------------------------------------------------------------------
 
 async function requireOrgManager(req: AuthenticatedRequest, res: import("express").Response) {
@@ -769,7 +772,7 @@ async function requireOrgManager(req: AuthenticatedRequest, res: import("express
     return null;
   }
   if (membership.role !== "manager") {
-    res.status(403).json({ error: "Only organisation managers can manage match rates." });
+    res.status(403).json({ error: "Only organisation managers can perform this action." });
     return null;
   }
   return membership;
@@ -1046,5 +1049,140 @@ router.get("/match/csv", authenticate, async (req: AuthenticatedRequest, res) =>
   res.setHeader("Content-Disposition", `attachment; filename="${safeName}-match-export.csv"`);
   res.send(csv);
 });
+
+// ────────────────────────────────────────────────────────────────────
+// Enterprise SSO admin endpoints (manager-only)
+//
+// Each org may configure at most one SSO provider per domain. The
+// `enforceSSO` flag, when true, blocks magic-link sign-ups on that
+// domain and forces users through the OIDC flow.
+// ────────────────────────────────────────────────────────────────────
+
+router.get("/sso/config", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireOrgManager(req, res);
+  if (!membership) return;
+
+  const configs = await db.query.orgSsoConfigsTable.findMany({
+    where: eq(orgSsoConfigsTable.orgId, membership.orgId),
+    orderBy: (t, { asc }) => [asc(t.createdAt)],
+  });
+
+  res.json({
+    configs: configs.map(c => ({
+      id: c.id,
+      provider: c.provider,
+      domain: c.domain,
+      tenantId: c.tenantId,
+      enforceSSO: c.enforceSSO,
+      status: c.status,
+      lastTestAt: c.lastTestAt,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    })),
+    availableProviders: configuredProviders(),
+  });
+});
+
+router.post("/sso/config", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireOrgManager(req, res);
+  if (!membership) return;
+
+  const { provider, domain, tenantId, enforceSSO } = req.body ?? {};
+  if (provider !== "google" && provider !== "microsoft") {
+    res.status(400).json({ error: "provider must be 'google' or 'microsoft'" });
+    return;
+  }
+  if (!isProviderConfigured(provider as SsoProvider)) {
+    res.status(503).json({ error: "This SSO provider isn't enabled on the platform yet. Please contact My Impact support." });
+    return;
+  }
+  const cleanedDomain = typeof domain === "string" ? normalizeDomain(domain) : null;
+  if (!cleanedDomain) {
+    res.status(400).json({ error: "A valid email domain is required (e.g. acmecharity.org)" });
+    return;
+  }
+  const cleanTenantId = typeof tenantId === "string" && tenantId.trim() ? tenantId.trim() : null;
+  if (provider === "microsoft" && !cleanTenantId) {
+    res.status(400).json({ error: "Microsoft Entra requires a tenant ID (or 'common' for any tenant)." });
+    return;
+  }
+  const enforce = !!enforceSSO;
+
+  // Domain uniqueness across the platform
+  const existingForDomain = await db.query.orgSsoConfigsTable.findFirst({
+    where: eq(orgSsoConfigsTable.domain, cleanedDomain),
+  });
+  if (existingForDomain && existingForDomain.orgId !== membership.orgId) {
+    res.status(409).json({ error: `Domain ${cleanedDomain} is already configured by another organisation. Contact My Impact support if this is yours.` });
+    return;
+  }
+
+  const id = randomUUID();
+  const now = new Date();
+
+  if (existingForDomain && existingForDomain.orgId === membership.orgId) {
+    // Update in place
+    const [updated] = await db
+      .update(orgSsoConfigsTable)
+      .set({
+        provider,
+        tenantId: cleanTenantId,
+        enforceSSO: enforce,
+        // Changing provider/tenant invalidates any previous verification
+        status: existingForDomain.provider !== provider || existingForDomain.tenantId !== cleanTenantId
+          ? "pending"
+          : existingForDomain.status,
+        updatedAt: now,
+      })
+      .where(eq(orgSsoConfigsTable.id, existingForDomain.id))
+      .returning();
+    res.json({ config: serializeConfig(updated) });
+    return;
+  }
+
+  const [created] = await db
+    .insert(orgSsoConfigsTable)
+    .values({
+      id,
+      orgId: membership.orgId,
+      provider,
+      domain: cleanedDomain,
+      tenantId: cleanTenantId,
+      enforceSSO: enforce,
+      status: "pending",
+    })
+    .returning();
+  res.json({ config: serializeConfig(created) });
+});
+
+router.delete("/sso/config/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireOrgManager(req, res);
+  if (!membership) return;
+
+  const id = String(req.params.id);
+  const existing = await db.query.orgSsoConfigsTable.findFirst({
+    where: and(eq(orgSsoConfigsTable.id, id), eq(orgSsoConfigsTable.orgId, membership.orgId)),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "SSO config not found." });
+    return;
+  }
+  await db.delete(orgSsoConfigsTable).where(eq(orgSsoConfigsTable.id, id));
+  res.json({ ok: true });
+});
+
+function serializeConfig(c: typeof orgSsoConfigsTable.$inferSelect) {
+  return {
+    id: c.id,
+    provider: c.provider,
+    domain: c.domain,
+    tenantId: c.tenantId,
+    enforceSSO: c.enforceSSO,
+    status: c.status,
+    lastTestAt: c.lastTestAt,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
 
 export default router;

@@ -15,7 +15,7 @@ The project is structured as a pnpm monorepo using TypeScript (v5.9). The backen
 **Core Features & Implementations:**
 
 *   **Impact Calculation:** Uses `artifacts/api-server/src/lib/impactData.ts` to calculate social value based on activity quantity (Social Value Engine proxy), total hours (£12.21/hour), direct donations, and a skill gain formula for personal development value.
-*   **Authentication:** Implemented via magic link authentication using Resend. A two-step token design prevents bot-burning, and sessions are managed with JWTs stored in `httpOnly` cookies. User data and token states are stored in `users`, `magic_tokens`, and `user_profiles` tables. Protected routes exist on both frontend and backend.
+*   **Authentication:** Implemented via magic link authentication using Resend. A two-step token design prevents bot-burning, and sessions are managed with JWTs stored in `httpOnly` cookies. User data and token states are stored in `users`, `magic_tokens`, and `user_profiles` tables. Protected routes exist on both frontend and backend. **Enterprise SSO (OIDC):** Org managers can additionally configure Google Workspace or Microsoft Entra SSO per email domain from the Org Portal. Routes live under `/api/auth/sso/*` (start, callback, lookup, providers, test/start) and `/api/org/sso/config` (manager-only CRUD). When `enforceSSO=true`, magic-link sign-in is blocked for that domain. Tokens are verified against provider JWKS but not stored. Requires platform env vars `GOOGLE_OIDC_CLIENT_ID/SECRET` and `MICROSOFT_OIDC_CLIENT_ID/SECRET`; the UI gracefully degrades when these are missing. Schema lives in `org_sso_configs`.
 *   **Calendar Sync:** Integrates with Google Calendar and Microsoft Outlook via Replit Connectors. Tokens are obtained on demand and not stored. A scheduled worker syncs events, upserts them into `calendar_events`, and prunes old data. A home page widget displays upcoming events, and an in-app prompt encourages logging matched events.
 *   **Public Profile:** Allows users to create shareable public profiles at `/profile/:slug`. Settings are managed through `public_profiles` table, with API routes for managing visibility and content. Slug generation adheres to specific rules, and the public endpoint is rate-limited.
 *   **Sidekick AI:** A collapsible, context-aware AI assistant powered by OpenAI via Replit AI Integrations. It provides assistance with a warm, encouraging tone, passing relevant user data (impact, activities, SDGs) to the AI.
@@ -31,69 +31,32 @@ The project is structured as a pnpm monorepo using TypeScript (v5.9). The backen
 - `/history` — progress tracker showing impact over time, with employer match overlay (matched £ per record + lifetime matched stat)
 - `/suggestions` — personalised activity ideas to boost impact
 - `/recap` — Spotify-Wrapped-style annual recap (year-in-review). Authenticated. Optional `?year=YYYY` query param. 6–8 step tap-to-advance experience with PNG share card export (portrait + landscape). Backed by `GET /api/impact/recap/{year}` which aggregates totals, top SDG, top activity, biggest session, and journal highlight. Discovery banners shown on home (`Intro`) and `/profile` during the Nov 15 – Jan 31 window; dismissable per year via localStorage; always re-openable from `/settings`. Respects a per-user £/hours toggle (`mi-recap-show-money` localStorage key).
-- `/org-portal` — org manager dashboard (analytics, PDF report, **Match programme**: set £/hour and donation multipliers, monthly cap per member, total commitment, CSV export)
-
-### Calculation logic (`artifacts/api-server/src/lib/impactData.ts`)
-
-- **Impact value**: activity quantity × Social Value Engine proxy value per unit
-- **Contribution value**: total hours × £12.21 (National Living Wage)
-- **Donations value**: direct monetary amount
-- **Personal Development value**: based on hours²  × rate (skill gain formula)
-
-## Structure
-
-```text
-artifacts-monorepo/
-├── artifacts/
-│   ├── api-server/         # Express API server
-│   │   └── src/
-│   │       ├── lib/impactData.ts    # SVE proxy library + calculation engine
-│   │       └── routes/impact.ts    # Impact API routes
-│   └── my-impact/          # React + Vite frontend
-│       └── src/
-│           ├── pages/
-│           │   ├── Intro.tsx
-│           │   ├── Results.tsx
-│           │   ├── History.tsx
-│           │   ├── Suggestions.tsx
-│           │   └── wizard/
-│           │       ├── ActionsStep.tsx
-│           │       ├── ActivitiesStep.tsx
-│           │       └── ContributionsStep.tsx
-│           ├── components/
-│           │   ├── layout/Navbar.tsx
-│           │   └── wizard/StepProgress.tsx
-│           └── lib/wizard-context.tsx  # Shared wizard state
-├── lib/
-│   ├── api-spec/openapi.yaml    # API contract
-│   ├── api-client-react/        # Generated React Query hooks
-│   ├── api-zod/                 # Generated Zod schemas
-│   └── db/
-│       └── src/schema/impact.ts  # impact_records table
-└── scripts/
-```
-
-## Authentication
+- `/org-portal` — org manager dashboard (analytics, PDF report, **Match programme**: set £/hour and donation multipliers, monthly cap per member, total commitment, CSV export, **Enterprise SSO**: configure Google Workspace / Microsoft Entra per-domain with optional enforcement)
 
 Magic link authentication via Resend (no passwords):
 
 - **Flow**: User enters email → receives magic link → clicks link → lands on confirm page → clicks button → session issued
 - **Two-step token design**: Token is validated on page load (`/api/auth/verify`) but only consumed on button click (`/api/auth/confirm`), preventing email pre-fetcher bots from burning the token
 - **Session**: JWT stored in an `httpOnly` cookie (`mi_session`), 30-day expiry
-- **DB tables**: `users` (id, email, created_at), `magic_tokens` (token, user_id, expires_at, used_at, confirmed), `user_profiles` (includes `email_opt_in` flag controlling onboarding + monthly digest), `onboarding_email_sends` (idempotency log for the Day 1 / 7 / 30 nurture sequence)
+- **DB tables**: `users` (id, email, created_at), `magic_tokens` (token, user_id, expires_at, used_at, confirmed), `user_profiles` (includes `email_opt_in` flag controlling onboarding + monthly digest), `onboarding_email_sends` (idempotency log for the Day 1 / 7 / 30 nurture sequence), `org_sso_configs` (per-org/per-domain SSO provider configuration)
 - **Protected routes** (frontend): `/history`, `/journal`, `/badges`, `/org` — unauthenticated users redirected to `/login`
 - **Protected routes** (backend): `POST /api/impact/save`, `GET /api/impact/history` — require valid session cookie, use `req.user.id` as userId
 - **Auth context** (`lib/auth-context.tsx`): calls `/api/auth/me` on load to restore session; provides `isLoggedIn`, `user`, `isLoading`, `requestMagicLink()`, `logout()`
-- **Frontend pages**: `/login` (email form), `/auth/confirm?token=...` (confirm button)
+- **Frontend pages**: `/login` (email form, with debounced SSO lookup that surfaces the Continue-with-Google / Microsoft button or an "SSO required" notice as appropriate), `/auth/confirm?token=...` (confirm button)
 - **Resend integration**: connected via Replit connector; client created fresh per request via `getUncachableResendClient()`
 
 ## API Endpoints
 
 - `GET /api/auth/me` — returns current user from JWT cookie (or `{user: null}`)
-- `POST /api/auth/request` — send magic link email to given address
+- `POST /api/auth/request` — send magic link email to given address. Returns `403 { ssoRequired, ssoProvider, ssoAvailable }` when the email's domain has `enforceSSO=true`
 - `GET /api/auth/verify?token=...` — validate token (does not consume it)
 - `POST /api/auth/confirm` — consume token, issue session cookie
 - `POST /api/auth/logout` — clear session cookie
+- `GET /api/auth/sso/providers` — list providers with platform credentials configured
+- `GET /api/auth/sso/lookup?email=…` — returns `{ sso: { provider, domain, enforce, available } | null }` for an email
+- `GET /api/auth/sso/:provider/start` — begin OIDC sign-in flow (sets HMAC-signed state cookie)
+- `GET /api/auth/sso/test/start` — manager-only "test sign-in" flow used by the Org Portal to verify a config
+- `GET /api/auth/sso/:provider/callback` — exchange code, verify id_token via JWKS, auto-create user, link as org member, issue `mi_session`
 - `GET /api/profile` / `PUT /api/profile` — situation, interests, postcode, and `emailOptIn`
 - `PATCH /api/profile/email-opt-in` — flip the single opt-in flag that controls onboarding + monthly digest
 - `GET /api/impact/activities` — list of 20+ SVE activities with proxy metadata
@@ -111,6 +74,9 @@ Magic link authentication via Resend (no passwords):
 - `POST /api/challenges/:id/leave` — leave a challenge (owners cannot leave)
 - `DELETE /api/challenges/:id` — owner deletes their challenge
 - `POST /api/challenges/:id/send-summary` — owner emails end-of-challenge summary
+- `GET /api/org/sso/config` — manager-only: list SSO configs for the manager's org
+- `POST /api/org/sso/config` — manager-only: upsert an SSO config for a domain (provider, tenant ID, enforce flag)
+- `DELETE /api/org/sso/config/:id` — manager-only: remove an SSO config
 
 ### Challenges feature
 - Schema: `challengesTable` + `challengeParticipantsTable` (`lib/db/src/schema/challenges.ts`, migration `0008_challenges.sql`)

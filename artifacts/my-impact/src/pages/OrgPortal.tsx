@@ -12,6 +12,7 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
+import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -2016,6 +2017,8 @@ export default function OrgPortal() {
         </div>
       ) : stats ? (
         <>
+          <OrgSsoConfigPanel orgId={orgData!.org!.id} />
+
           <PeriodSelector
             preset={preset}
             from={preset === "all" ? customFrom : from}

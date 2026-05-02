@@ -139,6 +139,27 @@ export const orgSubscriptionsTable = pgTable("org_subscriptions", {
   customerIdx: index("org_subscriptions_customer_idx").on(t.stripeCustomerId),
 }));
 
+// Per-organisation SSO (OIDC) configuration. An org admin chooses a
+// provider (google | microsoft), enters the email domain they own, and
+// optionally a Microsoft Entra tenant ID. When `enforceSSO` is true,
+// magic-link sign-in is blocked for that domain.
+export const orgSsoConfigsTable = pgTable("org_sso_configs", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // 'google' | 'microsoft'
+  domain: text("domain").notNull(),
+  tenantId: text("tenant_id"), // Required for Microsoft Entra; ignored for Google
+  enforceSSO: boolean("enforce_sso").notNull().default(false),
+  status: text("status").notNull().default("pending"), // 'pending' | 'verified' | 'error'
+  lastTestAt: timestamp("last_test_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  orgDomainUniq: unique("org_sso_configs_org_domain_uniq").on(table.orgId, table.domain),
+  domainUniq: unique("org_sso_configs_domain_uniq").on(table.domain),
+  orgIdx: index("org_sso_configs_org_idx").on(table.orgId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
@@ -148,3 +169,4 @@ export type OrgApiKey = typeof orgApiKeysTable.$inferSelect;
 export type OrgWebhook = typeof orgWebhooksTable.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveriesTable.$inferSelect;
 export type OrgSubscription = typeof orgSubscriptionsTable.$inferSelect;
+export type OrgSsoConfig = typeof orgSsoConfigsTable.$inferSelect;

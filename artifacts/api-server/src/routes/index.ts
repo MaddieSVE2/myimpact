@@ -5,6 +5,7 @@ import sidekickRouter from "./sidekick";
 import customActivityRouter from "./custom-activity";
 import localCharitiesRouter from "./local-charities";
 import authRouter from "./auth";
+import ssoRouter from "./sso";
 import orgRouter from "./org";
 import orgShareRouter from "./org-share";
 import orgAdminRouter from "./org-admin";
@@ -25,6 +26,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+router.use("/auth/sso", ssoRouter);
 router.use("/impact", impactRouter);
 router.use("/sidekick", sidekickRouter);
 router.use("/custom-activity", customActivityRouter);
