@@ -16,6 +16,10 @@ import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";
+import {
+  deleteAttachmentsForRecord,
+  deleteAllRecordAttachmentsForUser,
+} from "../lib/attachmentCleanup.js";
 
 const router: IRouter = Router();
 
@@ -341,6 +345,9 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.delete("/all", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
+  // Remove every record-linked attachment (DB row + GCS object) before
+  // dropping the records themselves so storage is fully reclaimed.
+  await deleteAllRecordAttachmentsForUser(userId);
   await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
   res.json({ success: true });
 });
@@ -363,6 +370,10 @@ router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     res.status(404).json({ error: "Record not found" });
     return;
   }
+
+  // Drop linked attachments (DB rows + GCS objects) before deleting the
+  // record itself so files don't get orphaned in object storage.
+  await deleteAttachmentsForRecord(userId, recordId);
 
   await db
     .delete(impactRecordsTable)

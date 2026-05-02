@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, journalEntriesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { deleteAttachmentsForJournal } from "../lib/attachmentCleanup.js";
 
 interface LocalEntryShape {
   id: string;
@@ -132,6 +133,10 @@ router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     res.status(400).json({ error: "Invalid ID" });
     return;
   }
+
+  // Drop the journal's attached photo (DB row + GCS object) before deleting
+  // the entry itself so storage doesn't get orphaned.
+  await deleteAttachmentsForJournal(userId, entryId);
 
   await db
     .delete(journalEntriesTable)
