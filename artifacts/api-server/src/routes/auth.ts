@@ -376,6 +376,8 @@ router.get("/me", async (req: any, res) => {
         displayName: user.displayName ?? null,
         createdAt: user.createdAt,
         emailDigestOptIn: user.emailDigestOptIn,
+        voiceEnabled: user.voiceEnabled,
+        voicePersona: user.voicePersona,
       },
     });
   } catch {
@@ -391,8 +393,13 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName, emailDigestOptIn } = req.body ?? {};
-    const updates: { displayName?: string | null; emailDigestOptIn?: boolean } = {};
+    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona } = req.body ?? {};
+    const updates: {
+      displayName?: string | null;
+      emailDigestOptIn?: boolean;
+      voiceEnabled?: boolean;
+      voicePersona?: string;
+    } = {};
 
     if (displayName !== undefined) {
       if (typeof displayName !== "string" && displayName !== null) {
@@ -409,6 +416,23 @@ router.patch("/me", async (req: any, res) => {
         return;
       }
       updates.emailDigestOptIn = emailDigestOptIn;
+    }
+
+    if (voiceEnabled !== undefined) {
+      if (typeof voiceEnabled !== "boolean") {
+        res.status(400).json({ error: "voiceEnabled must be a boolean" });
+        return;
+      }
+      updates.voiceEnabled = voiceEnabled;
+    }
+
+    if (voicePersona !== undefined) {
+      const allowed = ["alloy", "nova", "shimmer", "echo", "fable", "onyx"];
+      if (typeof voicePersona !== "string" || !allowed.includes(voicePersona)) {
+        res.status(400).json({ error: `voicePersona must be one of: ${allowed.join(", ")}` });
+        return;
+      }
+      updates.voicePersona = voicePersona;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -428,6 +452,8 @@ router.patch("/me", async (req: any, res) => {
         email: updated.email,
         displayName: updated.displayName ?? null,
         emailDigestOptIn: updated.emailDigestOptIn,
+        voiceEnabled: updated.voiceEnabled,
+        voicePersona: updated.voicePersona,
       },
     });
   } catch {

@@ -2,12 +2,16 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+export type VoicePersona = "alloy" | "nova" | "shimmer" | "echo" | "fable" | "onyx";
+
 interface User {
   id: string;
   email: string;
   displayName: string | null;
   createdAt?: string;
   emailDigestOptIn?: boolean;
+  voiceEnabled?: boolean;
+  voicePersona?: VoicePersona;
 }
 
 interface DemoLoginResult {
@@ -27,7 +31,12 @@ interface AuthContextType {
   isLoading: boolean;
   requestMagicLink: (email: string, returnTo?: string) => Promise<MagicLinkResult>;
   demoLogin: (email: string) => Promise<DemoLoginResult>;
-  updateProfile: (fields: { displayName?: string | null; emailDigestOptIn?: boolean }) => Promise<void>;
+  updateProfile: (fields: {
+    displayName?: string | null;
+    emailDigestOptIn?: boolean;
+    voiceEnabled?: boolean;
+    voicePersona?: VoicePersona;
+  }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -95,7 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { user: u, orgRedirect: !!data.orgRedirect };
   };
 
-  const updateProfile = async (fields: { displayName: string | null }) => {
+  const updateProfile = async (fields: {
+    displayName?: string | null;
+    emailDigestOptIn?: boolean;
+    voiceEnabled?: boolean;
+    voicePersona?: VoicePersona;
+  }) => {
     const res = await fetch(`${BASE}/api/auth/me`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

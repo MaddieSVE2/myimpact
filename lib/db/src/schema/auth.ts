@@ -8,6 +8,8 @@ export const usersTable = pgTable("users", {
   emailDigestOptIn: boolean("email_digest_opt_in").default(true).notNull(),
   unsubscribeToken: text("unsubscribe_token").unique(),
   lastDigestSentAt: timestamp("last_digest_sent_at"),
+  voiceEnabled: boolean("voice_enabled").default(false).notNull(),
+  voicePersona: text("voice_persona").default("alloy").notNull(),
 });
 
 export const magicTokensTable = pgTable("magic_tokens", {

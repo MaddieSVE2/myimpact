@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic } from "lucide-react";
+import { useAuth, type VoicePersona } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
@@ -211,6 +211,8 @@ export default function Settings() {
         </div>
       </section>
 
+      <SidekickVoiceSettings />
+
       {/* Email section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
@@ -392,8 +394,6 @@ function PulseOptOutRow() {
     return () => { cancelled = true; };
   }, []);
 
-  if (!available || optedOut === null) return null;
-
   const handleToggle = async () => {
     if (saving) return;
     const next = !optedOut;
@@ -421,6 +421,8 @@ function PulseOptOutRow() {
     }
   };
 
+  if (!available || optedOut === null) return null;
+
   return (
     <button
       onClick={handleToggle}
@@ -445,6 +447,122 @@ function PulseOptOutRow() {
         />
       </div>
     </button>
+  );
+}
+
+const VOICE_PERSONA_OPTIONS: { value: VoicePersona; label: string; description: string }[] = [
+  { value: "alloy", label: "Alloy", description: "Balanced and clear (default)" },
+  { value: "nova", label: "Nova", description: "Warm and friendly" },
+  { value: "shimmer", label: "Shimmer", description: "Bright and upbeat" },
+  { value: "echo", label: "Echo", description: "Calm and steady" },
+  { value: "fable", label: "Fable", description: "Expressive storyteller" },
+  { value: "onyx", label: "Onyx", description: "Deep and grounded" },
+];
+
+function SidekickVoiceSettings() {
+  const { user, updateProfile } = useAuth();
+  const { toast } = useToast();
+  const voiceEnabled = user?.voiceEnabled ?? false;
+  const voicePersona = (user?.voicePersona ?? "alloy") as VoicePersona;
+  const [saving, setSaving] = useState(false);
+
+  const handleToggleVoice = async () => {
+    if (saving) return;
+    setSaving(true);
+    const next = !voiceEnabled;
+    try {
+      await updateProfile({ voiceEnabled: next });
+      toast({
+        title: next ? "Voice replies on" : "Voice replies off",
+        description: next
+          ? "Sidekick will read its replies aloud by default."
+          : "Sidekick will only show replies on screen.",
+      });
+    } catch {
+      toast({
+        title: "Could not update preference",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePersona = async (next: VoicePersona) => {
+    if (saving || next === voicePersona) return;
+    setSaving(true);
+    try {
+      await updateProfile({ voicePersona: next });
+      toast({ title: "Voice updated", description: `Sidekick will now sound like ${next}.` });
+    } catch {
+      toast({
+        title: "Could not change voice",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden" data-testid="sidekick-voice-settings">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <Mic className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Sidekick voice</h2>
+      </div>
+      <div className="py-1 divide-y divide-border">
+        <button
+          onClick={handleToggleVoice}
+          aria-pressed={voiceEnabled}
+          disabled={saving}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
+          data-testid="voice-enabled-toggle"
+        >
+          <div className="pr-3">
+            <p className="text-sm font-medium text-foreground">Read replies aloud</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              When on, Sidekick speaks its answers using a natural-sounding voice. You can still mute or unmute for a single chat using the speaker icon in the panel.
+            </p>
+          </div>
+          <div
+            className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+            style={{ background: voiceEnabled ? "#F06127" : "#d1d5db" }}
+          >
+            <span
+              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+              style={{ transform: voiceEnabled ? "translateX(16px)" : "translateX(0)" }}
+            />
+          </div>
+        </button>
+        <div className="px-5 py-4">
+          <label htmlFor="voice-persona" className="block text-sm font-medium text-foreground mb-1">
+            Voice
+          </label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Pick the voice Sidekick uses when reading replies aloud.
+          </p>
+          <select
+            id="voice-persona"
+            value={voicePersona}
+            disabled={saving}
+            onChange={(e) => handleChangePersona(e.target.value as VoicePersona)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            data-testid="voice-persona-select"
+          >
+            {VOICE_PERSONA_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} — {opt.description}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Tap the microphone in the Sidekick panel to speak instead of typing. Voice features need a modern browser with microphone access.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

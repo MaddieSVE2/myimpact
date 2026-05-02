@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, Check, MessageSquare, LayoutGrid } from "lucide-react";
+import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useWizard } from "@/lib/wizard-context";
@@ -261,6 +261,29 @@ function getInstantAnswer(text: string): string | null {
 }
 
 type SidekickTab = "chat" | "templates";
+type VoiceState = "idle" | "recording" | "transcribing" | "speaking";
+
+const VOICE_SUPPORTED =
+  typeof window !== "undefined" &&
+  typeof navigator !== "undefined" &&
+  !!navigator.mediaDevices &&
+  typeof navigator.mediaDevices.getUserMedia === "function" &&
+  typeof window.MediaRecorder !== "undefined";
+
+const RECORDER_PREFERRED_MIME_TYPES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/aac",
+];
+
+function pickRecorderMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  for (const mt of RECORDER_PREFERRED_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported(mt)) return mt;
+  }
+  return undefined;
+}
 
 export function Sidekick() {
   const { open, setOpen } = useSidekick();
@@ -275,10 +298,35 @@ export function Sidekick() {
   const { result, interests, careerBreak, situations } = useWizard();
   const situation = situations[0] ?? null;
   const [location] = useLocation();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
   const isOrgManager = !!(orgData?.org);
   const isOnOrgPage = location === "/org" || location.startsWith("/org/");
+
+  // Voice mode: a per-session toggle that defaults to the user's saved
+  // preference. The Settings page persists the default; the in-panel toggle
+  // only affects the current session.
+  const savedVoiceEnabled = user?.voiceEnabled ?? false;
+  const voicePersona = user?.voicePersona ?? "alloy";
+  const [voiceMode, setVoiceMode] = useState<boolean>(savedVoiceEnabled);
+  const voiceModeTouched = useRef(false);
+  useEffect(() => {
+    if (!voiceModeTouched.current) {
+      setVoiceMode(savedVoiceEnabled);
+    }
+  }, [savedVoiceEnabled]);
+  const toggleVoiceMode = useCallback(() => {
+    voiceModeTouched.current = true;
+    setVoiceMode((v) => !v);
+  }, []);
+
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
+  const recorderMimeRef = useRef<string | undefined>(undefined);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenIndexRef = useRef<number>(-1);
 
   const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
   const quickActions = (() => {
@@ -549,11 +597,194 @@ export function Sidekick() {
     }
   };
 
+  const stopAudioPlayback = useCallback(() => {
+    const a = audioElRef.current;
+    if (a) {
+      try {
+        a.pause();
+        a.removeAttribute("src");
+        a.load();
+      } catch {
+        // ignore
+      }
+    }
+    if (voiceState === "speaking") setVoiceState("idle");
+  }, [voiceState]);
+
   const handleClear = () => {
     if (streaming) abortRef.current?.abort();
+    stopAudioPlayback();
     setMessages([]);
     setStreaming(false);
   };
+
+  const startRecording = useCallback(async () => {
+    if (!VOICE_SUPPORTED || streaming || voiceState !== "idle") return;
+    setVoiceError(null);
+    stopAudioPlayback();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecorderMimeType();
+      recorderMimeRef.current = mimeType;
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      recorderChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recorderChunksRef.current.push(e.data);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start(100);
+      setVoiceState("recording");
+    } catch (err) {
+      console.error("startRecording failed", err);
+      setVoiceError(
+        err instanceof DOMException && err.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow it in your browser to speak to Sidekick."
+          : "Couldn't start recording. Please try again or type instead."
+      );
+      setVoiceState("idle");
+    }
+  }, [streaming, voiceState, stopAudioPlayback]);
+
+  const stopRecordingAndSend = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state !== "recording") return;
+    setVoiceState("transcribing");
+    const blob: Blob = await new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blobType = recorderMimeRef.current ?? recorder.mimeType ?? "audio/webm";
+        const b = new Blob(recorderChunksRef.current, { type: blobType });
+        recorder.stream.getTracks().forEach((t) => t.stop());
+        resolve(b);
+      };
+      recorder.stop();
+    });
+    mediaRecorderRef.current = null;
+
+    if (blob.size < 1000) {
+      setVoiceState("idle");
+      setVoiceError("That clip was too short to hear. Hold a little longer and try again.");
+      return;
+    }
+
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/sidekick/transcribe`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": blob.type || "application/octet-stream" },
+        body: blob,
+      });
+      const data = await res.json().catch(() => ({} as { transcript?: string; error?: string }));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? `Transcription failed (${res.status})`);
+      }
+      const transcript = ((data as { transcript?: string }).transcript ?? "").trim();
+      setVoiceState("idle");
+      if (!transcript) {
+        setVoiceError("I didn't catch that. Please try again.");
+        return;
+      }
+      sendMessage(transcript);
+    } catch (err) {
+      console.error("transcribe failed", err);
+      setVoiceState("idle");
+      setVoiceError(err instanceof Error ? err.message : "Couldn't transcribe audio");
+    }
+  }, [sendMessage]);
+
+  const handleMicClick = useCallback(() => {
+    if (!VOICE_SUPPORTED) return;
+    if (voiceState === "recording") {
+      stopRecordingAndSend();
+    } else if (voiceState === "idle") {
+      startRecording();
+    }
+  }, [voiceState, startRecording, stopRecordingAndSend]);
+
+  // Auto-play assistant replies when voice mode is on. We trigger on the
+  // streaming completion of the last assistant message that we have not
+  // spoken yet.
+  useEffect(() => {
+    if (!voiceMode) return;
+    if (streaming) return;
+    if (messages.length === 0) return;
+    const lastIdx = messages.length - 1;
+    const last = messages[lastIdx];
+    if (!last || last.role !== "assistant") return;
+    const text = (last.content ?? "").trim();
+    if (!text) return;
+    if (lastSpokenIndexRef.current >= lastIdx) return;
+    lastSpokenIndexRef.current = lastIdx;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setVoiceState("speaking");
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        // The TTS endpoint caps at 1500 chars; clip very long replies.
+        const speakable = text.length > 1500 ? text.slice(0, 1500) : text;
+        const res = await fetch(`${base}/api/sidekick/speak`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: speakable, voice: voicePersona }),
+        });
+        if (!res.ok) throw new Error(`speak failed (${res.status})`);
+        const buf = await res.arrayBuffer();
+        if (cancelled) return;
+        const blob = new Blob([buf], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        let audio = audioElRef.current;
+        if (!audio) {
+          audio = new Audio();
+          audioElRef.current = audio;
+        }
+        audio.src = url;
+        const onEnded = () => {
+          URL.revokeObjectURL(url);
+          if (!cancelled) setVoiceState("idle");
+        };
+        audio.onended = onEnded;
+        audio.onerror = onEnded;
+        try {
+          await audio.play();
+        } catch (err) {
+          // Browsers may block autoplay until a user gesture has happened.
+          // Fall back gracefully — the transcript is already on screen.
+          console.warn("audio autoplay blocked", err);
+          URL.revokeObjectURL(url);
+          if (!cancelled) setVoiceState("idle");
+        }
+      } catch (err) {
+        console.error("TTS failed", err);
+        if (!cancelled) setVoiceState("idle");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, streaming, voiceMode, voicePersona]);
+
+  // Stop playback and recording when the panel is closed.
+  useEffect(() => {
+    if (!open) {
+      stopAudioPlayback();
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state === "recording") {
+        try {
+          recorder.stream.getTracks().forEach((t) => t.stop());
+          recorder.stop();
+        } catch {
+          // ignore
+        }
+      }
+      mediaRecorderRef.current = null;
+      if (voiceState !== "idle") setVoiceState("idle");
+    }
+  }, [open, stopAudioPlayback, voiceState]);
 
   const templatesBody = (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -635,6 +866,26 @@ export function Sidekick() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {VOICE_SUPPORTED && (
+            <button
+              onClick={() => {
+                if (voiceMode) stopAudioPlayback();
+                toggleVoiceMode();
+              }}
+              aria-pressed={voiceMode}
+              className={cn(
+                "min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center transition-colors",
+                voiceMode
+                  ? "text-[#F06127] hover:bg-[#FFF0E8]"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+              title={voiceMode ? "Voice replies on. Tap to mute." : "Voice replies off. Tap to read replies aloud."}
+              aria-label={voiceMode ? "Turn voice replies off for this session" : "Turn voice replies on for this session"}
+              data-testid="sidekick-voice-toggle"
+            >
+              {voiceMode ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+          )}
           {messages.length > 0 && (
             <button
               onClick={handleClear}
@@ -760,6 +1011,29 @@ export function Sidekick() {
 
           {/* Input */}
           <div className="px-4 py-3.5 border-t border-border bg-white shrink-0">
+            {voiceError && (
+              <p className="text-[12px] text-red-600 mb-2" role="alert" data-testid="sidekick-voice-error">
+                {voiceError}
+              </p>
+            )}
+            {voiceState === "recording" && (
+              <p className="text-[12px] text-[#F06127] font-medium mb-2 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#F06127] animate-pulse" />
+                Listening… tap the mic again to send.
+              </p>
+            )}
+            {voiceState === "transcribing" && (
+              <p className="text-[12px] text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Transcribing…
+              </p>
+            )}
+            {voiceState === "speaking" && (
+              <p className="text-[12px] text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Volume2 className="w-3 h-3" />
+                Speaking… tap to mute.
+              </p>
+            )}
             <div className="flex gap-2 items-end">
               <textarea
                 ref={textareaRef}
@@ -767,8 +1041,8 @@ export function Sidekick() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Sidekick anything…"
-                disabled={streaming}
+                placeholder={voiceState === "recording" ? "Listening…" : "Ask Sidekick anything…"}
+                disabled={streaming || voiceState === "recording" || voiceState === "transcribing"}
                 className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
                 style={{ fontFamily: "inherit" }}
                 onInput={(e) => {
@@ -777,9 +1051,38 @@ export function Sidekick() {
                   el.style.height = Math.min(el.scrollHeight, 120) + "px";
                 }}
               />
+              {VOICE_SUPPORTED && (
+                <button
+                  onClick={handleMicClick}
+                  disabled={streaming || voiceState === "transcribing"}
+                  className={cn(
+                    "w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 transition-colors disabled:opacity-40",
+                    voiceState === "recording"
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "bg-white border border-border text-foreground hover:border-[#F06127] hover:text-[#F06127]"
+                  )}
+                  aria-label={
+                    voiceState === "recording" ? "Stop recording and send" : "Record a voice message"
+                  }
+                  title={
+                    voiceState === "recording"
+                      ? "Stop recording and send"
+                      : "Record a voice message"
+                  }
+                  data-testid="sidekick-mic"
+                >
+                  {voiceState === "recording" ? (
+                    <Square className="w-4 h-4" />
+                  ) : voiceState === "transcribing" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </button>
+              )}
               <button
                 onClick={handleSubmit}
-                disabled={!input.trim() || streaming}
+                disabled={!input.trim() || streaming || voiceState !== "idle"}
                 className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
                 style={{ backgroundColor: "#F06127" }}
                 aria-label="Send message"

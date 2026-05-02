@@ -32,7 +32,8 @@
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
     "react": "catalog:",
-    "resend": "^6.9.4"
+    "resend": "^6.9.4",
+    "stripe": "^22.1.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

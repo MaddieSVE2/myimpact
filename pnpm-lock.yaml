@@ -143,6 +143,9 @@ importers:
       resend:
         specifier: ^6.9.4
         version: 6.9.4
+      stripe:
+        specifier: ^22.1.0
+        version: 22.1.0(@types/node@25.3.5)
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10

@@ -1,5 +1,10 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import {
+  ensureCompatibleFormat,
+  speechToText,
+  textToSpeech,
+} from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
 
@@ -10,6 +15,17 @@ const sidekickRateLimit = createRateLimiter({
   max: 20,
   message: "Too many requests to Sidekick. Please slow down.",
 });
+
+const sidekickVoiceRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: "Too many voice requests. Please slow down.",
+});
+
+const ALLOWED_VOICES = ["alloy", "nova", "shimmer", "echo", "fable", "onyx"] as const;
+type AllowedVoice = (typeof ALLOWED_VOICES)[number];
+
+const MAX_TTS_TEXT_CHARS = 1500;
 
 const SYSTEM_PROMPT = `You are Sidekick, an AI assistant built into My Impact — a personal social value calculator for people who want to see and communicate the positive difference they make.
 
@@ -264,6 +280,81 @@ router.post("/chat", authenticate, sidekickRateLimit, async (req, res) => {
       res.status(500).json({ error: "Failed to get response" });
     } else {
       res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+/**
+ * Transcribe a voice clip recorded by the user into text.
+ * Accepts the raw audio bytes as the request body. The browser may record
+ * in WebM/Opus, MP4 (Safari/iOS), WAV or MP3 — we run the buffer through
+ * `ensureCompatibleFormat` which transcodes anything ffmpeg understands
+ * into a format the OpenAI transcription model accepts.
+ */
+router.post(
+  "/transcribe",
+  authenticate,
+  sidekickVoiceRateLimit,
+  express.raw({ type: () => true, limit: "10mb" }),
+  async (req, res) => {
+    try {
+      const audioBuffer = req.body as Buffer;
+      if (!audioBuffer || !Buffer.isBuffer(audioBuffer) || audioBuffer.length === 0) {
+        res.status(400).json({ error: "No audio data received" });
+        return;
+      }
+      // Reject obviously-empty / silent recordings.
+      if (audioBuffer.length < 1000) {
+        res.status(400).json({ error: "Recording too short. Please try again." });
+        return;
+      }
+
+      const { buffer, format } = await ensureCompatibleFormat(audioBuffer);
+      const transcript = await speechToText(buffer, format);
+
+      res.json({ transcript: (transcript ?? "").trim() });
+    } catch (err) {
+      console.error("Sidekick transcribe error:", err);
+      res.status(500).json({ error: "Failed to transcribe audio" });
+    }
+  }
+);
+
+/**
+ * Convert an assistant reply to spoken audio (MP3) so the client can
+ * play it back. Returns the audio bytes directly with the appropriate
+ * Content-Type header.
+ */
+router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req, res) => {
+  try {
+    const { text, voice } = req.body as { text?: unknown; voice?: unknown };
+
+    if (typeof text !== "string" || text.trim().length === 0) {
+      res.status(400).json({ error: "text is required" });
+      return;
+    }
+    if (text.length > MAX_TTS_TEXT_CHARS) {
+      res.status(400).json({ error: `text must be at most ${MAX_TTS_TEXT_CHARS} characters` });
+      return;
+    }
+
+    const chosenVoice: AllowedVoice =
+      typeof voice === "string" && (ALLOWED_VOICES as readonly string[]).includes(voice)
+        ? (voice as AllowedVoice)
+        : "alloy";
+
+    const audio = await textToSpeech(text, chosenVoice, "mp3");
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Length", audio.length.toString());
+    res.end(audio);
+  } catch (err) {
+    console.error("Sidekick speak error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to synthesise speech" });
+    } else {
       res.end();
     }
   }
