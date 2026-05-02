@@ -3,7 +3,7 @@ export default function PersonalToolkit() {
     <div className="slide relative w-screen h-screen overflow-hidden bg-bg">
       <div className="absolute top-[8vh] left-[6vw] flex items-center gap-[1vw]">
         <span className="font-body text-[1.2vw] font-semibold uppercase tracking-[0.25em] text-primary">
-          05 · Your personal toolkit
+          06 · Your personal toolkit
         </span>
         <div className="w-[6vw] h-[1px] bg-primary/50" />
       </div>

@@ -25,7 +25,7 @@ export default function GetInvolved() {
         </h2>
       </div>
 
-      <div className="absolute bottom-[10vh] left-[6vw] right-[6vw] grid grid-cols-2 gap-[3vw]">
+      <div className="absolute bottom-[10vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2.5vw]">
         <div>
           <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
             Try it
@@ -34,9 +34,20 @@ export default function GetInvolved() {
             href="https://myimpact.uk"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-display font-bold text-[2.5vw] text-bg block leading-tight"
+            className="font-display font-bold text-[2.1vw] text-bg block leading-tight"
           >
             myimpact.uk
+          </a>
+        </div>
+        <div>
+          <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
+            Fund it
+          </p>
+          <a
+            href="mailto:hello@myimpact.uk"
+            className="font-display font-bold text-[2.1vw] text-primary block leading-tight"
+          >
+            hello@myimpact.uk
           </a>
         </div>
         <div>
@@ -45,7 +56,7 @@ export default function GetInvolved() {
           </p>
           <a
             href="mailto:hello@myimpact.uk"
-            className="font-display font-bold text-[2.5vw] text-primary block leading-tight"
+            className="font-display font-bold text-[2.1vw] text-primary block leading-tight"
           >
             hello@myimpact.uk
           </a>
