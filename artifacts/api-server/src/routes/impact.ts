@@ -133,9 +133,11 @@ router.post("/suggestions", (req, res) => {
   const weeklyHours = body.availableHoursPerWeek;
 
   const scored = availableActivities.map((a) => {
-    const hoursNeeded = a.unit === "hour" ? weeklyHours : 1;
-    const yearlyHours = hoursNeeded * 52;
-    const estimatedImpact = a.unit === "hour" ? yearlyHours * a.valuePerUnit : a.valuePerUnit * hoursNeeded;
+    const yearlyHours = weeklyHours * 52;
+    const estimatedImpact =
+      a.unit === "hour"
+        ? yearlyHours * a.valuePerUnit
+        : a.defaultQuantity * a.valuePerUnit;
     const isPreferred = preferredCategories.has(a.category);
 
     const hasRelatedCurrent = Array.from(currentIds).some(
