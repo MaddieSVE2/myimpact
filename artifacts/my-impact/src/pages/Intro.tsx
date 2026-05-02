@@ -10,6 +10,7 @@ import CalendarHomeWidget from "@/components/CalendarHomeWidget";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
+import { useListRecurringTemplates } from "@workspace/api-client-react";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -267,6 +268,12 @@ export default function Intro() {
   const showRecapBanner =
     isLoggedIn && isInRecapWindow() && !isRecapViewed(getRecapYear());
 
+  const templatesQuery = useListRecurringTemplates(undefined, {
+    query: { enabled: isLoggedIn },
+  });
+  const hasQuickLogContent =
+    isLoggedIn && (templatesQuery.data?.templates?.length ?? 0) > 0;
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
@@ -351,8 +358,8 @@ export default function Intro() {
 
       </section>
 
-      {/* ── QUICK LOG (logged-in users only) ── */}
-      {isLoggedIn && (
+      {/* ── QUICK LOG (logged-in users with active recurring templates only) ── */}
+      {hasQuickLogContent && (
         <section style={{ background: "white", padding: "32px 5% 0" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <QuickLog showManageLink />
