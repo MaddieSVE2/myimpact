@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Globe, Lock, CheckCircle, AlertCircle, Loader2, Copy, Check, ExternalLink, Info } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Globe, Lock, CheckCircle, AlertCircle, Loader2, Copy, Check, ExternalLink, Info, Code2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+type WidgetSize = "small" | "medium" | "large";
+type WidgetTheme = "light" | "dark";
 
 interface PublicProfileData {
   userId: string;
@@ -17,6 +19,180 @@ interface PublicProfileData {
   slugCustomised: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+function EmbedWidgetPanel({ slug }: { slug: string }) {
+  const [size, setSize] = useState<WidgetSize>("medium");
+  const [theme, setTheme] = useState<WidgetTheme>("light");
+  const [copied, setCopied] = useState<"script" | "iframe" | null>(null);
+
+  // The widget script and iframe URLs are absolute and origin-relative so the
+  // user can copy-paste into any third-party site. We resolve them at render
+  // time from the current page origin (the API is served on the same host
+  // under /api).
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const widgetScriptSrc = `${origin}/api/public-profile/widget.js`;
+  const iframeSrc = `${origin}/api/public-profile/widget?slug=${encodeURIComponent(slug)}&theme=${theme}&size=${size}`;
+
+  const scriptSnippet = useMemo(
+    () =>
+      `<script async src="${widgetScriptSrc}" data-slug="${slug}" data-theme="${theme}" data-size="${size}"></script>`,
+    [widgetScriptSrc, slug, theme, size],
+  );
+
+  const widthFor = (s: WidgetSize) => (s === "small" ? 260 : s === "large" ? 400 : 320);
+
+  const iframeSnippet = useMemo(
+    () =>
+      `<iframe src="${iframeSrc}" title="My Impact" loading="lazy" style="width:100%;max-width:${widthFor(size)}px;height:240px;border:0;display:block;background:transparent;"></iframe>`,
+    [iframeSrc, size],
+  );
+
+  const copy = async (kind: "script" | "iframe", text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      // ignore clipboard errors silently
+    }
+  };
+
+  // Live preview iframe key reloads when settings change so the embed
+  // accurately reflects the chosen theme/size.
+  const previewKey = `${slug}-${theme}-${size}`;
+
+  const SIZES: Array<{ id: WidgetSize; label: string }> = [
+    { id: "small", label: "Small" },
+    { id: "medium", label: "Medium" },
+    { id: "large", label: "Large" },
+  ];
+  const THEMES: Array<{ id: WidgetTheme; label: string }> = [
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+  ];
+
+  return (
+    <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <Code2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Embed widget</h2>
+      </div>
+      <div className="px-5 py-5 space-y-5">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Add a small impact badge to your personal website, blog, or portfolio. It updates automatically and respects the same privacy toggles as your public profile. If you disable your public profile, the widget stops showing too.
+        </p>
+
+        {/* Size + theme selectors */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs font-medium text-foreground mb-1.5">Size</p>
+            <div className="inline-flex rounded-lg border border-border overflow-hidden">
+              {SIZES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSize(s.id)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    size === s.id ? "bg-primary text-white" : "bg-white text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground mb-1.5">Theme</p>
+            <div className="inline-flex rounded-lg border border-border overflow-hidden">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTheme(t.id)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    theme === t.id ? "bg-primary text-white" : "bg-white text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div>
+          <p className="text-xs font-medium text-foreground mb-2">Live preview</p>
+          <div
+            className="rounded-lg border border-dashed border-border p-4 flex items-center justify-center"
+            style={{ background: theme === "dark" ? "#0f172a0a" : "#f8fafc" }}
+          >
+            <iframe
+              key={previewKey}
+              src={iframeSrc}
+              title="Widget preview"
+              loading="lazy"
+              style={{
+                width: "100%",
+                maxWidth: widthFor(size),
+                height: 260,
+                border: 0,
+                display: "block",
+                background: "transparent",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Script snippet */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-foreground">Script tag (recommended)</label>
+            <button
+              type="button"
+              onClick={() => copy("script", scriptSnippet)}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Copy script snippet"
+            >
+              {copied === "script" ? (
+                <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</>
+              ) : (
+                <><Copy className="w-3.5 h-3.5" /> Copy</>
+              )}
+            </button>
+          </div>
+          <pre className="text-xs font-mono bg-muted/40 border border-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-foreground">
+            {scriptSnippet}
+          </pre>
+          <p className="mt-1 text-xs text-muted-foreground">Paste this once anywhere in your page. The widget will load itself in place of the script tag.</p>
+        </div>
+
+        {/* Iframe snippet (alternative) */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-foreground">Or use a plain iframe</label>
+            <button
+              type="button"
+              onClick={() => copy("iframe", iframeSnippet)}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Copy iframe snippet"
+            >
+              {copied === "iframe" ? (
+                <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</>
+              ) : (
+                <><Copy className="w-3.5 h-3.5" /> Copy</>
+              )}
+            </button>
+          </div>
+          <pre className="text-xs font-mono bg-muted/40 border border-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-foreground">
+            {iframeSnippet}
+          </pre>
+          <p className="mt-1 text-xs text-muted-foreground">For blog platforms that block scripts but allow iframes.</p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function Toggle({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: () => void; disabled?: boolean }) {
@@ -355,6 +531,7 @@ export default function PublicProfileSettings() {
   ) : null;
 
   return (
+    <>
     <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -483,5 +660,7 @@ export default function PublicProfileSettings() {
         </button>
       </div>
     </section>
+    <EmbedWidgetPanel slug={profile.slug} />
+    </>
   );
 }
