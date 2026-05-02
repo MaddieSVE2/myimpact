@@ -5,6 +5,9 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  emailDigestOptIn: boolean("email_digest_opt_in").default(true).notNull(),
+  unsubscribeToken: text("unsubscribe_token").unique(),
+  lastDigestSentAt: timestamp("last_digest_sent_at"),
 });
 
 export const magicTokensTable = pgTable("magic_tokens", {

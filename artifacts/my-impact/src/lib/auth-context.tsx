@@ -7,6 +7,7 @@ interface User {
   email: string;
   displayName: string | null;
   createdAt?: string;
+  emailDigestOptIn?: boolean;
 }
 
 interface DemoLoginResult {
@@ -26,7 +27,7 @@ interface AuthContextType {
   isLoading: boolean;
   requestMagicLink: (email: string, returnTo?: string) => Promise<MagicLinkResult>;
   demoLogin: (email: string) => Promise<DemoLoginResult>;
-  updateProfile: (fields: { displayName: string | null }) => Promise<void>;
+  updateProfile: (fields: { displayName?: string | null; emailDigestOptIn?: boolean }) => Promise<void>;
   logout: () => Promise<void>;
 }
 

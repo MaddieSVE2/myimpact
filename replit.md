@@ -189,3 +189,75 @@ Behaviour each run:
 - An email is sent to `BACKUP_NOTIFY_EMAIL` with the object key, size, table
   count, and total rows (or a failure email with the error if `pg_dump` /
   upload fails).
+
+## Monthly Email Digest
+
+Personalised monthly recap email sent via Resend on the 1st of each month
+to opted-in users. Covers the previous calendar month: total social value,
+hours, top activity, top SDG, donations, all-time totals, any new
+milestones earned, and the most recent journal highlight, with a "Log
+this month" CTA back to the wizard and one-click unsubscribe.
+
+Schema (in `users` table):
+
+- `email_digest_opt_in` (boolean, default `true`) — new users auto opt-in.
+- `unsubscribe_token` (text, unique, lazily generated on first send).
+- `last_digest_sent_at` (timestamp) — used by `--skip-recently-sent` to
+  dedupe within the same calendar month.
+
+User opt-out paths:
+
+- One-click unsubscribe link in the email footer →
+  `GET /api/auth/unsubscribe?token=...` flips opt-in to false and shows a
+  branded confirmation page (no session required, idempotent).
+- Settings page (`/settings` → "Email" section) toggle, backed by
+  `PATCH /api/auth/me { emailDigestOptIn: boolean }`.
+
+Files:
+
+- `artifacts/api-server/src/lib/digestData.ts` — payload builder
+  (`buildMonthlyDigest`, `previousMonthRange`).
+- `artifacts/api-server/src/lib/digestEmail.ts` — HTML + plain-text
+  templates (brand colour `#F06127`).
+- `artifacts/api-server/src/lib/badges.ts` — server-side mirror of the
+  frontend badge engine, used to diff "newly earned this month".
+- `artifacts/api-server/src/scripts/send-monthly-digest.ts` — dispatcher.
+- Frontend toggle: `artifacts/my-impact/src/pages/Settings.tsx` (Email
+  section).
+
+Dispatcher scripts:
+
+- `pnpm --filter @workspace/api-server run digest:send` — manual run.
+  Optional flags: `--dry-run`, `--user-email <addr>` (target a single
+  user), `--batch-size <n>` (default 25), `--batch-delay-ms <n>`
+  (default 1000), `--notify --notify-email <addr>` (operator summary
+  via Resend, falls back to `BACKUP_NOTIFY_EMAIL`).
+- `pnpm --filter @workspace/api-server run digest:scheduled` — used by
+  the monthly scheduled deployment. Equivalent to
+  `digest:send --skip-recently-sent --notify`.
+
+Behaviour each run:
+
+- Loads users where `email_digest_opt_in = true` AND who have at least
+  one `impact_records` row (so brand-new accounts don't get an empty
+  recap until they've logged something).
+- Skips users with no activity in the target month (the "first digest
+  only after first session" rule).
+- Sends in batches with one automatic retry per email on transient
+  Resend errors, then updates `last_digest_sent_at`.
+- Logs `sent / skipped / failed` summary; with `--notify`, emails the
+  same summary (plus first 25 failures) to the operator.
+
+### Scheduled monthly digest (production)
+
+Published as a **separate Scheduled Deployment** in the same project
+(alongside the weekly backup):
+
+1. In the Publishing tool, create a Scheduled Deployment.
+2. **Schedule:** monthly on the 1st, e.g. `0 8 1 * *` (08:00 UTC).
+3. **Build command:** `pnpm install --frozen-lockfile`
+4. **Run command:** `pnpm --filter @workspace/api-server run digest:scheduled`
+5. **Environment variables** (must mirror the autoscale deployment):
+   - `DATABASE_URL`, `RESEND_API_KEY`, `SESSION_SECRET`, `APP_URL`
+     (used to build the CTA + unsubscribe links — required), and
+     `BACKUP_NOTIFY_EMAIL` for the operator summary.

@@ -325,7 +325,15 @@ router.get("/me", async (req: any, res) => {
     const payload = jwt.verify(token, secret) as { id: string; email: string };
     const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, payload.id) });
     if (!user) { res.json({ user: null }); return; }
-    res.json({ user: { id: user.id, email: user.email, displayName: user.displayName ?? null, createdAt: user.createdAt } });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName ?? null,
+        createdAt: user.createdAt,
+        emailDigestOptIn: user.emailDigestOptIn,
+      },
+    });
   } catch {
     res.json({ user: null });
   }
@@ -339,23 +347,116 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName } = req.body;
-    if (typeof displayName !== "string" && displayName !== null) {
-      res.status(400).json({ error: "displayName must be a string or null" });
+    const { displayName, emailDigestOptIn } = req.body ?? {};
+    const updates: { displayName?: string | null; emailDigestOptIn?: boolean } = {};
+
+    if (displayName !== undefined) {
+      if (typeof displayName !== "string" && displayName !== null) {
+        res.status(400).json({ error: "displayName must be a string or null" });
+        return;
+      }
+      updates.displayName =
+        typeof displayName === "string" ? displayName.trim().slice(0, 80) || null : null;
+    }
+
+    if (emailDigestOptIn !== undefined) {
+      if (typeof emailDigestOptIn !== "boolean") {
+        res.status(400).json({ error: "emailDigestOptIn must be a boolean" });
+        return;
+      }
+      updates.emailDigestOptIn = emailDigestOptIn;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No updatable fields supplied" });
       return;
     }
-    const trimmed = typeof displayName === "string" ? displayName.trim().slice(0, 80) || null : null;
 
     const [updated] = await db
       .update(usersTable)
-      .set({ displayName: trimmed })
+      .set(updates)
       .where(eq(usersTable.id, payload.id))
       .returning();
 
-    res.json({ user: { id: updated.id, email: updated.email, displayName: updated.displayName ?? null } });
+    res.json({
+      user: {
+        id: updated.id,
+        email: updated.email,
+        displayName: updated.displayName ?? null,
+        emailDigestOptIn: updated.emailDigestOptIn,
+      },
+    });
   } catch {
     res.status(401).json({ error: "Invalid session" });
   }
+});
+
+/**
+ * One-click email-digest unsubscribe. Designed to be safely linked
+ * from email footers — flips `email_digest_opt_in` to false without
+ * requiring a session.
+ *
+ * The token is per-user and 24 random bytes; we do not invalidate the
+ * token after use so a user can re-click an old email and still hit
+ * a working confirmation page (the action is idempotent).
+ */
+router.get("/unsubscribe", async (req, res) => {
+  const { token } = req.query;
+  function renderPage(title: string, body: string, statusCode = 200) {
+    res.status(statusCode).type("html").send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>${title} · My Impact</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 32px 24px; color: #213547; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  p { color: #555; line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
+  a.btn { display: inline-block; background: #F06127; color: #fff; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
+  a.btn:hover { background: #d95420; }
+</style>
+</head><body>${body}</body></html>`);
+  }
+
+  if (!token || typeof token !== "string") {
+    renderPage(
+      "Invalid link",
+      `<h1>That link doesn't look right</h1>
+       <p>The unsubscribe link is missing or malformed. You can manage your preferences from your account settings instead.</p>
+       <p><a class="btn" href="${getAppUrl()}/settings">Go to settings</a></p>`,
+      400,
+    );
+    return;
+  }
+
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.unsubscribeToken, token),
+  });
+
+  if (!user) {
+    renderPage(
+      "Link not found",
+      `<h1>We couldn't find that subscription</h1>
+       <p>This unsubscribe link is no longer valid. If you'd like to stop receiving monthly recaps, sign in and update your preferences from your account settings.</p>
+       <p><a class="btn" href="${getAppUrl()}/settings">Manage preferences</a></p>`,
+      404,
+    );
+    return;
+  }
+
+  if (user.emailDigestOptIn) {
+    await db
+      .update(usersTable)
+      .set({ emailDigestOptIn: false })
+      .where(eq(usersTable.id, user.id));
+  }
+
+  renderPage(
+    "Unsubscribed",
+    `<h1>You're unsubscribed from monthly recaps</h1>
+     <p>We won't send any more monthly recap emails to <strong>${user.email}</strong>. You can re-enable them anytime from your settings.</p>
+     <p><a class="btn" href="${getAppUrl()}/settings">Open My Impact</a></p>`,
+  );
 });
 
 router.post("/logout", (_req, res) => {

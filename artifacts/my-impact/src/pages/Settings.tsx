@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,31 @@ export default function Settings() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [digestSaving, setDigestSaving] = useState(false);
+  const digestOptIn = user?.emailDigestOptIn ?? true;
+
+  const handleToggleDigest = async () => {
+    if (digestSaving) return;
+    setDigestSaving(true);
+    const next = !digestOptIn;
+    try {
+      await updateProfile({ emailDigestOptIn: next });
+      toast({
+        title: next ? "Monthly recap on" : "Monthly recap off",
+        description: next
+          ? "We'll send a personalised summary on the 1st of each month."
+          : "You won't receive monthly recap emails.",
+      });
+    } catch {
+      toast({
+        title: "Could not update preference",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDigestSaving(false);
+    }
+  };
 
   const handleSaveName = async () => {
     if (saving) return;
@@ -116,6 +141,38 @@ export default function Settings() {
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                 style={{ transform: isHighContrast ? "translateX(16px)" : "translateX(0)" }}
+              />
+            </div>
+          </button>
+        </div>
+      </section>
+
+      {/* Email section */}
+      <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <MailCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Email</h2>
+        </div>
+        <div className="py-1">
+          <button
+            onClick={handleToggleDigest}
+            aria-pressed={digestOptIn}
+            disabled={digestSaving}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
+          >
+            <div className="pr-3">
+              <p className="text-sm font-medium text-foreground">Monthly impact recap</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                A short personalised summary on the 1st of each month — hours, social value, milestones, and one journal highlight. Unsubscribe in one click from the email or here.
+              </p>
+            </div>
+            <div
+              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+              style={{ background: digestOptIn ? "#F06127" : "#d1d5db" }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: digestOptIn ? "translateX(16px)" : "translateX(0)" }}
               />
             </div>
           </button>
