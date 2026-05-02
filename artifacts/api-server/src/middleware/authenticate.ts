@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { Sentry, isSentryEnabled } from "../lib/sentry.js";
 
 export interface AuthenticatedRequest extends Request {
   user?: { id: string; email: string };
+}
+
+function tagSentryUser(userId: string | null) {
+  if (!isSentryEnabled()) return;
+  Sentry.getCurrentScope().setUser(userId ? { id: userId } : null);
 }
 
 export function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -17,6 +23,7 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
     if (!secret) throw new Error("SESSION_SECRET not set");
     const payload = jwt.verify(token, secret) as { id: string; email: string };
     req.user = { id: payload.id, email: payload.email };
+    tagSentryUser(payload.id);
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired session" });
@@ -49,6 +56,7 @@ export function attachUserIfPresent(req: AuthenticatedRequest, _res: Response, n
       if (secret) {
         const payload = jwt.verify(token, secret) as { id: string; email: string };
         req.user = { id: payload.id, email: payload.email };
+        tagSentryUser(payload.id);
       }
     } catch {
     }

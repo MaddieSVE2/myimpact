@@ -1,9 +1,10 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { createRateLimiter } from "./lib/rateLimiter.js";
 import { billingWebhookHandler, billingWebhookRawParser } from "./routes/billing.js";
+import { Sentry, isSentryEnabled } from "./lib/sentry.js";
 
 const app: Express = express();
 
@@ -53,5 +54,17 @@ const globalApiRateLimit = createRateLimiter({
 });
 
 app.use("/api", globalApiRateLimit, router);
+
+if (isSentryEnabled()) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
+// Final fallback error handler — must come after Sentry's handler so that
+// errors are reported before we send the 500 response.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (res.headersSent) return;
+  console.error("[unhandled-error]", err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 export default app;

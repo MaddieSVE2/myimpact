@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { updateNavHistory } from "@/lib/nav-history";
+import { captureException as captureSentryException } from "@/lib/sentry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -71,6 +72,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error("[ErrorBoundary]", error, info.componentStack);
+    captureSentryException(error, { componentStack: info.componentStack });
   }
 
   render() {

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { setSentryUser } from "@/lib/sentry";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -61,6 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    setSentryUser(user ? { id: user.id } : null);
+  }, [user]);
 
   const requestMagicLink = async (email: string, returnTo?: string): Promise<MagicLinkResult> => {
     const res = await fetch(`${BASE}/api/auth/request`, {

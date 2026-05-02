@@ -25,6 +25,34 @@ The project is structured as a pnpm monorepo using TypeScript (v5.9). The backen
 *   **Additional Pages:** The application includes dedicated pages for history tracking, personalized activity suggestions, and an annual recap (Spotify-Wrapped style).
 *   **Performance Budgets (Lighthouse CI):** Every PR runs `@lhci/cli` against a built preview of `artifacts/my-impact` (`.github/workflows/lighthouse.yml`). Five routes are audited — `/`, `/wizard/actions`, `/results`, `/history`, `/profile/demo` — with desktop budgets enforced for performance (≥0.75), accessibility (≥0.95), best-practices (≥0.85) and SEO (≥0.85). Failing budgets block merge and reports are uploaded as a build artifact (`lighthouse-reports-<run-id>`) and to LHCI's temporary public storage. Run locally with `pnpm lhci` (builds + audits) or `pnpm lhci:open` to view the latest HTML reports. Budgets live in `lighthouserc.cjs`; tighten them after a deliberate optimisation lands and document any loosening in the PR description. PWA scoring is omitted because Lighthouse 12 dropped the category. The local sandbox has no Chrome installed — local runs require a system Chrome/Chromium.
 
+# Error Monitoring (Sentry)
+
+Sentry is wired into both the frontend (`my-impact`) and backend (`api-server`). The integration gracefully no-ops when env vars are absent so local dev keeps working without any Sentry account.
+
+**Frontend** (`artifacts/my-impact/src/lib/sentry.ts`)
+- `initSentry()` runs from `main.tsx` before App renders. Skips init when `VITE_SENTRY_DSN` is not set.
+- `setSentryUser({id})` is wired through `auth-context` so the authenticated user id (no email/PII) is attached to all events.
+- `captureException(err, ctx)` is called from the App `ErrorBoundary` so React render errors reach Sentry.
+- `beforeSend` filters known-benign noise (AbortError, chunk-load errors, ResizeObserver loops, etc.).
+- Source maps are uploaded via `@sentry/vite-plugin` only when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are set; the plugin is skipped otherwise. Build emits `sourcemap: "hidden"` in that mode and the plugin deletes the `.map` files after upload so they never ship to clients.
+
+**Backend** (`artifacts/api-server/src/lib/sentry.ts`)
+- `initSentry()` is the very first import in `src/index.ts` so OpenTelemetry instrumentation hooks Express before it loads.
+- `Sentry.setupExpressErrorHandler(app)` is registered after routes (in `app.ts`) followed by a final JSON 500 fallback handler.
+- `authenticate` and `attachUserIfPresent` middleware tag the Sentry scope with `{id}` for the request.
+- `beforeSend` drops common 4xx (400/401/403/404/409/422/429) and benign network errors (ECONNRESET, EPIPE, AbortError, etc.) and scrubs cookies / Authorization headers from the request snapshot.
+
+**Required env vars** (all optional — Sentry no-ops if missing)
+- Frontend: `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_TRACES_SAMPLE_RATE` (default `0.1`)
+- Backend: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE` (default `0.1`)
+- Source map upload (build-time only): `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`
+- **Release tag**: set `SENTRY_RELEASE` once (e.g. to the git SHA / `$REPLIT_DEPLOYMENT_ID`). The Vite config automatically mirrors it into `VITE_SENTRY_RELEASE` at build time so the runtime event tag and the uploaded source-map release always match. `VITE_SENTRY_RELEASE` only needs to be set explicitly if you want to override on the frontend.
+
+**Operational notes**
+- Set `SENTRY_ENVIRONMENT=production` for the deployed app and `preview` for the dev environment.
+- Recommended release scheme: tag with the deploy git SHA, e.g. `SENTRY_RELEASE=$REPLIT_DEPLOYMENT_ID` so frontend and backend are tagged consistently.
+- Alert routing (new issue + regression → single team inbox) is configured in the Sentry UI per-project; this is a one-time manual step after the DSN is provisioned.
+
 # External Dependencies
 
 *   **Monorepo Tool:** pnpm workspaces

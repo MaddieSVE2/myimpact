@@ -9,12 +9,40 @@ const port = rawPort ? Number(rawPort) : 3000;
 
 const basePath = process.env.BASE_PATH ?? "/";
 
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+const sentryOrg = process.env.SENTRY_ORG;
+const sentryProject = process.env.SENTRY_PROJECT;
+// Single source of truth for release tag: prefer SENTRY_RELEASE so the value
+// stamped onto runtime events matches the release used during sourcemap upload.
+// Fall back to VITE_SENTRY_RELEASE if only that is set.
+const sentryRelease = process.env.SENTRY_RELEASE ?? process.env.VITE_SENTRY_RELEASE;
+if (sentryRelease && !process.env.VITE_SENTRY_RELEASE) {
+  process.env.VITE_SENTRY_RELEASE = sentryRelease;
+}
+const uploadSourceMaps = Boolean(sentryAuthToken && sentryOrg && sentryProject);
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    ...(uploadSourceMaps
+      ? [
+          await import("@sentry/vite-plugin").then((m) =>
+            m.sentryVitePlugin({
+              org: sentryOrg!,
+              project: sentryProject!,
+              authToken: sentryAuthToken!,
+              release: sentryRelease ? { name: sentryRelease } : undefined,
+              sourcemaps: {
+                filesToDeleteAfterUpload: ["**/*.js.map"],
+              },
+              telemetry: false,
+            }),
+          ),
+        ]
+      : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -40,7 +68,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    sourcemap: false,
+    sourcemap: uploadSourceMaps ? "hidden" : false,
   },
   server: {
     port,
