@@ -83,7 +83,7 @@ Magic link authentication via Resend (no passwords):
 - **Flow**: User enters email → receives magic link → clicks link → lands on confirm page → clicks button → session issued
 - **Two-step token design**: Token is validated on page load (`/api/auth/verify`) but only consumed on button click (`/api/auth/confirm`), preventing email pre-fetcher bots from burning the token
 - **Session**: JWT stored in an `httpOnly` cookie (`mi_session`), 30-day expiry
-- **DB tables**: `users` (id, email, created_at), `magic_tokens` (token, user_id, expires_at, used_at, confirmed)
+- **DB tables**: `users` (id, email, created_at), `magic_tokens` (token, user_id, expires_at, used_at, confirmed), `user_profiles` (includes `email_opt_in` flag controlling onboarding + monthly digest), `onboarding_email_sends` (idempotency log for the Day 1 / 7 / 30 nurture sequence)
 - **Protected routes** (frontend): `/history`, `/journal`, `/badges`, `/org` — unauthenticated users redirected to `/login`
 - **Protected routes** (backend): `POST /api/impact/save`, `GET /api/impact/history` — require valid session cookie, use `req.user.id` as userId
 - **Auth context** (`lib/auth-context.tsx`): calls `/api/auth/me` on load to restore session; provides `isLoggedIn`, `user`, `isLoading`, `requestMagicLink()`, `logout()`
@@ -97,6 +97,8 @@ Magic link authentication via Resend (no passwords):
 - `GET /api/auth/verify?token=...` — validate token (does not consume it)
 - `POST /api/auth/confirm` — consume token, issue session cookie
 - `POST /api/auth/logout` — clear session cookie
+- `GET /api/profile` / `PUT /api/profile` — situation, interests, postcode, and `emailOptIn`
+- `PATCH /api/profile/email-opt-in` — flip the single opt-in flag that controls onboarding + monthly digest
 - `GET /api/impact/activities` — list of 20+ SVE activities with proxy metadata
 - `POST /api/impact/calculate` — calculate social value from activities + donations
 - `POST /api/impact/suggestions` — get recommended activities based on current activities
@@ -262,3 +264,27 @@ Published as a **separate Scheduled Deployment** in the same project
    - `DATABASE_URL`, `RESEND_API_KEY`, `SESSION_SECRET`, `APP_URL`
      (used to build the CTA + unsubscribe links — required), and
      `BACKUP_NOTIFY_EMAIL` for the operator summary.
+
+## Onboarding Email Sequence
+
+Three transactional emails sent on Day 1, Day 7 and Day 30 after a magic-link
+sign-up. Lives in `artifacts/api-server/src/lib/onboardingEmails.ts` (templates)
+and `artifacts/api-server/src/scripts/onboarding-emails.ts` (dispatcher).
+
+- **Eligibility**: user signed up via magic link (has a `confirmed = true` row
+  in `magic_tokens`), `user_profiles.email_opt_in = true`, not a demo persona
+  (`demo@demo.org`, `volunteer@volunteer.org`, etc.), and no existing row in
+  `onboarding_email_sends` for the same step.
+- **Idempotency**: a unique index on `(user_id, step)` plus a claim-then-send
+  pattern means re-running the dispatcher in the same day cannot double-send.
+- **Personalisation**: Day 7 splits into "look what you've already done" if
+  the user has at least one impact record, otherwise a gentle "still here when
+  you're ready". Day 30 surfaces total hours, total social value, record count
+  and top category from `impact_records`.
+- **Opt-out**: the "Onboarding emails" toggle in `/settings` flips
+  `user_profiles.email_opt_in`. The Monthly Email Digest above has its own
+  separate toggle (`users.email_digest_opt_in`) — they are independent so
+  users can keep one and drop the other.
+- **Run**: `pnpm --filter @workspace/api-server run onboarding:emails`. Intended
+  to be wired up as a daily Scheduled Deployment (same setup as the weekly
+  backup, but cron `0 9 * * *`).

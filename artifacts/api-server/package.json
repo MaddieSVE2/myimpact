@@ -13,7 +13,8 @@
     "backup:prod": "tsx ./src/scripts/backup-db.ts --target prod",
     "backup:fetch": "tsx ./src/scripts/fetch-backup.ts",
     "digest:send": "tsx ./src/scripts/send-monthly-digest.ts",
-    "digest:scheduled": "tsx ./src/scripts/send-monthly-digest.ts --skip-recently-sent --notify"
+    "digest:scheduled": "tsx ./src/scripts/send-monthly-digest.ts --skip-recently-sent --notify",
+    "onboarding:emails": "tsx ./src/scripts/onboarding-emails.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

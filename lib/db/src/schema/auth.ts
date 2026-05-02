@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, serial, integer, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -26,7 +26,25 @@ export const userProfilesTable = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   inviteCode: text("invite_code").unique(),
   inviteSharedAt: timestamp("invite_shared_at"),
+  emailOptIn: boolean("email_opt_in").default(true).notNull(),
 });
+
+// Tracks the three transactional onboarding emails (Day 1, Day 7, Day 30)
+// that follow a magic-link sign-up. The (user_id, step) pair is unique so
+// that the daily dispatcher can never double-send the same email even if
+// it is run multiple times on the same day.
+export const onboardingEmailSendsTable = pgTable(
+  "onboarding_email_sends",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    step: integer("step").notNull(),
+    sentAt: timestamp("sent_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userStepUniq: uniqueIndex("onboarding_email_sends_user_step_uniq").on(t.userId, t.step),
+  })
+);
 
 export const pageViewsTable = pgTable("page_views", {
   id: serial("id").primaryKey(),
@@ -51,3 +69,4 @@ export type MagicToken = typeof magicTokensTable.$inferSelect;
 export type UserProfile = typeof userProfilesTable.$inferSelect;
 export type PageView = typeof pageViewsTable.$inferSelect;
 export type Feedback = typeof feedbackTable.$inferSelect;
+export type OnboardingEmailSend = typeof onboardingEmailSendsTable.$inferSelect;

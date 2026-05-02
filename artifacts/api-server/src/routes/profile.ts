@@ -21,6 +21,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
       situation: profile.situation ?? [],
       interests: profile.interests ?? [],
       postcode: profile.postcode ?? null,
+      emailOptIn: profile.emailOptIn,
       updatedAt: profile.updatedAt.toISOString(),
     },
   });
@@ -65,9 +66,40 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       situation: upserted.situation ?? [],
       interests: upserted.interests ?? [],
       postcode: upserted.postcode ?? null,
+      emailOptIn: upserted.emailOptIn,
       updatedAt: upserted.updatedAt.toISOString(),
     },
   });
+});
+
+// Dedicated endpoint for the email opt-in toggle so the Settings UI can flip
+// it without having to round-trip the whole profile (situation/interests/etc).
+router.patch("/email-opt-in", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const { emailOptIn } = req.body as { emailOptIn?: unknown };
+
+  if (typeof emailOptIn !== "boolean") {
+    res.status(400).json({ error: "emailOptIn must be a boolean" });
+    return;
+  }
+
+  const [upserted] = await db
+    .insert(userProfilesTable)
+    .values({
+      userId,
+      emailOptIn,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: userProfilesTable.userId,
+      set: {
+        emailOptIn,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  res.json({ emailOptIn: upserted.emailOptIn });
 });
 
 export default router;

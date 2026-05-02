@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -16,6 +16,8 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { describeCadence } from "@/components/QuickLog";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
@@ -48,6 +50,56 @@ export default function Settings() {
       });
     } finally {
       setDigestSaving(false);
+    }
+  };
+
+  const [emailOptIn, setEmailOptIn] = useState<boolean | null>(null);
+  const [emailToggleSaving, setEmailToggleSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/profile`, { credentials: "include" });
+        const data = await res.json();
+        if (!cancelled) {
+          setEmailOptIn(data?.profile?.emailOptIn ?? true);
+        }
+      } catch {
+        if (!cancelled) setEmailOptIn(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleToggleEmailOptIn = async () => {
+    if (emailOptIn === null || emailToggleSaving) return;
+    const next = !emailOptIn;
+    setEmailToggleSaving(true);
+    setEmailOptIn(next);
+    try {
+      const res = await fetch(`${BASE}/api/profile/email-opt-in`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOptIn: next }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json();
+      setEmailOptIn(data.emailOptIn);
+      toast({
+        title: next ? "Emails turned on" : "Emails turned off",
+        description: next
+          ? "You'll get the onboarding sequence and the monthly digest."
+          : "We won't send you onboarding or monthly digest emails.",
+      });
+    } catch {
+      setEmailOptIn(!next);
+      toast({ title: "Could not save", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setEmailToggleSaving(false);
     }
   };
 
@@ -161,10 +213,32 @@ export default function Settings() {
       {/* Email section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-          <MailCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <Mail className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Email</h2>
         </div>
-        <div className="py-1">
+        <div className="py-1 divide-y divide-border">
+          <button
+            onClick={handleToggleEmailOptIn}
+            aria-pressed={emailOptIn === true}
+            disabled={emailOptIn === null || emailToggleSaving}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <div className="pr-4">
+              <p className="text-sm font-medium text-foreground">Onboarding emails</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Welcome and getting-started tips in your first month after signing up.
+              </p>
+            </div>
+            <div
+              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+              style={{ background: emailOptIn ? "#F06127" : "#d1d5db" }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: emailOptIn ? "translateX(16px)" : "translateX(0)" }}
+              />
+            </div>
+          </button>
           <button
             onClick={handleToggleDigest}
             aria-pressed={digestOptIn}
