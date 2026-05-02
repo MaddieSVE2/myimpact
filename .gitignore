@@ -49,3 +49,10 @@ Thumbs.db
 .local/
 database_backup.sql
 *.sql.bak
+
+# Local DB backup snapshots (durable copies live in App Storage; never commit raw dumps to VCS).
+# Scoped narrowly so Drizzle migration files under lib/db/migrations/*.sql are NOT ignored.
+artifacts/api-server/backups/
+/myimpact-db-backup-*.sql
+/myimpact-db-backup-*.sql.gz
+/myimpact-db-backup-*.sql.tar.gz
