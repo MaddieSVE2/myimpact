@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
+import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -262,14 +263,19 @@ export default function Intro() {
   const { isLoggedIn } = useAuth();
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
 
+  const showRecapBanner =
+    isLoggedIn && isInRecapWindow() && !isRecapViewed(getRecapYear());
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── ANNUAL RECAP DISCOVERY ── */}
-      <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <RecapBanner variant="hero" />
+      {showRecapBanner && (
+        <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
+          <div style={{ maxWidth: 980, margin: "0 auto" }}>
+            <RecapBanner variant="hero" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── HERO ── */}
       <section className="mi-hero">
