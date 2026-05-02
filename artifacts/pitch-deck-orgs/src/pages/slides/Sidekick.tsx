@@ -14,9 +14,7 @@ export default function Sidekick() {
           <span className="block text-primary italic">sidekick.</span>
         </h2>
 
-        <p className="font-body text-[1.4vw] text-text/75 mt-[4vh] leading-relaxed">
-          A context-aware assistant that understands what you do and helps you put it into words. Ready on every page.
-        </p>
+        <p className="font-body text-[1.4vw] text-text/75 mt-[4vh] leading-relaxed">A context-aware assistant that understands what you do and helps you put it into words.</p>
 
         <div className="mt-[5vh] grid grid-cols-1 gap-y-[2.5vh]">
           <div className="flex items-start gap-[1.2vw]">
@@ -62,7 +60,6 @@ export default function Sidekick() {
           </div>
         </div>
       </div>
-
       <div className="col-span-6 relative flex items-end justify-center bg-text/[0.04] border-l border-text/8 px-[3vw] pb-[8vh]">
         <div className="absolute bottom-[3vh] left-[3vw] flex items-center gap-[0.8vw]">
           <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-primary animate-pulse" />
