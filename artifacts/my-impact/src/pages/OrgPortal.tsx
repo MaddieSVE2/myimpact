@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon } from "lucide-react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import {
@@ -553,6 +553,374 @@ function CopyJoinLinkButton({ orgId, inviteCode }: { orgId: string; inviteCode: 
   );
 }
 
+interface MatchRate {
+  id: string;
+  hourlyRate: number | null;
+  donationMultiplier: number | null;
+  monthlyCapPerMember: number | null;
+  onlyVerifiedHours: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  createdAt: string;
+}
+
+interface MatchSummary {
+  totalCommitment: number;
+  totalHoursMatched: number;
+  totalDonationsMatched: number;
+  matchedRecordsCount: number;
+  matchedMembersCount: number;
+  monthly: Array<{ month: string; value: number }>;
+}
+
+function useMatchRates(enabled: boolean) {
+  return useQuery<{ rates: MatchRate[] }>({
+    queryKey: ["org-match-rates"],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/match/rates`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load match rates");
+      return res.json();
+    },
+  });
+}
+
+function useMatchSummary(enabled: boolean, from: string, to: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return useQuery<MatchSummary>({
+    queryKey: ["org-match-summary", from, to],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/match/summary${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load match summary");
+      return res.json();
+    },
+  });
+}
+
+function formatRateLine(r: MatchRate): string {
+  const parts: string[] = [];
+  if (r.hourlyRate !== null && r.hourlyRate > 0) parts.push(`£${r.hourlyRate.toFixed(2)} per hour`);
+  if (r.donationMultiplier !== null && r.donationMultiplier > 0) parts.push(`${r.donationMultiplier}× donations`);
+  if (parts.length === 0) parts.push("No multipliers set");
+  if (r.monthlyCapPerMember !== null) parts.push(`£${r.monthlyCapPerMember.toFixed(2)}/member/month cap`);
+  return parts.join(" · ");
+}
+
+function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
+  const queryClient = useQueryClient();
+  const { data: ratesData, isLoading: ratesLoading } = useMatchRates(true);
+  const { data: summary, isLoading: summaryLoading } = useMatchSummary(true, from, to);
+  const [showForm, setShowForm] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [donationMultiplier, setDonationMultiplier] = useState("");
+  const [monthlyCap, setMonthlyCap] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState<string | null>(null);
+
+  const rates = ratesData?.rates ?? [];
+  const activeRate = rates.find(r => r.effectiveTo === null) ?? null;
+  const pastRates = rates.filter(r => r.effectiveTo !== null);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/org/match/rates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          hourlyRate: hourlyRate.trim() === "" ? null : Number(hourlyRate),
+          donationMultiplier: donationMultiplier.trim() === "" ? null : Number(donationMultiplier),
+          monthlyCapPerMember: monthlyCap.trim() === "" ? null : Number(monthlyCap),
+          effectiveFrom: new Date(effectiveFrom).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to save");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org-match-rates"] });
+      queryClient.invalidateQueries({ queryKey: ["org-match-summary"] });
+      setShowForm(false);
+      setHourlyRate("");
+      setDonationMultiplier("");
+      setMonthlyCap("");
+      setError(null);
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const endMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/org/match/rates/end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ effectiveTo: new Date().toISOString() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to end");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org-match-rates"] });
+      queryClient.invalidateQueries({ queryKey: ["org-match-summary"] });
+    },
+  });
+
+  function handleDownloadCsv() {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString();
+    window.open(`${BASE}/api/org/match/csv${qs ? `?${qs}` : ""}`, "_blank");
+  }
+
+  // Preview impact for the new rate
+  const previewExample = (() => {
+    const h = hourlyRate.trim() === "" ? 0 : Number(hourlyRate);
+    const d = donationMultiplier.trim() === "" ? 0 : Number(donationMultiplier);
+    if ((!Number.isFinite(h) || h <= 0) && (!Number.isFinite(d) || d <= 0)) return null;
+    const exampleHours = 10;
+    const exampleDonation = 50;
+    const matched = exampleHours * (Number.isFinite(h) ? h : 0) + exampleDonation * (Number.isFinite(d) ? d : 0);
+    return { matched, exampleHours, exampleDonation };
+  })();
+
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18 }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <HandCoins className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Match programme</h3>
+          </div>
+          <p className="text-xs text-muted-foreground max-w-md">
+            Multiply what your members log. Set a £ amount per hour and/or a multiplier on donations. Historic match amounts are locked using the rate active when each record was logged.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDownloadCsv}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary transition-colors bg-white"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          Export CSV
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total commitment</p>
+          <p className="text-xl font-display font-bold text-foreground">
+            {summaryLoading ? "…" : formatCurrency(summary?.totalCommitment ?? 0)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">across selected period</p>
+        </div>
+        <div className="bg-muted/20 border border-border rounded-lg p-4">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Matched records</p>
+          <p className="text-xl font-display font-bold text-foreground">
+            {summaryLoading ? "…" : (summary?.matchedRecordsCount ?? 0)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">{summary?.matchedMembersCount ?? 0} members matched</p>
+        </div>
+        <div className="bg-muted/20 border border-border rounded-lg p-4 col-span-2 md:col-span-1">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Breakdown</p>
+          <p className="text-xs text-foreground">
+            <span className="font-semibold">{formatCurrency(summary?.totalHoursMatched ?? 0)}</span> hours match
+          </p>
+          <p className="text-xs text-foreground">
+            <span className="font-semibold">{formatCurrency(summary?.totalDonationsMatched ?? 0)}</span> donations match
+          </p>
+        </div>
+      </div>
+
+      {/* Active rate */}
+      <div className="border border-border rounded-lg p-4 mb-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current rate</p>
+            {ratesLoading ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : activeRate ? (
+              <>
+                <p className="text-sm font-medium text-foreground">{formatRateLine(activeRate)}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Active since {new Date(activeRate.effectiveFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No active match rate. Set one below to start matching.</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {activeRate && !showForm && (
+              <button
+                type="button"
+                onClick={() => endMutation.mutate()}
+                disabled={endMutation.isPending}
+                className="px-3 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted/30 transition-colors disabled:opacity-50"
+              >
+                {endMutation.isPending ? "Ending…" : "End rate"}
+              </button>
+            )}
+            {!showForm && (
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {activeRate ? "Update rate" : "Set rate"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Edit form */}
+      {showForm && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="border border-primary/30 rounded-lg p-4 mb-3 bg-primary/[0.03]"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-foreground">{activeRate ? "Update match rate" : "Set match rate"}</p>
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setError(null); }}
+              className="p-1 rounded text-muted-foreground hover:bg-muted/30"
+              aria-label="Cancel"
+            >
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {activeRate && (
+            <p className="text-[11px] text-muted-foreground mb-3">
+              The current rate will be end-dated at the new effective date. Past matches are not changed.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-[11px] font-medium text-foreground mb-1">£ per hour</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={hourlyRate}
+                onChange={e => setHourlyRate(e.target.value)}
+                placeholder="e.g. 5.00"
+                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-foreground mb-1">Donation multiplier</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={donationMultiplier}
+                onChange={e => setDonationMultiplier(e.target.value)}
+                placeholder="e.g. 1.0 = double"
+                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-foreground mb-1">Monthly cap / member</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={monthlyCap}
+                onChange={e => setMonthlyCap(e.target.value)}
+                placeholder="optional"
+                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-[11px] font-medium text-foreground mb-1">Effective from</label>
+            <input
+              type="date"
+              value={effectiveFrom}
+              onChange={e => setEffectiveFrom(e.target.value)}
+              className="px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          {previewExample && (
+            <div className="bg-white border border-border rounded-md p-3 mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Preview</p>
+              <p className="text-xs text-foreground">
+                A member who logs <span className="font-semibold">{previewExample.exampleHours} hours</span> and <span className="font-semibold">£{previewExample.exampleDonation} in donations</span> would receive{" "}
+                <span className="font-bold text-primary">{formatCurrency(previewExample.matched)}</span> matched.
+              </p>
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setError(null); }}
+              className="px-3 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted/30 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {saveMutation.isPending ? "Saving…" : activeRate ? "Replace rate" : "Save rate"}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Past rates */}
+      {pastRates.length > 0 && (
+        <details className="rounded-lg border border-border">
+          <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted/20">
+            Past rates ({pastRates.length})
+          </summary>
+          <ul className="divide-y divide-border">
+            {pastRates.map(r => (
+              <li key={r.id} className="px-4 py-2.5 text-xs">
+                <p className="text-foreground">{formatRateLine(r)}</p>
+                <p className="text-muted-foreground mt-0.5">
+                  {new Date(r.effectiveFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  {" "}–{" "}
+                  {r.effectiveTo ? new Date(r.effectiveTo).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "now"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </motion.div>
+  );
+}
+
 function DownloadPdfButton({ from, to }: { from: string; to: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -750,6 +1118,8 @@ export default function OrgPortal() {
               <p className="text-xs text-muted-foreground mt-1">volunteering hours</p>
             </div>
           </motion.div>
+
+          <MatchProgrammeSection from={from} to={to} />
 
           {/* Impact over time */}
           <motion.div

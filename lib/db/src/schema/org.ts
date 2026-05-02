@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, unique, numeric, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
 export const organisationsTable = pgTable("organisations", {
@@ -32,6 +32,20 @@ export const orgRegistrationsTable = pgTable("org_registrations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const orgMatchRatesTable = pgTable("org_match_rates", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 4 }),
+  donationMultiplier: numeric("donation_multiplier", { precision: 10, scale: 4 }),
+  monthlyCapPerMember: numeric("monthly_cap_per_member", { precision: 12, scale: 2 }),
+  onlyVerifiedHours: boolean("only_verified_hours").notNull().default(false),
+  effectiveFrom: timestamp("effective_from").notNull(),
+  effectiveTo: timestamp("effective_to"),
+  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
+export type OrgMatchRate = typeof orgMatchRatesTable.$inferSelect;

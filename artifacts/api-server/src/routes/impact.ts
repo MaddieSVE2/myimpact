@@ -5,13 +5,14 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, journalEntriesTable, recurringTemplatesTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, sql, isNotNull } from "drizzle-orm";
+import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable } from "@workspace/db";
+import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
 import React from "react";
+import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 
 const router: IRouter = Router();
 
@@ -984,6 +985,74 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     .returning();
 
   res.json(serializeTemplate(updated as TemplateRow, new Date()));
+});
+
+router.get("/match-info", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.json({ org: null, matches: [] });
+      return;
+    }
+
+    const org = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, membership.orgId),
+      columns: { id: true, name: true },
+    });
+    if (!org) {
+      res.json({ org: null, matches: [] });
+      return;
+    }
+
+    const rates = await db.query.orgMatchRatesTable.findMany({
+      where: eq(orgMatchRatesTable.orgId, org.id),
+      orderBy: (t) => [asc(t.effectiveFrom)],
+    });
+
+    if (rates.length === 0) {
+      res.json({ org: { id: org.id, name: org.name }, matches: [] });
+      return;
+    }
+
+    const records = await db
+      .select({
+        id: impactRecordsTable.id,
+        userId: impactRecordsTable.userId,
+        createdAt: impactRecordsTable.createdAt,
+        resultJson: impactRecordsTable.resultJson,
+      })
+      .from(impactRecordsTable)
+      .where(eq(impactRecordsTable.userId, userId));
+
+    const recordsForMatch: RecordForMatch[] = records.map(r => {
+      const raw = r.resultJson as Record<string, unknown> | null;
+      const totalHours = raw && typeof raw.totalHours === "number" ? raw.totalHours : 0;
+      const donationsValue = raw && typeof raw.donationsValue === "number" ? raw.donationsValue : 0;
+      return { id: r.id, userId: r.userId, createdAt: r.createdAt, totalHours, donationsValue };
+    });
+
+    const matches = computeMatchesForRecords(recordsForMatch, rates);
+
+    res.json({
+      org: { id: org.id, name: org.name },
+      matches: matches
+        .filter(m => m.matchedValue > 0)
+        .map(m => ({
+          recordId: m.recordId,
+          matchedValue: m.matchedValue,
+          hoursMatched: m.hoursMatched,
+          donationsMatched: m.donationsMatched,
+          cappedAtMonthlyLimit: m.cappedAtMonthlyLimit,
+        })),
+    });
+  } catch (err) {
+    console.error("Match-info error:", err);
+    res.status(500).json({ error: "Failed to load match information" });
+  }
 });
 
 async function renderPdf(impactResult: unknown, userName: string, date: string): Promise<Buffer> {

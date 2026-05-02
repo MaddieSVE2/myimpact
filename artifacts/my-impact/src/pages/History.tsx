@@ -4,13 +4,13 @@ import {
   getGetImpactHistoryQueryKey,
 } from "@workspace/api-client-react";
 import type { ImpactResult, SelectedActivity, SavedImpact } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -173,6 +173,23 @@ export default function History() {
   const updateRecord = useUpdateImpactRecord();
   const deleteRecord = useDeleteImpactRecord();
   const deleteAll = useDeleteAllImpactRecords();
+
+  type MatchInfoEntry = { recordId: string; matchedValue: number; hoursMatched: number; donationsMatched: number; cappedAtMonthlyLimit: boolean };
+  type MatchInfoResponse = { org: { id: string; name: string } | null; matches: MatchInfoEntry[] };
+  const { data: matchInfo } = useQuery<MatchInfoResponse>({
+    queryKey: ["impact-match-info", user?.id ?? ""],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/impact/match-info`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load match info");
+      return res.json();
+    },
+  });
+  const matchByRecordId = new Map<string, MatchInfoEntry>();
+  (matchInfo?.matches ?? []).forEach(m => matchByRecordId.set(m.recordId, m));
+  const orgName = matchInfo?.org?.name ?? null;
+  const lifetimeMatched = (matchInfo?.matches ?? []).reduce((s, m) => s + m.matchedValue, 0);
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -375,10 +392,16 @@ export default function History() {
             >
               <div className="bg-white border border-border rounded-xl p-5">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">All-time total</p>
-                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(allTimeTotal)}</p>
+                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(allTimeTotal + lifetimeMatched)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Across {records.length} {records.length === 1 ? "record" : "records"}
                 </p>
+                {lifetimeMatched > 0 && orgName && (
+                  <p className="text-[11px] text-primary font-semibold mt-1.5 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" aria-hidden="true" />
+                    {formatCurrency(lifetimeMatched)} matched by {orgName}
+                  </p>
+                )}
               </div>
               <div className="bg-white border border-border rounded-xl p-5">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
@@ -445,6 +468,10 @@ export default function History() {
               const isEditing = editingId === record.id;
               const isDeleting = deletingId === record.id;
               const activityCount = record.impactResult?.activityBreakdowns?.length ?? 0;
+              const match = matchByRecordId.get(record.id);
+              const loggedValue = record.impactResult?.totalValue ?? 0;
+              const matchedValue = match?.matchedValue ?? 0;
+              const totalWithMatch = loggedValue + matchedValue;
               return (
                 <motion.div
                   key={record.id}
@@ -521,13 +548,38 @@ export default function History() {
                             <span className="ml-2 text-muted-foreground/60">· {activityCount} {activityCount === 1 ? "activity" : "activities"}</span>
                           )}
                         </p>
+                        {match && orgName && (
+                          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
+                              Matched by {orgName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Logged {formatCurrency(loggedValue)} · Matched {formatCurrency(matchedValue)} · Total {formatCurrency(totalWithMatch)}
+                            </span>
+                            {match.cappedAtMonthlyLimit && (
+                              <span className="text-[10px] text-amber-600">· monthly cap reached</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </button>
 
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <p className="text-lg font-display font-bold text-foreground">
-                        {formatCurrency(record.impactResult?.totalValue ?? 0)}
-                      </p>
+                      {match ? (
+                        <div className="text-right">
+                          <p className="text-lg font-display font-bold text-foreground leading-tight">
+                            {formatCurrency(totalWithMatch)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">
+                            inc. <span className="text-primary font-semibold">{formatCurrency(matchedValue)}</span> matched
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-display font-bold text-foreground">
+                          {formatCurrency(loggedValue)}
+                        </p>
+                      )}
 
                       {/* Edit button */}
                       {!isEditing && !isDeleting && (
