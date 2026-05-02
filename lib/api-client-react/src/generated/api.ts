@@ -18,6 +18,7 @@ import type {
 
 import type {
   ActivitiesResponse,
+  AnnualRecapResponse,
   DeleteAllImpactRecordsResponse,
   DeleteImpactRecordResponse,
   GetImpactHistoryParams,
@@ -804,6 +805,93 @@ export const useDeleteImpactRecord = <
 > => {
   return useMutation(getDeleteImpactRecordMutationOptions(options));
 };
+
+/**
+ * @summary Get an annual recap (Spotify-Wrapped-style) for the authenticated user
+ */
+export const getGetAnnualRecapUrl = (year: number) => {
+  return `/api/impact/recap/${year}`;
+};
+
+export const getAnnualRecap = async (
+  year: number,
+  options?: RequestInit,
+): Promise<AnnualRecapResponse> => {
+  return customFetch<AnnualRecapResponse>(getGetAnnualRecapUrl(year), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAnnualRecapQueryKey = (year: number) => {
+  return [`/api/impact/recap/${year}`] as const;
+};
+
+export const getGetAnnualRecapQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAnnualRecap>>,
+  TError = ErrorType<void>,
+>(
+  year: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnnualRecap>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAnnualRecapQueryKey(year);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnnualRecap>>> = ({
+    signal,
+  }) => getAnnualRecap(year, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!year,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAnnualRecap>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAnnualRecapQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAnnualRecap>>
+>;
+export type GetAnnualRecapQueryError = ErrorType<void>;
+
+/**
+ * @summary Get an annual recap (Spotify-Wrapped-style) for the authenticated user
+ */
+
+export function useGetAnnualRecap<
+  TData = Awaited<ReturnType<typeof getAnnualRecap>>,
+  TError = ErrorType<void>,
+>(
+  year: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnnualRecap>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAnnualRecapQueryOptions(year, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get current user profile

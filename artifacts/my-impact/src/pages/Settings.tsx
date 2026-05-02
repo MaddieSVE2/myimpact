@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import PublicProfileSettings from "./PublicProfileSettings";
 import { StorageUsageBar } from "@/components/Attachments";
+import { getRecapYear, clearRecapViewed } from "@/lib/recap-utils";
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
@@ -216,6 +217,27 @@ export default function Settings() {
 
       {/* Public profile section */}
       <PublicProfileSettings />
+
+      {/* Annual recap section */}
+      <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Year in impact</h2>
+        </div>
+        <div className="py-1">
+          <Link
+            href={`/recap?year=${getRecapYear()}`}
+            onClick={() => clearRecapViewed(getRecapYear())}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
+          >
+            <div>
+              <p className="text-sm font-medium text-foreground">View my {getRecapYear()} recap</p>
+              <p className="text-xs text-muted-foreground mt-0.5">A Spotify-style story of your year, with a shareable card.</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
 
       {/* App section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-8 overflow-hidden">

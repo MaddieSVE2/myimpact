@@ -14,7 +14,6 @@ export interface ActivityItem {
   name: string;
   shortName: string;
   category: string;
-  group?: string;
   proxy: string;
   proxyYear: string;
   unit: string;
@@ -119,11 +118,6 @@ export interface SavedImpact {
   period?: string | null;
   createdAt: string;
   impactResult: ImpactResult;
-  activities: SelectedActivity[];
-  region?: string | null;
-  outwardCode?: string | null;
-  lat?: number | null;
-  lng?: number | null;
 }
 
 export interface ImpactHistoryResponse {
@@ -186,6 +180,57 @@ export interface DeleteImpactRecordResponse {
 
 export interface DeleteAllImpactRecordsResponse {
   success: boolean;
+}
+
+export interface AnnualRecapTopActivity {
+  activityId: string;
+  activityName: string;
+  category: string;
+  sdg: string;
+  sdgColor: string;
+  impactValue: number;
+  hours: number;
+}
+
+export interface AnnualRecapTopSdg {
+  sdg: string;
+  sdgColor: string;
+  value: number;
+}
+
+export interface AnnualRecapBiggestSession {
+  recordId: string;
+  name: string;
+  period?: string | null;
+  totalValue: number;
+  totalHours: number;
+  createdAt: string;
+}
+
+export interface AnnualRecapJournalHighlight {
+  id: string;
+  text: string;
+  prompt?: string | null;
+  createdAt: string;
+}
+
+export interface AnnualRecapResponse {
+  year: number;
+  hasEnoughActivity: boolean;
+  recordCount: number;
+  totalValue: number;
+  totalHours: number;
+  totalDonations: number;
+  categoriesCount: number;
+  sdgsCount: number;
+  topActivity?: AnnualRecapTopActivity | null;
+  topSdg?: AnnualRecapTopSdg | null;
+  biggestSession?: AnnualRecapBiggestSession | null;
+  journalHighlight?: AnnualRecapJournalHighlight | null;
+  milestonesEarnedCount: number;
+  firstRecordAt?: string | null;
+  lifetimeRecordCount: number;
+  lifetimeTotalValue: number;
 }
 
 export type GetImpactHistoryParams = {

@@ -44,6 +44,7 @@ import Admin from "@/pages/Admin";
 import Contact from "@/pages/Contact";
 import Feedback from "@/pages/Feedback";
 import PublicProfile from "@/pages/PublicProfile";
+import AnnualRecap from "@/pages/AnnualRecap";
 
 const queryClient = new QueryClient();
 
@@ -246,6 +247,9 @@ function AppRouter() {
             </Route>
             <Route path="/milestones">
               {() => <PrivateRoute component={Milestones} />}
+            </Route>
+            <Route path="/recap">
+              {() => <PrivateRoute component={AnnualRecap} />}
             </Route>
             <Route path="/badges">
               {() => <Redirect to="/milestones" />}

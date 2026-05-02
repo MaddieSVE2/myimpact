@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import RecapBanner from "@/components/RecapBanner";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -260,6 +261,13 @@ export default function Intro() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
+      {/* ── ANNUAL RECAP DISCOVERY ── */}
+      <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <RecapBanner variant="hero" />
+        </div>
+      </div>
+
       {/* ── HERO ── */}
       <section className="mi-hero">
         {/* Faces image — blended into right side of hero */}

@@ -180,6 +180,28 @@ paths:
           description: Not authenticated
         "404":
           description: Not found
+  /impact/recap/{year}:
+    get:
+      operationId: getAnnualRecap
+      tags: [impact]
+      summary: Get an annual recap (Spotify-Wrapped-style) for the authenticated user
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Annual recap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualRecapResponse"
+        "401":
+          description: Not authenticated
   /profile:
     get:
       operationId: getProfile
@@ -652,3 +674,135 @@ components:
           type: boolean
       required:
         - success
+    AnnualRecapTopActivity:
+      type: object
+      properties:
+        activityId:
+          type: string
+        activityName:
+          type: string
+        category:
+          type: string
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+        impactValue:
+          type: number
+        hours:
+          type: number
+      required:
+        - activityId
+        - activityName
+        - category
+        - sdg
+        - sdgColor
+        - impactValue
+        - hours
+    AnnualRecapTopSdg:
+      type: object
+      properties:
+        sdg:
+          type: string
+        sdgColor:
+          type: string
+        value:
+          type: number
+      required:
+        - sdg
+        - sdgColor
+        - value
+    AnnualRecapBiggestSession:
+      type: object
+      properties:
+        recordId:
+          type: string
+        name:
+          type: string
+        period:
+          type: string
+          nullable: true
+        totalValue:
+          type: number
+        totalHours:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - recordId
+        - name
+        - totalValue
+        - totalHours
+        - createdAt
+    AnnualRecapJournalHighlight:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        prompt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - text
+        - createdAt
+    AnnualRecapResponse:
+      type: object
+      properties:
+        year:
+          type: integer
+        hasEnoughActivity:
+          type: boolean
+        recordCount:
+          type: integer
+        totalValue:
+          type: number
+        totalHours:
+          type: number
+        totalDonations:
+          type: number
+        categoriesCount:
+          type: integer
+        sdgsCount:
+          type: integer
+        topActivity:
+          oneOf:
+            - $ref: "#/components/schemas/AnnualRecapTopActivity"
+            - type: "null"
+        topSdg:
+          oneOf:
+            - $ref: "#/components/schemas/AnnualRecapTopSdg"
+            - type: "null"
+        biggestSession:
+          oneOf:
+            - $ref: "#/components/schemas/AnnualRecapBiggestSession"
+            - type: "null"
+        journalHighlight:
+          oneOf:
+            - $ref: "#/components/schemas/AnnualRecapJournalHighlight"
+            - type: "null"
+        milestonesEarnedCount:
+          type: integer
+        firstRecordAt:
+          type: string
+          nullable: true
+        lifetimeRecordCount:
+          type: integer
+        lifetimeTotalValue:
+          type: number
+      required:
+        - year
+        - hasEnoughActivity
+        - recordCount
+        - totalValue
+        - totalHours
+        - totalDonations
+        - categoriesCount
+        - sdgsCount
+        - milestonesEarnedCount
+        - lifetimeRecordCount
+        - lifetimeTotalValue

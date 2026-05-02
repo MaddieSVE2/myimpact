@@ -34,6 +34,7 @@ A 3-step wizard that calculates a user's personal social value in GBP:
 **Additional pages**:
 - `/history` — progress tracker showing impact over time
 - `/suggestions` — personalised activity ideas to boost impact
+- `/recap` — Spotify-Wrapped-style annual recap (year-in-review). Authenticated. Optional `?year=YYYY` query param. 6–8 step tap-to-advance experience with PNG share card export (portrait + landscape). Backed by `GET /api/impact/recap/{year}` which aggregates totals, top SDG, top activity, biggest session, and journal highlight. Discovery banners shown on home (`Intro`) and `/profile` during the Nov 15 – Jan 31 window; dismissable per year via localStorage; always re-openable from `/settings`. Respects a per-user £/hours toggle (`mi-recap-show-money` localStorage key).
 
 ### Calculation logic (`artifacts/api-server/src/lib/impactData.ts`)
 

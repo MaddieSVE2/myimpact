@@ -93,7 +93,6 @@ export const GetActivitiesResponse = zod.object({
       name: zod.string(),
       shortName: zod.string(),
       category: zod.string(),
-      group: zod.string().optional(),
       proxy: zod.string(),
       proxyYear: zod.string(),
       unit: zod.string(),
@@ -336,6 +335,76 @@ export const DeleteImpactRecordParams = zod.object({
 
 export const DeleteImpactRecordResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Get an annual recap (Spotify-Wrapped-style) for the authenticated user
+ */
+export const GetAnnualRecapParams = zod.object({
+  year: zod.coerce.number(),
+});
+
+export const GetAnnualRecapResponse = zod.object({
+  year: zod.number(),
+  hasEnoughActivity: zod.boolean(),
+  recordCount: zod.number(),
+  totalValue: zod.number(),
+  totalHours: zod.number(),
+  totalDonations: zod.number(),
+  categoriesCount: zod.number(),
+  sdgsCount: zod.number(),
+  topActivity: zod
+    .union([
+      zod.object({
+        activityId: zod.string(),
+        activityName: zod.string(),
+        category: zod.string(),
+        sdg: zod.string(),
+        sdgColor: zod.string(),
+        impactValue: zod.number(),
+        hours: zod.number(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  topSdg: zod
+    .union([
+      zod.object({
+        sdg: zod.string(),
+        sdgColor: zod.string(),
+        value: zod.number(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  biggestSession: zod
+    .union([
+      zod.object({
+        recordId: zod.string(),
+        name: zod.string(),
+        period: zod.string().nullish(),
+        totalValue: zod.number(),
+        totalHours: zod.number(),
+        createdAt: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  journalHighlight: zod
+    .union([
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+        prompt: zod.string().nullish(),
+        createdAt: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  milestonesEarnedCount: zod.number(),
+  firstRecordAt: zod.string().nullish(),
+  lifetimeRecordCount: zod.number(),
+  lifetimeTotalValue: zod.number(),
 });
 
 /**

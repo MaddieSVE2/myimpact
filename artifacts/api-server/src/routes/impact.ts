@@ -5,8 +5,8 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, sql } from "drizzle-orm";
+import { db, impactRecordsTable, orgMembersTable, journalEntriesTable } from "@workspace/db";
+import { eq, desc, inArray, and, gte, lte, sql, isNotNull } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -453,6 +453,226 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
     res.status(500).json({ error: "Failed to compute org stats" });
   }
 });
+
+interface RecapBreakdownEntry {
+  activityId?: string;
+  activityName?: string;
+  category?: string;
+  sdg?: string;
+  sdgColor?: string;
+  impactValue?: number;
+  hours?: number;
+}
+
+interface RecapResultJson {
+  totalValue?: number;
+  totalHours?: number;
+  donationsValue?: number;
+  activityBreakdowns?: RecapBreakdownEntry[];
+}
+
+function parseRecapResult(raw: unknown): RecapResultJson {
+  if (raw === null || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  return {
+    totalValue: typeof r.totalValue === "number" ? r.totalValue : 0,
+    totalHours: typeof r.totalHours === "number" ? r.totalHours : 0,
+    donationsValue: typeof r.donationsValue === "number" ? r.donationsValue : 0,
+    activityBreakdowns: Array.isArray(r.activityBreakdowns) ? (r.activityBreakdowns as RecapBreakdownEntry[]) : [],
+  };
+}
+
+router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const yearParam = parseInt(req.params.year as string, 10);
+    if (isNaN(yearParam) || yearParam < 2000 || yearParam > 2100) {
+      res.status(400).json({ error: "Invalid year" });
+      return;
+    }
+
+    const start = new Date(Date.UTC(yearParam, 0, 1, 0, 0, 0));
+    const end = new Date(Date.UTC(yearParam + 1, 0, 1, 0, 0, 0));
+
+    const yearRecords = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(
+        and(
+          eq(impactRecordsTable.userId, userId),
+          gte(impactRecordsTable.createdAt, start),
+          lte(impactRecordsTable.createdAt, end),
+        ),
+      )
+      .orderBy(desc(impactRecordsTable.createdAt));
+
+    const lifetimeRecords = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(eq(impactRecordsTable.userId, userId))
+      .orderBy(impactRecordsTable.createdAt);
+
+    let totalValue = 0;
+    let totalHours = 0;
+    let totalDonations = 0;
+
+    const activityMap = new Map<string, { activityId: string; activityName: string; category: string; sdg: string; sdgColor: string; impactValue: number; hours: number }>();
+    const sdgMap = new Map<string, { sdg: string; sdgColor: string; value: number }>();
+    const categories = new Set<string>();
+
+    let biggestSession: { recordId: string; name: string; period: string | null; totalValue: number; totalHours: number; createdAt: string } | null = null;
+
+    for (const r of yearRecords) {
+      const result = parseRecapResult(r.resultJson);
+      const rTotal = result.totalValue ?? 0;
+      const rHours = result.totalHours ?? 0;
+      totalValue += rTotal;
+      totalHours += rHours;
+      totalDonations += result.donationsValue ?? 0;
+
+      if (!biggestSession || rTotal > biggestSession.totalValue) {
+        biggestSession = {
+          recordId: String(r.id),
+          name: r.name,
+          period: r.periodLabel ?? null,
+          totalValue: Math.round(rTotal * 100) / 100,
+          totalHours: rHours,
+          createdAt: r.createdAt.toISOString(),
+        };
+      }
+
+      for (const b of result.activityBreakdowns ?? []) {
+        const aId = b.activityId ?? b.activityName ?? "unknown";
+        const aName = b.activityName ?? aId;
+        const cat = b.category ?? "Other";
+        const sdg = b.sdg ?? "";
+        const sdgColor = b.sdgColor ?? "#999";
+        const impactValue = typeof b.impactValue === "number" ? b.impactValue : 0;
+        const hours = typeof b.hours === "number" ? b.hours : 0;
+
+        if (cat) categories.add(cat);
+
+        const existing = activityMap.get(aId);
+        if (existing) {
+          existing.impactValue += impactValue;
+          existing.hours += hours;
+        } else {
+          activityMap.set(aId, {
+            activityId: aId,
+            activityName: aName,
+            category: cat,
+            sdg,
+            sdgColor,
+            impactValue,
+            hours,
+          });
+        }
+
+        if (sdg) {
+          const sdgEntry = sdgMap.get(sdg);
+          if (sdgEntry) {
+            sdgEntry.value += impactValue;
+          } else {
+            sdgMap.set(sdg, { sdg, sdgColor, value: impactValue });
+          }
+        }
+      }
+    }
+
+    const topActivityRaw = Array.from(activityMap.values()).sort((a, b) => b.impactValue - a.impactValue)[0] ?? null;
+    const topActivity = topActivityRaw
+      ? {
+          ...topActivityRaw,
+          impactValue: Math.round(topActivityRaw.impactValue * 100) / 100,
+          hours: Math.round(topActivityRaw.hours * 100) / 100,
+        }
+      : null;
+
+    const topSdgRaw = Array.from(sdgMap.values()).sort((a, b) => b.value - a.value)[0] ?? null;
+    const topSdg = topSdgRaw
+      ? { ...topSdgRaw, value: Math.round(topSdgRaw.value * 100) / 100 }
+      : null;
+
+    // Journal highlight — pick the longest reflection or entry text from the year
+    const yearJournals = await db
+      .select()
+      .from(journalEntriesTable)
+      .where(
+        and(
+          eq(journalEntriesTable.userId, userId),
+          gte(journalEntriesTable.createdAt, start),
+          lte(journalEntriesTable.createdAt, end),
+          isNotNull(journalEntriesTable.text),
+        ),
+      );
+
+    type JournalRow = typeof journalEntriesTable.$inferSelect;
+    const journalsRanked: JournalRow[] = yearJournals
+      .filter((j: JournalRow) => (j.text ?? "").trim().length >= 30)
+      .sort((a: JournalRow, b: JournalRow) => (b.text?.length ?? 0) - (a.text?.length ?? 0));
+
+    let journalHighlight: { id: string; text: string; prompt: string | null; createdAt: string } | null = null;
+    const picked = journalsRanked[0];
+    if (picked) {
+      const rawText = picked.text ?? "";
+      const truncated = rawText.length > 320 ? rawText.slice(0, 317).trimEnd() + "…" : rawText;
+      journalHighlight = {
+        id: String(picked.id),
+        text: truncated,
+        prompt: picked.prompt ?? null,
+        createdAt: picked.createdAt.toISOString(),
+      };
+    }
+
+    let lifetimeTotalValue = 0;
+    for (const r of lifetimeRecords) {
+      const result = parseRecapResult(r.resultJson);
+      lifetimeTotalValue += result.totalValue ?? 0;
+    }
+    const firstRecord = lifetimeRecords[0] ?? null;
+
+    const milestonesEarnedCount = computeMilestoneCount(totalValue, totalHours, categories.size);
+
+    const hasEnoughActivity = yearRecords.length > 0 && totalValue > 0;
+
+    res.json({
+      year: yearParam,
+      hasEnoughActivity,
+      recordCount: yearRecords.length,
+      totalValue: Math.round(totalValue * 100) / 100,
+      totalHours: Math.round(totalHours * 100) / 100,
+      totalDonations: Math.round(totalDonations * 100) / 100,
+      categoriesCount: categories.size,
+      sdgsCount: sdgMap.size,
+      topActivity,
+      topSdg,
+      biggestSession,
+      journalHighlight,
+      milestonesEarnedCount,
+      firstRecordAt: firstRecord ? firstRecord.createdAt.toISOString() : null,
+      lifetimeRecordCount: lifetimeRecords.length,
+      lifetimeTotalValue: Math.round(lifetimeTotalValue * 100) / 100,
+    });
+  } catch (err) {
+    console.error("Recap generation error:", err);
+    res.status(500).json({ error: "Failed to generate recap" });
+  }
+});
+
+function computeMilestoneCount(totalValue: number, totalHours: number, categoryCount: number): number {
+  let count = 0;
+  if (totalValue >= 100) count++;
+  if (totalValue >= 500) count++;
+  if (totalValue >= 1000) count++;
+  if (totalValue >= 5000) count++;
+  if (totalValue >= 10000) count++;
+  if (totalHours >= 10) count++;
+  if (totalHours >= 50) count++;
+  if (totalHours >= 100) count++;
+  if (categoryCount >= 3) count++;
+  if (categoryCount >= 4) count++;
+  return count;
+}
 
 async function renderPdf(impactResult: unknown, userName: string, date: string): Promise<Buffer> {
   const pdfData = parsePdfData(impactResult, userName, date);

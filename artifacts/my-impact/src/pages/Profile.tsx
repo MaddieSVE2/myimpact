@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
+import RecapBanner from "@/components/RecapBanner";
 
 const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },
@@ -128,9 +129,13 @@ export default function Profile() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-foreground mb-1">My profile</h1>
-      <p className="text-muted-foreground text-sm mb-8">
+      <p className="text-muted-foreground text-sm mb-6">
         Update your profile at any time. This information helps us personalise your experience.
       </p>
+
+      <div className="mb-6">
+        <RecapBanner variant="card" />
+      </div>
 
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-8">
         <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100">
