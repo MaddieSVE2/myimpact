@@ -6,18 +6,24 @@
   --color-bg: var(--slide-bg);
   --color-text: var(--slide-text);
   --color-muted: var(--slide-muted);
+  --color-slate: var(--slide-slate);
+  --color-sky: var(--slide-sky);
+  --color-card: var(--slide-card);
   --font-display: var(--font-display-family);
   --font-body: var(--font-body-family);
 }
 
 :root {
-  /* Replace these with brand colors */
-  --slide-primary: #4f46e5;
-  --slide-accent: #06b6d4;
-  --slide-bg: #f8fafc;
-  --slide-text: #0f172a;
-  --slide-muted: #64748b;
-  --font-display-family: "Inter", system-ui, sans-serif;
+  /* My Impact brand palette */
+  --slide-primary: #E8633A;     /* primary orange */
+  --slide-accent: #B5BE2E;      /* olive */
+  --slide-bg: #F7F5EF;          /* warm cream */
+  --slide-text: #213547;        /* dark navy */
+  --slide-muted: #7E8FAD;       /* slate */
+  --slide-slate: #213547;
+  --slide-sky: #A8C8DA;         /* light blue */
+  --slide-card: #FFFFFF;
+  --font-display-family: "Fraunces", Georgia, serif;
   --font-body-family: "Inter", system-ui, sans-serif;
   color-scheme: light;
 }
@@ -33,6 +39,7 @@ body,
 body {
   background: var(--slide-bg);
   color: var(--slide-text);
+  font-family: var(--font-body-family);
 }
 
 .slide {
