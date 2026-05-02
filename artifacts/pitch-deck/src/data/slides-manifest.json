@@ -76,20 +76,12 @@
                 "position": 10,
                 "filepath": "src/pages/slides/Methodology.tsx",
                 "title": "The method",
-                "description": "Grounded in evidence · SVE, SDGs, and verified charity data.",
-                "speakerNotes": ""
-        },
-        {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0011",
-                "position": 11,
-                "filepath": "src/pages/slides/AboutSVE.tsx",
-                "title": "About the Social Value Engine",
-                "description": "The accredited UK methodology behind My Impact.",
+                "description": "Grounded in evidence · powered by the Social Value Engine, the UK's accredited platform for social value measurement, mapped to the UN SDGs, with verified local charity data.",
                 "speakerNotes": ""
         },
         {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
-                "position": 12,
+                "position": 11,
                 "filepath": "src/pages/slides/GetInvolved.tsx",
                 "title": "Get involved",
                 "description": "Closing · try it, partner with us.",
