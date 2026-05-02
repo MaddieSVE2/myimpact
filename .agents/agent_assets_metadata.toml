@@ -23,3 +23,27 @@ id = "-c4lkqNDuCuZSV6KWeRB7"
 uri = "file://My Impact - Full Feature List.docx"
 type = "word_document"
 title = "My Impact — Full Feature List (updated)"
+
+[[outputs]]
+id = "3CGeEUGYYhBHhLiUrA0Fe"
+uri = "file://artifacts/api-server/backups/myimpact-db-backup-2026-05-02T0803.sql.tar.gz"
+type = "unspecified"
+title = "My Impact DB backup — 2026-05-02 08:03 UTC (gzipped SQL)"
+
+[[outputs]]
+id = "msVOrUykFWOjg_V5C1yGH"
+uri = "file://myimpact-db-backup-2026-05-02T0803.sql.tar.gz"
+type = "unspecified"
+title = "My Impact DB backup — 2026-05-02 08:03 UTC (gzipped SQL)"
+
+[[outputs]]
+id = "9DIlfovuksPqXsDFNL3us"
+uri = "file://myimpact-db-backup-2026-05-02T0808.sql.tar.gz"
+type = "unspecified"
+title = "My Impact DB backup — 2026-05-02 08:08 UTC (gzipped SQL)"
+
+[[outputs]]
+id = "ieFK-CsJyp7pavoPyHQQV"
+uri = "file://myimpact-db-backup-2026-05-02T0814.sql.gz"
+type = "unspecified"
+title = "My Impact DB backup — 2026-05-02 08:14 UTC (gzipped SQL)"

@@ -7,9 +7,12 @@
     "dev": "NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "seed:demo": "tsx ./src/scripts/seed-demo.ts"
+    "seed:demo": "tsx ./src/scripts/seed-demo.ts",
+    "backup:db": "tsx ./src/scripts/backup-db.ts",
+    "backup:fetch": "tsx ./src/scripts/fetch-backup.ts"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@react-pdf/renderer": "^4.3.2",
     "@types/react": "catalog:",
     "@workspace/api-zod": "workspace:*",
