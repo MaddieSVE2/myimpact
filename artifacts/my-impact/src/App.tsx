@@ -34,6 +34,7 @@ import OrgDemoPage from "@/pages/OrgDemoPage";
 import Login from "@/pages/Login";
 import AuthConfirm from "@/pages/AuthConfirm";
 import About from "@/pages/About";
+import Methodology from "@/pages/Methodology";
 import WhatsNew from "@/pages/WhatsNew";
 import Privacy from "@/pages/Privacy";
 import Settings from "@/pages/Settings";
@@ -221,6 +222,7 @@ function AppRouter() {
             <Route path="/login" component={Login} />
             <Route path="/auth/confirm" component={AuthConfirm} />
             <Route path="/about" component={About} />
+            <Route path="/methodology" component={Methodology} />
             <Route path="/whats-new" component={WhatsNew} />
             <Route path="/privacy" component={Privacy} />
 

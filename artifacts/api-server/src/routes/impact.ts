@@ -11,6 +11,7 @@ import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
+import { buildEvidencePackDocument } from "../lib/evidencePackPdf.js";
 import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
@@ -1095,6 +1096,25 @@ function sendPdfBuffer(res: import("express").Response, buffer: Buffer): void {
   res.setHeader("Content-Length", buffer.length);
   res.end(buffer);
 }
+
+router.post("/evidence-pack", async (_req, res) => {
+  try {
+    const date = new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const doc = buildEvidencePackDocument({ date });
+    const buffer = await renderToBuffer(doc);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="my-impact-evidence-pack.pdf"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.end(buffer);
+  } catch (err) {
+    console.error("Evidence pack generation error:", err);
+    res.status(500).json({ error: "Failed to generate evidence pack" });
+  }
+});
 
 router.post("/pdf", async (req, res) => {
   try {

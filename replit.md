@@ -1,43 +1,31 @@
-# Workspace
+# Overview
 
-## Overview
+This pnpm workspace monorepo hosts the **My Impact** web application, a personal social value calculator designed for users aged 16-35. It leverages Social Value Engine proxy library data to help users quantify their positive societal contributions in monetary terms. The project aims to empower individuals to understand and increase their social impact, offering features like activity tracking, impact calculation, historical analysis, and personalized suggestions.
 
-pnpm workspace monorepo using TypeScript. Hosts the **My Impact** web application — a personal social value calculator aimed at younger users (16-35), powered by Social Value Engine proxy library data.
+The core application provides a 3-step wizard for calculating personal social value, including free-text actions, selection from predefined activities, and contributions like donations and volunteering hours. Results display total social value, breakdown metrics (Impact, Contribution, Donations, Personal Development), and visualizations by activity and Sustainable Development Goals (SDGs). The platform also includes features for calendar synchronization, historical tracking, personalized activity suggestions, an annual recap, and an organizational portal for managers.
 
-## Stack
+# User Preferences
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
-- **Frontend**: React + Vite + Tailwind CSS + framer-motion + recharts
+I prefer iterative development and welcome early feedback. Please use clear and concise language in your explanations. For significant changes or architectural decisions, please ask for approval before proceeding. Ensure all code is well-documented and follows best practices for maintainability and readability. Do not make changes to the `lib/api-spec/openapi.yaml` file.
 
-## My Impact App
+# System Architecture
 
-A 3-step wizard that calculates a user's personal social value in GBP:
+The project is structured as a pnpm monorepo using TypeScript (v5.9). The backend is an Express 5 API server, utilizing PostgreSQL with Drizzle ORM for data persistence and Zod for validation. API client code is generated from an OpenAPI spec using Orval. The frontend is built with React, Vite, Tailwind CSS, framer-motion, and recharts, presenting a 3-step wizard UI.
 
-1. **Actions** — freetext description of what you do for others
-2. **Activities** — select from Social Value Engine proxy library (20+ activities across 5 categories)
-3. **Contributions** — donations (£) and additional volunteering hours
+**Core Features & Implementations:**
 
-**Results page** shows:
-- Total social value and 4 breakdown metrics (Impact, Contribution, Donations, Personal Development)
-- Donut charts by activity and by SDG (Sustainable Development Goal)
-- Plain-English accordion explanations of each metric
-- Save to history and get activity suggestions
+*   **Impact Calculation:** Uses `artifacts/api-server/src/lib/impactData.ts` to calculate social value based on activity quantity (Social Value Engine proxy), total hours (£12.21/hour), direct donations, and a skill gain formula for personal development value.
+*   **Authentication:** Implemented via magic link authentication using Resend. A two-step token design prevents bot-burning, and sessions are managed with JWTs stored in `httpOnly` cookies. User data and token states are stored in `users`, `magic_tokens`, and `user_profiles` tables. Protected routes exist on both frontend and backend.
+*   **Calendar Sync:** Integrates with Google Calendar and Microsoft Outlook via Replit Connectors. Tokens are obtained on demand and not stored. A scheduled worker syncs events, upserts them into `calendar_events`, and prunes old data. A home page widget displays upcoming events, and an in-app prompt encourages logging matched events.
+*   **Public Profile:** Allows users to create shareable public profiles at `/profile/:slug`. Settings are managed through `public_profiles` table, with API routes for managing visibility and content. Slug generation adheres to specific rules, and the public endpoint is rate-limited.
+*   **Sidekick AI:** A collapsible, context-aware AI assistant powered by OpenAI via Replit AI Integrations. It provides assistance with a warm, encouraging tone, passing relevant user data (impact, activities, SDGs) to the AI.
+*   **Email Systems:**
+    *   **Monthly Digest:** Personalized recap emails sent via Resend to opted-in users covering monthly impact. Uses `email_digest_opt_in` and `unsubscribe_token` in the `users` table. Dispatched by `send-monthly-digest.ts`.
+    *   **Onboarding Sequence:** Three transactional emails (Day 1, 7, 30) sent via Resend after magic-link sign-up, tailored to user engagement. Managed by `onboardingEmails.ts` and `onboarding-emails.ts`.
+*   **Data Structure:** A monorepo with `artifacts/api-server` for the backend, `artifacts/my-impact` for the frontend, and `lib/` for shared components like API specifications, generated clients, and database schemas.
+*   **Deployment:** Utilizes Replit Scheduled Deployments for recurring tasks like weekly database backups and monthly email digests.
 
-**Calendar sync**:
-- Settings → "Calendar sync" lets users connect Google Calendar or Microsoft Outlook via Replit Connectors (`google-calendar`, `outlook`) — no raw client secrets in this repo.
-- One source per provider per user; user picks a calendar and a comma-separated title filter (e.g. "volunteer, mentoring").
-- Tokens are obtained on demand from the connector proxy and never stored. The schema (`lib/db/src/schema/calendar.ts`) reserves encrypted token columns for a future per-user OAuth flow; the encryption helper at `artifacts/api-server/src/lib/encryption.ts` (AES-256-GCM, key from `CALENDAR_TOKEN_KEY` or `SESSION_SECRET`) is wired and ready when that lands.
-- Worker `pnpm --filter @workspace/api-server run calendar:scheduled` syncs all sources (window: −24h → +30d), upserts into `calendar_events`, prunes events older than 60 days. Recommended cadence: every 15-30 min via Replit Scheduled Deployment.
-- Home page widget (`CalendarHomeWidget`) shows the next 30 days of matched events for logged-in users, plus an in-app "Did you log this?" prompt 2h after each matched event ends. The "Log it" CTA navigates to `/wizard/actions?fromCalendar=<id>&title=<…>&hours=<…>`.
-- Disconnect deletes the source and (when no other source uses the connector) attempts a best-effort token revoke; for Outlook we surface the manual revoke URL.
+# External Dependencies
 
 **Additional pages**:
 - `/history` — progress tracker showing impact over time, with employer match overlay (matched £ per record + lifetime matched stat)
@@ -312,3 +300,19 @@ and `artifacts/api-server/src/scripts/onboarding-emails.ts` (dispatcher).
 - **Run**: `pnpm --filter @workspace/api-server run onboarding:emails`. Intended
   to be wired up as a daily Scheduled Deployment (same setup as the weekly
   backup, but cron `0 9 * * *`).
+
+*   **Monorepo Tool:** pnpm workspaces
+*   **API Framework:** Express 5
+*   **Database:** PostgreSQL
+*   **ORM:** Drizzle ORM
+*   **Validation:** Zod (`zod/v4`), `drizzle-zod`
+*   **API Codegen:** Orval (from OpenAPI spec)
+*   **Build Tool:** esbuild
+*   **Frontend Library:** React
+*   **Frontend Build Tool:** Vite
+*   **Styling:** Tailwind CSS
+*   **Animation Library:** framer-motion
+*   **Charting Library:** recharts
+*   **Email Service:** Resend (via Replit Connector)
+*   **Calendar Integration:** Google Calendar (via Replit Connector), Microsoft Outlook (via Replit Connector)
+*   **AI Integration:** OpenAI (via Replit AI Integrations)

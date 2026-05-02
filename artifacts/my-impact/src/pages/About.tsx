@@ -191,20 +191,34 @@ export default function About() {
                 </a>
                 {" "}, the UK's accredited platform for social value measurement. Their values are research-backed, regularly updated, and used by charities, government bodies, and businesses across the UK.
               </p>
-              <a
-                href="https://www.socialvalueengine.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  background: C.dark, color: "white",
-                  padding: "12px 24px", borderRadius: 8,
-                  fontSize: 14, fontWeight: 700, textDecoration: "none",
-                  transition: "opacity 0.2s",
-                }}
-              >
-                Learn about Social Value Engine →
-              </a>
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 12 }}>
+                <Link
+                  href="/methodology"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    background: C.dark, color: "white",
+                    padding: "12px 24px", borderRadius: 8,
+                    fontSize: 14, fontWeight: 700, textDecoration: "none",
+                    transition: "opacity 0.2s",
+                  }}
+                >
+                  Read the full methodology →
+                </Link>
+                <a
+                  href="https://www.socialvalueengine.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    background: "white", color: C.dark,
+                    border: `1px solid var(--brand-cream-border, #E8E5DE)`,
+                    padding: "12px 24px", borderRadius: 8,
+                    fontSize: 14, fontWeight: 700, textDecoration: "none",
+                  }}
+                >
+                  Social Value Engine →
+                </a>
+              </div>
             </div>
             <div style={{
               background: C.cream,
