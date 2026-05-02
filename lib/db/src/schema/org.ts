@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, unique, numeric, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, unique, numeric, boolean, integer, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
 export const organisationsTable = pgTable("organisations", {
@@ -45,7 +45,24 @@ export const orgMatchRatesTable = pgTable("org_match_rates", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const orgShareLinksTable = pgTable("org_share_links", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id),
+  createdByUserId: text("created_by_user_id").notNull().references(() => usersTable.id),
+  // 'all' | 'summary' | 'timeline' | 'categories' | 'regions'
+  scope: text("scope").notNull().default("all"),
+  funderLabel: text("funder_label"),
+  expiresAt: timestamp("expires_at"),
+  revokedAt: timestamp("revoked_at"),
+  viewCount: integer("view_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_share_links_org_idx").on(t.orgId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
 export type OrgMatchRate = typeof orgMatchRatesTable.$inferSelect;
+export type OrgShareLink = typeof orgShareLinksTable.$inferSelect;

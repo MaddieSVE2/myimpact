@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable } from "@workspace/db";
-import { eq, and, inArray, gte, lte, asc, isNull } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte, asc, desc, isNull } from "drizzle-orm";
+import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -493,6 +493,164 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
     console.error("Org monthly stats error:", err);
     res.status(500).json({ error: "Failed to load monthly data" });
   }
+});
+
+// ── Share-link management (manager-only) ──────────────────────────────────────
+
+const VALID_SHARE_SCOPES = new Set(["all", "summary", "timeline", "categories", "regions"]);
+
+const shareLinkCreateRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: "Too many share-link requests. Please slow down.",
+});
+
+function generateShareSlug(): string {
+  // 12 hex chars (~48 bits) is plenty against guessing while staying short.
+  return randomBytes(6).toString("hex");
+}
+
+async function requireManager(userId: string) {
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+  if (!membership) return { error: { status: 404, message: "You are not a member of any organisation." } as const };
+  if (membership.role !== "manager") return { error: { status: 403, message: "Only organisation managers can manage share links." } as const };
+  return { membership };
+}
+
+router.get("/share-links", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const result = await requireManager(userId);
+  if ("error" in result) {
+    res.status(result.error.status).json({ error: result.error.message });
+    return;
+  }
+
+  const links = await db
+    .select()
+    .from(orgShareLinksTable)
+    .where(eq(orgShareLinksTable.orgId, result.membership.orgId))
+    .orderBy(desc(orgShareLinksTable.createdAt));
+
+  res.json({
+    links: links.map(l => ({
+      id: l.id,
+      slug: l.slug,
+      scope: l.scope,
+      funderLabel: l.funderLabel,
+      expiresAt: l.expiresAt ? l.expiresAt.toISOString() : null,
+      revokedAt: l.revokedAt ? l.revokedAt.toISOString() : null,
+      viewCount: l.viewCount,
+      createdAt: l.createdAt.toISOString(),
+    })),
+  });
+});
+
+router.post("/share-links", authenticate, shareLinkCreateRateLimit, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const result = await requireManager(userId);
+  if ("error" in result) {
+    res.status(result.error.status).json({ error: result.error.message });
+    return;
+  }
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const scopeInput = typeof body.scope === "string" ? body.scope : "all";
+  if (!VALID_SHARE_SCOPES.has(scopeInput)) {
+    res.status(400).json({ error: "Invalid scope. Must be one of: all, summary, timeline, categories, regions." });
+    return;
+  }
+
+  let funderLabel: string | null = null;
+  if (typeof body.funderLabel === "string") {
+    const trimmed = body.funderLabel.trim().slice(0, 80);
+    if (trimmed.length > 0) funderLabel = trimmed;
+  }
+
+  let expiresAt: Date | null = null;
+  if (body.expiresAt !== undefined && body.expiresAt !== null && body.expiresAt !== "") {
+    if (typeof body.expiresAt !== "string") {
+      res.status(400).json({ error: "Invalid expiresAt." });
+      return;
+    }
+    const parsed = new Date(body.expiresAt);
+    if (isNaN(parsed.getTime())) {
+      res.status(400).json({ error: "Invalid expiresAt date." });
+      return;
+    }
+    // Treat date-only inputs (YYYY-MM-DD) as end-of-day so a "valid until X" link includes that day.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(body.expiresAt)) {
+      parsed.setHours(23, 59, 59, 999);
+    }
+    if (parsed.getTime() <= Date.now()) {
+      res.status(400).json({ error: "Expiry date must be in the future." });
+      return;
+    }
+    expiresAt = parsed;
+  }
+
+  // Generate a unique slug (collisions are vanishingly rare but loop a few times).
+  let slug = generateShareSlug();
+  for (let i = 0; i < 5; i++) {
+    const existing = await db.query.orgShareLinksTable.findFirst({
+      where: eq(orgShareLinksTable.slug, slug),
+    });
+    if (!existing) break;
+    slug = generateShareSlug();
+  }
+
+  const [created] = await db.insert(orgShareLinksTable).values({
+    id: randomUUID(),
+    slug,
+    orgId: result.membership.orgId,
+    createdByUserId: userId,
+    scope: scopeInput,
+    funderLabel,
+    expiresAt,
+  }).returning();
+
+  res.json({
+    link: {
+      id: created.id,
+      slug: created.slug,
+      scope: created.scope,
+      funderLabel: created.funderLabel,
+      expiresAt: created.expiresAt ? created.expiresAt.toISOString() : null,
+      revokedAt: created.revokedAt ? created.revokedAt.toISOString() : null,
+      viewCount: created.viewCount,
+      createdAt: created.createdAt.toISOString(),
+    },
+  });
+});
+
+router.post("/share-links/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const result = await requireManager(userId);
+  if ("error" in result) {
+    res.status(result.error.status).json({ error: result.error.message });
+    return;
+  }
+
+  const id = req.params.id;
+  const link = await db.query.orgShareLinksTable.findFirst({
+    where: eq(orgShareLinksTable.id, id),
+  });
+  if (!link || link.orgId !== result.membership.orgId) {
+    res.status(404).json({ error: "Share link not found." });
+    return;
+  }
+
+  if (link.revokedAt) {
+    res.json({ ok: true, alreadyRevoked: true });
+    return;
+  }
+
+  await db.update(orgShareLinksTable)
+    .set({ revokedAt: new Date() })
+    .where(eq(orgShareLinksTable.id, id));
+
+  res.json({ ok: true });
 });
 
 router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res) => {

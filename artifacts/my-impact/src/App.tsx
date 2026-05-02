@@ -44,6 +44,7 @@ import Admin from "@/pages/Admin";
 import Contact from "@/pages/Contact";
 import Feedback from "@/pages/Feedback";
 import PublicProfile from "@/pages/PublicProfile";
+import OrgSharePage from "@/pages/OrgSharePage";
 import AnnualRecap from "@/pages/AnnualRecap";
 
 const queryClient = new QueryClient();
@@ -259,6 +260,7 @@ function AppRouter() {
             </Route>
             <Route path="/org/demo" component={OrgDemoPage} />
             <Route path="/org/register" component={OrgRegister} />
+            <Route path="/org/share/:slug" component={OrgSharePage} />
             <Route path="/org">
               {() => <OrgGuestRoute />}
             </Route>
