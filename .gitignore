@@ -48,6 +48,13 @@ Thumbs.db
 .cache/
 .local/
 database_backup.sql
+
+# Database backup dumps must NEVER be committed.
+# They contain production user data (PII) and authentication artifacts.
+# All backup snapshots live in App Storage under backups/{dev,prod}/.
+/backups/
+backups/*.sql
+backups/*.sql.gz
 *.sql.bak
 
 # Local DB backup snapshots (durable copies live in App Storage; never commit raw dumps to VCS).

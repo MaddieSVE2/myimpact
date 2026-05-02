@@ -53,3 +53,9 @@ id = "NqiMmJp0p_Qv4lCN6777k"
 uri = "file://.local/outputs/My-Impact.pdf"
 type = "pdf"
 title = "My Impact.pdf"
+
+[[outputs]]
+id = "_dEqFDPw-sVYBha6OsmM7"
+uri = "file://.local/outputs/My-Impact.pptx"
+type = "slides"
+title = "My Impact.pptx"

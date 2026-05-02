@@ -1,0 +1,51 @@
+I have an existing My Impact pitch deck built in React/Tailwind. I need you to add four new slides to it, using the same visual style as the existing deck: warm cream background (#F5F0E8), deep navy text, orange/rust accent colour, Playfair Display serif for headlines, italic orange script treatment on key phrases, dark navy slides used selectively for contrast, 8–12px card radius, no em dashes anywhere.
+NEW SLIDE A — Field Evidence
+Insert after the existing "Ideas for You" slide.
+Label: FIELD EVIDENCE
+Headline: "Tested with real people."
+Second line (orange italic): "The response surprised us."
+Three quote cards from April 2026 field trials:
+
+"I get demotivated easily. The app is really helpful in times like this." — Participant, New Wortley Community Hub
+"I understood my value, but this attached an equitable number I could use and think about." — Participant, Loughborough College
+"A volunteer carer became visibly moved by her social value calculation and described the figure as deeply meaningful." — Field trial observation, New Wortley
+Below the quotes, three organisation chips in a row: Loughborough College — April 2026 / Leeds Youth Justice and Probation — April 2026 / New Wortley Community Hub — April 2026
+
+NEW SLIDE B — Advisory Group
+Insert after the existing "About the Social Value Engine" slide.
+Label: ADVISORY GROUP
+Headline: "Guided by people"
+Second line (orange italic): "who know the sector."
+Body: "My Impact is overseen by an independent advisory group with deep expertise across civil society, philanthropy, education and community development."
+Feature card for chair:
+
+David Emerson CBE
+Chair, My Impact Advisory Group
+Chair of Carnegie UK. Former CEO of the Association of Charitable Foundations (15 years). Former chair of three UK foundations and charities.
+Below, a row of smaller member name chips: Lucinda Yeadon / Al Garthwaite / Jesse Jackson (Loughborough College) / Heather Arnatt (Voluntary Centre Services) / Abigail Appleton (HCA) / Chris Cowcher / James Tedder
+
+NEW SLIDE C — Grant Funding Ask
+Replace the existing CTA/close slide with this, or insert before it.
+Label: THE ASK
+Headline: "Help us build"
+Second line (orange italic): "the infrastructure for impact."
+Body: "My Impact is a live platform with real users, an independent advisory group, and field-tested evidence. We are seeking grant funding to scale the product until organisational accounts provide a sustainable commercial foundation."
+Three funding use cards:
+
+Platform development: weekly activity tracking, contextual help, monetary value toggle, expanded AI prompts
+Community deployment: place-based pilots with local authority and third sector partners
+Evidence and evaluation: structured field trial expansion, impact reporting, funder-ready evidence packs
+Two-column row below:
+What we already have: live platform, advisory group chaired by David Emerson CBE, field trials at three organisations, SVE accreditation, Boston Pride in Place application submitted
+What funding unlocks: product improvements, place-based pilots, organisational account pipeline, long-term sustainability
+
+NEW SLIDE D — Revised close slide (dark)
+Keep the existing visual treatment but update the copy.
+Label: GET INVOLVED
+Headline: "Show the"
+Second line (orange italic): "difference you make."
+Three columns at bottom (not two):
+
+TRY IT / myimpact.uk
+FUND IT / hello@myimpact.uk
+PARTNER WITH US / hello@myimpact.uk
