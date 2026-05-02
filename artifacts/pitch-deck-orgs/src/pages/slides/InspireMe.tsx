@@ -6,7 +6,7 @@ export default function InspireMe() {
       <div className="col-span-5 relative flex flex-col justify-center px-[5vw]">
         <div className="flex items-center gap-[1vw] mb-[4vh]">
           <span className="font-body text-[1.15vw] font-semibold uppercase tracking-[0.25em] text-primary">
-            04 · Ideas for you
+            06 · Ideas for you
           </span>
           <div className="w-[4vw] h-[1px] bg-primary/50" />
         </div>

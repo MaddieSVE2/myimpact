@@ -8,7 +8,7 @@ export default function ForOrganisations() {
 
       <div className="absolute top-[5vh] left-[5vw] flex items-center gap-[1vw]">
         <span className="font-body text-[1.05vw] font-semibold uppercase tracking-[0.25em] text-primary">
-          08 · For organisations
+          03 · For organisations
         </span>
         <div className="w-[5vw] h-[1px] bg-primary/50" />
       </div>

@@ -1,6 +1,6 @@
 const base = import.meta.env.BASE_URL;
 
-export default function GetInvolved() {
+export default function NextSteps() {
   return (
     <div className="slide relative w-screen h-screen overflow-hidden bg-text">
       <div className="absolute top-[-15vh] right-[-15vw] w-[55vw] h-[55vw] rounded-full bg-primary/20 blur-3xl" />
@@ -17,18 +17,18 @@ export default function GetInvolved() {
 
       <div className="absolute top-[28vh] left-[6vw] right-[8vw]">
         <p className="font-body text-[1.3vw] uppercase tracking-[0.3em] text-primary mb-[3vh]">
-          Get involved
+          Next steps
         </p>
         <h2 className="font-display font-black text-[7.5vw] leading-[0.92] tracking-tight text-bg" style={{ textWrap: "balance" }}>
-          Show the
-          <span className="block text-primary italic">difference you make.</span>
+          Bring My Impact
+          <span className="block text-primary italic">to your organisation.</span>
         </h2>
       </div>
 
       <div className="absolute bottom-[10vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2.5vw]">
         <div>
           <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
-            Try it
+            See it live
           </p>
           <a
             href="https://myimpact.uk"
@@ -38,10 +38,13 @@ export default function GetInvolved() {
           >
             myimpact.uk
           </a>
+          <p className="font-body text-[1vw] text-bg/60 mt-[1.5vh] leading-snug">
+            Try the calculator and see suggestions priced in pounds.
+          </p>
         </div>
         <div>
           <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
-            Fund it
+            Run a pilot
           </p>
           <a
             href="mailto:hello@myimpact.uk"
@@ -49,10 +52,13 @@ export default function GetInvolved() {
           >
             hello@myimpact.uk
           </a>
+          <p className="font-body text-[1vw] text-bg/60 mt-[1.5vh] leading-snug">
+            A branded portal for your team, members or students.
+          </p>
         </div>
         <div>
           <p className="font-body text-[1vw] uppercase tracking-[0.25em] text-bg/55 mb-[2vh]">
-            Partner with us
+            Talk to us
           </p>
           <a
             href="mailto:hello@myimpact.uk"
@@ -60,6 +66,9 @@ export default function GetInvolved() {
           >
             hello@myimpact.uk
           </a>
+          <p className="font-body text-[1vw] text-bg/60 mt-[1.5vh] leading-snug">
+            A 20-minute call to scope what would work for you.
+          </p>
         </div>
       </div>
     </div>

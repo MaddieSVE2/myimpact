@@ -24,16 +24,32 @@
                 "speakerNotes": ""
         },
         {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0004",
+                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
                 "position": 4,
+                "filepath": "src/pages/slides/ForOrganisations.tsx",
+                "title": "For organisations",
+                "description": "Branded portal and live aggregate impact dashboard.",
+                "speakerNotes": ""
+        },
+        {
+                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0004",
+                "position": 5,
                 "filepath": "src/pages/slides/HowItWorks.tsx",
                 "title": "How it works",
                 "description": "Measure, motivate, inspire, in three steps.",
                 "speakerNotes": ""
         },
         {
+                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0014",
+                "position": 6,
+                "filepath": "src/pages/slides/PersonalToolkit.tsx",
+                "title": "Your personal toolkit",
+                "description": "Your impact, built up over time. Journal, milestones, badges and exports.",
+                "speakerNotes": ""
+        },
+        {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0013",
-                "position": 5,
+                "position": 7,
                 "filepath": "src/pages/slides/InspireMe.tsx",
                 "title": "Ideas for you",
                 "description": "Ideas, picked for you. Each one priced by social value.",
@@ -41,47 +57,23 @@
         },
         {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0015",
-                "position": 6,
+                "position": 8,
                 "filepath": "src/pages/slides/FieldEvidence.tsx",
                 "title": "Field evidence",
                 "description": "Field-trial quotes from April 2026 · New Wortley Community Hub, Loughborough College, Leeds Youth Justice and Probation.",
                 "speakerNotes": ""
         },
         {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0014",
-                "position": 7,
-                "filepath": "src/pages/slides/PersonalToolkit.tsx",
-                "title": "Your personal toolkit",
-                "description": "Your impact, built up over time. Journal, milestones, badges and exports.",
-                "speakerNotes": ""
-        },
-        {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0012",
-                "position": 8,
+                "position": 9,
                 "filepath": "src/pages/slides/Sidekick.tsx",
                 "title": "Sidekick",
                 "description": "AI assistant that explains your impact and turns it into words.",
                 "speakerNotes": ""
         },
         {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0006",
-                "position": 9,
-                "filepath": "src/pages/slides/ForOrganisations.tsx",
-                "title": "For organisations",
-                "description": "Branded portal and live aggregate impact dashboard.",
-                "speakerNotes": ""
-        },
-        {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0010",
-                "position": 10,
-                "filepath": "src/pages/slides/CommercialOpportunity.tsx",
-                "title": "How organisations use My Impact",
-                "description": "Four ways organisations put My Impact to work · employee recognition, student support, CSR and impact reporting, and employer branding.",
-                "speakerNotes": ""
-        },
-        {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0007",
-                "position": 11,
+                "position": 10,
                 "filepath": "src/pages/slides/Methodology.tsx",
                 "title": "The method",
                 "description": "Grounded in evidence · powered by the Social Value Engine, the UK's accredited platform for social value measurement, mapped to the UN SDGs, with verified local charity data.",
@@ -89,26 +81,18 @@
         },
         {
                 "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0016",
-                "position": 12,
+                "position": 11,
                 "filepath": "src/pages/slides/AdvisoryGroup.tsx",
                 "title": "Advisory group",
                 "description": "Independent advisory group chaired by David Emerson CBE, with members across civil society, philanthropy, education and community development.",
                 "speakerNotes": ""
         },
         {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0017",
-                "position": 13,
-                "filepath": "src/pages/slides/GrantFundingAsk.tsx",
-                "title": "The ask",
-                "description": "Grant funding ask · platform development, community deployment, and evidence and evaluation, on the way to a sustainable commercial foundation.",
-                "speakerNotes": ""
-        },
-        {
-                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0009",
-                "position": 14,
-                "filepath": "src/pages/slides/GetInvolved.tsx",
-                "title": "Get involved",
-                "description": "Closing · try it, fund it, partner with us.",
+                "id": "9b1f0a8c-1e3d-4a4d-b2a6-7e9c1a0f0018",
+                "position": 12,
+                "filepath": "src/pages/slides/NextSteps.tsx",
+                "title": "Next steps",
+                "description": "Closing · see it live, run a pilot, talk to us.",
                 "speakerNotes": ""
         }
 ]
