@@ -1,74 +1,84 @@
+/**
+ * MyImpact database backup script.
+ *
+ * Supports two targets via `--target`:
+ *
+ *   --target dev   (default)
+ *     Runs `pg_dump` against `process.env.DATABASE_URL` (the
+ *     development DB) and uploads the resulting `.sql` file to
+ *     App Storage under the `backups/` prefix. Per-table row
+ *     counts are taken from the dev DB via SELECT COUNT(*).
+ *     Optional flags: --gzip, --prune --keep N, --notify [--notify-email],
+ *     used by the scheduled backup job.
+ *
+ *   --target prod
+ *     Uploads a pre-assembled production SQL dump to App Storage
+ *     under the `backups/prod/` prefix. Production `DATABASE_URL`
+ *     is intentionally NOT exposed to the workspace runtime; the
+ *     prod DB is reachable only through the Replit database skill
+ *     in production mode (read-only). Per-table row counts are
+ *     supplied via a `--counts <json>` file produced from
+ *     SELECT COUNT(*) against prod via that skill — they are the
+ *     source of truth and the script asserts that the dump's
+ *     INSERT-per-table counts match them before uploading.
+ *     The local SQL file is deleted after a verified upload
+ *     (override with --keep-local, debugging only) so production
+ *     PII is never left on the workspace disk.
+ *
+ * Reporting format is identical across targets: file name, size,
+ * App Storage key, table count, total rows, and per-table counts.
+ */
 import { spawn } from "child_process";
 import { createReadStream, createWriteStream } from "fs";
-import { mkdir, stat } from "fs/promises";
+import { mkdir, readFile, stat, unlink } from "fs/promises";
 import { pipeline } from "stream/promises";
 import { createGzip } from "zlib";
 import path from "path";
-import { Storage } from "@google-cloud/storage";
 import { db, pool } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { getUncachableResendClient } from "../lib/resend.js";
+import {
+  storage,
+  parseObjectStorageDir,
+  formatBytes,
+  utcTimestamp as timestamp,
+} from "./_backup-utils.js";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+type Target = "dev" | "prod";
 
-const storage = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
-
-// The dump itself is produced by `pg_dump` and covers every table in the
-// database. The row-count summary printed at the end of the run is a sanity
-// check, and is built dynamically by querying information_schema so newly
-// added product tables appear in the summary automatically.
-
-function parseObjectStorageDir(privateDir: string): { bucket: string; prefix: string } {
-  const trimmed = privateDir.replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!trimmed) {
-    throw new Error("PRIVATE_OBJECT_DIR is empty after trimming.");
-  }
-  const slash = trimmed.indexOf("/");
-  if (slash === -1) {
-    throw new Error(
-      `PRIVATE_OBJECT_DIR "${privateDir}" must be of the form "/<bucket>/<prefix>" ` +
-        `(e.g. "/replit-objstore-xxx/.private"). Got no "/" inside the value.`,
-    );
-  }
-  const bucket = trimmed.slice(0, slash);
-  const prefix = trimmed.slice(slash + 1);
-  if (!bucket || !prefix) {
-    throw new Error(
-      `PRIVATE_OBJECT_DIR "${privateDir}" must include both a bucket and a prefix.`,
-    );
-  }
-  return { bucket, prefix };
+interface TableCount {
+  table: string;
+  rows: number;
 }
 
-function timestamp(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
-    `T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`
-  );
+interface PruneResult {
+  kept: string[];
+  deleted: string[];
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+interface RunOptions {
+  target: Target;
+  wantGzip: boolean;
+  wantPrune: boolean;
+  keep: number;
+  wantNotify: boolean;
+  notifyEmail?: string;
+  // prod-only:
+  sqlFile?: string;
+  countsFile?: string;
+  keepLocal?: boolean;
+}
+
+interface RunSummary {
+  target: Target;
+  bucketName: string;
+  objectName: string;
+  objectKey: string;
+  fileName: string;
+  sizeBytes: number;
+  totalRows: number;
+  tableCount: number;
+  pruned?: PruneResult;
 }
 
 async function runPgDump(databaseUrl: string, outFile: string): Promise<void> {
@@ -106,14 +116,14 @@ async function listPublicTables(): Promise<string[]> {
   return res.rows.map((r) => r.table_name);
 }
 
-async function getRowCounts(): Promise<Array<{ table: string; rows: number }>> {
+async function getDevRowCounts(): Promise<TableCount[]> {
   const tables = await listPublicTables();
   if (tables.length === 0) {
     throw new Error(
       "No tables found in the public schema. Refusing to claim a clean backup.",
     );
   }
-  const out: Array<{ table: string; rows: number }> = [];
+  const out: TableCount[] = [];
   for (const t of tables) {
     const quoted = `"${t.replace(/"/g, '""')}"`;
     const res = await db.execute<{ count: string }>(
@@ -132,9 +142,74 @@ async function getRowCounts(): Promise<Array<{ table: string; rows: number }>> {
   return out;
 }
 
-interface PruneResult {
-  kept: string[];
-  deleted: string[];
+async function loadProdRowCountsFromFile(countsPath: string): Promise<TableCount[]> {
+  const raw = await readFile(countsPath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Counts file ${countsPath} is not valid JSON: ${(err as Error).message}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(
+      `Counts file ${countsPath} must be a JSON object of {table: rowCount}.`,
+    );
+  }
+  const out: TableCount[] = [];
+  for (const [table, rows] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof rows !== "number" || !Number.isInteger(rows) || rows < 0) {
+      throw new Error(
+        `Counts file ${countsPath}: table "${table}" has non-integer row count ${JSON.stringify(rows)}.`,
+      );
+    }
+    out.push({ table, rows });
+  }
+  if (out.length === 0) {
+    throw new Error(`Counts file ${countsPath} is empty — refusing to upload.`);
+  }
+  out.sort((a, b) => a.table.localeCompare(b.table));
+  return out;
+}
+
+/**
+ * For prod: assert the assembled dump's per-table INSERT counts
+ * match the source-of-truth row counts (taken from prod via the
+ * database skill). Refuse to upload on any mismatch.
+ */
+async function assertProdDumpMatchesCounts(
+  sqlPath: string,
+  counts: TableCount[],
+): Promise<void> {
+  const contents = await readFile(sqlPath, "utf8");
+  const insertCounts = new Map<string, number>();
+  const re = /^INSERT INTO "([^"]+)"\s/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(contents)) !== null) {
+    const t = m[1]!;
+    insertCounts.set(t, (insertCounts.get(t) ?? 0) + 1);
+  }
+  const mismatches: string[] = [];
+  for (const { table, rows } of counts) {
+    const got = insertCounts.get(table) ?? 0;
+    if (got !== rows) {
+      mismatches.push(
+        `  ${table}: counts.json says ${rows}, dump has ${got} INSERTs`,
+      );
+    }
+  }
+  for (const [t, got] of insertCounts.entries()) {
+    if (!counts.find((c) => c.table === t)) {
+      mismatches.push(
+        `  ${t}: in dump (${got} INSERTs) but missing from counts.json`,
+      );
+    }
+  }
+  if (mismatches.length) {
+    throw new Error(
+      "Dump does not match production row counts — refusing to upload:\n" +
+        mismatches.join("\n"),
+    );
+  }
 }
 
 async function pruneOldBackups(
@@ -143,10 +218,14 @@ async function pruneOldBackups(
   keep: number,
 ): Promise<PruneResult> {
   const [files] = await storage.bucket(bucketName).getFiles({ prefix: backupsPrefix });
-  // Only consider .sql files (ignore any stray .gz copies)
-  const sqlFiles = files.filter((f) => f.name.endsWith(".sql"));
-  // Sort descending by name — names are timestamped (YYYY-MM-DDTHHMM) so
-  // lexical ordering matches chronological ordering.
+  // Only prune at this exact prefix level — never recurse into sub-prefixes
+  // (e.g. when scoping to dev's `backups/`, do NOT also list `backups/prod/`).
+  const sqlFiles = files.filter((f) => {
+    if (!f.name.endsWith(".sql")) return false;
+    const rest = f.name.slice(backupsPrefix.length);
+    return !rest.includes("/");
+  });
+  // Names are timestamped (YYYY-MM-DDTHHMM) so lexical desc = chronological desc.
   sqlFiles.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
   const kept = sqlFiles.slice(0, keep).map((f) => f.name);
   const toDelete = sqlFiles.slice(keep);
@@ -179,10 +258,16 @@ async function sendNotification(opts: NotifyOptions): Promise<void> {
   }
 }
 
+function parseStringArg(args: string[], name: string): string | undefined {
+  const idx = args.findIndex((a) => a === name || a.startsWith(`${name}=`));
+  if (idx === -1) return undefined;
+  if (args[idx]!.includes("=")) return args[idx]!.split("=").slice(1).join("=");
+  return args[idx + 1];
+}
+
 function parseKeepArg(args: string[]): number {
-  const idx = args.findIndex((a) => a === "--keep" || a.startsWith("--keep="));
-  if (idx === -1) return 12;
-  const raw = args[idx]!.includes("=") ? args[idx]!.split("=")[1] : args[idx + 1];
+  const raw = parseStringArg(args, "--keep");
+  if (raw === undefined) return 12;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`--keep expects a positive integer, got "${raw}".`);
@@ -190,40 +275,36 @@ function parseKeepArg(args: string[]): number {
   return n;
 }
 
+function parseTargetArg(args: string[]): Target {
+  const raw = parseStringArg(args, "--target");
+  if (raw === undefined) return "dev";
+  if (raw !== "dev" && raw !== "prod") {
+    throw new Error(`--target must be "dev" or "prod", got "${raw}".`);
+  }
+  return raw;
+}
+
 function parseNotifyEmailArg(args: string[]): string | undefined {
-  const idx = args.findIndex((a) => a === "--notify-email" || a.startsWith("--notify-email="));
-  if (idx === -1) return undefined;
-  const raw = args[idx]!.includes("=")
-    ? args[idx]!.split("=")[1]
-    : args[idx + 1];
-  if (!raw || !raw.includes("@")) {
+  const raw = parseStringArg(args, "--notify-email");
+  if (raw === undefined) return undefined;
+  if (!raw.includes("@")) {
     throw new Error(`--notify-email expects a valid email, got "${raw}".`);
   }
   return raw;
 }
 
-interface RunOptions {
-  wantGzip: boolean;
-  wantPrune: boolean;
-  keep: number;
-  wantNotify: boolean;
-  notifyEmail?: string;
-}
-
-interface RunSummary {
-  bucketName: string;
-  objectName: string;
-  objectKey: string;
-  sizeBytes: number;
-  totalRows: number;
-  tableCount: number;
-  pruned?: PruneResult;
+/**
+ * Path-prefix policy:
+ *   dev  → `<private>/backups/`        (preserves existing scheduled job
+ *                                        and fetch-backup.ts behavior)
+ *   prod → `<private>/backups/prod/`   (kept distinct so dev pruning never
+ *                                        touches prod snapshots)
+ */
+function backupsPrefix(prefix: string, target: Target): string {
+  return target === "prod" ? `${prefix}/backups/prod/` : `${prefix}/backups/`;
 }
 
 async function runBackup(options: RunOptions): Promise<RunSummary> {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is not set.");
-  }
   const privateDir = process.env.PRIVATE_OBJECT_DIR;
   if (!privateDir) {
     throw new Error(
@@ -231,52 +312,82 @@ async function runBackup(options: RunOptions): Promise<RunSummary> {
     );
   }
   const { bucket: bucketName, prefix } = parseObjectStorageDir(privateDir);
+  const targetPrefix = backupsPrefix(prefix, options.target);
 
-  const stamp = timestamp();
-  const sqlFileName = `myimpact-db-backup-${stamp}.sql`;
-  const localDir = path.resolve("backups");
-  const sqlPath = path.join(localDir, sqlFileName);
-  await mkdir(localDir, { recursive: true });
+  // ─── Source the SQL file + per-table counts for the chosen target ───
+  let sqlPath: string;
+  let fileName: string;
+  let counts: TableCount[];
 
-  const totalSteps = options.wantPrune ? 5 : 4;
-  console.log(`\n[1/${totalSteps}] Running pg_dump → ${sqlPath}`);
-  await runPgDump(process.env.DATABASE_URL, sqlPath);
+  if (options.target === "dev") {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set.");
+    }
+    const stamp = timestamp();
+    fileName = `myimpact-db-backup-${stamp}.sql`;
+    const localDir = path.resolve("backups");
+    sqlPath = path.join(localDir, fileName);
+    await mkdir(localDir, { recursive: true });
 
-  const stats = await stat(sqlPath);
-  console.log(`      Wrote ${formatBytes(stats.size)} (${stats.size} bytes)`);
+    console.log(`\n[1/4] Running pg_dump (dev) → ${sqlPath}`);
+    await runPgDump(process.env.DATABASE_URL, sqlPath);
+    const stats0 = await stat(sqlPath);
+    console.log(`      Wrote ${formatBytes(stats0.size)} (${stats0.size} bytes)`);
 
-  console.log(`\n[2/${totalSteps}] Collecting per-table row counts...`);
-  const counts = await getRowCounts();
-  const widest = Math.max(...counts.map((c) => c.table.length));
+    console.log(`\n[2/4] Collecting per-table row counts from dev DB...`);
+    counts = await getDevRowCounts();
+  } else {
+    if (!options.sqlFile) {
+      throw new Error("--target prod requires --sql-file <path> (the assembled prod SQL dump).");
+    }
+    if (!options.countsFile) {
+      throw new Error(
+        "--target prod requires --counts <path> (JSON of true per-table row counts " +
+          "from prod, taken via the database skill in production mode).",
+      );
+    }
+    sqlPath = path.resolve(options.sqlFile);
+    fileName = path.basename(sqlPath);
+
+    console.log(`\n[1/4] Loading per-table row counts from ${options.countsFile}...`);
+    counts = await loadProdRowCountsFromFile(options.countsFile);
+
+    console.log(`\n[2/4] Verifying assembled dump matches per-table row counts...`);
+    await assertProdDumpMatchesCounts(sqlPath, counts);
+    console.log(`      OK — every table's INSERT count matches counts.json.`);
+  }
+
+  // ─── Common reporting block ───
+  const widest = Math.max(...counts.map((c) => c.table.length), 5);
   for (const c of counts) {
     console.log(`      ${c.table.padEnd(widest)}  ${c.rows}`);
   }
   const totalRows = counts.reduce((sum, c) => sum + c.rows, 0);
   console.log(`      ${"TOTAL".padEnd(widest)}  ${totalRows}`);
 
-  const fileName = sqlFileName;
-  const objectName = `${prefix}/backups/${fileName}`;
+  const stats = await stat(sqlPath);
+  const objectName = `${targetPrefix}${fileName}`;
   const objectKey = `/${bucketName}/${objectName}`;
 
-  console.log(`\n[3/${totalSteps}] Uploading to App Storage`);
+  console.log(`\n[3/4] Uploading to App Storage (${options.target})`);
   console.log(`      gs://${bucketName}/${objectName}`);
-  const uploadStream = storage
-    .bucket(bucketName)
-    .file(objectName)
-    .createWriteStream({
-      contentType: "application/sql",
-      resumable: false,
+  console.log(`      Local file: ${sqlPath} (${formatBytes(stats.size)})`);
+  const uploadStream = storage.bucket(bucketName).file(objectName).createWriteStream({
+    contentType: "application/sql",
+    resumable: false,
+    metadata: {
       metadata: {
-        metadata: {
-          source: "myimpact-db-backup-script",
-          createdAt: new Date().toISOString(),
-          totalRows: String(totalRows),
-        },
+        source: "myimpact-db-backup-script",
+        environment: options.target === "prod" ? "production" : "development",
+        createdAt: new Date().toISOString(),
+        totalRows: String(totalRows),
+        tableCount: String(counts.length),
       },
-    });
+    },
+  });
   await pipeline(createReadStream(sqlPath), uploadStream);
 
-  console.log(`\n[4/${totalSteps}] Verifying upload...`);
+  console.log(`\n[4/4] Verifying upload...`);
   const [exists] = await storage.bucket(bucketName).file(objectName).exists();
   if (!exists) {
     throw new Error("Upload verification failed: object not found in bucket.");
@@ -286,20 +397,15 @@ async function runBackup(options: RunOptions): Promise<RunSummary> {
 
   let pruned: PruneResult | undefined;
   if (options.wantPrune) {
-    console.log(`\n[5/${totalSteps}] Pruning old backups (keeping last ${options.keep})...`);
-    const backupsPrefix = `${prefix}/backups/`;
-    pruned = await pruneOldBackups(bucketName, backupsPrefix, options.keep);
+    console.log(`\n[+]   Pruning old ${options.target} backups (keeping last ${options.keep})...`);
+    pruned = await pruneOldBackups(bucketName, targetPrefix, options.keep);
     console.log(`      Kept ${pruned.kept.length} backup(s); deleted ${pruned.deleted.length}.`);
-    for (const k of pruned.kept) {
-      console.log(`      keep    ${k}`);
-    }
-    for (const d of pruned.deleted) {
-      console.log(`      delete  ${d}`);
-    }
+    for (const k of pruned.kept) console.log(`      keep    ${k}`);
+    for (const d of pruned.deleted) console.log(`      delete  ${d}`);
   }
 
   let gzPath: string | null = null;
-  if (options.wantGzip) {
+  if (options.wantGzip && options.target === "dev") {
     gzPath = `${sqlPath}.gz`;
     console.log(`\n[+]   Writing gzipped copy → ${gzPath}`);
     await pipeline(createReadStream(sqlPath), createGzip(), createWriteStream(gzPath));
@@ -307,19 +413,36 @@ async function runBackup(options: RunOptions): Promise<RunSummary> {
     console.log(`      Wrote ${formatBytes(gzStats.size)} (${gzStats.size} bytes)`);
   }
 
-  console.log(`\n✅ Backup complete.`);
-  console.log(`   Local SQL file:    ${sqlPath}`);
-  if (gzPath) console.log(`   Local gzip copy:   ${gzPath}`);
+  // For prod, scrub the local SQL file from disk (PII protection).
+  if (options.target === "prod") {
+    if (options.keepLocal) {
+      console.log(
+        `\n[+]   --keep-local: NOT deleting ${sqlPath}. ` +
+          `Do NOT commit this file to git.`,
+      );
+    } else {
+      await unlink(sqlPath);
+      console.log(`\n[+]   Removed local prod dump: ${sqlPath}.`);
+    }
+  }
+
+  console.log(`\nBackup complete (${options.target}).`);
+  console.log(`   File name:         ${fileName}`);
+  console.log(`   Size:              ${formatBytes(stats.size)} (${stats.size} bytes)`);
   console.log(`   App Storage key:   ${objectKey}`);
   console.log(`   Bucket / object:   ${bucketName} / ${objectName}`);
-  console.log(`   Size:              ${formatBytes(stats.size)}`);
   console.log(`   Tables backed up:  ${counts.length}`);
-  console.log(`   Total rows:        ${totalRows}\n`);
+  console.log(`   Total rows:        ${totalRows}`);
+  if (options.target === "dev") console.log(`   Local SQL file:    ${sqlPath}`);
+  if (gzPath) console.log(`   Local gzip copy:   ${gzPath}`);
+  console.log("");
 
   return {
+    target: options.target,
     bucketName,
     objectName,
     objectKey,
+    fileName,
     sizeBytes: stats.size,
     totalRows,
     tableCount: counts.length,
@@ -381,8 +504,11 @@ function buildFailureEmail(error: unknown): string {
 }
 
 async function main() {
-  const argv = process.argv.slice(2);
+  // pnpm forwards a literal "--" separator as the first argv entry; strip it.
+  const argv = process.argv.slice(2).filter((a) => a !== "--");
   const argSet = new Set(argv);
+
+  const target = parseTargetArg(argv);
   const wantGzip = argSet.has("--gzip") || argSet.has("--downloadable");
   const wantPrune = argSet.has("--prune");
   const wantNotify = argSet.has("--notify");
@@ -397,16 +523,24 @@ async function main() {
     );
   }
 
+  const sqlFile = parseStringArg(argv, "--sql-file");
+  const countsFile = parseStringArg(argv, "--counts");
+  const keepLocal = argSet.has("--keep-local");
+
   let summary: RunSummary | null = null;
   let runError: unknown = null;
 
   try {
     summary = await runBackup({
+      target,
       wantGzip,
       wantPrune,
       keep,
       wantNotify,
       notifyEmail,
+      sqlFile,
+      countsFile,
+      keepLocal,
     });
   } catch (err) {
     runError = err;
@@ -420,14 +554,14 @@ async function main() {
           subject: "My Impact — weekly DB backup succeeded",
           html: buildSuccessEmail(summary),
         });
-        console.log(`📧 Success notification sent to ${notifyEmail}.`);
+        console.log(`Success notification sent to ${notifyEmail}.`);
       } else {
         await sendNotification({
           to: notifyEmail,
           subject: "My Impact — weekly DB backup FAILED",
           html: buildFailureEmail(runError),
         });
-        console.log(`📧 Failure notification sent to ${notifyEmail}.`);
+        console.log(`Failure notification sent to ${notifyEmail}.`);
       }
     } catch (notifyErr) {
       console.error("Failed to send backup notification email:", notifyErr);
@@ -435,7 +569,11 @@ async function main() {
     }
   }
 
-  await pool.end();
+  // Pool is only opened on the dev path (the prod flow never queries the
+  // local DB), but pool.end() is safe to call either way.
+  try {
+    await pool.end();
+  } catch {}
 
   if (runError) {
     throw runError;
