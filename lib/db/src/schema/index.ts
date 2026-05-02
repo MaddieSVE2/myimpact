@@ -7,3 +7,4 @@ export * from "./attachments";
 export * from "./calendar";
 export * from "./challenges";
 export * from "./analytics";
+export * from "./voice-usage";

@@ -6,7 +6,18 @@ import {
   textToSpeech,
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
-import { authenticate } from "../middleware/authenticate.js";
+import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import {
+  TRANSCRIBE_SECONDS_CAP,
+  TTS_CHARACTERS_CAP,
+  VOICE_CAP_REACHED_MESSAGE,
+  estimateTranscribeCostPence,
+  estimateTtsCostPence,
+  getUserVoiceUsage,
+  probeAudioDurationSeconds,
+  recordTranscribeUsage,
+  recordTtsUsage,
+} from "../lib/voiceUsage.js";
 
 const router = Router();
 
@@ -297,7 +308,7 @@ router.post(
   authenticate,
   sidekickVoiceRateLimit,
   express.raw({ type: () => true, limit: "10mb" }),
-  async (req, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const audioBuffer = req.body as Buffer;
       if (!audioBuffer || !Buffer.isBuffer(audioBuffer) || audioBuffer.length === 0) {
@@ -310,8 +321,51 @@ router.post(
         return;
       }
 
+      const userId = req.user!.id;
+      const usage = await getUserVoiceUsage(userId);
+      if (usage.transcribeSecondsRemaining <= 0) {
+        res.status(429).json({
+          error: VOICE_CAP_REACHED_MESSAGE,
+          code: "voice_cap_reached",
+        });
+        return;
+      }
+
       const { buffer, format } = await ensureCompatibleFormat(audioBuffer);
+
+      // Probe the *converted* WAV/MP3 buffer for an accurate duration. If
+      // ffprobe is unavailable, fall back to a rough estimate based on the
+      // original payload size at ~32kbps so we still record something.
+      let durationSeconds = await probeAudioDurationSeconds(buffer);
+      if (!(durationSeconds > 0)) {
+        durationSeconds = Math.max(1, audioBuffer.length / 4000);
+      }
+
+      // Prospective cap check: refuse the request if processing this clip
+      // would push the user over their monthly transcription budget. This
+      // stops a single long recording near the limit from blowing the cap.
+      if (Math.round(durationSeconds) > usage.transcribeSecondsRemaining) {
+        console.log(
+          `[voice-usage] transcribe-blocked user=${userId} clip_seconds=${durationSeconds.toFixed(2)} ` +
+            `remaining=${usage.transcribeSecondsRemaining}/${TRANSCRIBE_SECONDS_CAP}`
+        );
+        res.status(429).json({
+          error: VOICE_CAP_REACHED_MESSAGE,
+          code: "voice_cap_reached",
+        });
+        return;
+      }
+
       const transcript = await speechToText(buffer, format);
+
+      // Record after the call so failures don't burn quota.
+      await recordTranscribeUsage(userId, durationSeconds);
+
+      const costPence = estimateTranscribeCostPence(durationSeconds);
+      console.log(
+        `[voice-usage] transcribe user=${userId} seconds=${durationSeconds.toFixed(2)} ` +
+          `est_cost_pence=${costPence.toFixed(4)} month_seconds_used=${usage.transcribeSeconds + Math.round(durationSeconds)}/${TRANSCRIBE_SECONDS_CAP}`
+      );
 
       res.json({ transcript: (transcript ?? "").trim() });
     } catch (err) {
@@ -326,7 +380,7 @@ router.post(
  * play it back. Returns the audio bytes directly with the appropriate
  * Content-Type header.
  */
-router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req, res) => {
+router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req: AuthenticatedRequest, res) => {
   try {
     const { text, voice } = req.body as { text?: unknown; voice?: unknown };
 
@@ -339,12 +393,40 @@ router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req, res) => 
       return;
     }
 
+    const userId = req.user!.id;
+    const usage = await getUserVoiceUsage(userId);
+    // Prospective cap check: reject when this reply's character count would
+    // push the user over their monthly TTS budget. Use text.length as the
+    // billable measure — that's what gets recorded after a successful call.
+    if (usage.ttsCharactersRemaining <= 0 || text.length > usage.ttsCharactersRemaining) {
+      if (usage.ttsCharactersRemaining > 0) {
+        console.log(
+          `[voice-usage] speak-blocked user=${userId} chars=${text.length} ` +
+            `remaining=${usage.ttsCharactersRemaining}/${TTS_CHARACTERS_CAP}`
+        );
+      }
+      res.status(429).json({
+        error: VOICE_CAP_REACHED_MESSAGE,
+        code: "voice_cap_reached",
+      });
+      return;
+    }
+
     const chosenVoice: AllowedVoice =
       typeof voice === "string" && (ALLOWED_VOICES as readonly string[]).includes(voice)
         ? (voice as AllowedVoice)
         : "alloy";
 
     const audio = await textToSpeech(text, chosenVoice, "mp3");
+
+    const charCount = text.length;
+    await recordTtsUsage(userId, charCount);
+
+    const costPence = estimateTtsCostPence(charCount);
+    console.log(
+      `[voice-usage] speak user=${userId} chars=${charCount} ` +
+        `est_cost_pence=${costPence.toFixed(4)} month_chars_used=${usage.ttsCharacters + charCount}/${TTS_CHARACTERS_CAP}`
+    );
 
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store");
@@ -357,6 +439,20 @@ router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req, res) => 
     } else {
       res.end();
     }
+  }
+});
+
+/**
+ * Return the signed-in user's current-month voice consumption and the
+ * configured caps, so the Settings page can show how much budget is left.
+ */
+router.get("/voice-usage", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const usage = await getUserVoiceUsage(req.user!.id);
+    res.json({ usage });
+  } catch (err) {
+    console.error("Sidekick voice-usage error:", err);
+    res.status(500).json({ error: "Failed to load voice usage" });
   }
 });
 

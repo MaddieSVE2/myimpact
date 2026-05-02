@@ -17,6 +17,17 @@ interface AdminUser {
   pagesVisited: string[];
 }
 
+interface VoiceUsageUser {
+  userId: string;
+  email: string;
+  displayName: string | null;
+  yearMonth: string;
+  transcribeSeconds: number;
+  ttsCharacters: number;
+  estimatedCostPence: number;
+  updatedAt: string;
+}
+
 interface OrgRequest {
   id: string;
   orgName: string;
@@ -58,6 +69,11 @@ export default function Admin() {
   const [orgError, setOrgError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const [voiceUsers, setVoiceUsers] = useState<VoiceUsageUser[]>([]);
+  const [voiceCaps, setVoiceCaps] = useState<{ transcribeSecondsCap: number; ttsCharactersCap: number; yearMonth: string } | null>(null);
+  const [voiceFetching, setVoiceFetching] = useState(true);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
   const isAdmin = user && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
   useEffect(() => {
@@ -84,6 +100,20 @@ export default function Admin() {
       })
       .catch((err) => setOrgError(err.message ?? "Failed to load org requests"))
       .finally(() => setOrgFetching(false));
+
+    fetch(`${BASE}/api/admin/voice-usage`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setVoiceUsers(data.users);
+        setVoiceCaps({
+          yearMonth: data.yearMonth,
+          transcribeSecondsCap: data.transcribeSecondsCap,
+          ttsCharactersCap: data.ttsCharactersCap,
+        });
+      })
+      .catch((err) => setVoiceError(err.message ?? "Failed to load voice usage"))
+      .finally(() => setVoiceFetching(false));
   }, [isLoading, user, isAdmin]);
 
   async function handleApprove(id: string) {
@@ -297,6 +327,84 @@ export default function Admin() {
       <p className="mt-6 text-xs text-muted-foreground">
         {orgRequests.length} request{orgRequests.length !== 1 ? "s" : ""} total
       </p>
+
+      <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Top voice users</h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        Sidekick voice (transcription + read-aloud) for {voiceCaps?.yearMonth ?? "this month"}. Estimated cost is a rough approximation, not a billed figure.
+      </p>
+
+      {voiceError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">
+          {voiceError}
+        </div>
+      )}
+
+      {voiceFetching && !voiceError && (
+        <p className="text-sm text-muted-foreground">Loading voice usage…</p>
+      )}
+
+      {!voiceFetching && !voiceError && voiceUsers.length === 0 && (
+        <p className="text-sm text-muted-foreground italic">No voice usage recorded yet this month.</p>
+      )}
+
+      {!voiceFetching && !voiceError && voiceUsers.length > 0 && voiceCaps && (
+        <div className="overflow-x-auto rounded-xl border border-border shadow-sm" data-testid="admin-voice-usage-table">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">User</th>
+                <th className="text-right px-4 py-3 font-semibold text-foreground">Spoken (sec)</th>
+                <th className="text-right px-4 py-3 font-semibold text-foreground">Read aloud (chars)</th>
+                <th className="text-right px-4 py-3 font-semibold text-foreground">Est. cost</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Cap status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {voiceUsers.map((vu, idx) => {
+                const transcribePct = Math.min(100, Math.round((vu.transcribeSeconds / Math.max(1, voiceCaps.transcribeSecondsCap)) * 100));
+                const ttsPct = Math.min(100, Math.round((vu.ttsCharacters / Math.max(1, voiceCaps.ttsCharactersCap)) * 100));
+                const capHit = transcribePct >= 100 || ttsPct >= 100;
+                return (
+                  <tr
+                    key={vu.userId}
+                    className={idx % 2 === 0 ? "bg-background" : "bg-secondary/20"}
+                  >
+                    <td className="px-4 py-3">
+                      <p className="text-foreground font-medium">{vu.displayName ?? vu.email}</p>
+                      {vu.displayName && (
+                        <p className="text-xs text-muted-foreground">{vu.email}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">
+                      {vu.transcribeSeconds.toLocaleString("en-GB")}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">
+                      {vu.ttsCharacters.toLocaleString("en-GB")}
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
+                      £{(vu.estimatedCostPence / 100).toFixed(3)}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className="text-muted-foreground">{transcribePct}% / {ttsPct}%</span>
+                      {capHit && (
+                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-destructive/10 text-destructive text-[10px] font-semibold uppercase">
+                          Cap hit
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {voiceCaps && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Cap per user: {Math.round(voiceCaps.transcribeSecondsCap / 60)} min spoken &middot; {voiceCaps.ttsCharactersCap.toLocaleString("en-GB")} chars read aloud per month.
+        </p>
+      )}
 
       <AdminFunnels />
     </div>

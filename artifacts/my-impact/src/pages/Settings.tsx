@@ -561,8 +561,111 @@ function SidekickVoiceSettings() {
             Tap the microphone in the Sidekick panel to speak instead of typing. Voice features need a modern browser with microphone access.
           </p>
         </div>
+        <VoiceUsageMeter />
       </div>
     </section>
+  );
+}
+
+interface VoiceUsageData {
+  yearMonth: string;
+  transcribeSeconds: number;
+  ttsCharacters: number;
+  transcribeSecondsCap: number;
+  ttsCharactersCap: number;
+  transcribeSecondsRemaining: number;
+  ttsCharactersRemaining: number;
+  estimatedCostPence: number;
+  capReached: boolean;
+}
+
+function formatMinutes(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = seconds / 60;
+  return mins >= 10 ? `${Math.round(mins)} min` : `${mins.toFixed(1)} min`;
+}
+
+function formatCharCount(chars: number): string {
+  if (chars >= 1000) return `${(chars / 1000).toFixed(1)}k`;
+  return chars.toLocaleString("en-GB");
+}
+
+function VoiceUsageMeter() {
+  const [usage, setUsage] = useState<VoiceUsageData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/sidekick/voice-usage`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed");
+        const data = await res.json();
+        if (!cancelled) setUsage(data.usage as VoiceUsageData);
+      } catch {
+        if (!cancelled) setUsage(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="px-5 py-4" data-testid="voice-usage-meter-loading">
+        <p className="text-xs text-muted-foreground">Loading voice usage…</p>
+      </div>
+    );
+  }
+  if (!usage) return null;
+
+  const transcribePct = Math.min(100, Math.round((usage.transcribeSeconds / Math.max(1, usage.transcribeSecondsCap)) * 100));
+  const ttsPct = Math.min(100, Math.round((usage.ttsCharacters / Math.max(1, usage.ttsCharactersCap)) * 100));
+  const eitherCapHit = usage.transcribeSecondsRemaining <= 0 || usage.ttsCharactersRemaining <= 0;
+
+  return (
+    <div className="px-5 py-4" data-testid="voice-usage-meter">
+      <p className="text-sm font-medium text-foreground mb-1">This month's voice usage</p>
+      <p className="text-[11px] text-muted-foreground mb-3">
+        Voice replies and dictation use a paid speech service, so each account has a monthly budget. It resets on the 1st of every month.
+      </p>
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+            <span>Speaking to Sidekick</span>
+            <span data-testid="voice-usage-transcribe">
+              {formatMinutes(usage.transcribeSeconds)} of {formatMinutes(usage.transcribeSecondsCap)}
+            </span>
+          </div>
+          <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${transcribePct}%`, background: transcribePct >= 100 ? "#dc2626" : "#F06127" }}
+            />
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+            <span>Sidekick reading aloud</span>
+            <span data-testid="voice-usage-tts">
+              {formatCharCount(usage.ttsCharacters)} of {formatCharCount(usage.ttsCharactersCap)} characters
+            </span>
+          </div>
+          <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${ttsPct}%`, background: ttsPct >= 100 ? "#dc2626" : "#F06127" }}
+            />
+          </div>
+        </div>
+      </div>
+      {eitherCapHit && (
+        <p className="mt-3 text-[11px] text-destructive font-medium" data-testid="voice-usage-cap-warning">
+          You've used your voice budget for this month — voice will be back next month, or upgrade your plan.
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -1,9 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, voiceUsageTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { randomUUID } from "crypto";
+import {
+  TRANSCRIBE_SECONDS_CAP,
+  TTS_CHARACTERS_CAP,
+  currentMonthKey,
+  estimateTranscribeCostPence,
+  estimateTtsCostPence,
+} from "../lib/voiceUsage.js";
 
 const router: IRouter = Router();
 
@@ -177,6 +184,56 @@ router.post("/org-requests/:id/approve", authenticate, async (req: Authenticated
   }
 
   res.json({ ok: true, inviteCode, orgId, ...(emailWarning ? { warning: emailWarning } : {}) });
+});
+
+/**
+ * Top voice users for the current month, with estimated spend in pence.
+ * Used by the admin panel to spot heavy or abusive usage early.
+ */
+router.get("/voice-usage", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const yearMonth = currentMonthKey();
+  const rows = await db
+    .select({
+      userId: voiceUsageTable.userId,
+      yearMonth: voiceUsageTable.yearMonth,
+      transcribeSeconds: voiceUsageTable.transcribeSeconds,
+      ttsCharacters: voiceUsageTable.ttsCharacters,
+      updatedAt: voiceUsageTable.updatedAt,
+      email: usersTable.email,
+      displayName: usersTable.displayName,
+    })
+    .from(voiceUsageTable)
+    .innerJoin(usersTable, eq(voiceUsageTable.userId, usersTable.id))
+    .where(eq(voiceUsageTable.yearMonth, yearMonth))
+    .orderBy(desc(voiceUsageTable.transcribeSeconds), desc(voiceUsageTable.ttsCharacters))
+    .limit(50);
+
+  const users = rows
+    .map((r) => ({
+      userId: r.userId,
+      email: r.email,
+      displayName: r.displayName,
+      yearMonth: r.yearMonth,
+      transcribeSeconds: r.transcribeSeconds,
+      ttsCharacters: r.ttsCharacters,
+      estimatedCostPence:
+        estimateTranscribeCostPence(r.transcribeSeconds) +
+        estimateTtsCostPence(r.ttsCharacters),
+      updatedAt: r.updatedAt,
+    }))
+    .sort((a, b) => b.estimatedCostPence - a.estimatedCostPence);
+
+  res.json({
+    yearMonth,
+    transcribeSecondsCap: TRANSCRIBE_SECONDS_CAP,
+    ttsCharactersCap: TTS_CHARACTERS_CAP,
+    users,
+  });
 });
 
 router.post("/org-requests/:id/reject", authenticate, async (req: AuthenticatedRequest, res) => {

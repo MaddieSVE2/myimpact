@@ -676,9 +676,13 @@ export function Sidekick() {
         headers: { "Content-Type": blob.type || "application/octet-stream" },
         body: blob,
       });
-      const data = await res.json().catch(() => ({} as { transcript?: string; error?: string }));
+      const data = await res.json().catch(() => ({} as { transcript?: string; error?: string; code?: string }));
       if (!res.ok) {
-        throw new Error((data as { error?: string }).error ?? `Transcription failed (${res.status})`);
+        // The server returns a friendly cap-reached message with status 429
+        // and { code: "voice_cap_reached" }. Pass that straight through so
+        // the user sees the configured copy rather than a generic error.
+        const errMsg = (data as { error?: string }).error ?? `Transcription failed (${res.status})`;
+        throw new Error(errMsg);
       }
       const transcript = ((data as { transcript?: string }).transcript ?? "").trim();
       setVoiceState("idle");
@@ -731,7 +735,21 @@ export function Sidekick() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: speakable, voice: voicePersona }),
         });
-        if (!res.ok) throw new Error(`speak failed (${res.status})`);
+        if (!res.ok) {
+          // Surface the friendly monthly-cap message in the panel so the
+          // user understands why nothing is being read aloud.
+          if (res.status === 429) {
+            try {
+              const data = await res.json();
+              if (data?.code === "voice_cap_reached" && typeof data?.error === "string") {
+                if (!cancelled) setVoiceError(data.error);
+              }
+            } catch {
+              // ignore — fall through to the generic error
+            }
+          }
+          throw new Error(`speak failed (${res.status})`);
+        }
         const buf = await res.arrayBuffer();
         if (cancelled) return;
         const blob = new Blob([buf], { type: "audio/mpeg" });
