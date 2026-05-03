@@ -447,7 +447,7 @@ function OnePager() {
             <Feature
               num="1"
               title="Inspires"
-              desc="Gentle nudges and personalised suggestions help members discover causes, activities and skills that matter to them."
+              desc="Personalised suggestions help members discover causes, activities and skills that matter to them."
               variant={0}
             />
             <Feature
