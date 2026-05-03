@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import html2canvas from "html2canvas";
-import { ArrowLeft, ArrowRight, Download, Share2, X, Sparkles, Loader2, Coins, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Share2, X, Sparkles, Loader2, Coins, Clock, Film } from "lucide-react";
 import { useGetAnnualRecap, getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import {
   getRecapYear,
@@ -12,18 +12,28 @@ import {
   getShowMoneyPref,
   setShowMoneyPref as persistShowMoney,
 } from "@/lib/recap-utils";
-import RecapShareCard, { CARD_SIZES } from "@/components/RecapShareCard";
+import {
+  buildRecapVideo,
+  isVideoExportSupported,
+  type RecapVideoData,
+} from "@/lib/recap-video";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-async function loadLogoAsDataUrl(): Promise<string> {
+async function loadLogoImage(): Promise<HTMLImageElement> {
   const res = await fetch(`${BASE_URL}/images/myimpact.png`);
   const blob = await res.blob();
-  return new Promise((resolve, reject) => {
+  const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
+  });
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
   });
 }
 
@@ -167,17 +177,19 @@ export default function AnnualRecap() {
   };
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [logoDataUrl, setLogoDataUrl] = useState<string | undefined>(undefined);
-  const [shareFormat, setShareFormat] = useState<"landscape" | "portrait">("portrait");
-  const [exporting, setExporting] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const videoSupported = useMemo(() => isVideoExportSupported(), []);
+  const { toast } = useToast();
+  const lastVideoRef = useRef<{ blob: Blob; extension: string; year: number } | null>(null);
 
   const { data: recap, isLoading, isError, refetch } = useGetAnnualRecap(yearFromQuery, {
     query: { enabled: isLoggedIn, queryKey: getGetAnnualRecapQueryKey(yearFromQuery) },
   });
 
   useEffect(() => {
-    loadLogoAsDataUrl().then(setLogoDataUrl).catch(() => {});
+    loadLogoImage().then(setLogoImage).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -482,86 +494,93 @@ export default function AnnualRecap() {
         );
       }
       case "shareCard": {
-        const cardData = {
-          year: recap.year,
-          totalValue: recap.totalValue,
-          totalHours: recap.totalHours,
-          topActivityName: recap.topActivity?.activityName ?? null,
-          topSdg: recap.topSdg?.sdg ?? null,
-          topSdgColor: recap.topSdg?.sdgColor ?? null,
-          recordCount: recap.recordCount,
-          showMoney,
-          displayName: user?.displayName ?? null,
-        };
         return (
           <StepShell>
             <StepLabel>Share your year</StepLabel>
-            <div style={{ width: "min(420px, 92vw)", marginTop: 12 }}>
-              <ShareCardPreview data={cardData} format={shareFormat} logoDataUrl={logoDataUrl} />
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <button
-                onClick={() => setShareFormat("portrait")}
-                className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
-                style={{
-                  background: shareFormat === "portrait" ? "#e8622a" : "rgba(255,255,255,0.08)",
-                  color: shareFormat === "portrait" ? "white" : "rgba(255,255,255,0.7)",
-                }}
-              >
-                Portrait
-              </button>
-              <button
-                onClick={() => setShareFormat("landscape")}
-                className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
-                style={{
-                  background: shareFormat === "landscape" ? "#e8622a" : "rgba(255,255,255,0.08)",
-                  color: shareFormat === "landscape" ? "white" : "rgba(255,255,255,0.7)",
-                }}
-              >
-                Landscape
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
-              <button
-                onClick={handleDownload}
-                disabled={exporting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white disabled:opacity-60"
-                style={{ background: "#e8622a" }}
-              >
-                <Download size={16} /> {exporting ? "Generating…" : "Download PNG"}
-              </button>
-              {typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
-                <button
-                  onClick={handleNativeShare}
-                  disabled={exporting}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white border border-white/20 hover:bg-white/10 disabled:opacity-60"
-                >
-                  <Share2 size={16} /> Share
-                </button>
-              ) : null}
-            </div>
-            <p className="text-xs text-white/40 mt-4">All caught up · close to return home</p>
-
-            {/* Off-screen full-size capture target */}
             <div
               style={{
-                position: "fixed",
-                left: -99999,
-                top: -99999,
-                width: CARD_SIZES[shareFormat].width,
-                height: CARD_SIZES[shareFormat].height,
-                pointerEvents: "none",
+                width: "min(280px, 70vw)",
+                aspectRatio: "9 / 16",
+                borderRadius: 20,
+                background: "linear-gradient(160deg, #1a2e3a 0%, #243b4a 60%, rgba(232,98,42,0.4) 140%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 12,
+                position: "relative",
+                overflow: "hidden",
               }}
-              aria-hidden="true"
             >
-              <RecapShareCard
-                ref={cardRef}
-                data={cardData}
-                format={shareFormat}
-                appUrl={window.location.hostname}
-                logoDataUrl={logoDataUrl}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: -40,
+                  right: -40,
+                  width: 180,
+                  height: 180,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(232,98,42,0.55) 0%, transparent 70%)",
+                }}
               />
+              <div style={{ textAlign: "center", padding: 24, zIndex: 1 }}>
+                <Film size={36} color="#e8622a" style={{ margin: "0 auto 12px" }} />
+                <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: 0 }}>
+                  {recap.year} recap
+                </p>
+                <p style={{ fontSize: 18, fontWeight: 800, color: "white", marginTop: 6, lineHeight: 1.2 }}>
+                  Your year, ready to share
+                </p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 8, lineHeight: 1.4 }}>
+                  ~12s portrait video for Stories, WhatsApp & more
+                </p>
+              </div>
             </div>
+
+            {generating ? (
+              <div style={{ marginTop: 22, width: "min(320px, 80vw)" }}>
+                <p className="text-sm text-white/80 mb-2 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Generating your video…
+                </p>
+                <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${Math.round(progress * 100)}%`,
+                      background: "#e8622a",
+                      transition: "width 0.15s linear",
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-white/40 mt-2 text-center">Recording happens in real time — about 15 seconds.</p>
+              </div>
+            ) : !videoSupported ? (
+              <div style={{ marginTop: 22, maxWidth: 340, textAlign: "center" }}>
+                <p className="text-sm text-white/80">
+                  Video sharing isn't supported on this browser — try Chrome or Safari.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  onClick={handleShareVideo}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white"
+                  style={{ background: "#e8622a" }}
+                  data-testid="button-share-video"
+                >
+                  <Share2 size={16} /> Share video
+                </button>
+                <button
+                  onClick={handleDownloadVideo}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white border border-white/20 hover:bg-white/10"
+                  data-testid="button-download-video"
+                >
+                  <Download size={16} /> Download video
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-white/40 mt-4">All caught up · close to return home</p>
           </StepShell>
         );
       }
@@ -570,62 +589,138 @@ export default function AnnualRecap() {
     }
   };
 
-  async function handleDownload() {
-    if (!cardRef.current) return;
-    setExporting(true);
+  function buildVideoData(): RecapVideoData {
+    return {
+      year: recap!.year,
+      displayName: user?.displayName ?? null,
+      showMoney,
+      totalValue: recap!.totalValue,
+      totalHours: recap!.totalHours,
+      recordCount: recap!.recordCount,
+      topSdg: recap!.topSdg
+        ? { name: recap!.topSdg.sdg, color: recap!.topSdg.sdgColor }
+        : null,
+      topActivity: recap!.topActivity
+        ? {
+            name: recap!.topActivity.activityName,
+            hours: recap!.topActivity.hours,
+            value: recap!.topActivity.impactValue,
+            category: recap!.topActivity.category,
+          }
+        : null,
+      biggestRecord:
+        recap!.biggestSession && (recap!.recordCount ?? 0) > 1
+          ? {
+              title: recap!.biggestSession.period || recap!.biggestSession.name,
+              dateLabel: new Date(recap!.biggestSession.createdAt).toLocaleDateString("en-GB", {
+                month: "long",
+                year: "numeric",
+              }),
+              totalValue: recap!.biggestSession.totalValue,
+              totalHours: recap!.biggestSession.totalHours,
+            }
+          : null,
+      appUrl:
+        typeof window !== "undefined"
+          ? window.location.hostname.replace(/^www\./, "")
+          : "myimpact.com",
+      logoImage,
+    };
+  }
+
+  function buildShareCaption(): string {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return showMoney
+      ? `My ${recap!.year} on My Impact: ${formatCurrency(recap!.totalValue)} of social value across ${formatNumber(recap!.totalHours)} hours. ${origin}`
+      : `My ${recap!.year} on My Impact: ${formatNumber(recap!.totalHours)} hours given. ${origin}`;
+  }
+
+  async function ensureVideo(): Promise<{ blob: Blob; extension: string } | null> {
+    if (!recap) return null;
+    if (
+      lastVideoRef.current &&
+      lastVideoRef.current.year === recap.year
+    ) {
+      return lastVideoRef.current;
+    }
+    setGenerating(true);
+    setProgress(0);
     try {
-      const { width, height } = CARD_SIZES[shareFormat];
-      const canvas = await html2canvas(cardRef.current, {
-        width,
-        height,
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: "#1a2e3a",
-        logging: false,
+      const result = await buildRecapVideo(buildVideoData(), {
+        onProgress: (p) => setProgress(p),
       });
-      const link = document.createElement("a");
-      link.download = `my-impact-${recap?.year ?? "recap"}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      lastVideoRef.current = { blob: result.blob, extension: result.extension, year: recap.year };
+      return lastVideoRef.current;
+    } catch (err) {
+      console.error("Video generation failed", err);
+      toast({
+        title: "Couldn't make your video",
+        description: "Please try again, or try a different browser.",
+        variant: "destructive",
+      });
+      return null;
     } finally {
-      setExporting(false);
+      setGenerating(false);
     }
   }
 
-  async function handleNativeShare() {
-    if (!cardRef.current || !recap) return;
-    setExporting(true);
-    try {
-      const { width, height } = CARD_SIZES[shareFormat];
-      const canvas = await html2canvas(cardRef.current, {
-        width,
-        height,
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: "#1a2e3a",
-        logging: false,
-      });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `my-impact-${recap.year}.png`, { type: "image/png" });
-        const shareText = showMoney
-          ? `My ${recap.year} on My Impact: ${formatCurrency(recap.totalValue)} of social value across ${formatNumber(recap.totalHours)} hours. ${window.location.origin}`
-          : `My ${recap.year} on My Impact: ${formatNumber(recap.totalHours)} hours given. ${window.location.origin}`;
-        try {
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], text: shareText, title: `My ${recap.year} in impact` });
-          } else {
-            await navigator.share({ text: shareText, title: `My ${recap.year} in impact` });
-          }
-        } catch {
-          // user cancelled or share failed — fall back silently
-        }
-      }, "image/png");
-    } finally {
-      setExporting(false);
+  // Re-generate next time if money toggle changes
+  useEffect(() => {
+    lastVideoRef.current = null;
+  }, [showMoney]);
+
+  function downloadBlob(blob: Blob, extension: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `my-impact-${recap?.year ?? "recap"}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function handleDownloadVideo() {
+    const v = await ensureVideo();
+    if (!v) return;
+    downloadBlob(v.blob, v.extension);
+    toast({
+      title: "Video saved",
+      description: "Find it in your Downloads folder.",
+    });
+  }
+
+  async function handleShareVideo() {
+    const v = await ensureVideo();
+    if (!v || !recap) return;
+
+    const fileName = `my-impact-${recap.year}.${v.extension}`;
+    const fileType = v.blob.type || (v.extension === "mp4" ? "video/mp4" : "video/webm");
+    const file = new File([v.blob], fileName, { type: fileType });
+    const shareText = buildShareCaption();
+    const title = `My ${recap.year} in impact`;
+
+    const canShareFiles =
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] });
+
+    if (canShareFiles) {
+      try {
+        await navigator.share({ files: [file], text: shareText, title });
+        return;
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // fall through to download
+      }
     }
+
+    downloadBlob(v.blob, v.extension);
+    toast({
+      title: "Video downloaded",
+      description: "Direct sharing isn't available here — find the video in Downloads and share it from there.",
+    });
   }
 
   return (
@@ -707,32 +802,3 @@ export default function AnnualRecap() {
   );
 }
 
-function ShareCardPreview({
-  data,
-  format,
-  logoDataUrl,
-}: {
-  data: import("@/components/RecapShareCard").RecapShareCardData;
-  format: "landscape" | "portrait";
-  logoDataUrl?: string;
-}) {
-  const { width, height } = CARD_SIZES[format];
-  const containerWidth = Math.min(420, typeof window !== "undefined" ? window.innerWidth - 48 : 420);
-  const scale = containerWidth / width;
-
-  return (
-    <div
-      style={{
-        width: containerWidth,
-        height: height * scale,
-        overflow: "hidden",
-        borderRadius: 16,
-        boxShadow: "0 12px 48px rgba(0,0,0,0.4)",
-      }}
-    >
-      <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
-        <RecapShareCard data={data} format={format} appUrl={window.location.hostname} logoDataUrl={logoDataUrl} />
-      </div>
-    </div>
-  );
-}
