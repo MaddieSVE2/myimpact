@@ -464,12 +464,13 @@ export default function History() {
 
       <div className="mb-6">
         <SearchTagFilter
-          q={filters.q}
+          searchValue={filters.q}
           onSearchChange={setSearch}
-          tags={filters.tags}
+          searchPlaceholder="Search records, periods, or activities…"
+          availableTags={availableTags}
+          selectedTags={filters.tags}
           onToggleTag={toggleTag}
           onClearAll={clearAll}
-          availableTags={availableTags}
         />
       </div>
 
