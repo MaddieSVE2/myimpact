@@ -45,7 +45,7 @@ export default function AuthConfirm() {
     try {
       const res = await fetch(`${BASE}/api/auth/confirm`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         credentials: "include",
         body: JSON.stringify({ token }),
       });

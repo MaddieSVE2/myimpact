@@ -211,6 +211,12 @@ router.get("/verify", async (req, res) => {
 });
 
 router.post("/confirm", async (req, res) => {
+  const xRequestedWith = req.headers["x-requested-with"];
+  if (!xRequestedWith || xRequestedWith !== "XMLHttpRequest") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
   const { token } = req.body;
   if (!token || typeof token !== "string") {
     res.status(400).json({ error: "Token is required" });
