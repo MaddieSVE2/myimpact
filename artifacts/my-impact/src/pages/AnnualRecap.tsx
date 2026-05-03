@@ -14,6 +14,7 @@ import {
 } from "@/lib/recap-utils";
 import {
   buildRecapVideo,
+  buildRecapPoster,
   isVideoExportSupported,
   type RecapVideoData,
 } from "@/lib/recap-video";
@@ -182,7 +183,7 @@ export default function AnnualRecap() {
   const [progress, setProgress] = useState(0);
   const videoSupported = useMemo(() => isVideoExportSupported(), []);
   const { toast } = useToast();
-  const lastVideoRef = useRef<{ blob: Blob; extension: string; year: number } | null>(null);
+  const lastVideoRef = useRef<{ blob: Blob; extension: string; posterBlob: Blob | null; year: number } | null>(null);
 
   const { data: recap, isLoading, isError, refetch } = useGetAnnualRecap(yearFromQuery, {
     query: { enabled: isLoggedIn, queryKey: getGetAnnualRecapQueryKey(yearFromQuery) },
@@ -635,7 +636,7 @@ export default function AnnualRecap() {
       : `My ${recap!.year} on My Impact: ${formatNumber(recap!.totalHours)} hours given. ${origin}`;
   }
 
-  async function ensureVideo(): Promise<{ blob: Blob; extension: string } | null> {
+  async function ensureVideo(): Promise<{ blob: Blob; extension: string; posterBlob: Blob | null } | null> {
     if (!recap) return null;
     if (
       lastVideoRef.current &&
@@ -646,10 +647,17 @@ export default function AnnualRecap() {
     setGenerating(true);
     setProgress(0);
     try {
-      const result = await buildRecapVideo(buildVideoData(), {
+      const data = buildVideoData();
+      const result = await buildRecapVideo(data, {
         onProgress: (p) => setProgress(p),
       });
-      lastVideoRef.current = { blob: result.blob, extension: result.extension, year: recap.year };
+      let posterBlob: Blob | null = null;
+      try {
+        posterBlob = await buildRecapPoster(data);
+      } catch (err) {
+        console.warn("Poster generation failed", err);
+      }
+      lastVideoRef.current = { blob: result.blob, extension: result.extension, posterBlob, year: recap.year };
       return lastVideoRef.current;
     } catch (err) {
       console.error("Video generation failed", err);
@@ -669,11 +677,11 @@ export default function AnnualRecap() {
     lastVideoRef.current = null;
   }, [showMoney]);
 
-  function downloadBlob(blob: Blob, extension: string) {
+  function downloadBlob(blob: Blob, fileName: string) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `my-impact-${recap?.year ?? "recap"}.${extension}`;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -683,10 +691,18 @@ export default function AnnualRecap() {
   async function handleDownloadVideo() {
     const v = await ensureVideo();
     if (!v) return;
-    downloadBlob(v.blob, v.extension);
+    const year = recap?.year ?? "recap";
+    downloadBlob(v.blob, `my-impact-${year}.${v.extension}`);
+    if (v.posterBlob) {
+      setTimeout(() => {
+        downloadBlob(v.posterBlob!, `my-impact-${year}-poster.jpg`);
+      }, 400);
+    }
     toast({
       title: "Video saved",
-      description: "Find it in your Downloads folder.",
+      description: v.posterBlob
+        ? "Saved your video and a matching poster image to Downloads."
+        : "Find it in your Downloads folder.",
     });
   }
 
@@ -696,19 +712,32 @@ export default function AnnualRecap() {
 
     const fileName = `my-impact-${recap.year}.${v.extension}`;
     const fileType = v.blob.type || (v.extension === "mp4" ? "video/mp4" : "video/webm");
-    const file = new File([v.blob], fileName, { type: fileType });
+    const videoFile = new File([v.blob], fileName, { type: fileType });
+    const posterFile = v.posterBlob
+      ? new File([v.posterBlob], `my-impact-${recap.year}-poster.jpg`, { type: "image/jpeg" })
+      : null;
     const shareText = buildShareCaption();
     const title = `My ${recap.year} in impact`;
 
-    const canShareFiles =
+    const canShare = (files: File[]) =>
       typeof navigator !== "undefined" &&
       typeof navigator.share === "function" &&
       typeof navigator.canShare === "function" &&
-      navigator.canShare({ files: [file] });
+      navigator.canShare({ files });
 
-    if (canShareFiles) {
+    if (posterFile && canShare([videoFile, posterFile])) {
       try {
-        await navigator.share({ files: [file], text: shareText, title });
+        await navigator.share({ files: [videoFile, posterFile], text: shareText, title });
+        return;
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // fall through to single-file share
+      }
+    }
+
+    if (canShare([videoFile])) {
+      try {
+        await navigator.share({ files: [videoFile], text: shareText, title });
         return;
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -716,7 +745,12 @@ export default function AnnualRecap() {
       }
     }
 
-    downloadBlob(v.blob, v.extension);
+    downloadBlob(v.blob, fileName);
+    if (v.posterBlob) {
+      setTimeout(() => {
+        downloadBlob(v.posterBlob!, `my-impact-${recap.year}-poster.jpg`);
+      }, 400);
+    }
     toast({
       title: "Video downloaded",
       description: "Direct sharing isn't available here — find the video in Downloads and share it from there.",

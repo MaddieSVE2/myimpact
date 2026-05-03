@@ -544,6 +544,30 @@ async function ensureFontsReady() {
   }
 }
 
+export async function buildRecapPoster(data: RecapVideoData): Promise<Blob> {
+  await ensureFontsReady();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = VIDEO_WIDTH;
+  canvas.height = VIDEO_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not get 2D canvas context");
+
+  drawBackground(ctx, 0);
+  outroScene(data).paint(ctx, 1, 1);
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Failed to generate poster image"));
+      },
+      "image/jpeg",
+      0.92,
+    );
+  });
+}
+
 export async function buildRecapVideo(
   data: RecapVideoData,
   options: RecapVideoOptions = {},
