@@ -1,4 +1,5 @@
 import { pgTable, text, serial, numeric, integer, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -54,6 +55,7 @@ export const impactRecordsTable = pgTable("impact_records", {
   attestedByApiKeyId: text("attested_by_api_key_id"),
   attestedAt: timestamp("attested_at"),
   source: text("source").notNull().default("user"),
+  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords,
   getGetImpactHistoryQueryKey,
@@ -18,6 +18,9 @@ import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import { QuickLog } from "@/components/QuickLog";
 import StreakChip from "@/components/StreakChip";
+import { TagEditor } from "@/components/TagEditor";
+import { SearchTagFilter } from "@/components/SearchTagFilter";
+import { useUrlFilters } from "@/lib/useUrlFilters";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -48,6 +51,7 @@ interface LocalRecord {
   outwardCode?: string | null;
   lat?: number | null;
   lng?: number | null;
+  tags?: string[];
 }
 
 type AnyRecord = LocalRecord | SavedImpact;
@@ -153,9 +157,15 @@ export default function History() {
   const [, navigate] = useLocation();
   const { loadFromRecord } = useWizard();
 
+  const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
+  const historyParams = {
+    userId: user?.id ?? "",
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.tags.length > 0 ? { tags: filters.tags.join(",") } : {}),
+  };
   const { data: serverData, isLoading, isError: serverError } = useGetImpactHistory(
-    { userId: user?.id ?? "" },
-    { query: { enabled: isAuthenticated, queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) } }
+    historyParams,
+    { query: { enabled: isAuthenticated, queryKey: getGetImpactHistoryQueryKey(historyParams) } }
   );
 
   const [localRecords, setLocalRecords] = useState<LocalRecord[]>(() =>
@@ -221,7 +231,7 @@ export default function History() {
   }, [editingId]);
 
   const invalidateHistory = () => {
-    queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
+    queryClient.invalidateQueries({ queryKey: [`/api/impact/history`] });
   };
 
   const handleDownloadPdf = async (recordId: string, recordName: string) => {
@@ -318,6 +328,15 @@ export default function History() {
     setExpandedId(null);
   };
 
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    const serverRecs = isAuthenticated ? (serverData?.records ?? []) : [];
+    for (const r of serverRecs) for (const t of (r as { tags?: string[] }).tags ?? []) set.add(t);
+    for (const r of localRecords) for (const t of r.tags ?? []) set.add(t);
+    for (const t of filters.tags) set.add(t);
+    return Array.from(set).sort();
+  }, [isAuthenticated, serverData, localRecords, filters.tags]);
+
   if (isLoading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -336,7 +355,7 @@ export default function History() {
         <AlertTriangle className="w-10 h-10 text-destructive" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Could not load your history. Please try refreshing the page.</p>
         <button
-          onClick={() => queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) })}
+          onClick={() => queryClient.invalidateQueries({ queryKey: [`/api/impact/history`] })}
           className="text-sm text-primary underline hover:text-primary/80"
         >
           Try again
@@ -345,11 +364,57 @@ export default function History() {
     );
   }
 
-  const records: AnyRecord[] = isAuthenticated
+  const allServerRecords: AnyRecord[] = isAuthenticated
     ? (serverData?.records || [])
     : localRecords;
 
-  const chartData = [...records].filter(r => r.impactResult?.totalValue != null).reverse().map(r => ({
+  // For local-only mode, filter client-side using the same URL state.
+  function localMatches(record: LocalRecord): boolean {
+    if (filters.q) {
+      const q = filters.q.toLowerCase();
+      const haystack = [
+        record.name,
+        record.period ?? "",
+        ...(record.activities?.map(a => (a as { description?: string }).description ?? "") ?? []),
+      ].join(" ").toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    if (filters.tags.length > 0) {
+      const recordTags = record.tags ?? [];
+      if (!filters.tags.every(t => recordTags.includes(t))) return false;
+    }
+    return true;
+  }
+
+  const records: AnyRecord[] = isAuthenticated
+    ? allServerRecords
+    : localRecords.filter(localMatches);
+
+  const hasFilter = !!filters.q || filters.tags.length > 0;
+  const isFilteredEmpty = hasFilter && records.length === 0;
+
+  // For computing the chart and stats, use the unfiltered set when available
+  // so the "all-time" totals stay meaningful.
+  const allRecords: AnyRecord[] = isAuthenticated
+    ? allServerRecords // server-filtered; we accept search may shrink the chart
+    : localRecords;
+
+  async function handleTagsChange(recordId: string, nextTags: string[]) {
+    if (isAuthenticated) {
+      try {
+        await updateRecord.mutateAsync({ id: recordId, data: { tags: nextTags } });
+        invalidateHistory();
+      } catch {
+        toast({ title: "Could not update tags", description: "Please try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = localRecords.map(r => r.id === recordId ? { ...r, tags: nextTags } : r);
+      saveLocalHistory(updated);
+      setLocalRecords(updated);
+    }
+  }
+
+  const chartData = [...allRecords].filter(r => r.impactResult?.totalValue != null).reverse().map(r => ({
     date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
     fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
     value: r.impactResult.totalValue,
@@ -363,13 +428,13 @@ export default function History() {
     return "custom";
   }
 
-  const latest = records[0];
-  const previous = records[1];
+  const latest = allRecords[0];
+  const previous = allRecords[1];
   const sameType = latest && previous && inferPeriodType(latest.period) === inferPeriodType(previous.period);
   const changeVsLast = sameType && latest.impactResult?.totalValue != null && previous.impactResult?.totalValue != null
     ? latest.impactResult.totalValue - previous.impactResult.totalValue
     : null;
-  const allTimeTotal = records.reduce((sum, r) => sum + (r.impactResult?.totalValue ?? 0), 0);
+  const allTimeTotal = allRecords.reduce((sum, r) => sum + (r.impactResult?.totalValue ?? 0), 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -395,6 +460,17 @@ export default function History() {
       </div>
 
       <QuickLog showManageLink />
+
+      <div className="mb-6">
+        <SearchTagFilter
+          q={filters.q}
+          onSearchChange={setSearch}
+          tags={filters.tags}
+          onToggleTag={toggleTag}
+          onClearAll={clearAll}
+          availableTags={availableTags}
+        />
+      </div>
 
       {(() => {
         const recent = (records as Array<AnyRecord & { verification?: { status: string; orgName: string; reason: string | null; decidedAt: string | null } }>)
@@ -425,7 +501,19 @@ export default function History() {
         );
       })()}
 
-      {records.length === 0 ? (
+      {isFilteredEmpty ? (
+        <div className="bg-white border border-dashed border-border rounded-xl py-16 text-center">
+          <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground mb-1">No matches found</p>
+          <p className="text-xs text-muted-foreground mb-5">Try adjusting your search or filters.</p>
+          <button
+            onClick={clearAll}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            Reset all filters
+          </button>
+        </div>
+      ) : allRecords.length === 0 && !hasFilter ? (
         <div className="bg-white border border-dashed border-border rounded-xl py-16 text-center">
           <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm font-medium text-foreground mb-1">No records yet</p>
@@ -516,9 +604,36 @@ export default function History() {
             </figure>
           </motion.div>
 
+          {/* Search & tag filters */}
+          <SearchTagFilter
+            searchValue={filters.q}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by activity, period, or notes…"
+            availableTags={availableTags}
+            selectedTags={filters.tags}
+            onToggleTag={toggleTag}
+            onClearAll={clearAll}
+          />
+
           {/* Record list */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground mb-3">All records</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">
+              {hasFilter ? `Matching records (${records.length})` : "All records"}
+            </h3>
+            {isFilteredEmpty && (
+              <div className="bg-white border border-dashed border-border rounded-xl py-10 text-center">
+                <p className="text-sm font-medium text-foreground mb-1">No matches</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  No records match your search or selected tags.
+                </p>
+                <button
+                  onClick={clearAll}
+                  className="text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  Reset filters
+                </button>
+              </div>
+            )}
             {records.map((record, i) => {
               const isOpen = expandedId === record.id;
               const isEditing = editingId === record.id;
@@ -654,6 +769,18 @@ export default function History() {
                             )}
                           </div>
                         )}
+                        {((record as { tags?: string[] }).tags ?? []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {((record as { tags?: string[] }).tags ?? []).map(t => (
+                              <span
+                                key={t}
+                                className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground border border-border"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </button>
 
@@ -758,6 +885,12 @@ export default function History() {
                           recordId={isAuthenticated ? (parseInt(String(record.id), 10) || undefined) : undefined}
                           hasDonations={(record.impactResult?.donationsValue ?? 0) > 0}
                         />
+                        <div className="px-4 py-3 border-t border-border bg-muted/5">
+                          <TagEditor
+                            tags={(record as { tags?: string[] }).tags ?? []}
+                            onChange={(next) => handleTagsChange(record.id, next)}
+                          />
+                        </div>
                         <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
                           {record.impactResult && record.activities?.length > 0 && (
                             <button

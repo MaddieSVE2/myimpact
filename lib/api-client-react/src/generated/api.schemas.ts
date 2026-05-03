@@ -118,6 +118,7 @@ export interface SavedImpact {
   period?: string | null;
   createdAt: string;
   impactResult: ImpactResult;
+  tags: string[];
 }
 
 export interface StreakInfo {
@@ -174,7 +175,8 @@ export interface ProfileInput {
 }
 
 export interface UpdateImpactRecordInput {
-  periodLabel: string;
+  periodLabel?: string;
+  tags?: string[];
 }
 
 export interface UpdateImpactRecordResponse {
@@ -183,6 +185,7 @@ export interface UpdateImpactRecordResponse {
   name: string;
   period?: string | null;
   createdAt: string;
+  tags: string[];
 }
 
 export interface DeleteImpactRecordResponse {
@@ -294,6 +297,11 @@ export interface DeleteRecurringTemplateResponse {
 
 export type GetImpactHistoryParams = {
   userId: string;
+  q?: string;
+  /**
+   * Comma-separated list of tag names to filter by (records must contain all)
+   */
+  tags?: string;
 };
 
 export type AckStreakMilestoneBody = {

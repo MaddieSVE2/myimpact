@@ -245,6 +245,7 @@ export const SaveImpactResponse = zod.object({
       personalDevelopment: zod.string(),
     }),
   }),
+  tags: zod.array(zod.string()),
 });
 
 /**
@@ -252,6 +253,13 @@ export const SaveImpactResponse = zod.object({
  */
 export const GetImpactHistoryQueryParams = zod.object({
   userId: zod.coerce.string(),
+  q: zod.coerce.string().optional(),
+  tags: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Comma-separated list of tag names to filter by (records must contain all)",
+    ),
 });
 
 export const GetImpactHistoryResponse = zod.object({
@@ -296,6 +304,7 @@ export const GetImpactHistoryResponse = zod.object({
           personalDevelopment: zod.string(),
         }),
       }),
+      tags: zod.array(zod.string()),
     }),
   ),
   streak: zod
@@ -325,7 +334,8 @@ export const UpdateImpactRecordParams = zod.object({
 });
 
 export const UpdateImpactRecordBody = zod.object({
-  periodLabel: zod.string(),
+  periodLabel: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
 });
 
 export const UpdateImpactRecordResponse = zod.object({
@@ -334,6 +344,7 @@ export const UpdateImpactRecordResponse = zod.object({
   name: zod.string(),
   period: zod.string().nullish(),
   createdAt: zod.string(),
+  tags: zod.array(zod.string()),
 });
 
 /**

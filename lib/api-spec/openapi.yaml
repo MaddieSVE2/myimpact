@@ -104,6 +104,17 @@ paths:
           required: true
           schema:
             type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tags
+          in: query
+          required: false
+          description: Comma-separated list of tag names to filter by (records must contain all)
+          schema:
+            type: string
       responses:
         "200":
           description: Impact history
@@ -670,12 +681,17 @@ components:
           type: string
         impactResult:
           $ref: "#/components/schemas/ImpactResult"
+        tags:
+          type: array
+          items:
+            type: string
       required:
         - id
         - userId
         - name
         - createdAt
         - impactResult
+        - tags
     ImpactHistoryResponse:
       type: object
       properties:
@@ -808,8 +824,10 @@ components:
       properties:
         periodLabel:
           type: string
-      required:
-        - periodLabel
+        tags:
+          type: array
+          items:
+            type: string
     UpdateImpactRecordResponse:
       type: object
       properties:
@@ -824,11 +842,16 @@ components:
           nullable: true
         createdAt:
           type: string
+        tags:
+          type: array
+          items:
+            type: string
       required:
         - id
         - userId
         - name
         - createdAt
+        - tags
     DeleteImpactRecordResponse:
       type: object
       properties:

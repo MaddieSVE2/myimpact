@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -313,9 +313,23 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const { periodLabel } = req.body as { periodLabel?: string };
-  if (typeof periodLabel !== "string") {
-    res.status(400).json({ error: "periodLabel is required" });
+  const body = req.body as { periodLabel?: string; tags?: unknown };
+  const { periodLabel } = body;
+
+  const updates: Record<string, unknown> = {};
+  if (typeof periodLabel === "string") {
+    updates.periodLabel = periodLabel || null;
+  }
+  if (Array.isArray(body.tags)) {
+    const tags = body.tags
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    updates.tags = Array.from(new Set(tags));
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "Provide periodLabel or tags" });
     return;
   }
 
@@ -332,7 +346,7 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
 
   const [updated] = await db
     .update(impactRecordsTable)
-    .set({ periodLabel: periodLabel || null })
+    .set(updates)
     .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
     .returning();
 
@@ -342,6 +356,7 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     name: updated.name,
     period: updated.periodLabel ?? null,
     createdAt: updated.createdAt.toISOString(),
+    tags: updated.tags ?? [],
   });
 });
 
@@ -387,10 +402,33 @@ router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
 router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
 
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const tagsParam = typeof req.query.tags === "string" ? req.query.tags : "";
+  const tagFilters = tagsParam
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const conditions = [eq(impactRecordsTable.userId, userId)];
+
+  if (q) {
+    const like = `%${q}%`;
+    const searchClause = or(
+      ilike(impactRecordsTable.name, like),
+      ilike(impactRecordsTable.periodLabel, like),
+      sql`${impactRecordsTable.activitiesJson}::text ILIKE ${like}`,
+    );
+    if (searchClause) conditions.push(searchClause);
+  }
+
+  if (tagFilters.length > 0) {
+    conditions.push(sql`${impactRecordsTable.tags} @> ARRAY[${sql.join(tagFilters.map((t) => sql`${t}`), sql`, `)}]::text[]`);
+  }
+
   const records = await db
     .select()
     .from(impactRecordsTable)
-    .where(eq(impactRecordsTable.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(impactRecordsTable.createdAt));
 
   const profile = await db.query.userProfilesTable.findFirst({
@@ -436,6 +474,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     lat: r.lat != null ? Number(r.lat) : null,
     lng: r.lng != null ? Number(r.lng) : null,
     verification: verifMap.get(r.id) ?? null,
+    tags: r.tags ?? [],
   }));
 
   res.json({ records: formatted, streak });

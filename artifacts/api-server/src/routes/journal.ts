@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, journalEntriesTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { deleteAttachmentsForJournal } from "../lib/attachmentCleanup.js";
 
@@ -27,10 +27,38 @@ const router: IRouter = Router();
 
 router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
+
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const tagsParam = typeof req.query.tags === "string" ? req.query.tags : "";
+  const tagFilters = tagsParam
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const conditions = [eq(journalEntriesTable.userId, userId)];
+
+  if (q) {
+    const like = `%${q}%`;
+    const searchClause = or(
+      ilike(journalEntriesTable.text, like),
+      ilike(journalEntriesTable.prompt, like),
+      ilike(journalEntriesTable.reflectionText, like),
+      ilike(journalEntriesTable.summary, like),
+      ilike(journalEntriesTable.reflectionPrompt, like),
+      ilike(journalEntriesTable.periodLabel, like),
+      sql`EXISTS (SELECT 1 FROM unnest(${journalEntriesTable.tags}) AS t WHERE t ILIKE ${like})`,
+    );
+    if (searchClause) conditions.push(searchClause);
+  }
+
+  if (tagFilters.length > 0) {
+    conditions.push(sql`${journalEntriesTable.tags} @> ARRAY[${sql.join(tagFilters.map((t) => sql`${t}`), sql`, `)}]::text[]`);
+  }
+
   const entries = await db
     .select()
     .from(journalEntriesTable)
-    .where(eq(journalEntriesTable.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(journalEntriesTable.createdAt));
 
   const formatted = entries.map((e) => ({
@@ -43,6 +71,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
     impactRecordId: e.impactRecordId ?? undefined,
     summary: e.summary ?? undefined,
     reflectionPrompt: e.reflectionPrompt ?? undefined,
+    tags: e.tags ?? [],
     createdAt: e.createdAt.toISOString(),
   }));
 
@@ -84,6 +113,7 @@ router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
     impactRecordId: inserted.impactRecordId ?? undefined,
     summary: inserted.summary ?? undefined,
     reflectionPrompt: inserted.reflectionPrompt ?? undefined,
+    tags: inserted.tags ?? [],
     createdAt: inserted.createdAt.toISOString(),
   });
 });
@@ -98,11 +128,22 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   const body = req.body as Record<string, unknown>;
-  const reflectionText = typeof body.reflectionText === "string" ? body.reflectionText : null;
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (typeof body.reflectionText === "string" || body.reflectionText === null) {
+    updates.reflectionText = typeof body.reflectionText === "string" ? body.reflectionText : null;
+  }
+  if (Array.isArray(body.tags)) {
+    const tags = body.tags
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    updates.tags = Array.from(new Set(tags));
+  }
 
   const [updated] = await db
     .update(journalEntriesTable)
-    .set({ reflectionText, updatedAt: new Date() })
+    .set(updates)
     .where(and(eq(journalEntriesTable.id, entryId), eq(journalEntriesTable.userId, userId)))
     .returning();
 
@@ -121,6 +162,7 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     impactRecordId: updated.impactRecordId ?? undefined,
     summary: updated.summary ?? undefined,
     reflectionPrompt: updated.reflectionPrompt ?? undefined,
+    tags: updated.tags ?? [],
     createdAt: updated.createdAt.toISOString(),
   });
 });

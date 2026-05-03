@@ -1,16 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
+import { TagEditor } from "@/components/TagEditor";
+import { SearchTagFilter } from "@/components/SearchTagFilter";
+import { useUrlFilters } from "@/lib/useUrlFilters";
 
 interface JournalEntry {
   id: string;
   type: "entry";
   text: string;
   prompt: string;
+  tags: string[];
   createdAt: string;
 }
 
@@ -22,6 +26,7 @@ interface ActivityCard {
   summary: string;
   reflectionPrompt: string;
   reflectionText: string;
+  tags: string[];
   createdAt: string;
 }
 
@@ -37,6 +42,7 @@ interface ApiEntryShape {
   impactRecordId?: string;
   summary?: string;
   reflectionPrompt?: string;
+  tags?: string[];
   createdAt: string;
 }
 
@@ -61,7 +67,7 @@ function randomPrompt() {
 
 const STORAGE_KEY = "myimpact_journal";
 
-function isActivityCard(item: unknown): item is ActivityCard {
+function isActivityCard(item: unknown): item is Omit<ActivityCard, "tags"> & { tags?: string[] } {
   if (typeof item !== "object" || item === null) return false;
   const obj = item as Record<string, unknown>;
   return (
@@ -107,13 +113,25 @@ function loadLocalEntries(): FeedItem[] {
     const result: FeedItem[] = [];
     for (const item of parsed) {
       if (isActivityCard(item)) {
-        result.push(item);
+        result.push({
+          id: item.id,
+          type: "activity",
+          impactRecordId: item.impactRecordId,
+          periodLabel: item.periodLabel,
+          summary: item.summary,
+          reflectionPrompt: item.reflectionPrompt,
+          reflectionText: item.reflectionText,
+          tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === "string") : [],
+          createdAt: item.createdAt,
+        });
       } else if (isJournalEntryLike(item)) {
+        const maybeTags = (item as { tags?: unknown }).tags;
         result.push({
           id: item.id,
           type: "entry",
           text: item.text,
           prompt: item.prompt,
+          tags: Array.isArray(maybeTags) ? maybeTags.filter((t): t is string => typeof t === "string") : [],
           createdAt: item.createdAt,
         });
       }
@@ -129,6 +147,7 @@ function saveLocalEntries(entries: FeedItem[]) {
 }
 
 function apiEntryToFeedItem(e: ApiEntryShape): FeedItem {
+  const tags = Array.isArray(e.tags) ? e.tags : [];
   if (e.type === "activity") {
     return {
       id: e.id,
@@ -138,6 +157,7 @@ function apiEntryToFeedItem(e: ApiEntryShape): FeedItem {
       summary: e.summary ?? "",
       reflectionPrompt: e.reflectionPrompt ?? "",
       reflectionText: e.reflectionText ?? "",
+      tags,
       createdAt: e.createdAt,
     };
   }
@@ -146,6 +166,7 @@ function apiEntryToFeedItem(e: ApiEntryShape): FeedItem {
     type: "entry",
     text: e.text ?? "",
     prompt: e.prompt ?? "",
+    tags,
     createdAt: e.createdAt,
   };
 }
@@ -166,10 +187,12 @@ function ActivityCardItem({
   card,
   onDelete,
   onSaveReflection,
+  onChangeTags,
 }: {
   card: ActivityCard;
   onDelete: (id: string) => void;
   onSaveReflection: (cardId: string, text: string) => void;
+  onChangeTags: (cardId: string, tags: string[]) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(!!card.reflectionText);
@@ -249,6 +272,10 @@ function ActivityCardItem({
           )}
         </div>
 
+        <div className="mt-3 pt-3 border-t border-border/40">
+          <TagEditor tags={card.tags} onChange={(t) => onChangeTags(card.id, t)} />
+        </div>
+
         <p className="text-[11px] text-muted-foreground mt-3">
           {new Date(card.createdAt).toLocaleDateString("en-GB", {
             weekday: "short", day: "numeric", month: "long", year: "numeric",
@@ -270,6 +297,8 @@ export default function Journal() {
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
   const migrated = useRef(false);
+
+  const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
 
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -300,7 +329,11 @@ export default function Journal() {
   async function fetchEntries() {
     setLoadingEntries(true);
     try {
-      const res = await fetch(`${BASE}/api/journal`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (filters.q) params.set("q", filters.q);
+      if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
+      const url = params.toString() ? `${BASE}/api/journal?${params.toString()}` : `${BASE}/api/journal`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json() as { entries: unknown[] };
       const items = data.entries
@@ -350,7 +383,8 @@ export default function Journal() {
     } else {
       setEntries(loadLocalEntries());
     }
-  }, [isLoggedIn, authLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, authLoading, filters.q, filters.tags.join(",")]);
 
   const handleAdd = async () => {
     if (!draft.trim()) return;
@@ -359,6 +393,7 @@ export default function Journal() {
       type: "entry",
       text: draft.trim(),
       prompt,
+      tags: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -416,6 +451,32 @@ export default function Journal() {
     }
   };
 
+  const handleChangeTags = async (entryId: string, nextTags: string[]) => {
+    if (isLoggedIn) {
+      const snapshot = entries;
+      setEntries(prev => prev.map(item => item.id === entryId ? { ...item, tags: nextTags } : item));
+      try {
+        const res = await fetch(`${BASE}/api/journal/${entryId}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: nextTags }),
+        });
+        if (!res.ok) {
+          setEntries(snapshot);
+          toast({ title: "Could not update tags", description: "Please try again.", variant: "destructive" });
+        }
+      } catch {
+        setEntries(snapshot);
+        toast({ title: "Could not update tags", description: "Check your connection and try again.", variant: "destructive" });
+      }
+    } else {
+      const updated = entries.map(item => item.id === entryId ? { ...item, tags: nextTags } : item);
+      setEntries(updated);
+      saveLocalEntries(updated);
+    }
+  };
+
   const handleSaveReflection = async (cardId: string, reflectionText: string) => {
     if (isLoggedIn) {
       const snapshot = entries;
@@ -446,7 +507,16 @@ export default function Journal() {
     }
   };
 
-  const isEmpty = entries.length === 0 && !isAdding;
+  const hasFilter = !!filters.q || filters.tags.length > 0;
+  const isEmpty = entries.length === 0 && !isAdding && !hasFilter;
+  const isFilteredEmpty = entries.length === 0 && hasFilter && !loadingEntries;
+
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) for (const t of e.tags ?? []) set.add(t);
+    for (const t of filters.tags) set.add(t);
+    return Array.from(set).sort();
+  }, [entries, filters.tags]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -519,6 +589,18 @@ export default function Journal() {
         )}
       </AnimatePresence>
 
+      {!isEmpty && (
+        <SearchTagFilter
+          searchValue={filters.q}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search entries, reflections, or tags…"
+          availableTags={availableTags}
+          selectedTags={filters.tags}
+          onToggleTag={toggleTag}
+          onClearAll={clearAll}
+        />
+      )}
+
       {loadingEntries ? (
         <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
       ) : isEmpty ? (
@@ -535,6 +617,19 @@ export default function Journal() {
             <Plus className="w-3.5 h-3.5" /> Write your first entry
           </button>
         </div>
+      ) : isFilteredEmpty ? (
+        <div className="bg-white border border-dashed border-border rounded-xl py-10 text-center">
+          <p className="text-sm font-medium text-foreground mb-1">No matches</p>
+          <p className="text-xs text-muted-foreground mb-4">
+            No entries match your search or selected tags.
+          </p>
+          <button
+            onClick={clearAll}
+            className="text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            Reset filters
+          </button>
+        </div>
       ) : (
         <div className="space-y-4">
           <AnimatePresence>
@@ -546,6 +641,7 @@ export default function Journal() {
                     card={item}
                     onDelete={handleDelete}
                     onSaveReflection={handleSaveReflection}
+                    onChangeTags={handleChangeTags}
                   />
                 );
               }
@@ -590,6 +686,9 @@ export default function Journal() {
                       />
                     ) : null;
                   })()}
+                  <div className="mt-3 pt-3 border-t border-border/40">
+                    <TagEditor tags={entry.tags} onChange={(t) => handleChangeTags(entry.id, t)} />
+                  </div>
                   <p className="text-[11px] text-muted-foreground mt-3">
                     {new Date(entry.createdAt).toLocaleDateString("en-GB", {
                       weekday: "short", day: "numeric", month: "long", year: "numeric",

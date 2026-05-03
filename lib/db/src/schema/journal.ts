@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +14,7 @@ export const journalEntriesTable = pgTable("journal_entries", {
   impactRecordId: text("impact_record_id"),
   summary: text("summary"),
   reflectionPrompt: text("reflection_prompt"),
+  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
