@@ -56,8 +56,8 @@ const s = StyleSheet.create({
   // Header band
   header: {
     backgroundColor: NAVY,
-    paddingTop: 28,
-    paddingBottom: 28,
+    paddingTop: 22,
+    paddingBottom: 22,
     paddingHorizontal: 36,
     flexDirection: "row",
     alignItems: "center",
@@ -87,9 +87,9 @@ const s = StyleSheet.create({
   },
   // Hero
   hero: {
-    paddingTop: 22,
+    paddingTop: 18,
     paddingHorizontal: 36,
-    paddingBottom: 4,
+    paddingBottom: 2,
   },
   eyebrow: {
     fontSize: 8.5,
@@ -101,7 +101,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   headline: {
-    fontSize: 30,
+    fontSize: 26,
     fontFamily: "Outfit",
     fontWeight: 700,
     color: NAVY,
@@ -112,17 +112,28 @@ const s = StyleSheet.create({
     color: ORANGE,
   },
   subhead: {
-    fontSize: 11,
+    fontSize: 10,
     color: MUTED,
-    marginTop: 12,
-    lineHeight: 1.55,
+    marginTop: 8,
+    lineHeight: 1.45,
     maxWidth: 470,
+  },
+  tagline: {
+    marginTop: 6,
+    fontSize: 11,
+    fontFamily: "Outfit",
+    fontWeight: 700,
+    color: NAVY,
+    letterSpacing: 0.2,
+  },
+  taglineAccent: {
+    color: ORANGE,
   },
   // Two column body
   body: {
     flexDirection: "row",
     paddingHorizontal: 36,
-    paddingTop: 18,
+    paddingTop: 12,
     gap: 22,
   },
   leftCol: {
@@ -166,7 +177,7 @@ const s = StyleSheet.create({
   },
   featureRow: {
     flexDirection: "row",
-    marginBottom: 12,
+    marginBottom: 9,
     alignItems: "flex-start",
   },
   bullet: {
@@ -208,55 +219,72 @@ const s = StyleSheet.create({
     color: MUTED,
     lineHeight: 1.45,
   },
-  // Stats strip
-  statsStrip: {
+  // Credibility strip
+  credStrip: {
     marginTop: 10,
     marginHorizontal: 36,
     backgroundColor: NAVY,
     borderRadius: 10,
-    padding: 12,
+    padding: 10,
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  stat: {
-    alignItems: "flex-start",
+  credItem: {
     flex: 1,
+    paddingHorizontal: 4,
   },
-  statDivider: {
+  credDivider: {
     width: 1,
     backgroundColor: "rgba(255,255,255,0.15)",
     marginHorizontal: 8,
   },
-  statValue: {
-    fontSize: 18,
+  credLabel: {
+    fontSize: 7.5,
+    color: ORANGE,
     fontFamily: "Outfit",
     fontWeight: 700,
-    color: ORANGE,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 8,
-    color: CREAM,
-    fontFamily: "Outfit",
-    fontWeight: 600,
-    letterSpacing: 0.6,
+    letterSpacing: 1,
     textTransform: "uppercase",
-    opacity: 0.85,
+    marginBottom: 4,
+  },
+  credValue: {
+    fontSize: 10,
+    color: WHITE,
+    fontFamily: "Outfit",
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+  credSubtle: {
+    fontSize: 8.5,
+    color: CREAM,
+    opacity: 0.75,
+    marginTop: 2,
+    lineHeight: 1.3,
   },
   // Who uses
   whoStrip: {
     marginTop: 10,
     marginHorizontal: 36,
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
   whoCard: {
     flex: 1,
     backgroundColor: WHITE,
-    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: ORANGE,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
     borderColor: "#E8E5DE",
-    borderRadius: 8,
-    padding: 10,
+    borderRadius: 6,
+    padding: 9,
+  },
+  whoCardOlive: {
+    borderLeftColor: OLIVE,
+  },
+  whoCardBlue: {
+    borderLeftColor: LIGHT_BLUE,
   },
   whoTitle: {
     fontSize: 10,
@@ -266,7 +294,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   whoDesc: {
-    fontSize: 8.5,
+    fontSize: 8,
     color: MUTED,
     lineHeight: 1.4,
   },
@@ -274,8 +302,8 @@ const s = StyleSheet.create({
   footer: {
     marginTop: 10,
     backgroundColor: NAVY,
-    paddingTop: 11,
-    paddingBottom: 11,
+    paddingTop: 10,
+    paddingBottom: 10,
     paddingHorizontal: 36,
     flexDirection: "row",
     alignItems: "center",
@@ -304,6 +332,18 @@ const s = StyleSheet.create({
   },
   footerOrange: {
     color: ORANGE,
+  },
+  ctaWrap: {
+    alignItems: "flex-end",
+  },
+  ctaUrgency: {
+    color: ORANGE,
+    fontSize: 8,
+    fontFamily: "Outfit",
+    fontWeight: 700,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 5,
   },
   ctaPill: {
     backgroundColor: ORANGE,
@@ -361,16 +401,43 @@ function OnePager() {
         <View style={s.hero}>
           <Text style={s.eyebrow}>For Schools · Universities · Employers · Charities</Text>
           <Text style={s.headline}>
-            Inspire your people.{"\n"}
-            See the <Text style={s.headlineAccent}>difference they make.</Text>
+            See the impact{"\n"}
+            your people <Text style={s.headlineAccent}>already make.</Text>
           </Text>
           <Text style={s.subhead}>
             For a long time, the everyday good that people do has gone largely unseen.
             Caring for a neighbour, volunteering, mentoring, recycling, giving blood. All
             of it has tremendous value. My Impact helps your people understand and celebrate
-            that value, find new ways to give back, and lets your organisation see the good
-            that grows from it all.
+            that value, and lets your organisation see the good that grows from it all.
           </Text>
+          <Text style={s.tagline}>
+            Plain English. <Text style={s.taglineAccent}>Real numbers.</Text>
+          </Text>
+        </View>
+
+        {/* Who it's for - promoted up */}
+        <View style={s.whoStrip}>
+          <View style={s.whoCard}>
+            <Text style={s.whoTitle}>Schools &amp; Universities</Text>
+            <Text style={s.whoDesc}>
+              Show what your students give back to the community, in a way inspectors,
+              parents and partners actually understand.
+            </Text>
+          </View>
+          <View style={[s.whoCard, s.whoCardOlive]}>
+            <Text style={s.whoTitle}>Employers</Text>
+            <Text style={s.whoDesc}>
+              Put a real number on the good your team does, and run friendly campaigns
+              your people genuinely want to take part in.
+            </Text>
+          </View>
+          <View style={[s.whoCard, s.whoCardBlue]}>
+            <Text style={s.whoTitle}>Charities &amp; Councils</Text>
+            <Text style={s.whoDesc}>
+              Show funders and the public exactly what every pound and every hour you
+              invest turns into.
+            </Text>
+          </View>
         </View>
 
         {/* Body */}
@@ -379,26 +446,26 @@ function OnePager() {
             <Text style={s.sectionTitle}>What My Impact does for you</Text>
             <Feature
               num="1"
-              title="Inspire fresh ideas"
-              desc="Members get gentle nudges and suggestions for ways to volunteer, give or help out, matched to the causes and skills they care about."
+              title="Inspires"
+              desc="Gentle nudges and personalised suggestions help members discover causes, activities and skills that matter to them."
               variant={0}
             />
             <Feature
               num="2"
-              title="Connect your community"
-              desc="Bring your staff, students or volunteers together in one place. They can log what they do, share reflections, and feel part of something bigger."
+              title="Connects"
+              desc="Brings your staff, students or volunteers together in one place where they can log what they do and share reflections."
               variant={1}
             />
             <Feature
               num="3"
-              title="Celebrate every milestone"
-              desc="Recognise the moments that matter with badges, journal highlights and friendly challenges that keep people coming back."
+              title="Celebrates"
+              desc="Recognises the moments that matter with badges, journal highlights and friendly challenges that keep people coming back."
               variant={2}
             />
             <Feature
               num="4"
-              title="Make it visible to you"
-              desc="A live dashboard, beautiful PDF reports and a public impact page, ready to share with funders, your board or the wider world."
+              title="Makes it visible"
+              desc="A live organisation dashboard, branded PDF reports and a public impact page, ready to share with funders, your board, or the wider world."
               variant={3}
             />
           </View>
@@ -410,51 +477,24 @@ function OnePager() {
           </View>
         </View>
 
-        {/* Stats strip */}
-        <View style={s.statsStrip}>
-          <View style={s.stat}>
-            <Text style={s.statValue}>Inspire</Text>
-            <Text style={s.statLabel}>fresh ways to give back</Text>
+        {/* Credibility strip */}
+        <View style={s.credStrip}>
+          <View style={s.credItem}>
+            <Text style={s.credLabel}>Advisory Chair</Text>
+            <Text style={s.credValue}>David Emerson CBE</Text>
+            <Text style={s.credSubtle}>Former CEO, ACF</Text>
           </View>
-          <View style={s.statDivider} />
-          <View style={s.stat}>
-            <Text style={s.statValue}>Connect</Text>
-            <Text style={s.statLabel}>your people and your causes</Text>
+          <View style={s.credDivider} />
+          <View style={s.credItem}>
+            <Text style={s.credLabel}>Methodology</Text>
+            <Text style={s.credValue}>Social Value Engine</Text>
+            <Text style={s.credSubtle}>Accredited proxies and SROI</Text>
           </View>
-          <View style={s.statDivider} />
-          <View style={s.stat}>
-            <Text style={s.statValue}>Celebrate</Text>
-            <Text style={s.statLabel}>every milestone, big or small</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.stat}>
-            <Text style={s.statValue}>Show</Text>
-            <Text style={s.statLabel}>the difference you all make</Text>
-          </View>
-        </View>
-
-        {/* Who it's for */}
-        <View style={s.whoStrip}>
-          <View style={s.whoCard}>
-            <Text style={s.whoTitle}>Schools &amp; Universities</Text>
-            <Text style={s.whoDesc}>
-              Show what your students give back to the community, in a way inspectors,
-              parents and partners actually understand.
-            </Text>
-          </View>
-          <View style={s.whoCard}>
-            <Text style={s.whoTitle}>Employers</Text>
-            <Text style={s.whoDesc}>
-              Put a real number on the good your team does, and run friendly campaigns
-              your people genuinely want to take part in.
-            </Text>
-          </View>
-          <View style={s.whoCard}>
-            <Text style={s.whoTitle}>Charities &amp; Councils</Text>
-            <Text style={s.whoDesc}>
-              Show funders and the public exactly what every pound and every hour you
-              invest turns into. Plain English, real numbers.
-            </Text>
+          <View style={s.credDivider} />
+          <View style={s.credItem}>
+            <Text style={s.credLabel}>In trial with</Text>
+            <Text style={s.credValue}>Loughborough College</Text>
+            <Text style={s.credSubtle}>and partner organisations</Text>
           </View>
         </View>
 
@@ -466,8 +506,11 @@ function OnePager() {
               <Text style={s.footerOrange}>hello@myimpact.uk</Text>  ·  myimpact.uk
             </Text>
           </View>
-          <View style={s.ctaPill}>
-            <Text style={s.ctaText}>Book a demo →</Text>
+          <View style={s.ctaWrap}>
+            <Text style={s.ctaUrgency}>Trials underway · Places limited</Text>
+            <View style={s.ctaPill}>
+              <Text style={s.ctaText}>Book a demo →</Text>
+            </View>
           </View>
         </View>
       </Page>
