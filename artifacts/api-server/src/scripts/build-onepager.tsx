@@ -18,8 +18,8 @@ const __filename = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), "../../../..");
 
 const LOGO = path.join(ROOT, "artifacts/my-impact/public/images/myimpact.png");
-const SCREENSHOT = path.join(ROOT, "attached_assets/onepager/screenshot_home.jpg");
-const OUT = path.join(ROOT, "attached_assets/onepager/MyImpact_OnePager.pdf");
+const SCREENSHOT = path.join(ROOT, "attached_assets/onepager/screenshot_orgs.jpg");
+const OUT = path.join(ROOT, "attached_assets/onepager/MyImpact_OnePager_Organisations.pdf");
 
 const ORANGE = "#E8633A";
 const NAVY = "#213547";
@@ -210,11 +210,11 @@ const s = StyleSheet.create({
   },
   // Stats strip
   statsStrip: {
-    marginTop: 14,
+    marginTop: 10,
     marginHorizontal: 36,
     backgroundColor: NAVY,
     borderRadius: 10,
-    padding: 16,
+    padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -245,7 +245,7 @@ const s = StyleSheet.create({
   },
   // Who uses
   whoStrip: {
-    marginTop: 14,
+    marginTop: 10,
     marginHorizontal: 36,
     flexDirection: "row",
     gap: 10,
@@ -256,7 +256,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E5DE",
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
   },
   whoTitle: {
     fontSize: 10,
@@ -272,10 +272,10 @@ const s = StyleSheet.create({
   },
   // Footer
   footer: {
-    marginTop: 14,
+    marginTop: 10,
     backgroundColor: NAVY,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 11,
+    paddingBottom: 11,
     paddingHorizontal: 36,
     flexDirection: "row",
     alignItems: "center",
@@ -348,7 +348,7 @@ function Feature({
 
 function OnePager() {
   return (
-    <Document title="My Impact — One-Pager" author="My Impact">
+    <Document title="My Impact for Organisations — One-Pager" author="My Impact">
       <Page size="A4" style={s.page}>
         {/* Header */}
         <View style={s.header}>
@@ -359,44 +359,44 @@ function OnePager() {
 
         {/* Hero */}
         <View style={s.hero}>
-          <Text style={s.eyebrow}>Volunteering · Donations · Community</Text>
+          <Text style={s.eyebrow}>For Schools · Universities · Employers · Charities</Text>
           <Text style={s.headline}>
-            You already make a difference.{"\n"}
-            Now <Text style={s.headlineAccent}>prove it.</Text>
+            Quantify the social value{"\n"}
+            your people <Text style={s.headlineAccent}>actually create.</Text>
           </Text>
           <Text style={s.subhead}>
-            My Impact turns the time you give and the help you offer into a clear monetary
-            value, in pounds, using the Social Value Engine. Track it, share it, celebrate it
-            — and show employers, funders or yourself the difference you make.
+            My Impact gives your organisation a verified, pounds-and-pence picture of the
+            volunteering, mentoring and giving your members do — mapped to the UN SDGs and
+            ready for your annual report, ESG disclosures, OFSTED evidence or funder pitch.
           </Text>
         </View>
 
         {/* Body */}
         <View style={s.body}>
           <View style={s.leftCol}>
-            <Text style={s.sectionTitle}>How it works</Text>
+            <Text style={s.sectionTitle}>How it works for your organisation</Text>
             <Feature
               num="1"
-              title="Log what you do"
-              desc="Choose from dozens of recognised volunteering and community activities, and add your hours, donations and reflections in a few taps."
+              title="Invite your members"
+              desc="Roll out branded sign-up links to staff, students or volunteers in minutes. Optional SSO and an invite-by-email flow keep onboarding effortless."
               variant={0}
             />
             <Feature
               num="2"
-              title="See your social value"
-              desc="We calculate the financial value of your contribution using research-backed proxies from the Social Value Engine and government data."
+              title="They log, you aggregate"
+              desc="Members track hours, donations and activities through a simple app. Every entry is automatically priced using the Social Value Engine and rolled into your dashboard."
               variant={1}
             />
             <Feature
               num="3"
-              title="Build your impact story"
-              desc="Earn milestones, keep a private journal, and generate a polished PDF report you can share with employers, schools or funders."
+              title="Verify, match and challenge"
+              desc="Approve member hours, run match-funded campaigns, launch team challenges and recognise the people driving the most impact."
               variant={2}
             />
             <Feature
               num="4"
-              title="Connect with your organisation"
-              desc="Schools, employers and community groups can verify hours, run challenges and see aggregate impact across their members."
+              title="Report it, credibly"
+              desc="Export branded PDF reports, public impact pages and CSV data — ready for ESG, social value contracts, OFSTED, funders or your board."
               variant={3}
             />
           </View>
@@ -404,15 +404,15 @@ function OnePager() {
             <View style={s.screenshotCard}>
               <Image src={SCREENSHOT} style={s.screenshotImg} />
             </View>
-            <Text style={s.screenshotCaption}>myimpact.uk</Text>
+            <Text style={s.screenshotCaption}>Live organisation dashboard</Text>
           </View>
         </View>
 
         {/* Stats strip */}
         <View style={s.statsStrip}>
           <View style={s.stat}>
-            <Text style={s.statValue}>£12.21/hr</Text>
-            <Text style={s.statLabel}>National Living Wage baseline</Text>
+            <Text style={s.statValue}>£8+ SROI</Text>
+            <Text style={s.statLabel}>Typical return per £1 invested</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
@@ -421,34 +421,37 @@ function OnePager() {
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>50+</Text>
-            <Text style={s.statLabel}>Recognised activities</Text>
+            <Text style={s.statValue}>Verified</Text>
+            <Text style={s.statLabel}>Hours approved by your team</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>Free</Text>
-            <Text style={s.statLabel}>For individuals, forever</Text>
+            <Text style={s.statValue}>Branded</Text>
+            <Text style={s.statLabel}>Reports, share pages, exports</Text>
           </View>
         </View>
 
         {/* Who it's for */}
         <View style={s.whoStrip}>
           <View style={s.whoCard}>
-            <Text style={s.whoTitle}>Volunteers</Text>
-            <Text style={s.whoDesc}>
-              Anyone who gives time, money or kindness — and wants to see what it adds up to.
-            </Text>
-          </View>
-          <View style={s.whoCard}>
             <Text style={s.whoTitle}>Schools &amp; Universities</Text>
             <Text style={s.whoDesc}>
-              Track student volunteering, evidence outcomes and showcase community contribution.
+              Evidence student volunteering for OFSTED, TEF and access agreements; recognise
+              and reward community contribution at scale.
             </Text>
           </View>
           <View style={s.whoCard}>
             <Text style={s.whoTitle}>Employers</Text>
             <Text style={s.whoDesc}>
-              Quantify your team’s social value, run match programmes and report it credibly.
+              Quantify your team’s social value for ESG, B Corp and social-value-in-procurement
+              bids. Run match-funded campaigns members actually use.
+            </Text>
+          </View>
+          <View style={s.whoCard}>
+            <Text style={s.whoTitle}>Charities &amp; Public Sector</Text>
+            <Text style={s.whoDesc}>
+              Show funders the real return on every pound and hour invested, with auditable
+              SROI ratios and shareable impact pages.
             </Text>
           </View>
         </View>
@@ -462,7 +465,7 @@ function OnePager() {
             </Text>
           </View>
           <View style={s.ctaPill}>
-            <Text style={s.ctaText}>Calculate my impact →</Text>
+            <Text style={s.ctaText}>Book a demo →</Text>
           </View>
         </View>
       </Page>

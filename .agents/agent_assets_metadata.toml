@@ -65,3 +65,9 @@ id = "W8981aTP7Avf02sxzeqG4"
 uri = "file://attached_assets/onepager/MyImpact_OnePager.pdf"
 type = "pdf"
 title = "My Impact — One-Pager"
+
+[[outputs]]
+id = "t8TpipQk7VEyMYLJXcHNv"
+uri = "file://attached_assets/onepager/MyImpact_OnePager_Organisations.pdf"
+type = "pdf"
+title = "My Impact for Organisations — One-Pager"
