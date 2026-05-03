@@ -5,7 +5,12 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const ROOT = resolve(__dirname, "dist", "public");
+// Allow tests to point the static server at an arbitrary build output
+// without mutating the on-disk dist tree. Production deploys leave this
+// unset and the default `dist/public` location is used.
+const ROOT = process.env.STATIC_ROOT
+  ? resolve(process.env.STATIC_ROOT)
+  : resolve(__dirname, "dist", "public");
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
