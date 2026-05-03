@@ -19,7 +19,7 @@ import { Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { useAuth } from "@/lib/auth-context";
-import html2canvas from "html2canvas";
+import { paintResultsShareCard } from "@/lib/share-cards";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -67,72 +67,6 @@ function MetricTile({
           {explanation}
         </div>
       )}
-    </div>
-  );
-}
-
-// Hidden share card captured by html2canvas
-function ShareCard({ result, totalValue }: { result: any; totalValue: number }) {
-  return (
-    <div
-      id="impact-share-card"
-      style={{
-        width: 600,
-        background: "linear-gradient(160deg, #1b2b3a 0%, #213547 55%, #1a2d40 100%)",
-        padding: "44px 48px",
-        fontFamily: "'Outfit', 'DM Sans', sans-serif",
-        position: "absolute",
-        left: "-9999px",
-        top: 0,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-          <span style={{ color: "#E8633A", fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>My</span>
-          <span style={{ color: "#ffffff", fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>Impact</span>
-        </div>
-        <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, letterSpacing: 2, fontWeight: 600 }}>
-          SOCIAL VALUE ENGINE
-        </span>
-      </div>
-      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, marginBottom: 6, letterSpacing: 1.5, fontWeight: 600 }}>
-        MY ANNUAL SOCIAL VALUE
-      </p>
-      <p style={{ color: "#E8633A", fontSize: 62, fontWeight: 800, margin: 0, lineHeight: 1.05, letterSpacing: -2 }}>
-        {formatCurrency(totalValue)}
-      </p>
-      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "8px 0 0", fontWeight: 400 }}>
-        Total verified social impact
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px 24px",
-          marginTop: 36,
-          paddingTop: 28,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-        }}
-      >
-        {[
-          { label: "Direct Impact", value: result.impactValue, colour: "#E8633A" },
-          { label: "Contributions", value: result.contributionValue, colour: "#60a5fa" },
-          { label: "Donations", value: result.donationsValue, colour: "#4ade80" },
-          { label: "Personal Dev", value: result.personalDevelopmentValue, colour: "#fbbf24" },
-        ].map(item => (
-          <div key={item.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <p style={{ color: item.colour, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, margin: 0 }}>
-              {item.label.toUpperCase()}
-            </p>
-            <p style={{ color: "#ffffff", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: -0.5 }}>
-              {formatCurrency(item.value)}
-            </p>
-          </div>
-        ))}
-      </div>
-      <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 32, letterSpacing: 1.2, fontWeight: 500 }}>
-        myimpact.social
-      </p>
     </div>
   );
 }
@@ -1137,9 +1071,13 @@ export default function Results() {
   const handleExportPNG = async () => {
     setExporting(true);
     try {
-      const card = document.getElementById("impact-share-card");
-      if (!card) return;
-      const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: null });
+      const canvas = await paintResultsShareCard({
+        totalValue: result.totalValue,
+        impactValue: result.impactValue,
+        contributionValue: result.contributionValue,
+        donationsValue: result.donationsValue,
+        personalDevelopmentValue: result.personalDevelopmentValue,
+      });
       const link = document.createElement("a");
       link.download = "my-impact.png";
       link.href = canvas.toDataURL("image/png");
@@ -1209,9 +1147,6 @@ export default function Results() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 pb-28">
-      {/* Hidden share card for export */}
-      <ShareCard result={result} totalValue={result.totalValue} />
-
       {/* Hero */}
       <motion.div
         className="text-center mb-10"

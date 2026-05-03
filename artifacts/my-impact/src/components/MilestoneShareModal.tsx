@@ -1,7 +1,7 @@
-import { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
+import { useState } from "react";
 import { Badge } from "@/lib/badges";
 import MilestoneShareCard, { CARD_SIZES } from "./MilestoneShareCard";
+import { paintMilestoneShareCard } from "@/lib/share-cards";
 import { X, Download, Linkedin, Twitter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
@@ -25,57 +25,25 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 const SCALE = 0.38;
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-async function loadLogoAsDataUrl(): Promise<string> {
-  const logoUrl = `${BASE_URL}/images/myimpact.png`;
-  const response = await fetch(logoUrl);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
+const LOGO_SRC = `${BASE_URL}/images/myimpact.png`;
 
 export default function MilestoneShareModal({ badge, totalValue, onClose }: MilestoneShareModalProps) {
   const [format, setFormat] = useState<Format>("landscape");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [logoDataUrl, setLogoDataUrl] = useState<string | undefined>(undefined);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   const shareUrl = window.location.origin;
   const shareText = `I've just earned the ${badge.name} milestone on My Impact. I've created an estimated ${formatCurrency(totalValue)} of social value. Find out what difference you make at ${shareUrl}`;
 
-  useEffect(() => {
-    loadLogoAsDataUrl().then(setLogoDataUrl).catch(() => {});
-  }, []);
-
-  const captureCard = async (): Promise<HTMLCanvasElement | null> => {
-    if (!cardRef.current) return null;
-    const { width, height } = CARD_SIZES[format];
-    const canvas = await html2canvas(cardRef.current, {
-      width,
-      height,
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: "#f5f0e8",
-      logging: false,
-    });
-    return canvas;
-  };
-
   const handleDownload = async () => {
     setIsGenerating(true);
     try {
-      if (!logoDataUrl) {
-        const freshDataUrl = await loadLogoAsDataUrl().catch(() => undefined);
-        if (freshDataUrl) setLogoDataUrl(freshDataUrl);
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      const canvas = await captureCard();
-      if (!canvas) return;
+      const canvas = await paintMilestoneShareCard({
+        badge,
+        totalValue,
+        format,
+        appUrl: window.location.hostname,
+        logoSrc: LOGO_SRC,
+      });
       const link = document.createElement("a");
       link.download = `${badge.name.toLowerCase().replace(/\s+/g, "-")}-milestone.png`;
       link.href = canvas.toDataURL("image/png");
@@ -171,7 +139,6 @@ export default function MilestoneShareModal({ badge, totalValue, onClose }: Mile
                 totalValue={totalValue}
                 format={format}
                 appUrl={window.location.hostname}
-                logoDataUrl={logoDataUrl}
               />
             </div>
           </div>
@@ -221,28 +188,6 @@ export default function MilestoneShareModal({ badge, totalValue, onClose }: Mile
             {isGenerating ? "Generating…" : "Download PNG"}
           </button>
         </div>
-      </div>
-
-      {/* Off-screen card for html2canvas capture — explicit pixel dimensions, logo as data URL */}
-      <div
-        style={{
-          position: "fixed",
-          left: -9999,
-          top: -9999,
-          width: CARD_SIZES[format].width,
-          height: CARD_SIZES[format].height,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      >
-        <MilestoneShareCard
-          ref={cardRef}
-          badge={badge}
-          totalValue={totalValue}
-          format={format}
-          appUrl={window.location.hostname}
-          logoDataUrl={logoDataUrl}
-        />
       </div>
     </div>
   );
