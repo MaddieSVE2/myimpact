@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy, Languages,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -13,7 +13,6 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useQuery } from "@tanstack/react-query";
 import InviteModal from "@/components/InviteModal";
 import { useLocale } from "@/i18n";
-import { LanguageToggle } from "@/components/LanguageToggle";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -179,8 +178,7 @@ export function Navbar() {
   const { canInstall, triggerInstall } = useInstallPrompt();
   const { isHighContrast, toggleTheme } = useTheme();
   const { feedbackMode, toggleFeedbackMode } = useFeedback();
-  const { locale, setLocale, t } = useLocale();
-  const toggleLocale = () => setLocale(locale === "en" ? "cy" : "en");
+  const { t } = useLocale();
   const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
   const inOrg = !orgLoading && !!orgData?.org;
 
@@ -309,16 +307,6 @@ export function Navbar() {
                           {t("navbar.accountSettings")}
                         </Link>
                         <div className="my-1 border-t border-border" />
-                        {/* Language toggle */}
-                        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-muted-foreground">{t("common.language")}</span>
-                          <LanguageToggle
-                            variant="inline"
-                            showToast
-                            onChange={() => setUserMenuOpen(false)}
-                          />
-                        </div>
-                        <div className="my-1 border-t border-border" />
                         {/* Preferences */}
                         <button
                           onClick={() => { setUserMenuOpen(false); toggleTheme(); }}
@@ -420,7 +408,6 @@ export function Navbar() {
                     {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrastMode")}
                   </div>
                 </div>
-                <LanguageToggle variant="pill" className="hidden lg:inline-flex" />
                 <Link
                   href={`/login?from=${encodeURIComponent(location)}`}
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
@@ -491,12 +478,6 @@ export function Navbar() {
             >
               {t("navbar.calculateCta")}
             </Link>
-
-            {/* Language toggle — mobile menu */}
-            <div className="mt-2 px-3 py-2 flex items-center justify-between gap-2 rounded-md">
-              <span className="text-xs font-medium text-white/70">{t("common.language")}</span>
-              <LanguageToggle variant="inline" showToast onChange={() => setMobileOpen(false)} />
-            </div>
 
             {/* Divider before account actions — only when logged in */}
             {isLoggedIn && <div className="my-1 border-t border-white/10" />}
