@@ -9,7 +9,7 @@ export default function Sidekick() {
           <div className="w-[4vw] h-[1px] bg-primary/50" />
         </div>
 
-        <h2 className="font-display font-bold text-[4.2vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-bold text-[4.2vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
           Your AI
           <span className="block text-primary italic">sidekick.</span>
         </h2>
@@ -19,10 +19,10 @@ export default function Sidekick() {
         <div className="mt-[5vh] grid grid-cols-1 gap-y-[2.5vh]">
           <div className="flex items-start gap-[1.2vw]">
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <span className="font-display font-bold text-[1.2vw] text-primary">?</span>
+              <span className="font-body font-bold text-[1.2vw] text-primary">?</span>
             </div>
             <div>
-              <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
+              <p className="font-body font-bold text-[1.4vw] text-text leading-tight">
                 Understand your number
               </p>
               <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
@@ -33,10 +33,10 @@ export default function Sidekick() {
 
           <div className="flex items-start gap-[1.2vw]">
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <span className="font-display font-bold text-[1.2vw] text-accent">✎</span>
+              <span className="font-body font-bold text-[1.2vw] text-accent">✎</span>
             </div>
             <div>
-              <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
+              <p className="font-body font-bold text-[1.4vw] text-text leading-tight">
                 Put it into words
               </p>
               <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
@@ -47,10 +47,10 @@ export default function Sidekick() {
 
           <div className="flex items-start gap-[1.2vw]">
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-sky/25 flex items-center justify-center flex-shrink-0">
-              <span className="font-display font-bold text-[1.2vw] text-sky">→</span>
+              <span className="font-body font-bold text-[1.2vw] text-sky">→</span>
             </div>
             <div>
-              <p className="font-display font-bold text-[1.4vw] text-text leading-tight">
+              <p className="font-body font-bold text-[1.4vw] text-text leading-tight">
                 Know what to do next
               </p>
               <p className="font-body text-[1.05vw] text-text/65 mt-[0.5vh] leading-snug">
@@ -71,10 +71,10 @@ export default function Sidekick() {
         <div className="relative w-full max-w-[32vw] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-text/10 bg-bg">
           <div className="flex items-center gap-[0.8vw] px-[1.5vw] py-[1.4vh] bg-text border-b border-text/10">
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="font-display font-bold text-[1.1vw] text-bg">S</span>
+              <span className="font-body font-bold text-[1.1vw] text-bg">S</span>
             </div>
             <div className="flex-1">
-              <p className="font-display font-bold text-[1.1vw] text-bg leading-tight">Sidekick</p>
+              <p className="font-body font-bold text-[1.1vw] text-bg leading-tight">Sidekick</p>
               <p className="font-body text-[0.8vw] text-bg/60 leading-tight">AI Assistant · online</p>
             </div>
             <span className="w-[0.7vw] h-[0.7vw] rounded-full bg-[#28C840]" />
@@ -118,7 +118,7 @@ export default function Sidekick() {
               Ask Sidekick anything…
             </div>
             <div className="w-[2.4vw] h-[2.4vw] rounded-full bg-primary flex items-center justify-center">
-              <span className="font-display font-bold text-[1vw] text-bg">↑</span>
+              <span className="font-body font-bold text-[1vw] text-bg">↑</span>
             </div>
           </div>
         </div>

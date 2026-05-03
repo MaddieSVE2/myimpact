@@ -12,7 +12,7 @@ export default function GrantFundingAsk() {
       </div>
 
       <div className="absolute top-[11vh] left-[6vw] right-[8vw]">
-        <h2 className="font-display font-bold text-[4.2vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-bold text-[4.2vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
           Help us build
           <span className="block text-primary italic">the infrastructure for impact.</span>
         </h2>
@@ -24,9 +24,9 @@ export default function GrantFundingAsk() {
       <div className="absolute top-[44vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[1.8vw]">
         <div className="bg-card p-[1.6vw] rounded-2xl border border-text/8 flex flex-col">
           <div className="w-[2.8vw] h-[2.8vw] rounded-2xl bg-primary/15 flex items-center justify-center mb-[1.2vh]">
-            <span className="font-display font-black text-[1.3vw] text-primary">01</span>
+            <span className="font-body font-black text-[1.3vw] text-primary">01</span>
           </div>
-          <h3 className="font-display font-bold text-[1.4vw] text-text leading-tight">
+          <h3 className="font-body font-bold text-[1.4vw] text-text leading-tight">
             Platform development
           </h3>
           <p className="font-body text-[0.95vw] text-text/70 mt-[0.8vh] leading-snug">
@@ -36,9 +36,9 @@ export default function GrantFundingAsk() {
 
         <div className="bg-card p-[1.6vw] rounded-2xl border border-text/8 flex flex-col">
           <div className="w-[2.8vw] h-[2.8vw] rounded-2xl bg-accent/20 flex items-center justify-center mb-[1.2vh]">
-            <span className="font-display font-black text-[1.3vw] text-accent">02</span>
+            <span className="font-body font-black text-[1.3vw] text-accent">02</span>
           </div>
-          <h3 className="font-display font-bold text-[1.4vw] text-text leading-tight">
+          <h3 className="font-body font-bold text-[1.4vw] text-text leading-tight">
             Community deployment
           </h3>
           <p className="font-body text-[0.95vw] text-text/70 mt-[0.8vh] leading-snug">
@@ -48,9 +48,9 @@ export default function GrantFundingAsk() {
 
         <div className="bg-card p-[1.6vw] rounded-2xl border border-text/8 flex flex-col">
           <div className="w-[2.8vw] h-[2.8vw] rounded-2xl bg-sky/30 flex items-center justify-center mb-[1.2vh]">
-            <span className="font-display font-black text-[1.3vw] text-text">03</span>
+            <span className="font-body font-black text-[1.3vw] text-text">03</span>
           </div>
-          <h3 className="font-display font-bold text-[1.4vw] text-text leading-tight">
+          <h3 className="font-body font-bold text-[1.4vw] text-text leading-tight">
             Evidence and evaluation
           </h3>
           <p className="font-body text-[0.95vw] text-text/70 mt-[0.8vh] leading-snug">
@@ -73,7 +73,7 @@ export default function GrantFundingAsk() {
               "Boston Pride in Place application submitted",
             ].map((item) => (
               <li key={item} className="flex items-baseline gap-[0.8vw]">
-                <span className="text-primary font-display font-black text-[0.9vw] leading-none">✓</span>
+                <span className="text-primary font-body font-black text-[0.9vw] leading-none">✓</span>
                 <span className="font-body text-[1vw] text-text/80 leading-snug">{item}</span>
               </li>
             ))}
@@ -92,7 +92,7 @@ export default function GrantFundingAsk() {
               "Long-term sustainability",
             ].map((item) => (
               <li key={item} className="flex items-baseline gap-[0.8vw]">
-                <span className="text-primary font-display font-black text-[0.9vw] leading-none">→</span>
+                <span className="text-primary font-body font-black text-[0.9vw] leading-none">→</span>
                 <span className="font-body text-[1vw] text-bg/85 leading-snug">{item}</span>
               </li>
             ))}

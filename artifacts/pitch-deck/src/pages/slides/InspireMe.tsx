@@ -11,7 +11,7 @@ export default function InspireMe() {
           <div className="w-[4vw] h-[1px] bg-primary/50" />
         </div>
 
-        <h2 className="font-display font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
           Ideas,
           <span className="block text-primary italic">picked for you.</span>
         </h2>
@@ -71,7 +71,7 @@ export default function InspireMe() {
           <p className="font-body text-[0.8vw] uppercase tracking-[0.2em] text-muted mb-[0.6vh]">
             Top suggestion
           </p>
-          <p className="font-display font-black text-[2vw] leading-none text-primary">
+          <p className="font-body font-black text-[2vw] leading-none text-primary">
             +£20,748
           </p>
           <p className="font-body text-[0.85vw] text-text/70 mt-[0.8vh] leading-snug">

@@ -12,7 +12,7 @@ export default function Solution() {
       </div>
 
       <div className="absolute top-[15vh] left-[6vw] right-[8vw]">
-        <h2 className="font-display font-bold text-[5vw] leading-[1.0] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-bold text-[5vw] leading-[1.0] tracking-tight text-text" style={{ textWrap: "balance" }}>
           What you do has a value.
           <span className="block text-primary italic">My Impact calculates it.</span>
         </h2>
@@ -25,13 +25,13 @@ export default function Solution() {
         <div className="bg-card p-[2.5vw] rounded-2xl border border-text/8 flex flex-col">
           <div className="flex items-center justify-between mb-[2.5vh]">
             <div className="w-[4vw] h-[4vw] rounded-2xl bg-primary/15 flex items-center justify-center">
-              <span className="font-display font-black text-[2.2vw] text-primary leading-none">£</span>
+              <span className="font-body font-black text-[2.2vw] text-primary leading-none">£</span>
             </div>
             <span className="font-body text-[0.85vw] uppercase tracking-[0.25em] text-text/45">
               Pillar 01
             </span>
           </div>
-          <h3 className="font-display font-bold text-[2vw] text-text leading-tight">
+          <h3 className="font-body font-bold text-[2vw] text-text leading-tight">
             Measure
           </h3>
           <p className="font-body text-[1.15vw] text-text/70 mt-[1.5vh] leading-relaxed">
@@ -42,13 +42,13 @@ export default function Solution() {
         <div className="bg-text p-[2.5vw] rounded-2xl flex flex-col">
           <div className="flex items-center justify-between mb-[2.5vh]">
             <div className="w-[4vw] h-[4vw] rounded-2xl bg-primary/20 flex items-center justify-center">
-              <span className="font-display font-black text-[2vw] text-primary leading-none">★</span>
+              <span className="font-body font-black text-[2vw] text-primary leading-none">★</span>
             </div>
             <span className="font-body text-[0.85vw] uppercase tracking-[0.25em] text-bg/45">
               Pillar 02
             </span>
           </div>
-          <h3 className="font-display font-bold text-[2vw] text-bg leading-tight">
+          <h3 className="font-body font-bold text-[2vw] text-bg leading-tight">
             Motivate
           </h3>
           <p className="font-body text-[1.15vw] text-bg/75 mt-[1.5vh] leading-relaxed">
@@ -59,13 +59,13 @@ export default function Solution() {
         <div className="bg-card p-[2.5vw] rounded-2xl border border-text/8 flex flex-col">
           <div className="flex items-center justify-between mb-[2.5vh]">
             <div className="w-[4vw] h-[4vw] rounded-2xl bg-accent/20 flex items-center justify-center">
-              <span className="font-display font-black text-[2vw] text-accent leading-none">✦</span>
+              <span className="font-body font-black text-[2vw] text-accent leading-none">✦</span>
             </div>
             <span className="font-body text-[0.85vw] uppercase tracking-[0.25em] text-text/45">
               Pillar 03
             </span>
           </div>
-          <h3 className="font-display font-bold text-[2vw] text-text leading-tight">
+          <h3 className="font-body font-bold text-[2vw] text-text leading-tight">
             Inspire
           </h3>
           <p className="font-body text-[1.15vw] text-text/70 mt-[1.5vh] leading-relaxed">

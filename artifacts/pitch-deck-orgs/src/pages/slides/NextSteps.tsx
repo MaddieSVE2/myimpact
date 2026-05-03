@@ -17,7 +17,7 @@ export default function NextSteps() {
         <p className="font-body text-[1.3vw] uppercase tracking-[0.3em] text-primary mb-[3vh]">
           Next steps
         </p>
-        <h2 className="font-display font-black text-[7.5vw] leading-[0.92] tracking-tight text-bg" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-black text-[7.5vw] leading-[0.92] tracking-tight text-bg" style={{ textWrap: "balance" }}>
           Bring My Impact
           <span className="block text-primary italic">to your organisation.</span>
         </h2>
@@ -31,7 +31,7 @@ export default function NextSteps() {
             href="https://myimpact.uk"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-display font-bold text-[2.1vw] text-bg block leading-tight"
+            className="font-body font-bold text-[2.1vw] text-bg block leading-tight"
           >
             myimpact.uk
           </a>
@@ -45,7 +45,7 @@ export default function NextSteps() {
           </p>
           <a
             href="mailto:hello@myimpact.uk"
-            className="font-display font-bold text-[2.1vw] text-primary block leading-tight"
+            className="font-body font-bold text-[2.1vw] text-primary block leading-tight"
           >
             hello@myimpact.uk
           </a>
@@ -59,7 +59,7 @@ export default function NextSteps() {
           </p>
           <a
             href="mailto:hello@myimpact.uk"
-            className="font-display font-bold text-[2.1vw] text-primary block leading-tight"
+            className="font-body font-bold text-[2.1vw] text-primary block leading-tight"
           >
             hello@myimpact.uk
           </a>

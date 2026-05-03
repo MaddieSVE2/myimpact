@@ -13,7 +13,7 @@ export default function Problem() {
 
       <div className="absolute top-[20vh] left-[6vw] w-[52vw]">
         <h2
-          className="font-display font-bold text-[5.6vw] leading-[0.98] tracking-tight text-text"
+          className="font-body font-bold text-[5.6vw] leading-[0.98] tracking-tight text-text"
           style={{ textWrap: "balance" }}
         >
           Good deeds rarely show up
@@ -37,7 +37,7 @@ export default function Problem() {
 
         <div className="flex items-center justify-between py-[2.2vh] border-b border-text/8">
           <div>
-            <p className="font-display font-semibold text-[1.55vw] text-text leading-tight">
+            <p className="font-body font-semibold text-[1.55vw] text-text leading-tight">
               CV and transcript
             </p>
             <p className="font-body text-[1vw] text-text/55 mt-[0.6vh]">
@@ -51,7 +51,7 @@ export default function Problem() {
 
         <div className="flex items-center justify-between py-[2.2vh] border-b border-text/8">
           <div>
-            <p className="font-display font-semibold text-[1.55vw] text-text leading-tight">
+            <p className="font-body font-semibold text-[1.55vw] text-text leading-tight">
               Local economy
             </p>
             <p className="font-body text-[1vw] text-text/55 mt-[0.6vh]">
@@ -65,7 +65,7 @@ export default function Problem() {
 
         <div className="flex items-center justify-between pt-[2.2vh]">
           <div>
-            <p className="font-display font-semibold text-[1.55vw] text-text leading-tight">
+            <p className="font-body font-semibold text-[1.55vw] text-text leading-tight">
               Org dashboards
             </p>
             <p className="font-body text-[1vw] text-text/55 mt-[0.6vh]">

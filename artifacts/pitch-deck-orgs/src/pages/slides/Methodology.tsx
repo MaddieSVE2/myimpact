@@ -13,7 +13,7 @@ export default function Methodology() {
 
       <div className="absolute top-[15vh] left-[6vw] right-[6vw] grid grid-cols-12 gap-[3vw]">
         <div className="col-span-7">
-          <h2 className="font-display font-bold text-[5vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+          <h2 className="font-body font-bold text-[5vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
             Grounded in
             <span className="text-primary italic"> evidence.</span>
           </h2>
@@ -26,12 +26,12 @@ export default function Methodology() {
 
           <div className="mt-[4vh] flex items-center gap-[2vw]">
             <div>
-              <p className="font-display font-black text-[2.8vw] leading-none text-primary">SVE</p>
+              <p className="font-body font-black text-[2.8vw] leading-none text-primary">SVE</p>
               <p className="font-body text-[0.95vw] uppercase tracking-[0.2em] text-text/60 mt-[1vh]">Proxy values</p>
             </div>
             <div className="w-[1px] h-[5vh] bg-text/20" />
             <div>
-              <p className="font-display font-black text-[2.8vw] leading-none text-accent">UN</p>
+              <p className="font-body font-black text-[2.8vw] leading-none text-accent">UN</p>
               <p className="font-body text-[0.95vw] uppercase tracking-[0.2em] text-text/60 mt-[1vh]">SDG mapping</p>
             </div>
             <div className="w-[1px] h-[5vh] bg-text/20" />
@@ -51,7 +51,7 @@ export default function Methodology() {
             <p className="font-body text-[0.9vw] uppercase tracking-[0.2em] text-muted mb-[1.2vh]">
               Trusted by
             </p>
-            <p className="font-display font-bold text-[1.55vw] text-text leading-tight">
+            <p className="font-body font-bold text-[1.55vw] text-text leading-tight">
               UK councils, universities and national charities
             </p>
             <p className="font-body text-[1vw] text-text/65 mt-[1.2vh] leading-relaxed">
@@ -63,7 +63,7 @@ export default function Methodology() {
             <p className="font-body text-[0.9vw] uppercase tracking-[0.2em] text-bg/55 mb-[1.2vh]">
               Location-aware suggestions
             </p>
-            <p className="font-display font-bold text-[1.55vw] text-bg leading-tight">
+            <p className="font-body font-bold text-[1.55vw] text-bg leading-tight">
               Real local charities, every time.
             </p>
             <p className="font-body text-[1vw] text-bg/70 mt-[1.2vh] leading-relaxed">

@@ -15,7 +15,7 @@ export default function ForOrganisations() {
 
       <div className="absolute top-[12vh] left-[5vw] right-[5vw] grid grid-cols-12 gap-[2.5vw]">
         <div className="col-span-4 flex flex-col justify-start pt-[1vh]">
-          <h2 className="font-display font-bold text-[3.8vw] leading-[0.95] tracking-tight text-bg" style={{ textWrap: "balance" }}>
+          <h2 className="font-body font-bold text-[3.8vw] leading-[0.95] tracking-tight text-bg" style={{ textWrap: "balance" }}>
             See the social value
             <span className="block text-primary italic">your people create.</span>
           </h2>
@@ -25,19 +25,19 @@ export default function ForOrganisations() {
 
           <div className="mt-[4vh] grid grid-cols-1 gap-y-[1.5vh]">
             <div className="flex items-baseline gap-[0.8vw]">
-              <span className="text-primary font-display font-black text-[1.3vw] leading-none w-[2vw]">£</span>
+              <span className="text-primary font-body font-black text-[1.3vw] leading-none w-[2vw]">£</span>
               <span className="font-body text-[1.05vw] text-bg/85">Aggregate value</span>
             </div>
             <div className="flex items-baseline gap-[0.8vw]">
-              <span className="text-accent font-display font-black text-[1.3vw] leading-none w-[2vw]">↗</span>
+              <span className="text-accent font-body font-black text-[1.3vw] leading-none w-[2vw]">↗</span>
               <span className="font-body text-[1.05vw] text-bg/85">Monthly trends</span>
             </div>
             <div className="flex items-baseline gap-[0.8vw]">
-              <span className="text-sky font-display font-black text-[1.3vw] leading-none w-[2vw]">◎</span>
+              <span className="text-sky font-body font-black text-[1.3vw] leading-none w-[2vw]">◎</span>
               <span className="font-body text-[1.05vw] text-bg/85">Regional spread</span>
             </div>
             <div className="flex items-baseline gap-[0.8vw]">
-              <span className="text-primary font-display font-black text-[1vw] leading-none w-[2vw]">PDF</span>
+              <span className="text-primary font-body font-black text-[1vw] leading-none w-[2vw]">PDF</span>
               <span className="font-body text-[1.05vw] text-bg/85">Funder-ready reports</span>
             </div>
           </div>
@@ -74,15 +74,15 @@ export default function ForOrganisations() {
 
       <div className="absolute bottom-[4vh] left-[5vw] right-[5vw] flex items-center gap-[1.5vw] flex-wrap">
         <span className="font-body text-[0.85vw] uppercase tracking-[0.25em] text-bg/55">Built for</span>
-        <span className="font-display italic text-[1.1vw] text-bg/85">Charities</span>
+        <span className="font-body italic text-[1.1vw] text-bg/85">Charities</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.1vw] text-bg/85">Universities</span>
+        <span className="font-body italic text-[1.1vw] text-bg/85">Universities</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.1vw] text-bg/85">Employers</span>
+        <span className="font-body italic text-[1.1vw] text-bg/85">Employers</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.1vw] text-bg/85">Membership bodies</span>
+        <span className="font-body italic text-[1.1vw] text-bg/85">Membership bodies</span>
         <span className="text-bg/30">·</span>
-        <span className="font-display italic text-[1.1vw] text-bg/85">Local authorities</span>
+        <span className="font-body italic text-[1.1vw] text-bg/85">Local authorities</span>
       </div>
     </div>
   );

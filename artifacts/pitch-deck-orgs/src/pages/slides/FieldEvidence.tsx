@@ -12,7 +12,7 @@ export default function FieldEvidence() {
       </div>
 
       <div className="absolute top-[14vh] left-[6vw] right-[8vw]">
-        <h2 className="font-display font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
+        <h2 className="font-body font-bold text-[4.6vw] leading-[0.95] tracking-tight text-text" style={{ textWrap: "balance" }}>
           Tested with real people.
           <span className="block text-primary italic">Here's what they said.</span>
         </h2>
@@ -20,8 +20,8 @@ export default function FieldEvidence() {
 
       <div className="absolute top-[42vh] left-[6vw] right-[6vw] grid grid-cols-3 gap-[2vw]">
         <div className="bg-card p-[2vw] rounded-2xl border border-text/8 flex flex-col">
-          <span className="font-display font-black text-[3.5vw] leading-none text-primary/80">"</span>
-          <p className="font-display font-bold text-[1.4vw] text-text leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
+          <span className="font-body font-black text-[3.5vw] leading-none text-primary/80">"</span>
+          <p className="font-body font-bold text-[1.4vw] text-text leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
             I get demotivated easily. The app is really helpful in times like this.
           </p>
           <p className="font-body text-[0.95vw] uppercase tracking-[0.2em] text-text/50 mt-[2.5vh]">
@@ -33,8 +33,8 @@ export default function FieldEvidence() {
         </div>
 
         <div className="bg-text p-[2vw] rounded-2xl flex flex-col">
-          <span className="font-display font-black text-[3.5vw] leading-none text-primary">"</span>
-          <p className="font-display font-bold text-[1.4vw] text-bg leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
+          <span className="font-body font-black text-[3.5vw] leading-none text-primary">"</span>
+          <p className="font-body font-bold text-[1.4vw] text-bg leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
             I understood my value, but this attached an equitable number I could use and think about.
           </p>
           <p className="font-body text-[0.95vw] uppercase tracking-[0.2em] text-bg/50 mt-[2.5vh]">
@@ -46,8 +46,8 @@ export default function FieldEvidence() {
         </div>
 
         <div className="bg-card p-[2vw] rounded-2xl border border-text/8 flex flex-col">
-          <span className="font-display font-black text-[3.5vw] leading-none text-accent/80">"</span>
-          <p className="font-display font-bold text-[1.4vw] text-text leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
+          <span className="font-body font-black text-[3.5vw] leading-none text-accent/80">"</span>
+          <p className="font-body font-bold text-[1.4vw] text-text leading-snug mt-[1vh] flex-1" style={{ textWrap: "balance" }}>
             A volunteer carer became visibly moved by her social value calculation and described the figure as deeply meaningful.
           </p>
           <p className="font-body text-[0.95vw] uppercase tracking-[0.2em] text-text/50 mt-[2.5vh]">
