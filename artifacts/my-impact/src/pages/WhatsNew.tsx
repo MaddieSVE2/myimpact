@@ -20,6 +20,7 @@ import {
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
   Heart, ToggleRight, ScanSearch, Share2, History, Award, UserPlus, NotebookPen,
   ShieldCheck, MessageSquare, Map, Activity, Globe, Lock, Wrench,
+  Languages, Mic, Film,
   ChevronUp, ChevronDown,
 } from "lucide-react";
 
@@ -86,6 +87,11 @@ const RELEASES: Release[] = [
             title: "Clearer match transparency",
             desc: "When the Sidekick matches what you've described, you can see exactly how it got there and confirm or adjust the proxy volume before it's saved.",
           },
+          {
+            icon: <Mic className="w-5 h-5" />,
+            title: "Talk to your Sidekick",
+            desc: "Tap the mic and have a real conversation with the Sidekick instead of typing — perfect when you're out and about or just want to think out loud.",
+          },
         ],
       },
       {
@@ -117,6 +123,11 @@ const RELEASES: Release[] = [
             icon: <NotebookPen className="w-5 h-5" />,
             title: "Refreshed journal prompts",
             desc: "Reflection prompts have been rewritten to feel warmer and more thought-provoking, so journalling feels less like homework.",
+          },
+          {
+            icon: <Film className="w-5 h-5" />,
+            title: "Your year in review video",
+            desc: "Generate a short, shareable highlights video of your year on My Impact — your hours, your milestones, and the difference you've made.",
           },
         ],
       },
@@ -166,6 +177,11 @@ const RELEASES: Release[] = [
             icon: <Lock className="w-5 h-5" />,
             title: "Choose what gets shared socially",
             desc: "You're now in control of whether milestone unlocks turn into shareable social cards — opt in only when you want to celebrate.",
+          },
+          {
+            icon: <Languages className="w-5 h-5" />,
+            title: "Cymraeg / Welsh language",
+            desc: "Switch the whole app — including your monthly recap email and Sidekick replies — into Welsh from your account settings.",
           },
           {
             icon: <Wrench className="w-5 h-5" />,
