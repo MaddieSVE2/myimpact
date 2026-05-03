@@ -170,15 +170,8 @@ export function Navbar() {
   const [showInstall, setShowInstall] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, user, logout, updateProfile } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const gamificationEnabled = user?.gamificationEnabled ?? true;
-  const handleToggleGamification = async () => {
-    try {
-      await updateProfile({ gamificationEnabled: !gamificationEnabled });
-    } catch {
-      // silent — surfaced in Settings page
-    }
-  };
   const isAdmin = ["hello@myimpact.uk", "maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
     (user?.email ?? "").toLowerCase()
   );
@@ -325,15 +318,6 @@ export function Navbar() {
                         >
                           <Eye className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrast")}
-                        </button>
-                        <button
-                          onClick={() => { setUserMenuOpen(false); handleToggleGamification(); }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
-                          aria-pressed={gamificationEnabled}
-                          data-testid="navbar-toggle-gamification"
-                        >
-                          <Award className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          {gamificationEnabled ? t("navbar.hideMilestones") : t("navbar.showMilestones")}
                         </button>
                         <button
                           onClick={handleAddToHome}
@@ -535,17 +519,6 @@ export function Navbar() {
               <Eye className="w-4 h-4 shrink-0" aria-hidden="true" />
               {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrast")}
             </button>
-
-            {isLoggedIn && (
-              <button
-                onClick={() => { setMobileOpen(false); handleToggleGamification(); }}
-                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-                aria-pressed={gamificationEnabled}
-              >
-                <Award className="w-4 h-4 shrink-0" aria-hidden="true" />
-                {gamificationEnabled ? t("navbar.hideMilestones") : t("navbar.showMilestones")}
-              </button>
-            )}
 
             <button
               onClick={handleAddToHome}
