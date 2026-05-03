@@ -482,7 +482,7 @@ function OnePager() {
           <View style={s.credItem}>
             <Text style={s.credLabel}>Advisory Chair</Text>
             <Text style={s.credValue}>David Emerson CBE</Text>
-            <Text style={s.credSubtle}>Former CEO, ACF</Text>
+            <Text style={s.credSubtle}>Chair, Carnegie UK</Text>
           </View>
           <View style={s.credDivider} />
           <View style={s.credItem}>
