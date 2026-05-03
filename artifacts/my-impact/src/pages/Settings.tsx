@@ -218,16 +218,18 @@ export default function Settings() {
               />
             </div>
           </button>
-          <div className="px-5 py-4 flex items-center justify-between gap-4">
-            <div className="pr-2">
-              <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <Languages className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
-                {t("settings.languageLabel")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.languageDesc")}</p>
-            </div>
-            <LanguageToggle variant="inline" showToast />
-          </div>
+        </div>
+      </section>
+
+      {/* Language section */}
+      <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Languages className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.languageLabel")}</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground pr-2">{t("settings.languageDesc")}</p>
+          <LanguageToggle variant="inline" showToast />
         </div>
       </section>
 
