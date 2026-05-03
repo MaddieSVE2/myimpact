@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import { QuickLog } from "@/components/QuickLog";
+import StreakChip from "@/components/StreakChip";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -374,7 +375,12 @@ export default function History() {
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My impact history</h1>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <h1 className="text-2xl font-display font-semibold text-foreground">My impact history</h1>
+            {isAuthenticated && serverData?.streak && (
+              <StreakChip streak={serverData.streak} showLongest />
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">Watch your social value grow over time.</p>
         </div>
         {records.length > 0 && (

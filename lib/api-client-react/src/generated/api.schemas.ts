@@ -120,8 +120,18 @@ export interface SavedImpact {
   impactResult: ImpactResult;
 }
 
+export interface StreakInfo {
+  current: number;
+  longest: number;
+  atRisk: boolean;
+  weekStart: string;
+  nextMilestone?: number | null;
+  lastAckedMilestone: number;
+}
+
 export interface ImpactHistoryResponse {
   records: SavedImpact[];
+  streak?: StreakInfo;
 }
 
 export interface SuggestionsInput {
@@ -154,6 +164,7 @@ export interface UserProfileData {
 
 export interface ProfileResponse {
   profile: UserProfileData | null;
+  streak?: StreakInfo;
 }
 
 export interface ProfileInput {
@@ -283,4 +294,8 @@ export interface DeleteRecurringTemplateResponse {
 
 export type GetImpactHistoryParams = {
   userId: string;
+};
+
+export type AckStreakMilestoneBody = {
+  milestone: number;
 };

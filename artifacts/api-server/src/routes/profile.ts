@@ -1,9 +1,19 @@
 import { Router, type IRouter } from "express";
-import { db, userProfilesTable } from "@workspace/db";
+import { db, userProfilesTable, impactRecordsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { calculateStreak, isStreakMilestone } from "../lib/streak.js";
 
 const router: IRouter = Router();
+
+async function buildStreak(userId: string, lastAcked: number) {
+  const records = await db
+    .select({ createdAt: impactRecordsTable.createdAt })
+    .from(impactRecordsTable)
+    .where(eq(impactRecordsTable.userId, userId));
+  const info = calculateStreak(records.map((r) => r.createdAt));
+  return { ...info, lastAckedMilestone: lastAcked };
+}
 
 router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
@@ -11,8 +21,10 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
     where: eq(userProfilesTable.userId, userId),
   });
 
+  const streak = await buildStreak(userId, profile?.lastAckedStreakMilestone ?? 0);
+
   if (!profile) {
-    res.json({ profile: null });
+    res.json({ profile: null, streak });
     return;
   }
 
@@ -24,6 +36,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
       emailOptIn: profile.emailOptIn,
       updatedAt: profile.updatedAt.toISOString(),
     },
+    streak,
   });
 });
 
@@ -61,6 +74,8 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
     })
     .returning();
 
+  const streak = await buildStreak(userId, upserted.lastAckedStreakMilestone ?? 0);
+
   res.json({
     profile: {
       situation: upserted.situation ?? [],
@@ -69,6 +84,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       emailOptIn: upserted.emailOptIn,
       updatedAt: upserted.updatedAt.toISOString(),
     },
+    streak,
   });
 });
 
@@ -100,6 +116,37 @@ router.patch("/email-opt-in", authenticate, async (req: AuthenticatedRequest, re
     .returning();
 
   res.json({ emailOptIn: upserted.emailOptIn });
+});
+
+router.post("/ack-streak-milestone", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const milestone = Number((req.body as { milestone?: unknown })?.milestone);
+  if (!Number.isFinite(milestone) || milestone <= 0 || !isStreakMilestone(milestone)) {
+    res.status(400).json({ error: "Invalid milestone" });
+    return;
+  }
+
+  const existing = await db.query.userProfilesTable.findFirst({
+    where: eq(userProfilesTable.userId, userId),
+  });
+  const currentAck = existing?.lastAckedStreakMilestone ?? 0;
+  const nextAck = Math.max(currentAck, milestone);
+
+  if (existing) {
+    await db
+      .update(userProfilesTable)
+      .set({ lastAckedStreakMilestone: nextAck })
+      .where(eq(userProfilesTable.userId, userId));
+  } else {
+    await db.insert(userProfilesTable).values({
+      userId,
+      lastAckedStreakMilestone: nextAck,
+      updatedAt: new Date(),
+    });
+  }
+
+  const streak = await buildStreak(userId, nextAck);
+  res.json(streak);
 });
 
 export default router;

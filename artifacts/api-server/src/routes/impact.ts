@@ -5,10 +5,11 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull } from "drizzle-orm";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { calculateStreak } from "../lib/streak.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
 import { buildEvidencePackDocument } from "../lib/evidencePackPdf.js";
@@ -391,6 +392,12 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     .where(eq(impactRecordsTable.userId, userId))
     .orderBy(desc(impactRecordsTable.createdAt));
 
+  const profile = await db.query.userProfilesTable.findFirst({
+    where: eq(userProfilesTable.userId, userId),
+  });
+  const streakInfo = calculateStreak(records.map((r) => r.createdAt));
+  const streak = { ...streakInfo, lastAckedMilestone: profile?.lastAckedStreakMilestone ?? 0 };
+
   const formatted = records.map((r) => ({
     id: String(r.id),
     userId: r.userId,
@@ -405,7 +412,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     lng: r.lng != null ? Number(r.lng) : null,
   }));
 
-  res.json({ records: formatted });
+  res.json({ records: formatted, streak });
 });
 
 interface StoredActivityBreakdown {

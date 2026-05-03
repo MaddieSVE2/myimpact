@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
+import { useGetProfile, useUpdateProfile, useAckStreakMilestone } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, Check, AlertCircle, Trophy, Plus } from "lucide-react";
 import RecapBanner from "@/components/RecapBanner";
+import StreakChip from "@/components/StreakChip";
+import StreakCelebration from "@/components/StreakCelebration";
 import { formatCurrency } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -103,6 +105,8 @@ const POSTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 export default function Profile() {
   const { data: profileData, isLoading, isError, refetch } = useGetProfile();
   const { mutateAsync: updateProfile } = useUpdateProfile();
+  const { mutateAsync: ackMilestone } = useAckStreakMilestone();
+  const [celebrationMilestone, setCelebrationMilestone] = useState<number | null>(null);
 
   const [situation, setSituation] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
@@ -115,6 +119,19 @@ export default function Profile() {
   const [savedSituation, setSavedSituation] = useState<string[]>([]);
   const [savedInterests, setSavedInterests] = useState<string[]>([]);
   const [savedPostcode, setSavedPostcode] = useState("");
+
+  useEffect(() => {
+    const streak = profileData?.streak;
+    if (!streak) return;
+    const lastAcked = streak.lastAckedMilestone ?? 0;
+    const reached = [4, 12, 26, 52].filter((m) => streak.current >= m && m > lastAcked);
+    if (reached.length === 0) return;
+    const milestone = reached[reached.length - 1];
+    setCelebrationMilestone(milestone);
+    ackMilestone({ data: { milestone } })
+      .then(() => refetch())
+      .catch(() => {});
+  }, [profileData?.streak, ackMilestone, refetch]);
 
   useEffect(() => {
     if (!isLoading && profileData !== undefined) {
@@ -213,7 +230,13 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-foreground mb-1">My profile</h1>
+      <StreakCelebration milestone={celebrationMilestone} onDismiss={() => setCelebrationMilestone(null)} />
+      <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
+        <h1 className="text-2xl font-bold text-foreground">My profile</h1>
+        {profileData?.streak && (
+          <StreakChip streak={profileData.streak} size="md" showLongest />
+        )}
+      </div>
       <p className="text-muted-foreground text-sm mb-6">
         Update your profile at any time. This information helps us personalise your experience.
       </p>

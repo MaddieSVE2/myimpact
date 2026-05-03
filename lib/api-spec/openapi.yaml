@@ -318,6 +318,33 @@ paths:
           description: Not authenticated
         "404":
           description: Not found
+  /profile/ack-streak-milestone:
+    post:
+      operationId: ackStreakMilestone
+      tags: [profile]
+      summary: Record acknowledgement of a streak milestone celebration
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                milestone:
+                  type: integer
+              required:
+                - milestone
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakInfo"
+        "401":
+          description: Not authenticated
   /profile:
     get:
       operationId: getProfile
@@ -656,6 +683,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SavedImpact"
+        streak:
+          $ref: "#/components/schemas/StreakInfo"
       required:
         - records
     SuggestionsInput:
@@ -727,6 +756,28 @@ components:
           nullable: true
         updatedAt:
           type: string
+    StreakInfo:
+      type: object
+      properties:
+        current:
+          type: integer
+        longest:
+          type: integer
+        atRisk:
+          type: boolean
+        weekStart:
+          type: string
+        nextMilestone:
+          type: integer
+          nullable: true
+        lastAckedMilestone:
+          type: integer
+      required:
+        - current
+        - longest
+        - atRisk
+        - weekStart
+        - lastAckedMilestone
     ProfileResponse:
       type: object
       properties:
@@ -734,6 +785,8 @@ components:
           oneOf:
             - $ref: "#/components/schemas/UserProfileData"
             - type: "null"
+        streak:
+          $ref: "#/components/schemas/StreakInfo"
       required:
         - profile
     ProfileInput:

@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AckStreakMilestoneBody,
   ActivitiesResponse,
   AnnualRecapResponse,
   DeleteAllImpactRecordsResponse,
@@ -34,6 +35,7 @@ import type {
   RecurringTemplatesResponse,
   SaveImpactInput,
   SavedImpact,
+  StreakInfo,
   SuggestionsInput,
   SuggestionsResponse,
   UpdateImpactRecordInput,
@@ -1320,6 +1322,92 @@ export const useConfirmRecurringTemplate = <
   TContext
 > => {
   return useMutation(getConfirmRecurringTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Record acknowledgement of a streak milestone celebration
+ */
+export const getAckStreakMilestoneUrl = () => {
+  return `/api/profile/ack-streak-milestone`;
+};
+
+export const ackStreakMilestone = async (
+  ackStreakMilestoneBody: AckStreakMilestoneBody,
+  options?: RequestInit,
+): Promise<StreakInfo> => {
+  return customFetch<StreakInfo>(getAckStreakMilestoneUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ackStreakMilestoneBody),
+  });
+};
+
+export const getAckStreakMilestoneMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ackStreakMilestone>>,
+    TError,
+    { data: BodyType<AckStreakMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ackStreakMilestone>>,
+  TError,
+  { data: BodyType<AckStreakMilestoneBody> },
+  TContext
+> => {
+  const mutationKey = ["ackStreakMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ackStreakMilestone>>,
+    { data: BodyType<AckStreakMilestoneBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ackStreakMilestone(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AckStreakMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ackStreakMilestone>>
+>;
+export type AckStreakMilestoneMutationBody = BodyType<AckStreakMilestoneBody>;
+export type AckStreakMilestoneMutationError = ErrorType<void>;
+
+/**
+ * @summary Record acknowledgement of a streak milestone celebration
+ */
+export const useAckStreakMilestone = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ackStreakMilestone>>,
+    TError,
+    { data: BodyType<AckStreakMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ackStreakMilestone>>,
+  TError,
+  { data: BodyType<AckStreakMilestoneBody> },
+  TContext
+> => {
+  return useMutation(getAckStreakMilestoneMutationOptions(options));
 };
 
 /**

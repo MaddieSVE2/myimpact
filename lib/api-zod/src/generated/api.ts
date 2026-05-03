@@ -298,6 +298,16 @@ export const GetImpactHistoryResponse = zod.object({
       }),
     }),
   ),
+  streak: zod
+    .object({
+      current: zod.number(),
+      longest: zod.number(),
+      atRisk: zod.boolean(),
+      weekStart: zod.string(),
+      nextMilestone: zod.number().nullish(),
+      lastAckedMilestone: zod.number(),
+    })
+    .optional(),
 });
 
 /**
@@ -557,6 +567,22 @@ export const ConfirmRecurringTemplateResponse = zod.object({
 });
 
 /**
+ * @summary Record acknowledgement of a streak milestone celebration
+ */
+export const AckStreakMilestoneBody = zod.object({
+  milestone: zod.number(),
+});
+
+export const AckStreakMilestoneResponse = zod.object({
+  current: zod.number(),
+  longest: zod.number(),
+  atRisk: zod.boolean(),
+  weekStart: zod.string(),
+  nextMilestone: zod.number().nullish(),
+  lastAckedMilestone: zod.number(),
+});
+
+/**
  * @summary Get current user profile
  */
 export const GetProfileResponse = zod.object({
@@ -569,6 +595,16 @@ export const GetProfileResponse = zod.object({
     }),
     zod.null(),
   ]),
+  streak: zod
+    .object({
+      current: zod.number(),
+      longest: zod.number(),
+      atRisk: zod.boolean(),
+      weekStart: zod.string(),
+      nextMilestone: zod.number().nullish(),
+      lastAckedMilestone: zod.number(),
+    })
+    .optional(),
 });
 
 /**
@@ -590,4 +626,14 @@ export const UpdateProfileResponse = zod.object({
     }),
     zod.null(),
   ]),
+  streak: zod
+    .object({
+      current: zod.number(),
+      longest: zod.number(),
+      atRisk: zod.boolean(),
+      weekStart: zod.string(),
+      nextMilestone: zod.number().nullish(),
+      lastAckedMilestone: zod.number(),
+    })
+    .optional(),
 });
