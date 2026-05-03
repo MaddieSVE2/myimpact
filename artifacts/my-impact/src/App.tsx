@@ -86,12 +86,31 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
           <p className="text-sm text-muted-foreground max-w-sm">
             We hit an unexpected error loading this page. Please try refreshing — your data is safe.
           </p>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Try again
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-md border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Reload page
+            </button>
+          </div>
+          {this.state.error && (
+            <details className="mt-4 text-left max-w-xl w-full">
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                Show technical details
+              </summary>
+              <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto whitespace-pre-wrap break-words text-muted-foreground">
+                {this.state.error.message}
+                {this.state.error.stack ? `\n\n${this.state.error.stack}` : ""}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }
