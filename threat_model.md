@@ -25,7 +25,7 @@ Assumptions:
 - **Private user contribution data**: saved impact records, journal entries, suggestions context, inferred life situation data, and profile settings. This is sensitive personal data even when not strictly financial.
 - **Organisation data**: org registrations, invite codes, memberships, aggregated reports, and region/category breakdowns. Compromise can expose internal programme data and enable unauthorised org access.
 - **Public-profile controls**: the decision to publish, the selected slug, and the visibility flags for hours, totals, categories, and journal highlights. These controls must not be bypassed or overridden by other users.
-- **Operational channels and secrets**: Resend credentials, OpenAI credentials, Charity Commission and OSCR API keys, and any admin-only inbox workflows. Abuse can create direct financial cost, spam, or service disruption.
+- **Operational channels and secrets**: Resend credentials, OpenAI credentials, Charity Commission and OSCR API keys, push-notification credentials, object-storage access, and any admin-only inbox workflows. Abuse can create direct financial cost, spam, storage exhaustion, outbound request abuse, or service disruption.
 - **Admin capabilities**: access to user lists, organisation registrations, approvals, and invite generation. Abuse would expose broad user data and change trust relationships across the application.
 
 ## Trust Boundaries
@@ -36,7 +36,7 @@ Assumptions:
 - **Individual user to organisation boundary**: organisation stats and reports aggregate data from multiple members; membership and invite flows must prevent cross-org access or arbitrary joining.
 - **Private data to public-profile boundary**: selected subsets of a user’s data may become public only when the user explicitly enables this and only according to chosen visibility flags.
 - **API to database**: route handlers can read and modify all persisted application data. Query scoping and authorization checks here are security-critical.
-- **API to third-party services**: the server sends emails through Resend, calls OpenAI-backed integrations, and queries charity registries. Public endpoints that cross this boundary create abuse and cost risk.
+- **API to third-party services**: the server sends emails through Resend, calls OpenAI-backed integrations, queries charity registries, issues object-storage upload/download URLs, and sends Web Push notifications. Public or authenticated endpoints that cross this boundary create abuse, cost, SSRF-like outbound request, and storage-exhaustion risk.
 - **Proxy / deployment boundary**: request metadata such as host, protocol, client IP, and origin may come from proxy headers. Security decisions that depend on these values must assume they are attacker-influenced unless explicitly trusted and normalized.
 
 ## Threat Categories
@@ -68,7 +68,7 @@ Ordinary users must not gain admin capabilities, access another user’s saved r
 - All sensitive API routes MUST enforce server-side authentication and route-level authorization.
 - Organisation membership and reporting endpoints MUST only expose data for the authenticated user’s authorised organisation scope.
 - Public-profile routes MUST expose only data that the profile owner explicitly enabled for public viewing.
-- Public endpoints that trigger OpenAI, email delivery, or other paid external operations MUST be rate-limited or otherwise abuse-resistant.
+- Public or authenticated endpoints that trigger OpenAI, email delivery, push delivery, object-storage allocation, or other paid external operations MUST be rate-limited, quota-enforced, and otherwise abuse-resistant.
 - Admin-only operations MUST remain unreachable to non-admin users even if they can access frontend routes directly.
 - Dev-only artifacts, including `artifacts/mockup-sandbox`, MUST remain excluded from production security conclusions unless production reachability is proven.
 
@@ -82,9 +82,12 @@ Prioritize repeated scans around these production anchors:
 - `artifacts/api-server/src/routes/org.ts`
 - `artifacts/api-server/src/routes/public-profile.ts`
 - `artifacts/api-server/src/routes/impact.ts`
+- `artifacts/api-server/src/routes/challenges.ts`
 - `artifacts/api-server/src/routes/journal.ts`
 - `artifacts/api-server/src/routes/profile.ts`
 - `artifacts/api-server/src/routes/sidekick.ts`
+- `artifacts/api-server/src/routes/attachments.ts`
+- `artifacts/api-server/src/routes/push.ts`
 - `artifacts/api-server/src/routes/custom-activity.ts`
 - `artifacts/api-server/src/routes/local-charities.ts`
 - `artifacts/api-server/src/routes/contact.ts`
