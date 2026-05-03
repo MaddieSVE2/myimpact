@@ -1,0 +1,36 @@
+New issue
+We notified recently active members in the my-impact-api project of this issue
+Issue
+Error GET /api/user/invite
+Failed query: select "user_id", "situation", "interests", "postcode", "updated_at", "invite_code"...
+ID: 1192497f31324da68c00b49c753ca38f
+May 3, 2026, 11:32:35 a.m. BST
+Project	my-impact-api
+environment	production
+Level	error
+Exception
+error: column "last_acked_streak_milestone" does not exist
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 59
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 66
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 66, in sj.queryWithCache
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 66
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 476, in G9e
+    `})}catch(c){console.error("Failed to send feedback notification email:",c)}e.json({ok:!0})});lhe=uhe});function V9e(){return phe.defa {snip}
+...
+(2 additional frame(s) were not displayed)
+
+Error: Failed query: select "user_id", "situation", "interests", "postcode", "updated_at", "invite_code", "invite_shared_at", "email_opt_in", "last_acked_streak_milestone" from "user_profiles" "userProfilesTable" where "userProfilesTable"."user_id" = $1 limit $2
+params: a99d910069b46052b736d83c,1
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 66, in sj.queryWithCache
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 66
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 476, in G9e
+    `})}catch(c){console.error("Failed to send feedback notification email:",c)}e.json({ok:!0})});lhe=uhe});function V9e(){return phe.defa {snip}
+  File "/home/runner/workspace/artifacts/api-server/dist/index.cjs", line 476
+    `})}catch(c){console.error("Failed to send feedback notification email:",c)}e.json({ok:!0})});lhe=uhe});function V9e(){return phe.defa {snip}
+Request
+URL	https://myimpact.uk/api/user/invite
+Method	GET
+User
+ID:	a99d910069b46052b736d83c
+Tags
+browser = Chrome 147 browser.name = Chrome client_os = Windows client_os.name = Windows environment = production handled = yes level = error mechanism = generic os = Ubuntu Linux 24.04 os.name = Ubuntu Linux runtime = node v24.13.0 runtime.name = node user = id:a99d910069b46052b736d83c server_name = localhost transaction = GET /api/user/invite url = https://myimpact.uk/api/user/invite
