@@ -23,9 +23,4 @@ BASE_PATH = "/"
 
 [services.production]
 build = ["pnpm", "--filter", "@workspace/my-impact", "run", "build"]
-publicDir = "artifacts/my-impact/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = "pnpm --filter @workspace/my-impact run start"

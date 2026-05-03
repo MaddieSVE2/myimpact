@@ -21,12 +21,55 @@ if (sentryRelease && !process.env.VITE_SENTRY_RELEASE) {
 }
 const uploadSourceMaps = Boolean(sentryAuthToken && sentryOrg && sentryProject);
 
+// Send no-cache headers on the HTML app shell (and the service worker
+// itself) during dev/preview so a redeploy is always picked up by returning
+// visitors instead of being shadowed by a stale browser/proxy cache.
+// Hashed assets under /assets/ keep their default long-lived caching
+// because their filenames change on every build. Production uses the
+// dedicated `serve.mjs` static server which applies the same policy.
+import type { Plugin } from "vite";
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+function noCacheHtmlHeaders(): Plugin {
+  const setHeaders = (req: IncomingMessage, res: ServerResponse) => {
+    const url = req.url ?? "";
+    const path = url.split("?")[0];
+    const isHtml =
+      path === "/" ||
+      path.endsWith("/") ||
+      path.endsWith(".html") ||
+      !/\.[a-zA-Z0-9]+$/.test(path); // SPA fallback paths with no extension
+    const isServiceWorker = path.endsWith("/service-worker.js");
+    if (isHtml || isServiceWorker) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+  };
+  return {
+    name: "no-cache-html-headers",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        setHeaders(req, res);
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        setHeaders(req, res);
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    noCacheHtmlHeaders(),
     ...(uploadSourceMaps
       ? [
           await import("@sentry/vite-plugin").then((m) =>
