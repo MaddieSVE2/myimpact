@@ -348,7 +348,7 @@ function Feature({
 
 function OnePager() {
   return (
-    <Document title="My Impact for Organisations — One-Pager" author="My Impact">
+    <Document title="My Impact for Organisations One-Pager" author="My Impact">
       <Page size="A4" style={s.page}>
         {/* Header */}
         <View style={s.header}>
@@ -365,9 +365,9 @@ function OnePager() {
             your people <Text style={s.headlineAccent}>actually create.</Text>
           </Text>
           <Text style={s.subhead}>
-            My Impact gives your organisation a verified, pounds-and-pence picture of the
-            volunteering, mentoring and giving your members do — mapped to the UN SDGs and
-            ready for your annual report, ESG disclosures, OFSTED evidence or funder pitch.
+            My Impact gives your organisation a clear, pounds and pence picture of all the
+            volunteering, mentoring and giving your people do. It is ready to drop straight
+            into your annual report, your next funding bid, or the story you tell the world.
           </Text>
         </View>
 
@@ -377,26 +377,26 @@ function OnePager() {
             <Text style={s.sectionTitle}>How it works for your organisation</Text>
             <Feature
               num="1"
-              title="Invite your members"
-              desc="Roll out branded sign-up links to staff, students or volunteers in minutes. Optional SSO and an invite-by-email flow keep onboarding effortless."
+              title="Invite your people"
+              desc="Send a sign up link with your logo on it to your staff, students or volunteers. Joining takes less than a minute."
               variant={0}
             />
             <Feature
               num="2"
-              title="They log, you aggregate"
-              desc="Members track hours, donations and activities through a simple app. Every entry is automatically priced using the Social Value Engine and rolled into your dashboard."
+              title="They log, you see it all"
+              desc="Members add their hours, donations and activities in a simple app. We do the maths and roll it up into one shared dashboard for your team."
               variant={1}
             />
             <Feature
               num="3"
-              title="Verify, match and challenge"
-              desc="Approve member hours, run match-funded campaigns, launch team challenges and recognise the people driving the most impact."
+              title="Approve, match, celebrate"
+              desc="Tick off member hours, match what your team gives, run friendly challenges, and shine a light on the people doing the most."
               variant={2}
             />
             <Feature
               num="4"
-              title="Report it, credibly"
-              desc="Export branded PDF reports, public impact pages and CSV data — ready for ESG, social value contracts, OFSTED, funders or your board."
+              title="Share the story"
+              desc="Export beautiful PDF reports, a public impact page and a spreadsheet of the numbers. Hand them to funders, your board, or anyone who asks."
               variant={3}
             />
           </View>
@@ -411,23 +411,23 @@ function OnePager() {
         {/* Stats strip */}
         <View style={s.statsStrip}>
           <View style={s.stat}>
-            <Text style={s.statValue}>£8+ SROI</Text>
-            <Text style={s.statLabel}>Typical return per £1 invested</Text>
+            <Text style={s.statValue}>£8+</Text>
+            <Text style={s.statLabel}>of value for every £1 invested</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>17 SDGs</Text>
-            <Text style={s.statLabel}>Mapped to UN goals</Text>
+            <Text style={s.statValue}>17 Goals</Text>
+            <Text style={s.statLabel}>linked to UN global goals</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
             <Text style={s.statValue}>Verified</Text>
-            <Text style={s.statLabel}>Hours approved by your team</Text>
+            <Text style={s.statLabel}>hours signed off by your team</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>Branded</Text>
-            <Text style={s.statLabel}>Reports, share pages, exports</Text>
+            <Text style={s.statValue}>Yours</Text>
+            <Text style={s.statLabel}>your logo on every report</Text>
           </View>
         </View>
 
@@ -436,22 +436,22 @@ function OnePager() {
           <View style={s.whoCard}>
             <Text style={s.whoTitle}>Schools &amp; Universities</Text>
             <Text style={s.whoDesc}>
-              Evidence student volunteering for OFSTED, TEF and access agreements; recognise
-              and reward community contribution at scale.
+              Show what your students give back to the community, in a way inspectors,
+              parents and partners actually understand.
             </Text>
           </View>
           <View style={s.whoCard}>
             <Text style={s.whoTitle}>Employers</Text>
             <Text style={s.whoDesc}>
-              Quantify your team’s social value for ESG, B Corp and social-value-in-procurement
-              bids. Run match-funded campaigns members actually use.
+              Put a real number on the good your team does, and run friendly campaigns
+              your people genuinely want to take part in.
             </Text>
           </View>
           <View style={s.whoCard}>
-            <Text style={s.whoTitle}>Charities &amp; Public Sector</Text>
+            <Text style={s.whoTitle}>Charities &amp; Councils</Text>
             <Text style={s.whoDesc}>
-              Show funders the real return on every pound and hour invested, with auditable
-              SROI ratios and shareable impact pages.
+              Show funders and the public exactly what every pound and every hour you
+              invest turns into. Plain English, real numbers.
             </Text>
           </View>
         </View>
