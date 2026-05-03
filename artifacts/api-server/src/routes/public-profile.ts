@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { db, publicProfilesTable, usersTable, impactRecordsTable, journalEntriesTable } from "@workspace/db";
+import { db, publicProfilesTable, usersTable, impactRecordsTable, journalEntriesTable, recordVerificationsTable } from "@workspace/db";
 import { eq, desc, sum as drizzleSum, max as drizzleMax, sql } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -855,6 +855,7 @@ router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
   // Compute totals via DB aggregates so all records are included (no arbitrary cap)
   let totalHours: number | null = null;
   let totalSroi: number | null = null;
+  let verifiedHours: number | null = null;
   if (profile.showHours || profile.showSroi || profile.showCategories) {
     const [agg] = await db
       .select({
@@ -866,6 +867,15 @@ router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
 
     if (profile.showHours) totalHours = parseInt(agg?.sumHours ?? "0", 10) || 0;
     if (profile.showSroi) totalSroi = parseFloat(agg?.sumSroi as string ?? "0") || 0;
+
+    if (profile.showHours) {
+      const [vAgg] = await db
+        .select({ sumHours: drizzleSum(impactRecordsTable.totalHours) })
+        .from(recordVerificationsTable)
+        .innerJoin(impactRecordsTable, eq(impactRecordsTable.id, recordVerificationsTable.recordId))
+        .where(sql`${recordVerificationsTable.status} = 'approved' AND ${impactRecordsTable.userId} = ${profile.userId}`);
+      verifiedHours = parseInt(vAgg?.sumHours ?? "0", 10) || 0;
+    }
   }
 
   // Aggregate category hours — load all records for the user (no limit)
@@ -919,6 +929,7 @@ router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
     },
     stats: {
       totalHours: profile.showHours ? totalHours : null,
+      verifiedHours: profile.showHours ? verifiedHours : null,
       totalSroi: profile.showSroi ? totalSroi : null,
       categoryHours: profile.showCategories ? categoryHours : null,
     },

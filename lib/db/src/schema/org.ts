@@ -1,5 +1,6 @@
-import { pgTable, text, timestamp, unique, numeric, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, unique, numeric, boolean, integer, jsonb, index, serial } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
+import { impactRecordsTable } from "./impact";
 
 export const organisationsTable = pgTable("organisations", {
   id: text("id").primaryKey(),
@@ -204,6 +205,33 @@ export const orgSurveyOptOutsTable = pgTable("org_survey_opt_outs", {
   pk: unique("org_survey_opt_outs_pk").on(t.orgId, t.userId),
 }));
 
+export const recordVerificationsTable = pgTable("record_verifications", {
+  id: serial("id").primaryKey(),
+  recordId: integer("record_id").notNull().references(() => impactRecordsTable.id, { onDelete: "cascade" }),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id),
+  status: text("status").notNull().default("pending"),
+  verifiedBy: text("verified_by").references(() => usersTable.id),
+  decidedAt: timestamp("decided_at"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  recordOrgUnique: unique("record_verifications_record_org_unique").on(table.recordId, table.orgId),
+  orgStatusIdx: index("record_verifications_org_status_idx").on(table.orgId, table.status),
+}));
+
+export const orgAuditLogTable = pgTable("org_audit_log", {
+  id: serial("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id),
+  actorUserId: text("actor_user_id").notNull().references(() => usersTable.id),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgIdx: index("org_audit_log_org_idx").on(table.orgId, table.createdAt),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
@@ -217,3 +245,5 @@ export type OrgSsoConfig = typeof orgSsoConfigsTable.$inferSelect;
 export type OrgSurvey = typeof orgSurveysTable.$inferSelect;
 export type OrgSurveyResponse = typeof orgSurveyResponsesTable.$inferSelect;
 export type OrgSurveyOptOut = typeof orgSurveyOptOutsTable.$inferSelect;
+export type RecordVerification = typeof recordVerificationsTable.$inferSelect;
+export type OrgAuditLog = typeof orgAuditLogTable.$inferSelect;

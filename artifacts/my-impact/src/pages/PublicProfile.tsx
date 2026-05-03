@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
-import { Globe, Clock, TrendingUp, Tag, BookOpen, AlertCircle, Loader2, ChevronRight } from "lucide-react";
+import { Globe, Clock, TrendingUp, Tag, BookOpen, AlertCircle, Loader2, ChevronRight, BadgeCheck } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -16,6 +16,7 @@ interface ProfileData {
 
 interface Stats {
   totalHours: number | null;
+  verifiedHours: number | null;
   totalSroi: number | null;
   categoryHours: Record<string, number> | null;
 }
@@ -152,6 +153,12 @@ export default function PublicProfile() {
                   <div>
                     <p className="text-2xl font-bold text-foreground">{stats.totalHours.toLocaleString("en-GB")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Total volunteering hours</p>
+                    {stats.verifiedHours != null && stats.verifiedHours > 0 && (
+                      <p className="text-xs mt-1 inline-flex items-center gap-1 text-green-700 font-medium">
+                        <BadgeCheck className="w-3 h-3" aria-hidden="true" />
+                        {stats.verifiedHours.toLocaleString("en-GB")} verified by their organisation
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

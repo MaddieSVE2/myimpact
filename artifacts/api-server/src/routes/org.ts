@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable } from "@workspace/db";
-import { eq, and, inArray, gte, lte, asc, desc, isNull } from "drizzle-orm";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -402,12 +402,17 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       periodLabel = `Up to ${to.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
     }
 
+    const verifiedTotals = await getVerifiedTotalsForOrg(org.id, from, to);
+
     const doc = buildOrgDocument({
       orgName: org.name,
       orgType: org.type,
       period: periodLabel,
       totalSocialValue: Math.round(totalSocialValue * 100) / 100,
       totalHours: Math.round(totalHours * 100) / 100,
+      verifiedHours: verifiedTotals.verifiedHours,
+      verifiedSocialValue: verifiedTotals.verifiedSocialValue,
+      verifiedRecordCount: verifiedTotals.verifiedRecordCount,
       totalMemberCount: memberIds.length,
       totalUsers,
       averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
@@ -1285,6 +1290,241 @@ function serializeConfig(c: typeof orgSsoConfigsTable.$inferSelect) {
     lastTestAt: c.lastTestAt,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
+  };
+}
+
+// ─── Verification helpers ──────────────────────────────────────────────────
+
+interface EligibleRecord {
+  record: typeof impactRecordsTable.$inferSelect;
+  member: typeof orgMembersTable.$inferSelect;
+}
+
+// Returns records logged by users currently in the org since they joined.
+async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]> {
+  const members = await db.query.orgMembersTable.findMany({
+    where: eq(orgMembersTable.orgId, orgId),
+  });
+  if (members.length === 0) return [];
+  const memberIds = members.map(m => m.userId);
+  const memberMap = new Map(members.map(m => [m.userId, m]));
+  const records = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(inArray(impactRecordsTable.userId, memberIds));
+  return records
+    .filter(r => {
+      const m = memberMap.get(r.userId);
+      return m && new Date(r.createdAt) >= new Date(m.joinedAt);
+    })
+    .map(r => ({ record: r, member: memberMap.get(r.userId)! }));
+}
+
+async function isRecordEligibleForOrg(recordId: number, orgId: string): Promise<boolean> {
+  const record = await db.query.impactRecordsTable.findFirst({
+    where: eq(impactRecordsTable.id, recordId),
+  });
+  if (!record) return false;
+  const member = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, record.userId)),
+  });
+  if (!member) return false;
+  return new Date(record.createdAt) >= new Date(member.joinedAt);
+}
+
+async function writeAuditLog(orgId: string, actorUserId: string, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
+  await db.insert(orgAuditLogTable).values({
+    orgId,
+    actorUserId,
+    action,
+    targetType,
+    targetId,
+    metadata: metadata ?? null,
+  });
+}
+
+// ─── GET /api/org/verifications/pending ────────────────────────────────────
+router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+
+    const eligible = await getEligibleRecordsForOrg(orgId);
+    if (eligible.length === 0) { res.json({ pending: [] }); return; }
+
+    const recordIds = eligible.map(e => e.record.id);
+    const verifications = await db
+      .select()
+      .from(recordVerificationsTable)
+      .where(and(eq(recordVerificationsTable.orgId, orgId), inArray(recordVerificationsTable.recordId, recordIds)));
+    const verifiedRecordIds = new Set(verifications.map(v => v.recordId));
+
+    const pending = eligible.filter(e => !verifiedRecordIds.has(e.record.id));
+
+    const userIds = Array.from(new Set(pending.map(e => e.record.userId)));
+    const users = userIds.length > 0
+      ? await db.select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds))
+      : [];
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const items = pending
+      .sort((a, b) => new Date(b.record.createdAt).getTime() - new Date(a.record.createdAt).getTime())
+      .map(({ record }) => {
+        const u = userMap.get(record.userId);
+        return {
+          recordId: record.id,
+          memberName: u?.displayName ?? u?.email ?? "Member",
+          memberEmail: u?.email ?? null,
+          name: record.name,
+          period: record.periodLabel,
+          totalHours: record.totalHours,
+          totalValue: Number(record.totalValue),
+          createdAt: record.createdAt.toISOString(),
+        };
+      });
+
+    res.json({ pending: items });
+  } catch (err) {
+    console.error("List pending verifications error:", err);
+    res.status(500).json({ error: "Failed to load pending verifications" });
+  }
+});
+
+// ─── POST /api/org/verifications/decide ────────────────────────────────────
+router.post("/verifications/decide", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+    const userId = req.user!.id;
+
+    const { recordId, decision, reason } = req.body as { recordId?: number; decision?: string; reason?: string };
+    if (typeof recordId !== "number" || !Number.isInteger(recordId)) {
+      res.status(400).json({ error: "recordId is required" });
+      return;
+    }
+    if (decision !== "approve" && decision !== "reject") {
+      res.status(400).json({ error: "decision must be 'approve' or 'reject'" });
+      return;
+    }
+
+    if (!(await isRecordEligibleForOrg(recordId, orgId))) {
+      res.status(403).json({ error: "Record is not eligible for verification by this organisation." });
+      return;
+    }
+
+    const status = decision === "approve" ? "approved" : "rejected";
+    const trimmedReason = typeof reason === "string" ? reason.trim().slice(0, 500) || null : null;
+
+    const existing = await db.query.recordVerificationsTable.findFirst({
+      where: and(eq(recordVerificationsTable.recordId, recordId), eq(recordVerificationsTable.orgId, orgId)),
+    });
+
+    if (existing) {
+      await db.update(recordVerificationsTable)
+        .set({ status, verifiedBy: userId, decidedAt: new Date(), reason: trimmedReason })
+        .where(eq(recordVerificationsTable.id, existing.id));
+    } else {
+      await db.insert(recordVerificationsTable).values({
+        recordId, orgId, status, verifiedBy: userId, decidedAt: new Date(), reason: trimmedReason,
+      });
+    }
+
+    await writeAuditLog(orgId, userId, status === "approved" ? "verification.approve" : "verification.reject", "impact_record", String(recordId), { reason: trimmedReason });
+
+    res.json({ ok: true, status });
+  } catch (err) {
+    console.error("Verification decide error:", err);
+    res.status(500).json({ error: "Failed to record decision" });
+  }
+});
+
+// ─── POST /api/org/verifications/bulk-approve ──────────────────────────────
+router.post("/verifications/bulk-approve", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+    const userId = req.user!.id;
+
+    const { recordIds } = req.body as { recordIds?: unknown };
+    if (!Array.isArray(recordIds) || recordIds.length === 0 || !recordIds.every(n => typeof n === "number" && Number.isInteger(n))) {
+      res.status(400).json({ error: "recordIds must be a non-empty array of integers" });
+      return;
+    }
+    if (recordIds.length > 500) {
+      res.status(400).json({ error: "Cannot approve more than 500 records at once" });
+      return;
+    }
+
+    const eligible = await getEligibleRecordsForOrg(orgId);
+    const eligibleSet = new Set(eligible.map(e => e.record.id));
+    const validIds = (recordIds as number[]).filter(id => eligibleSet.has(id));
+
+    if (validIds.length === 0) {
+      res.json({ ok: true, approved: 0, skipped: recordIds.length });
+      return;
+    }
+
+    const existing = await db
+      .select({ recordId: recordVerificationsTable.recordId })
+      .from(recordVerificationsTable)
+      .where(and(eq(recordVerificationsTable.orgId, orgId), inArray(recordVerificationsTable.recordId, validIds)));
+    const existingSet = new Set(existing.map(e => e.recordId));
+
+    const toInsert = validIds.filter(id => !existingSet.has(id));
+    const toUpdate = validIds.filter(id => existingSet.has(id));
+    const now = new Date();
+
+    if (toInsert.length > 0) {
+      await db.insert(recordVerificationsTable).values(
+        toInsert.map(recordId => ({
+          recordId, orgId, status: "approved", verifiedBy: userId, decidedAt: now, reason: null,
+        }))
+      );
+    }
+    if (toUpdate.length > 0) {
+      await db.update(recordVerificationsTable)
+        .set({ status: "approved", verifiedBy: userId, decidedAt: now, reason: null })
+        .where(and(eq(recordVerificationsTable.orgId, orgId), inArray(recordVerificationsTable.recordId, toUpdate)));
+    }
+
+    await writeAuditLog(orgId, userId, "verification.bulk_approve", "impact_record", validIds.join(","), { count: validIds.length });
+
+    res.json({ ok: true, approved: validIds.length, skipped: recordIds.length - validIds.length });
+  } catch (err) {
+    console.error("Bulk approve error:", err);
+    res.status(500).json({ error: "Failed to bulk approve" });
+  }
+});
+
+// ─── Verified totals helper used by stats/dashboards ───────────────────────
+
+export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: Date): Promise<{ verifiedHours: number; verifiedSocialValue: number; verifiedRecordCount: number }> {
+  const baseConditions = [eq(recordVerificationsTable.orgId, orgId), eq(recordVerificationsTable.status, "approved")];
+  if (from) baseConditions.push(gte(impactRecordsTable.createdAt, from));
+  if (to) baseConditions.push(lte(impactRecordsTable.createdAt, to));
+
+  const rows = await db
+    .select({
+      totalHours: impactRecordsTable.totalHours,
+      totalValue: impactRecordsTable.totalValue,
+    })
+    .from(recordVerificationsTable)
+    .innerJoin(impactRecordsTable, eq(impactRecordsTable.id, recordVerificationsTable.recordId))
+    .where(and(...baseConditions));
+
+  let verifiedHours = 0;
+  let verifiedSocialValue = 0;
+  for (const r of rows) {
+    verifiedHours += r.totalHours ?? 0;
+    verifiedSocialValue += Number(r.totalValue ?? 0);
+  }
+  return {
+    verifiedHours: Math.round(verifiedHours * 100) / 100,
+    verifiedSocialValue: Math.round(verifiedSocialValue * 100) / 100,
+    verifiedRecordCount: rows.length,
   };
 }
 

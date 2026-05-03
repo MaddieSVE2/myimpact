@@ -300,6 +300,9 @@ export interface OrgPdfData {
   period: string;
   totalSocialValue: number;
   totalHours: number;
+  verifiedHours: number;
+  verifiedSocialValue: number;
+  verifiedRecordCount: number;
   totalMemberCount: number;
   totalUsers: number;
   averageValuePerPerson: number;
@@ -359,6 +362,16 @@ function StatsPage({ data }: { data: OrgPdfData }) {
       label: "TOTAL HOURS GIVEN",
       value: `${Math.round(data.totalHours).toLocaleString("en-GB")}`,
       subtitle: "Volunteering hours across all members",
+    },
+    {
+      label: "VERIFIED HOURS",
+      value: `${Math.round(data.verifiedHours).toLocaleString("en-GB")}`,
+      subtitle: `Org-attested (${data.verifiedRecordCount} ${data.verifiedRecordCount === 1 ? "record" : "records"})`,
+    },
+    {
+      label: "VERIFIED SOCIAL VALUE",
+      value: formatCurrency(data.verifiedSocialValue),
+      subtitle: "Funder-ready, attested by your org",
     },
   ];
 

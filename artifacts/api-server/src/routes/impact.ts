@@ -5,8 +5,9 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull } from "drizzle-orm";
+import { getVerifiedTotalsForOrg } from "./org.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -398,6 +399,30 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const streakInfo = calculateStreak(records.map((r) => r.createdAt));
   const streak = { ...streakInfo, lastAckedMilestone: profile?.lastAckedStreakMilestone ?? 0 };
 
+  const recordIds = records.map(r => r.id);
+  let verifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
+  if (recordIds.length > 0) {
+    const verifs = await db
+      .select({
+        recordId: recordVerificationsTable.recordId,
+        status: recordVerificationsTable.status,
+        reason: recordVerificationsTable.reason,
+        decidedAt: recordVerificationsTable.decidedAt,
+        orgName: organisationsTable.name,
+      })
+      .from(recordVerificationsTable)
+      .innerJoin(organisationsTable, eq(organisationsTable.id, recordVerificationsTable.orgId))
+      .where(inArray(recordVerificationsTable.recordId, recordIds));
+    for (const v of verifs) {
+      verifMap.set(v.recordId, {
+        status: v.status,
+        reason: v.reason,
+        orgName: v.orgName,
+        decidedAt: v.decidedAt ? v.decidedAt.toISOString() : null,
+      });
+    }
+  }
+
   const formatted = records.map((r) => ({
     id: String(r.id),
     userId: r.userId,
@@ -410,6 +435,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     outwardCode: r.outwardCode ?? null,
     lat: r.lat != null ? Number(r.lat) : null,
     lng: r.lng != null ? Number(r.lng) : null,
+    verification: verifMap.get(r.id) ?? null,
   }));
 
   res.json({ records: formatted, streak });
@@ -519,9 +545,12 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
     const from = fromRaw;
     const to = toRaw ? (() => { const d = new Date(toRaw); d.setHours(23, 59, 59, 999); return d; })() : undefined;
 
-    const stats = await computeOrgStats(membership.orgId, from, to);
+    const [stats, verified] = await Promise.all([
+      computeOrgStats(membership.orgId, from, to),
+      getVerifiedTotalsForOrg(membership.orgId, from, to),
+    ]);
 
-    res.json({ ...stats, recentActivity: [] });
+    res.json({ ...stats, ...verified, recentActivity: [] });
   } catch (err) {
     res.status(500).json({ error: "Failed to compute org stats" });
   }

@@ -10,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -396,6 +396,35 @@ export default function History() {
 
       <QuickLog showManageLink />
 
+      {(() => {
+        const recent = (records as Array<AnyRecord & { verification?: { status: string; orgName: string; reason: string | null; decidedAt: string | null } }>)
+          .map(r => r.verification)
+          .filter((v): v is { status: string; orgName: string; reason: string | null; decidedAt: string | null } =>
+            !!v && !!v.decidedAt && (Date.now() - new Date(v.decidedAt).getTime()) < 7 * 24 * 60 * 60 * 1000
+          );
+        const approved = recent.filter(v => v.status === "approved").length;
+        const rejected = recent.filter(v => v.status === "rejected");
+        if (approved === 0 && rejected.length === 0) return null;
+        return (
+          <div className="mb-6 rounded-xl border border-green-200 bg-green-50/60 p-4 flex items-start gap-3">
+            <BadgeCheck className="w-5 h-5 text-green-600 mt-0.5 shrink-0" aria-hidden="true" />
+            <div className="text-xs text-foreground">
+              {approved > 0 && (
+                <p className="font-medium">
+                  {approved} of your records {approved === 1 ? "was" : "were"} verified by your organisation in the last 7 days.
+                </p>
+              )}
+              {rejected.length > 0 && (
+                <p className={approved > 0 ? "mt-1 text-muted-foreground" : "font-medium"}>
+                  {rejected.length} record{rejected.length === 1 ? "" : "s"} {rejected.length === 1 ? "was" : "were"} declined
+                  {rejected[0]?.reason ? ` — reason: "${rejected[0].reason}"` : ""}.
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {records.length === 0 ? (
         <div className="bg-white border border-dashed border-border rounded-xl py-16 text-center">
           <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
@@ -565,6 +594,33 @@ export default function History() {
                               {!record.period && (
                                 <p className="text-sm font-semibold text-foreground">{record.name}</p>
                               )}
+                              {(() => {
+                                const v = (record as unknown as { verification?: { status: string; orgName: string; reason: string | null } }).verification;
+                                if (!v) return null;
+                                if (v.status === "approved") {
+                                  return (
+                                    <span
+                                      title={`Verified by ${v.orgName}`}
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200"
+                                    >
+                                      <BadgeCheck className="w-3 h-3" aria-hidden="true" />
+                                      Verified by {v.orgName}
+                                    </span>
+                                  );
+                                }
+                                if (v.status === "rejected") {
+                                  return (
+                                    <span
+                                      title={v.reason ?? "Verification declined"}
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"
+                                    >
+                                      <ShieldX className="w-3 h-3" aria-hidden="true" />
+                                      Not verified{v.reason ? ` · ${v.reason}` : ""}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </>
                           )}
                         </div>
