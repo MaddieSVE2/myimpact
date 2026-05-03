@@ -23,6 +23,7 @@
     "@react-pdf/renderer": "^4.3.2",
     "@sentry/node": "^10.51.0",
     "@types/react": "catalog:",
+    "@types/web-push": "^3.6.4",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
@@ -34,7 +35,8 @@
     "jsonwebtoken": "^9.0.3",
     "react": "catalog:",
     "resend": "^6.9.4",
-    "stripe": "^22.1.0"
+    "stripe": "^22.1.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

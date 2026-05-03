@@ -52,6 +52,7 @@ import AnnualRecap from "@/pages/AnnualRecap";
 import Challenges from "@/pages/Challenges";
 import ChallengeDetail from "@/pages/ChallengeDetail";
 import ChallengeJoin from "@/pages/ChallengeJoin";
+import QuickLogPhoto from "@/pages/QuickLogPhoto";
 
 const queryClient = new QueryClient();
 
@@ -260,6 +261,9 @@ function AppRouter() {
             </Route>
             <Route path="/recap">
               {() => <PrivateRoute component={AnnualRecap} />}
+            </Route>
+            <Route path="/quick-log">
+              {() => <PrivateRoute component={QuickLogPhoto} />}
             </Route>
             <Route path="/badges">
               {() => <Redirect to="/milestones" />}

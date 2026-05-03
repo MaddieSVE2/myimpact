@@ -32,6 +32,7 @@ const allowlist = [
   "pg",
   "stripe",
   "uuid",
+  "web-push",
   "ws",
   "zod",
   "zod-validation-error",

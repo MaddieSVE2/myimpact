@@ -29,6 +29,7 @@ import { db, usersTable, impactRecordsTable, pool } from "@workspace/db";
 import { eq, and, gte, lt, sql, inArray, isNotNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { sendPushSafely } from "../lib/push.js";
 import {
   buildMonthlyDigest,
   previousMonthRange,
@@ -308,6 +309,15 @@ async function dispatchDigests(opts: Options) {
             .set({ lastDigestSentAt: sql`now()` })
             .where(eq(usersTable.id, user.id));
           console.log(`      ✓ ${user.email}`);
+          // Best-effort push nudge that the recap is ready. Honours the
+          // user's "monthlyDigest" push toggle and pause window.
+          await sendPushSafely(user.id, {
+            title: `Your ${monthLabel} recap is ready`,
+            body: `Tap to see your hours, social value, and milestones for ${monthLabel}.`,
+            url: "/recap",
+            type: "monthlyDigest",
+            tag: `digest-${user.id}-${monthLabel.replace(/\s+/g, "-")}`,
+          });
           results.push({ userId: user.id, email: user.email, status: "sent", monthLabel });
         } catch (err) {
           const reason = err instanceof Error ? err.message : String(err);

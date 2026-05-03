@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause } from "lucide-react";
+import {
+  isPushSupported,
+  currentPermission,
+  enablePush,
+  disablePush,
+  fetchPreferences,
+  updatePreferences,
+  sendTestPush,
+  type PushPreferencesResponse,
+  type PushTriggerToggles,
+} from "@/lib/push-client";
 import { useAuth, type VoicePersona } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
@@ -301,6 +312,9 @@ export default function Settings() {
           <StorageUsageBar />
         </div>
       </section>
+
+      {/* Reminders / push notifications section — feature-detected. */}
+      <RemindersSettings />
 
       {/* Recurring templates section */}
       <TemplatesSettings />
@@ -670,6 +684,345 @@ function VoiceUsageMeter() {
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const TRIGGER_LABELS: { key: keyof PushTriggerToggles; title: string; desc: string }[] = [
+  {
+    key: "streakAtRisk",
+    title: "Daily streak at risk",
+    desc: "An evening nudge if you're about to break your logging streak.",
+  },
+  {
+    key: "recurringDue",
+    title: "Regular activity due",
+    desc: "A reminder when one of your recurring activities is scheduled.",
+  },
+  {
+    key: "monthlyDigest",
+    title: "Monthly recap ready",
+    desc: "Tap-through to your personalised summary on the 1st of each month.",
+  },
+  {
+    key: "challengeEnd",
+    title: "Group or challenge end",
+    desc: "When a cohort or challenge you're part of finishes — coming with team challenges.",
+  },
+];
+
+const PAUSE_OPTIONS: { label: string; days: number }[] = [
+  { label: "1 day", days: 1 },
+  { label: "3 days", days: 3 },
+  { label: "1 week", days: 7 },
+  { label: "30 days", days: 30 },
+];
+
+function RemindersSettings() {
+  const { toast } = useToast();
+  const [supported, setSupported] = useState<boolean>(false);
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [prefs, setPrefs] = useState<PushPreferencesResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+
+  useEffect(() => {
+    const sup = isPushSupported();
+    setSupported(sup);
+    setPermission(currentPermission());
+    if (!sup) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const p = await fetchPreferences();
+        if (!cancelled) setPrefs(p);
+      } catch {
+        // best-effort — likely just no auth or push not configured.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasSubscription = !!prefs && prefs.subscriptions.length > 0;
+  const isPaused = !!prefs?.pausedUntil && new Date(prefs.pausedUntil).getTime() > Date.now();
+
+  const handleEnable = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await enablePush();
+      const p = await fetchPreferences();
+      setPrefs(p);
+      setPermission(currentPermission());
+      toast({
+        title: "Reminders are on",
+        description: "We'll only nudge you about things you've turned on below.",
+      });
+    } catch (err) {
+      toast({
+        title: "Couldn't turn on reminders",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await disablePush();
+      const p = await fetchPreferences();
+      setPrefs(p);
+      toast({ title: "Reminders turned off" });
+    } catch {
+      toast({ title: "Couldn't turn off", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleTrigger = async (key: keyof PushTriggerToggles) => {
+    if (!prefs || busy) return;
+    const next = !prefs.triggers[key];
+    const optimistic: PushPreferencesResponse = {
+      ...prefs,
+      triggers: { ...prefs.triggers, [key]: next },
+    };
+    setPrefs(optimistic);
+    try {
+      const updated = await updatePreferences({ triggers: { [key]: next } });
+      setPrefs((cur) => (cur ? { ...cur, triggers: updated.triggers } : cur));
+    } catch {
+      setPrefs(prefs);
+      toast({ title: "Couldn't save preference", variant: "destructive" });
+    }
+  };
+
+  const handlePause = async (days: number) => {
+    if (busy) return;
+    setBusy(true);
+    setPauseOpen(false);
+    try {
+      const updated = await updatePreferences({ pauseDays: days });
+      setPrefs((cur) => (cur ? { ...cur, pausedUntil: updated.pausedUntil } : cur));
+      toast({
+        title: `Paused for ${days} day${days === 1 ? "" : "s"}`,
+        description: "We won't send any reminders until then.",
+      });
+    } catch {
+      toast({ title: "Couldn't pause", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const updated = await updatePreferences({ resumeNow: true });
+      setPrefs((cur) => (cur ? { ...cur, pausedUntil: updated.pausedUntil } : cur));
+      toast({ title: "Reminders resumed" });
+    } catch {
+      toast({ title: "Couldn't resume", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await sendTestPush();
+      toast({ title: "Test sent", description: "Check for the notification on this device." });
+    } catch (err) {
+      toast({
+        title: "Couldn't send test",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden" data-testid="reminders-settings-section">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <Bell className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Reminders</h2>
+        <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded">
+          Mobile
+        </span>
+      </div>
+
+      <div className="px-5 py-5 space-y-4">
+        {!supported ? (
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            This device or browser doesn't support push reminders. To use them, install the app
+            to your home screen on a recent iPhone or Android, or open My Impact in Chrome,
+            Edge, or Firefox.
+          </p>
+        ) : loading ? (
+          <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+            Loading…
+          </p>
+        ) : permission === "denied" ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+            Notifications are blocked in your browser settings. Open this site in your browser
+            settings and allow notifications, then come back here to turn reminders on.
+          </div>
+        ) : !hasSubscription ? (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Get a friendly nudge for your daily streak, recurring activities, and your monthly
+              recap. Pause or turn it off any time.
+            </p>
+            <button
+              type="button"
+              onClick={handleEnable}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60"
+              data-testid="enable-push-button"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
+              Turn on reminders
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Status row */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ background: isPaused ? "#f59e0b" : "#16a34a" }}
+                    aria-hidden="true"
+                  />
+                  {isPaused ? "Paused" : "Reminders are on"}
+                </p>
+                {isPaused && prefs?.pausedUntil ? (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Resumes on{" "}
+                    {new Date(prefs.pausedUntil).toLocaleDateString("en-GB", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {prefs?.subscriptions.length} device{prefs?.subscriptions.length === 1 ? "" : "s"} subscribed.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isPaused ? (
+                  <button
+                    type="button"
+                    onClick={handleResume}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-medium hover:bg-muted/30 disabled:opacity-60"
+                  >
+                    Resume now
+                  </button>
+                ) : (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setPauseOpen((v) => !v)}
+                      disabled={busy}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-medium hover:bg-muted/30 disabled:opacity-60"
+                    >
+                      <Pause className="w-3 h-3" aria-hidden="true" /> Pause
+                    </button>
+                    {pauseOpen && (
+                      <div className="absolute right-0 mt-1 w-32 rounded-lg border border-border bg-white shadow-lg z-10">
+                        {PAUSE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.days}
+                            type="button"
+                            onClick={() => handlePause(opt.days)}
+                            className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-muted/30 first:rounded-t-lg last:rounded-b-lg"
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleDisable}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 disabled:opacity-60"
+                  data-testid="disable-push-button"
+                >
+                  <BellOff className="w-3 h-3" aria-hidden="true" /> Turn off
+                </button>
+              </div>
+            </div>
+
+            {/* Per-trigger toggles */}
+            <div className="border-t border-border -mx-5 mt-4 pt-1 divide-y divide-border">
+              {TRIGGER_LABELS.map((t) => {
+                const value = !!prefs?.triggers[t.key];
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => handleToggleTrigger(t.key)}
+                    aria-pressed={value}
+                    disabled={busy}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors text-left disabled:opacity-60"
+                    data-testid={`trigger-toggle-${t.key}`}
+                  >
+                    <div className="pr-3">
+                      <p className="text-sm font-medium text-foreground">{t.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
+                    </div>
+                    <div
+                      className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+                      style={{ background: value ? "#F06127" : "#d1d5db" }}
+                    >
+                      <span
+                        className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: value ? "translateX(16px)" : "translateX(0)" }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={busy || isPaused}
+                className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-60"
+              >
+                Send a test reminder
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function TemplatesSettings() {
   const { toast } = useToast();
