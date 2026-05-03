@@ -1,9 +1,12 @@
-import { db, calendarSourcesTable, calendarEventsTable, type CalendarSource } from "@workspace/db";
+import { db, calendarSourcesTable, calendarEventsTable, usersTable, type CalendarSource } from "@workspace/db";
 import { and, eq, lt } from "drizzle-orm";
 import {
+  assertCalendarOwnership,
+  CalendarOwnershipError,
   ConnectorNotConfiguredError,
   applyTitleFilter,
   fetchEventsForSource,
+  getPrimaryCalendar,
   type CalendarProvider,
 } from "./calendarProviders.js";
 
@@ -33,6 +36,105 @@ export async function syncSource(source: CalendarSource): Promise<SyncSummary> {
   }
   if (!source.calendarId) {
     return { sourceId: source.id, fetched: 0, inserted: 0, updated: 0, removed: 0 };
+  }
+
+  // Security: verify that the source owner's application email matches the
+  // connector account email BEFORE any event data is fetched. This closes the
+  // residual exposure path for pre-existing sources that were created before
+  // the ownership check was added: if a source was created by a non-owner user,
+  // it is deactivated here and the sync is aborted rather than continuing to
+  // stream connector calendar data into that user's event cache.
+  try {
+    const user = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, source.userId),
+    });
+    if (!user) {
+      throw new Error(`User ${source.userId} not found for source ${source.id}`);
+    }
+    await assertCalendarOwnership(user.email, source.provider as CalendarProvider);
+  } catch (err) {
+    if (err instanceof CalendarOwnershipError) {
+      console.warn(
+        `syncSource: source ${source.id} belongs to user ${source.userId} who does not own ` +
+        `the ${source.provider} connector. Deactivating source and purging cached events.`,
+      );
+      // Delete all cached events for this source before deactivating it so
+      // that previously synced connector calendar data is no longer accessible
+      // to the non-owner user via /upcoming or /prompts.
+      await db
+        .delete(calendarEventsTable)
+        .where(
+          and(
+            eq(calendarEventsTable.sourceId, source.id),
+            eq(calendarEventsTable.userId, source.userId),
+          ),
+        );
+      await db
+        .update(calendarSourcesTable)
+        .set({
+          status: "error",
+          lastSyncError:
+            "Deactivated: calendar ownership verification failed. " +
+            "This connector belongs to a different account.",
+          updatedAt: new Date(),
+        })
+        .where(eq(calendarSourcesTable.id, source.id));
+      return { sourceId: source.id, fetched: 0, inserted: 0, updated: 0, removed: 0 };
+    }
+    // Any other error (network, DB): fail closed — mark error and abort.
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.warn(`syncSource: ownership check failed for source ${source.id}: ${message}`);
+    await db
+      .update(calendarSourcesTable)
+      .set({
+        lastSyncError: `Ownership check failed: ${message}`,
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(calendarSourcesTable.id, source.id));
+    throw new Error(`Ownership check failed for source ${source.id}: ${message}`);
+  }
+
+  // Security: verify the stored calendarId still matches the server-derived
+  // primary calendar for this provider. This repairs or disables any source
+  // whose calendarId was set to a non-primary (or unauthorized) value before
+  // this guard was in place, preventing continued sync of arbitrary calendars
+  // via the shared deployment-wide connector token.
+  try {
+    const { calendar: primary } = await getPrimaryCalendar(source.provider as CalendarProvider);
+    if (source.calendarId !== primary.id) {
+      console.warn(
+        `syncSource: source ${source.id} has calendarId "${source.calendarId}" which does not match ` +
+        `the connector's primary calendar "${primary.id}". Correcting to primary calendar.`,
+      );
+      await db
+        .update(calendarSourcesTable)
+        .set({
+          calendarId: primary.id,
+          calendarName: primary.name.slice(0, 200),
+          lastSyncError: "Calendar corrected to primary; syncing from primary calendar now.",
+          updatedAt: new Date(),
+        })
+        .where(eq(calendarSourcesTable.id, source.id));
+      source = { ...source, calendarId: primary.id, calendarName: primary.name };
+    }
+  } catch (err) {
+    // Fail closed: any error verifying the primary calendar — including
+    // transient network issues — prevents the sync from proceeding with an
+    // unverified calendarId. Mark the source with the error and abort.
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.warn(`syncSource: primary calendar verification failed for source ${source.id}: ${message}`);
+    await db
+      .update(calendarSourcesTable)
+      .set({
+        lastSyncError: `Calendar verification failed: ${message}`,
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(calendarSourcesTable.id, source.id));
+    throw err instanceof ConnectorNotConfiguredError
+      ? err
+      : new Error(`Calendar verification failed for source ${source.id}: ${message}`);
   }
 
   const now = new Date();

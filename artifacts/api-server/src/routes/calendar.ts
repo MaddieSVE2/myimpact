@@ -4,11 +4,11 @@ import { and, eq, gt, gte, lt, lte, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import {
+  assertCalendarOwnership,
+  CalendarOwnershipError,
   ConnectorNotConfiguredError,
-  applyTitleFilter,
-  fetchEventsForSource,
+  getPrimaryCalendar,
   isConnectorReady,
-  listCalendarsFor,
   revokeProviderToken,
   type CalendarProvider,
 } from "../lib/calendarProviders.js";
@@ -39,13 +39,24 @@ function serializeSource(s: typeof calendarSourcesTable.$inferSelect) {
   };
 }
 
-/* GET /api/calendar/status — connector readiness for both providers. */
+/**
+ * GET /api/calendar/status — connector readiness for both providers.
+ *
+ * Security: accountEmail is NOT included in the response even though
+ * isConnectorReady() returns it. Exposing the connector account email to
+ * every authenticated user discloses the identity of the calendar owner
+ * across user trust boundaries. The status endpoint only returns the
+ * boolean connection state.
+ */
 router.get("/status", authenticate, async (_req: AuthenticatedRequest, res) => {
   const [google, microsoft] = await Promise.all([
     isConnectorReady("google"),
     isConnectorReady("microsoft"),
   ]);
-  res.json({ google, microsoft });
+  res.json({
+    google: { connected: google.connected, reason: google.reason },
+    microsoft: { connected: microsoft.connected, reason: microsoft.reason },
+  });
 });
 
 /* GET /api/calendar/sources — list the user's sources. */
@@ -59,7 +70,17 @@ router.get("/sources", authenticate, async (req: AuthenticatedRequest, res) => {
   res.json({ sources: rows.map(serializeSource) });
 });
 
-/* GET /api/calendar/calendars/:provider — list available calendars from the connected provider. */
+/**
+ * GET /api/calendar/calendars/:provider
+ *
+ * Returns ONLY the primary calendar for the authenticated user.
+ *
+ * Access is restricted to the user whose application email matches the
+ * connected account's email (assertCalendarOwnership). Any other user
+ * receives 403 — they would otherwise be reading calendar metadata from
+ * an account that does not belong to them via the shared deployment-wide
+ * connector.
+ */
 router.get("/calendars/:provider", authenticate, async (req: AuthenticatedRequest, res) => {
   const provider = req.params.provider;
   if (!isProvider(provider)) {
@@ -67,9 +88,14 @@ router.get("/calendars/:provider", authenticate, async (req: AuthenticatedReques
     return;
   }
   try {
-    const { accountEmail, calendars } = await listCalendarsFor(provider);
-    res.json({ accountEmail, calendars });
+    await assertCalendarOwnership(req.user!.email, provider);
+    const { calendar, accountEmail } = await getPrimaryCalendar(provider);
+    res.json({ accountEmail, calendars: [calendar] });
   } catch (err) {
+    if (err instanceof CalendarOwnershipError) {
+      res.status(403).json({ error: err.message, code: err.code });
+      return;
+    }
     if (err instanceof ConnectorNotConfiguredError) {
       res.status(409).json({
         error: "Connector not configured",
@@ -78,22 +104,27 @@ router.get("/calendars/:provider", authenticate, async (req: AuthenticatedReques
       });
       return;
     }
-    console.error("listCalendarsFor failed:", err);
-    res.status(502).json({ error: "Could not load calendars from provider" });
+    console.error("getPrimaryCalendar failed:", err);
+    res.status(502).json({ error: "Could not load calendar from provider" });
   }
 });
 
-/* POST /api/calendar/sources — create a source for the current user. */
+/**
+ * POST /api/calendar/sources — create a source for the current user.
+ *
+ * Security: client-supplied calendarId is IGNORED. The server always fetches
+ * the primary calendar from the connector and uses that as the calendarId.
+ * This prevents any user from injecting an arbitrary calendar ID to read
+ * events from a calendar that does not belong to the connected account, or
+ * from reading a secondary (non-primary) calendar that belongs to another
+ * person on the same account. Only filterText is accepted from the client.
+ */
 router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const { provider, calendarId, calendarName, filterText } = req.body ?? {};
+  const { provider, filterText } = req.body ?? {};
 
   if (!isProvider(provider)) {
     res.status(400).json({ error: "Invalid provider" });
-    return;
-  }
-  if (calendarId !== null && calendarId !== undefined && typeof calendarId !== "string") {
-    res.status(400).json({ error: "calendarId must be a string or null" });
     return;
   }
   if (filterText !== null && filterText !== undefined && typeof filterText !== "string") {
@@ -101,17 +132,51 @@ router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => 
     return;
   }
 
-  // Verify the connector is reachable before creating a source — fail loud
-  // rather than silently storing a source that won't sync.
-  const ready = await isConnectorReady(provider);
-  if (!ready.connected) {
-    res.status(409).json({
-      error: "Connector not connected",
-      code: "CONNECTOR_NOT_CONFIGURED",
-      message: ready.reason ?? "Calendar isn't connected.",
-    });
+  // Enforce connector ownership: the user's app email must match the
+  // connected calendar account's email. This is a hard identity check —
+  // not just "first come first served" — so no other user can ever claim
+  // the shared connector even if no active source exists yet.
+  try {
+    await assertCalendarOwnership(req.user!.email, provider);
+  } catch (err) {
+    if (err instanceof CalendarOwnershipError) {
+      res.status(403).json({ error: err.message, code: err.code });
+      return;
+    }
+    if (err instanceof ConnectorNotConfiguredError) {
+      res.status(409).json({
+        error: "Connector not connected",
+        code: "CONNECTOR_NOT_CONFIGURED",
+        message: (err as Error).message,
+      });
+      return;
+    }
+    console.error("assertCalendarOwnership failed:", err);
+    res.status(502).json({ error: "Could not verify calendar ownership." });
     return;
   }
+
+  // Fetch the primary calendar server-side — client cannot supply calendarId.
+  let primaryCalendar: Awaited<ReturnType<typeof getPrimaryCalendar>>;
+  try {
+    primaryCalendar = await getPrimaryCalendar(provider);
+  } catch (err) {
+    if (err instanceof ConnectorNotConfiguredError) {
+      res.status(409).json({
+        error: "Connector not connected",
+        code: "CONNECTOR_NOT_CONFIGURED",
+        message: err.message,
+      });
+      return;
+    }
+    console.error("getPrimaryCalendar failed:", err);
+    res.status(502).json({ error: "Could not load calendar from provider." });
+    return;
+  }
+
+  const { calendar: primary, accountEmail } = primaryCalendar;
+  const trimmedFilter =
+    typeof filterText === "string" ? filterText.trim().slice(0, 200) : null;
 
   // One source per provider per user — replace if it already exists.
   const existing = await db.query.calendarSourcesTable.findFirst({
@@ -121,19 +186,16 @@ router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => 
     ),
   });
 
-  const trimmedFilter =
-    typeof filterText === "string" ? filterText.trim().slice(0, 200) : null;
-
   let row;
   if (existing) {
     [row] = await db
       .update(calendarSourcesTable)
       .set({
-        calendarId: calendarId ?? null,
-        calendarName: typeof calendarName === "string" ? calendarName.slice(0, 200) : null,
+        calendarId: primary.id,
+        calendarName: primary.name.slice(0, 200),
         filterText: trimmedFilter || null,
         status: "active",
-        providerAccountEmail: ready.accountEmail,
+        providerAccountEmail: accountEmail,
         lastSyncError: null,
         updatedAt: new Date(),
       })
@@ -146,10 +208,10 @@ router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => 
         id: newId(),
         userId,
         provider,
-        calendarId: calendarId ?? null,
-        calendarName: typeof calendarName === "string" ? calendarName.slice(0, 200) : null,
+        calendarId: primary.id,
+        calendarName: primary.name.slice(0, 200),
         filterText: trimmedFilter || null,
-        providerAccountEmail: ready.accountEmail,
+        providerAccountEmail: accountEmail,
         status: "active",
       })
       .returning();
@@ -173,7 +235,13 @@ router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => 
   }
 });
 
-/* PATCH /api/calendar/sources/:id — update calendar/filter on an existing source. */
+/**
+ * PATCH /api/calendar/sources/:id — update filter text on an existing source.
+ *
+ * Security: calendarId cannot be changed after source creation. The calendar
+ * is always the primary calendar of the connected account (set server-side
+ * during POST). Only filterText and calendarName (display label) are accepted.
+ */
 router.patch("/sources/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const id = req.params.id;
@@ -187,15 +255,8 @@ router.patch("/sources/:id", authenticate, async (req: AuthenticatedRequest, res
     res.status(404).json({ error: "Source not found" });
     return;
   }
-  const { calendarId, calendarName, filterText } = req.body ?? {};
+  const { calendarName, filterText } = req.body ?? {};
   const updates: Partial<typeof calendarSourcesTable.$inferInsert> = { updatedAt: new Date() };
-  if (calendarId !== undefined) {
-    if (calendarId !== null && typeof calendarId !== "string") {
-      res.status(400).json({ error: "calendarId must be a string or null" });
-      return;
-    }
-    updates.calendarId = calendarId;
-  }
   if (calendarName !== undefined) {
     updates.calendarName =
       typeof calendarName === "string" ? calendarName.slice(0, 200) : null;
@@ -214,7 +275,7 @@ router.patch("/sources/:id", authenticate, async (req: AuthenticatedRequest, res
     .where(eq(calendarSourcesTable.id, id))
     .returning();
 
-  // Re-sync so the cache reflects the new filter / calendar selection.
+  // Re-sync so the cache reflects the new filter.
   try {
     await syncSource(updated);
     const refreshed = await db.query.calendarSourcesTable.findFirst({
@@ -242,23 +303,23 @@ router.delete("/sources/:id", authenticate, async (req: AuthenticatedRequest, re
     return;
   }
 
-  // Best-effort token revocation — for shared connector accounts we don't
-  // want to revoke the *whole* connection (other users may still depend on
-  // it), so revocation runs only when this is the last source pointing at
-  // the connector.
-  const otherSources = await db.query.calendarSourcesTable.findMany({
-    where: and(
-      eq(calendarSourcesTable.provider, existing.provider),
-      eq(calendarSourcesTable.status, "active"),
-    ),
-  });
-  const lastUsing = otherSources.filter((s) => s.id !== existing.id).length === 0;
+  // Revoke provider token only if the deleting user owns the connector
+  // (their app email matches the connected account email). A non-owner user
+  // cannot trigger a deployment-wide revocation — doing so would disconnect
+  // the calendar for the legitimate owner.
+  let isConnectorOwner = false;
+  try {
+    await assertCalendarOwnership(req.user!.email, existing.provider as CalendarProvider);
+    isConnectorOwner = true;
+  } catch {
+    // Non-owner or connector not configured — do not revoke.
+  }
 
   await db
     .delete(calendarSourcesTable)
     .where(eq(calendarSourcesTable.id, id));
 
-  if (lastUsing) {
+  if (isConnectorOwner) {
     await revokeProviderToken(existing.provider as CalendarProvider).catch(() => {});
   }
 

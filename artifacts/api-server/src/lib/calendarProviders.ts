@@ -283,6 +283,88 @@ export async function listCalendarsFor(
   return { accountEmail, calendars };
 }
 
+/**
+ * Verify that `calendarId` is actually present in the connector account's
+ * calendar list. This prevents a client from supplying an arbitrary calendar
+ * ID that does not belong to the connected account and using the shared
+ * connector token to read events from a calendar it was never granted access
+ * to (or a calendar owned by a different user on the same deployment).
+ *
+ * Returns the matching calendar entry when valid, or null when the ID is not
+ * found in the connector's calendar list.
+ */
+export async function validateCalendarId(
+  provider: CalendarProvider,
+  calendarId: string,
+): Promise<CalendarListEntry | null> {
+  const { accessToken } = await fetchConnectorToken(provider);
+  const calendars =
+    provider === "google"
+      ? await listGoogleCalendars(accessToken)
+      : await listMicrosoftCalendars(accessToken);
+  return calendars.find((c) => c.id === calendarId) ?? null;
+}
+
+/**
+ * Fetch the primary calendar for the connected account.
+ *
+ * This is the ONLY calendar that the server will allow users to connect to
+ * via the shared deployment-wide connector. We do not expose the full
+ * calendar list to clients — doing so would let any authenticated user
+ * enumerate all calendars on the connected account and then inject an
+ * arbitrary calendar ID to read events that do not belong to them.
+ */
+export async function getPrimaryCalendar(
+  provider: CalendarProvider,
+): Promise<{ calendar: CalendarListEntry; accountEmail: string | null }> {
+  const { accessToken, accountEmail } = await fetchConnectorToken(provider);
+  const calendars =
+    provider === "google"
+      ? await listGoogleCalendars(accessToken)
+      : await listMicrosoftCalendars(accessToken);
+
+  const primary = calendars.find((c) => c.primary) ?? calendars[0];
+  if (!primary) {
+    throw new ConnectorNotConfiguredError(
+      `No calendars found on the connected ${provider} account.`,
+    );
+  }
+  return { calendar: primary, accountEmail };
+}
+
+/**
+ * Verify that the requesting user's email matches the connector account's email.
+ *
+ * The calendar connector is a deployment-wide shared credential that represents
+ * ONE Google / Microsoft account. Only the user whose application email matches
+ * the connected account's email may use the calendar feature. Every other user
+ * gets a 403, because they would be reading the connector owner's calendar data
+ * rather than their own.
+ *
+ * Throws CalendarOwnershipError when the emails do not match or the connector
+ * account email cannot be determined.
+ */
+export class CalendarOwnershipError extends Error {
+  readonly code = "CALENDAR_OWNERSHIP_REQUIRED" as const;
+}
+
+export async function assertCalendarOwnership(
+  userEmail: string,
+  provider: CalendarProvider,
+): Promise<void> {
+  const { accountEmail } = await fetchConnectorToken(provider);
+  if (!accountEmail) {
+    throw new CalendarOwnershipError(
+      "Calendar access is restricted to the owner of the connected account.",
+    );
+  }
+  if (accountEmail.toLowerCase() !== userEmail.toLowerCase()) {
+    throw new CalendarOwnershipError(
+      "Calendar access is restricted to the owner of the connected account.",
+    );
+  }
+}
+
 export async function fetchEventsForSource(
   provider: CalendarProvider,
   calendarId: string,

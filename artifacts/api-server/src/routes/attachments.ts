@@ -13,6 +13,9 @@ import {
   getDownloadURL,
   deleteAttachment,
   streamAttachment,
+  getObjectMetadata,
+  purgeUnregisteredAttachments,
+  getUserPrefixBytes,
 } from "../lib/objectStorage.js";
 
 const router: IRouter = Router();
@@ -44,12 +47,28 @@ export const ATTACHMENT_LIMITS = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+/**
+ * Compute the user's storage usage in bytes.
+ *
+ * We take the MAXIMUM of:
+ *   (a) the DB-row sum of registered attachment sizes, and
+ *   (b) the actual GCS prefix byte total (including unregistered objects).
+ *
+ * Using GCS prefix bytes as the authoritative measure ensures that unregistered
+ * (orphaned) uploads — which bypass the DB entirely — still count against the
+ * user's quota. Taking the max handles the unlikely case where the GCS listing
+ * fails and returns 0, falling back to the DB-based number.
+ */
 async function getUserUsageBytes(userId: string): Promise<number> {
-  const [row] = await db
-    .select({ total: sum(attachmentsTable.byteSize) })
-    .from(attachmentsTable)
-    .where(eq(attachmentsTable.userId, userId));
-  return Number(row?.total ?? 0);
+  const [dbRow, gcsBytes] = await Promise.all([
+    db
+      .select({ total: sum(attachmentsTable.byteSize) })
+      .from(attachmentsTable)
+      .where(eq(attachmentsTable.userId, userId))
+      .then(([r]) => Number(r?.total ?? 0)),
+    getUserPrefixBytes(userId),
+  ]);
+  return Math.max(dbRow, gcsBytes);
 }
 
 async function getRecordIfOwned(userId: string, recordId: number) {
@@ -228,8 +247,19 @@ router.post("/upload-url", authenticate, async (req: AuthenticatedRequest, res) 
     return;
   }
 
+  // Garbage-collect any objects the user uploaded but never registered.
+  // Unregistered objects escape DB quota accounting, so we clean them up
+  // before issuing a new signed URL. This runs synchronously so that quota
+  // and orphan state are current before we generate the next URL.
+  const registeredRows = await db
+    .select({ storageKey: attachmentsTable.storageKey })
+    .from(attachmentsTable)
+    .where(eq(attachmentsTable.userId, userId));
+  const registeredKeys = new Set(registeredRows.map((r) => r.storageKey));
+  await purgeUnregisteredAttachments(userId, registeredKeys);
+
   const storageKey = generateAttachmentKey(userId);
-  const uploadUrl = await getUploadURL(storageKey, mimeType);
+  const uploadUrl = await getUploadURL(storageKey, mimeType, MAX_FILE_SIZE_BYTES);
 
   res.json({
     uploadUrl,
@@ -245,19 +275,21 @@ router.post("/upload-url", authenticate, async (req: AuthenticatedRequest, res) 
  * Step 2: After successful upload to GCS, register the metadata row.
  * Re-validates ownership and quota at insert time so a stale upload URL
  * cannot bypass limits.
+ *
+ * Security: mimeType and byteSize are read from the actual uploaded object's
+ * GCS metadata — not from the client request body — so the client cannot
+ * lie about the file type or size to bypass quota or file-type controls.
  */
 router.post("/register", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const body = req.body as Record<string, unknown>;
   const storageKey = typeof body.storageKey === "string" ? body.storageKey : "";
-  const mimeType = typeof body.mimeType === "string" ? body.mimeType.toLowerCase() : "";
-  const byteSize = typeof body.byteSize === "number" ? body.byteSize : NaN;
   const kindRaw = typeof body.kind === "string" ? body.kind : "photo";
   const kind: "photo" | "receipt" = kindRaw === "receipt" ? "receipt" : "photo";
   const recordIdRaw = body.recordId;
   const journalIdRaw = body.journalId;
 
-  if (!storageKey || !mimeType || !Number.isFinite(byteSize) || byteSize <= 0) {
+  if (!storageKey) {
     res.status(400).json({ error: "Missing required fields" });
     return;
   }
@@ -269,6 +301,47 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
     return;
   }
 
+  // Purge orphaned objects (uploaded but never registered) before quota check.
+  // Running this deterministically on BOTH /upload-url and /register ensures
+  // that unregistered storage is cleaned up regardless of which endpoint the
+  // user hits next, closing the window where a user could skip /register and
+  // leave objects outside quota accounting indefinitely.
+  const registeredRows = await db
+    .select({ storageKey: attachmentsTable.storageKey })
+    .from(attachmentsTable)
+    .where(eq(attachmentsTable.userId, userId));
+  const registeredKeys = new Set(registeredRows.map((r) => r.storageKey));
+  // Treat the key being registered as already-registered so we don't delete it.
+  registeredKeys.add(storageKey);
+  await purgeUnregisteredAttachments(userId, registeredKeys);
+
+  // Read actual file metadata from GCS — never trust client-supplied values.
+  const objectMeta = await getObjectMetadata(storageKey);
+  if (!objectMeta) {
+    res.status(404).json({ error: "Uploaded file not found in storage. Please upload the file before registering." });
+    return;
+  }
+  const mimeType = objectMeta.contentType.toLowerCase().split(";")[0].trim();
+  const byteSize = objectMeta.size;
+
+  // Validate the real mime type against allowed sets.
+  if (kind === "receipt") {
+    if (!ALLOWED_PDF_TYPES.has(mimeType)) {
+      await deleteAttachment(storageKey);
+      res.status(415).json({ error: "Receipt must be a PDF file." });
+      return;
+    }
+  } else {
+    if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+      await deleteAttachment(storageKey);
+      res.status(415).json({
+        error: "Unsupported file type. Allowed: JPEG, PNG, WebP, GIF, HEIC.",
+      });
+      return;
+    }
+  }
+
+  // Validate the real byte size.
   if (byteSize > MAX_FILE_SIZE_BYTES) {
     await deleteAttachment(storageKey);
     res.status(413).json({ error: "File too large." });
@@ -312,9 +385,13 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
     return;
   }
 
-  // Re-check quota
+  // Re-check quota using the authoritative GCS prefix bytes.
+  // getUserUsageBytes() already includes the just-uploaded object (it reads
+  // actual GCS prefix sizes), so we compare total usage directly against the
+  // cap — adding byteSize again would double-count the object and reject
+  // valid uploads near the quota boundary.
   const usedBytes = await getUserUsageBytes(userId);
-  if (usedBytes + byteSize > USER_QUOTA_BYTES) {
+  if (usedBytes > USER_QUOTA_BYTES) {
     await deleteAttachment(storageKey);
     res.status(413).json({ error: "Storage quota exceeded." });
     return;
