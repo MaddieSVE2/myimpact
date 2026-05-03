@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useAuth } from "@/lib/auth-context";
+import { useLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
@@ -299,6 +300,7 @@ export function Sidekick() {
   const situation = situations[0] ?? null;
   const [location] = useLocation();
   const { isLoggedIn, user } = useAuth();
+  const { locale } = useLocale();
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
   const isOrgManager = !!(orgData?.org);
   const isOnOrgPage = location === "/org" || location.startsWith("/org/");
@@ -466,7 +468,7 @@ export function Sidekick() {
         const res = await fetch(`${base}/api/sidekick/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newMessages.map(({ role, content }) => ({ role, content })), context: buildContext() }),
+          body: JSON.stringify({ messages: newMessages.map(({ role, content }) => ({ role, content })), context: { ...buildContext(), locale } }),
           signal: abortRef.current.signal,
         });
 

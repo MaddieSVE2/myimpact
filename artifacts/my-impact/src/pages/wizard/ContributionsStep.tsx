@@ -6,10 +6,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Heart, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { useCalculateImpact } from "@workspace/api-client-react";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { useT } from "@/i18n";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
   const { input, updateInput, setResult, customActivities } = useWizard();
+  const t = useT();
   
   const [donations, setDonations] = useState<number>(input.donationsGBP || 0);
   const [hours, setHours] = useState<number>(input.additionalVolunteerHours || 0);
@@ -37,7 +39,7 @@ export default function ContributionsStep() {
       });
       setLocation("/results");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+      const msg = e instanceof Error ? e.message : t("common.error");
       setCalcError(msg);
     }
   };
@@ -55,17 +57,17 @@ export default function ContributionsStep() {
           <Heart className="w-6 h-6 text-primary" />
         </div>
         
-        <h2 className="text-xl font-display font-semibold mb-2">Additional contributions</h2>
+        <h2 className="text-xl font-display font-semibold mb-2">{t("wizard.additionalContributions")}</h2>
         <p className="text-muted-foreground mb-8 text-sm">
-          Include any monetary donations or general volunteering hours not covered in your activities.
+          {t("wizard.additionalContributionsDesc")}
         </p>
 
         <div className="space-y-4">
           <div className="bg-background p-5 rounded-lg border border-border">
             <label className="block text-sm font-medium text-foreground mb-1">
-              Charitable Donations (Annual)
+              {t("wizard.charitableDonations")}
             </label>
-            <p className="text-xs text-muted-foreground mb-3">Total estimated amount you donate to charity per year.</p>
+            <p className="text-xs text-muted-foreground mb-3">{t("wizard.charitableDonationsDesc")}</p>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground font-medium">£</span>
               <input 
@@ -79,9 +81,9 @@ export default function ContributionsStep() {
 
           <div className="bg-background p-5 rounded-lg border border-border">
             <label className="block text-sm font-medium text-foreground mb-1">
-              General Volunteering Hours (Annual)
+              {t("wizard.generalVolunteerHours")}
             </label>
-            <p className="text-xs text-muted-foreground mb-3">Any extra hours spent helping others not captured above, including unpaid caring, befriending, or informal support for a neighbour or family member.</p>
+            <p className="text-xs text-muted-foreground mb-3">{t("wizard.generalVolunteerHoursDesc")}</p>
             <div className="relative">
               <input 
                 type="number" min="0"
@@ -89,7 +91,7 @@ export default function ContributionsStep() {
                 onChange={e => setHours(Number(e.target.value))}
                 className="w-full min-h-[44px] py-3 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">hours</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{t("wizard.hours")}</span>
             </div>
           </div>
         </div>
@@ -108,7 +110,7 @@ export default function ContributionsStep() {
           onClick={() => setLocation("/wizard/activities")}
           className="inline-flex items-center gap-2 px-5 py-3 rounded-md bg-white border border-border text-sm text-foreground font-medium hover:bg-secondary transition-all min-h-[44px]"
         >
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> {t("common.back")}
         </button>
         <button
           onClick={handleFinish}
@@ -116,9 +118,9 @@ export default function ContributionsStep() {
           className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-70 min-h-[44px]"
         >
           {calculateMutation.isPending ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Calculating...</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> {t("wizard.calculating")}</>
           ) : (
-            <><Sparkles className="w-4 h-4" /> Reveal My Impact</>
+            <><Sparkles className="w-4 h-4" /> {t("wizard.revealMyImpact")}</>
           )}
         </button>
       </div>

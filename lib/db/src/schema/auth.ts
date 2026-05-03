@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   lastDigestSentAt: timestamp("last_digest_sent_at"),
   voiceEnabled: boolean("voice_enabled").default(false).notNull(),
   voicePersona: text("voice_persona").default("alloy").notNull(),
+  preferredLocale: text("preferred_locale").default("en").notNull(),
 });
 
 export const magicTokensTable = pgTable("magic_tokens", {

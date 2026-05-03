@@ -11,6 +11,7 @@ import { SidekickProvider } from "@/lib/sidekick-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { SocialSharingProvider } from "@/lib/social-sharing-context";
 import { FeedbackProvider } from "@/lib/feedback-context";
+import { LocaleProvider } from "@/i18n";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
@@ -314,15 +315,17 @@ function App() {
         <ThemeProvider>
           <SocialSharingProvider>
           <AuthProvider>
-            <FeedbackProvider>
-              <SidekickProvider>
-                <WizardProvider>
-                  <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                    <AppRouter />
-                  </WouterRouter>
-                </WizardProvider>
-              </SidekickProvider>
-            </FeedbackProvider>
+            <LocaleProvider>
+              <FeedbackProvider>
+                <SidekickProvider>
+                  <WizardProvider>
+                    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                      <AppRouter />
+                    </WouterRouter>
+                  </WizardProvider>
+                </SidekickProvider>
+              </FeedbackProvider>
+            </LocaleProvider>
           </AuthProvider>
           </SocialSharingProvider>
           <Toaster />

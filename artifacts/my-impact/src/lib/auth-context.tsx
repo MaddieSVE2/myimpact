@@ -13,6 +13,7 @@ interface User {
   emailDigestOptIn?: boolean;
   voiceEnabled?: boolean;
   voicePersona?: VoicePersona;
+  preferredLocale?: "en" | "cy";
 }
 
 interface DemoLoginResult {
@@ -37,6 +38,7 @@ interface AuthContextType {
     emailDigestOptIn?: boolean;
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
+    preferredLocale?: "en" | "cy";
   }) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -114,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     emailDigestOptIn?: boolean;
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
+    preferredLocale?: "en" | "cy";
   }) => {
     const res = await fetch(`${BASE}/api/auth/me`, {
       method: "PATCH",

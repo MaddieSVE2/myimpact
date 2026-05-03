@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
-  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
+  MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy, Languages,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -12,6 +12,8 @@ import { useTheme } from "@/lib/theme-context";
 import { useFeedback } from "@/lib/feedback-context";
 import { useQuery } from "@tanstack/react-query";
 import InviteModal from "@/components/InviteModal";
+import { useLocale } from "@/i18n";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -177,16 +179,18 @@ export function Navbar() {
   const { canInstall, triggerInstall } = useInstallPrompt();
   const { isHighContrast, toggleTheme } = useTheme();
   const { feedbackMode, toggleFeedbackMode } = useFeedback();
+  const { locale, setLocale, t } = useLocale();
+  const toggleLocale = () => setLocale(locale === "en" ? "cy" : "en");
   const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
   const inOrg = !orgLoading && !!orgData?.org;
 
   const navItems = [
-    { href: "/wizard/actions", label: "Calculate", icon: PlusCircle },
-    { href: "/results", label: "My Impact", icon: Sparkles },
-    { href: "/history", label: "History", icon: History },
-    { href: "/milestones", label: "Milestones", icon: Award },
-    { href: "/journal", label: "Journal", icon: BookOpen },
-    { href: "/suggestions", label: "Ideas", icon: Lightbulb },
+    { href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle },
+    { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
+    { href: "/history", label: t("navbar.history"), icon: History },
+    { href: "/milestones", label: t("navbar.milestones"), icon: Award },
+    { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
+    { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
   ];
 
   useEffect(() => {
@@ -255,7 +259,7 @@ export function Navbar() {
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
                   style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
                 >
-                  Calculate my impact →
+                  {t("navbar.calculateCta")}
                 </Link>
 
                 {/* User menu — desktop only */}
@@ -266,7 +270,7 @@ export function Navbar() {
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors",
                       userMenuOpen ? "bg-white/15" : "hover:bg-white/10"
                     )}
-                    aria-label="My account menu"
+                    aria-label={t("navbar.myAccount")}
                     aria-expanded={userMenuOpen}
                   >
                     <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
@@ -281,7 +285,7 @@ export function Navbar() {
                   {userMenuOpen && (
                     <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-border overflow-hidden z-50">
                       <div className="px-4 py-3 border-b border-border">
-                        <p className="text-xs font-semibold text-foreground">My account</p>
+                        <p className="text-xs font-semibold text-foreground">{t("navbar.myAccount")}</p>
                         {user?.email && (
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">{user.email}</p>
                         )}
@@ -294,7 +298,7 @@ export function Navbar() {
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <User className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          My profile
+                          {t("navbar.myProfile")}
                         </Link>
                         <Link
                           href="/settings"
@@ -302,8 +306,18 @@ export function Navbar() {
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <Settings className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          Account settings
+                          {t("navbar.accountSettings")}
                         </Link>
+                        <div className="my-1 border-t border-border" />
+                        {/* Language toggle */}
+                        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">{t("common.language")}</span>
+                          <LanguageToggle
+                            variant="inline"
+                            showToast
+                            onChange={() => setUserMenuOpen(false)}
+                          />
+                        </div>
                         <div className="my-1 border-t border-border" />
                         {/* Preferences */}
                         <button
@@ -312,21 +326,21 @@ export function Navbar() {
                           aria-pressed={isHighContrast}
                         >
                           <Eye className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          {isHighContrast ? "Standard contrast" : "High contrast"}
+                          {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrast")}
                         </button>
                         <button
                           onClick={handleAddToHome}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <Smartphone className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          Add to home screen
+                          {t("navbar.addToHomeScreen")}
                         </button>
                         <button
                           onClick={() => { setUserMenuOpen(false); setShowInvite(true); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <Gift className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          Invite a friend
+                          {t("navbar.inviteAFriend")}
                         </button>
                         <div className="my-1 border-t border-border" />
                         {/* Feedback */}
@@ -336,7 +350,7 @@ export function Navbar() {
                           aria-pressed={feedbackMode}
                         >
                           <NotebookPen className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          {feedbackMode ? "Exit feedback mode" : "Enter feedback mode"}
+                          {feedbackMode ? t("navbar.exitFeedbackMode") : t("navbar.enterFeedbackMode")}
                         </button>
                         <Link
                           href="/feedback"
@@ -344,7 +358,7 @@ export function Navbar() {
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          Send feedback
+                          {t("navbar.sendFeedback")}
                         </Link>
                         <div className="my-1 border-t border-border" />
                         {/* Organisation */}
@@ -363,7 +377,7 @@ export function Navbar() {
                             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                           >
                             <Building2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                            {inOrg ? "My organisation" : "Join my organisation"}
+                            {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
                           </Link>
                         )}
                         {isAdmin && (
@@ -373,7 +387,7 @@ export function Navbar() {
                             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                           >
                             <ShieldCheck className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                            Admin panel
+                            {t("navbar.adminPanel")}
                           </Link>
                         )}
                         <div className="my-1 border-t border-border" />
@@ -382,7 +396,7 @@ export function Navbar() {
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                         >
                           <LogOut className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          Log out
+                          {t("navbar.logOut")}
                         </button>
                       </div>
                     </div>
@@ -398,28 +412,29 @@ export function Navbar() {
                     className="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/10"
                     style={{ color: "white" }}
                     aria-pressed={isHighContrast}
-                    aria-label={isHighContrast ? "Switch to standard contrast" : "Switch to high contrast"}
+                    aria-label={isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrast")}
                   >
                     <Eye className="w-4 h-4" aria-hidden="true" />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background shadow-md">
-                    {isHighContrast ? "Standard contrast" : "High contrast mode"}
+                    {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrastMode")}
                   </div>
                 </div>
+                <LanguageToggle variant="pill" className="hidden lg:inline-flex" />
                 <Link
                   href={`/login?from=${encodeURIComponent(location)}`}
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
                   style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
                 >
                   <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
-                  Log in
+                  {t("navbar.logIn")}
                 </Link>
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
                   style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
                 >
-                  Calculate my impact →
+                  {t("navbar.calculateCta")}
                 </Link>
               </>
             )}
@@ -429,7 +444,7 @@ export function Navbar() {
               className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => { setMobileOpen(false); openSidekick(true); }}
-              aria-label="Open Sidekick AI"
+              aria-label={t("navbar.openSidekick")}
             >
               <MessageCircle className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -439,7 +454,7 @@ export function Navbar() {
               className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: "rgba(255,255,255,0.7)" }}
               onClick={() => setMobileOpen(o => !o)}
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-label={mobileOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}
               aria-expanded={mobileOpen}
             >
               {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
@@ -474,8 +489,14 @@ export function Navbar() {
               className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
               style={{ background: "#F06127" }}
             >
-              Calculate my impact →
+              {t("navbar.calculateCta")}
             </Link>
+
+            {/* Language toggle — mobile menu */}
+            <div className="mt-2 px-3 py-2 flex items-center justify-between gap-2 rounded-md">
+              <span className="text-xs font-medium text-white/70">{t("common.language")}</span>
+              <LanguageToggle variant="inline" showToast onChange={() => setMobileOpen(false)} />
+            </div>
 
             {/* Divider before account actions — only when logged in */}
             {isLoggedIn && <div className="my-1 border-t border-white/10" />}
@@ -488,7 +509,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <User className="w-4 h-4 shrink-0" aria-hidden="true" />
-                My profile
+                {t("navbar.myProfile")}
               </Link>
             )}
 
@@ -499,7 +520,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <Settings className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Account settings
+                {t("navbar.accountSettings")}
               </Link>
             )}
 
@@ -512,7 +533,7 @@ export function Navbar() {
               aria-pressed={isHighContrast}
             >
               <Eye className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {isHighContrast ? "Standard contrast" : "High contrast"}
+              {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrast")}
             </button>
 
             <button
@@ -520,7 +541,7 @@ export function Navbar() {
               className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
             >
               <Smartphone className="w-4 h-4 shrink-0" aria-hidden="true" />
-              Add to home screen
+              {t("navbar.addToHomeScreen")}
             </button>
 
             {isLoggedIn && (
@@ -529,7 +550,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <Gift className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Invite a friend
+                {t("navbar.inviteAFriend")}
               </button>
             )}
 
@@ -542,7 +563,7 @@ export function Navbar() {
               aria-pressed={feedbackMode}
             >
               <NotebookPen className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {feedbackMode ? "Exit feedback mode" : "Enter feedback mode"}
+              {feedbackMode ? t("navbar.exitFeedbackMode") : t("navbar.enterFeedbackMode")}
             </button>
 
             <Link
@@ -551,7 +572,7 @@ export function Navbar() {
               className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
             >
               <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
-              Send feedback
+              {t("navbar.sendFeedback")}
             </Link>
 
             {/* Organisation — divider only when at least one item will show */}
@@ -564,7 +585,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-                {inOrg ? "My organisation" : "Join my organisation"}
+                {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
               </Link>
             )}
 
@@ -575,7 +596,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Admin panel
+                {t("navbar.adminPanel")}
               </Link>
             )}
 
@@ -587,7 +608,7 @@ export function Navbar() {
                   className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
                 >
                   <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  Log out
+                  {t("navbar.logOut")}
                 </button>
               </>
             ) : (
@@ -597,7 +618,7 @@ export function Navbar() {
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Log in
+                {t("navbar.logIn")}
               </Link>
             )}
           </div>

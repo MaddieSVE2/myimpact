@@ -5,6 +5,7 @@ import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 interface LocalPlace {
   name: string;
@@ -53,6 +54,7 @@ export default function Suggestions() {
   const { input, interests, location, locationMeta, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
   const { data: profileData } = useGetProfile();
+  const t = useT();
 
   // Per-tile local state: activityId → TileLocalState
   const [tileLocal, setTileLocal] = useState<Record<string, TileLocalState>>({});
@@ -166,13 +168,13 @@ export default function Suggestions() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium text-primary uppercase tracking-widest">Ideas for you</span>
+          <span className="text-xs font-medium text-primary uppercase tracking-widest">{t("suggestions.eyebrow")}</span>
         </div>
-        <h1 className="text-2xl font-display font-semibold text-foreground mb-2">What difference could you make?</h1>
+        <h1 className="text-2xl font-display font-semibold text-foreground mb-2">{t("suggestions.title")}</h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {interestLabels.length > 0
-            ? <>Based on your interest in <strong>{interestLabels.join(', ')}</strong>, here are activities worth considering, each with an estimated social value.</>
-            : <>Not sure where to start? Here are some of the most impactful things you could do, with the social value each one creates.</>
+            ? <>{t("suggestions.basedOnInterest")} <strong>{interestLabels.join(', ')}</strong>{t("suggestions.basedOnInterestSuffix")}</>
+            : <>{t("suggestions.noInterestIntro")}</>
           }
         </p>
       </div>
@@ -287,7 +289,7 @@ export default function Suggestions() {
       ) : isError ? (
         <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Could not load suggestions. Please try again later.</span>
+          <span>{t("suggestions.loadError")}</span>
         </div>
       ) : (
         <div className="space-y-3">

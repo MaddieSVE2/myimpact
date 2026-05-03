@@ -393,6 +393,7 @@ router.get("/me", async (req: any, res) => {
         emailDigestOptIn: user.emailDigestOptIn,
         voiceEnabled: user.voiceEnabled,
         voicePersona: user.voicePersona,
+        preferredLocale: user.preferredLocale ?? "en",
       },
     });
   } catch {
@@ -408,12 +409,13 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona } = req.body ?? {};
+    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, preferredLocale } = req.body ?? {};
     const updates: {
       displayName?: string | null;
       emailDigestOptIn?: boolean;
       voiceEnabled?: boolean;
       voicePersona?: string;
+      preferredLocale?: string;
     } = {};
 
     if (displayName !== undefined) {
@@ -450,6 +452,14 @@ router.patch("/me", async (req: any, res) => {
       updates.voicePersona = voicePersona;
     }
 
+    if (preferredLocale !== undefined) {
+      if (preferredLocale !== "en" && preferredLocale !== "cy") {
+        res.status(400).json({ error: "preferredLocale must be 'en' or 'cy'" });
+        return;
+      }
+      updates.preferredLocale = preferredLocale;
+    }
+
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "No updatable fields supplied" });
       return;
@@ -469,6 +479,7 @@ router.patch("/me", async (req: any, res) => {
         emailDigestOptIn: updated.emailDigestOptIn,
         voiceEnabled: updated.voiceEnabled,
         voicePersona: updated.voicePersona,
+        preferredLocale: updated.preferredLocale ?? "en",
       },
     });
   } catch {

@@ -4,10 +4,13 @@ export type OnboardingStep = 1 | 7 | 30;
 
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [1, 7, 30] as const;
 
+export type EmailLocale = "en" | "cy";
+
 export interface OnboardingContext {
   email: string;
   displayName: string | null;
   appUrl: string;
+  locale?: EmailLocale;
 }
 
 export interface OnboardingActivity {
@@ -30,12 +33,16 @@ function shellOpen(): string {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:${TEXT};">`;
 }
 
-function shellClose(appUrl: string): string {
+function shellClose(appUrl: string, locale: EmailLocale = "en"): string {
+  const text = locale === "cy"
+    ? `Rydych yn derbyn negeseuon e-bost croeso a chrynodeb misol gan My Impact.`
+    : `You're receiving onboarding and monthly digest emails from My Impact.`;
+  const link = locale === "cy" ? "Rheoli dewisiadau e-bost" : "Manage email preferences";
   return `
     <hr style="border:none;border-top:1px solid ${BORDER};margin:32px 0 16px;" />
     <p style="color:${MUTED};font-size:12px;line-height:1.6;margin:0;">
-      You're receiving onboarding and monthly digest emails from My Impact.
-      <a href="${appUrl}/settings" style="color:${MUTED};text-decoration:underline;">Manage email preferences</a>.
+      ${text}
+      <a href="${appUrl}/settings" style="color:${MUTED};text-decoration:underline;">${link}</a>.
     </p>
   </div>`;
 }
@@ -44,8 +51,11 @@ function ctaButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;background:${ORANGE};color:white;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">${label}</a>`;
 }
 
-function greeting(displayName: string | null): string {
+function greeting(displayName: string | null, locale: EmailLocale = "en"): string {
   const name = displayName?.trim();
+  if (locale === "cy") {
+    return name ? `Helo ${escapeHtml(name)},` : "Helo,";
+  }
   return name ? `Hi ${escapeHtml(name)},` : "Hi there,";
 }
 
@@ -70,26 +80,29 @@ function gbp(value: number): string {
 // Day 1 — Welcome
 // ---------------------------------------------------------------------------
 export function buildDay1Email(ctx: OnboardingContext): { subject: string; html: string } {
-  const subject = "Welcome to My Impact";
+  const isWelsh = ctx.locale === "cy";
+  const subject = isWelsh ? "Croeso i My Impact" : "Welcome to My Impact";
+  const intro = isWelsh
+    ? "Croeso i My Impact, a diolch am gofrestru. Mae eich cyfrif yn barod i fynd."
+    : "Welcome to My Impact, and thanks for signing up. Your account is ready to go.";
+  const body = isWelsh
+    ? "Mae My Impact yn ffordd am ddim o gofnodi'r gwirfoddoli, gofalu a phethau da rydych chi'n eu gwneud, ac yna eu troi'n rif y gallwch ei rannu — eich gwerth cymdeithasol. Po fwyaf y byddwch yn ei gofnodi, y cliriaf yw'r darlun, a'r haws fydd ei ddangos ar CV, ffurflen UCAS neu gais cyllid."
+    : "My Impact is a free way to capture the volunteering, caring and good things you do, then turn them into a number you can share — your social value. The more you log, the clearer the picture, and the easier it becomes to point at it on a CV, a UCAS form or a funding bid.";
+  const cta = isWelsh ? "Cofnodwch eich gweithgaredd cyntaf" : "Log your first activity";
+  const footer = isWelsh
+    ? "Yn cymryd tua dau funud. Byddwn yn ei gadw i'ch proffil a gallwch ddod yn ôl unrhyw bryd i ychwanegu mwy."
+    : "Takes about two minutes. We'll save it to your profile and you can come back any time to add more.";
   const html = `
     ${shellOpen()}
     ${logoBlock(ctx.appUrl)}
-    <h2 style="margin:0 0 12px;font-size:22px;">${greeting(ctx.displayName)}</h2>
-    <p style="line-height:1.6;margin:0 0 16px;">
-      Welcome to My Impact, and thanks for signing up. Your account is ready to go.
-    </p>
-    <p style="line-height:1.6;margin:0 0 24px;">
-      My Impact is a free way to capture the volunteering, caring and good things you do, then turn them
-      into a number you can share — your social value. The more you log, the clearer the picture, and the
-      easier it becomes to point at it on a CV, a UCAS form or a funding bid.
-    </p>
+    <h2 style="margin:0 0 12px;font-size:22px;">${greeting(ctx.displayName, ctx.locale)}</h2>
+    <p style="line-height:1.6;margin:0 0 16px;">${intro}</p>
+    <p style="line-height:1.6;margin:0 0 24px;">${body}</p>
     <p style="margin:0 0 24px;">
-      ${ctaButton(`${ctx.appUrl}/wizard`, "Log your first activity")}
+      ${ctaButton(`${ctx.appUrl}/wizard`, cta)}
     </p>
-    <p style="color:${MUTED};line-height:1.6;margin:0;font-size:14px;">
-      Takes about two minutes. We'll save it to your profile and you can come back any time to add more.
-    </p>
-    ${shellClose(ctx.appUrl)}
+    <p style="color:${MUTED};line-height:1.6;margin:0;font-size:14px;">${footer}</p>
+    ${shellClose(ctx.appUrl, ctx.locale)}
   `;
   return { subject, html };
 }

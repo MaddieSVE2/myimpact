@@ -7,18 +7,19 @@ import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History } fr
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { useT } from "@/i18n";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
-const SITUATION_OPTIONS = [
-  { id: "volunteer", label: "I volunteer" },
-  { id: "job_seeking", label: "Job seeking" },
-  { id: "student", label: "Student" },
-  { id: "apprenticeship", label: "Applying for an apprenticeship" },
-  { id: "career_break", label: "Career break" },
-  { id: "armed_forces", label: "Armed forces / veteran" },
-  { id: "something_else", label: "Something else" },
-];
+const SITUATION_OPTION_IDS = [
+  "volunteer",
+  "job_seeking",
+  "student",
+  "apprenticeship",
+  "career_break",
+  "armed_forces",
+  "something_else",
+] as const;
 
 async function lookupPostcode(raw: string) {
   const postcode = raw.replace(/\s+/g, "").toUpperCase();
@@ -47,6 +48,7 @@ export default function ActionsStep() {
     hasDraft, clearDraft,
   } = useWizard();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const t = useT();
 
   const [showCustom, setShowCustom] = useState(!!customInterest);
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
@@ -179,7 +181,7 @@ export default function ActionsStep() {
         >
           <div className="flex items-center gap-2 text-sm text-foreground">
             <History className="w-4 h-4 text-primary shrink-0" />
-            <span>Resuming your last session</span>
+            <span>{t("wizard.resumingLast")}</span>
           </div>
           <button
             type="button"
@@ -187,7 +189,7 @@ export default function ActionsStep() {
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Start fresh
+            {t("wizard.startFresh")}
           </button>
         </motion.div>
       )}
@@ -200,7 +202,7 @@ export default function ActionsStep() {
           className="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-muted/40 border border-border"
         >
           <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-          <span className="text-sm text-muted-foreground">We've pre-filled your details from your profile — adjust anything below.</span>
+          <span className="text-sm text-muted-foreground">{t("wizard.profilePrefilled")}</span>
         </motion.div>
       )}
 
@@ -210,26 +212,26 @@ export default function ActionsStep() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h2 className="text-xl font-display font-semibold text-foreground mb-1">About you</h2>
+        <h2 className="text-xl font-display font-semibold text-foreground mb-1">{t("wizard.aboutYou")}</h2>
         <p className="text-sm text-muted-foreground mb-8">
-          Help us personalise your experience. Just a couple of quick questions.
+          {t("wizard.aboutYouDesc")}
         </p>
 
         {/* Situation — only shown to logged-in users */}
         {isLoggedIn && (
           <div className="mb-8">
             <label className="block text-sm font-medium text-foreground mb-1">
-              My situation&hellip; <span className="text-muted-foreground font-normal">(optional)</span>
+              {t("wizard.mySituation")} <span className="text-muted-foreground font-normal">{t("common.optional")}</span>
             </label>
-            <p className="text-xs text-muted-foreground mb-3">Select all that apply — we use this to personalise the language and framing of your results.</p>
+            <p className="text-xs text-muted-foreground mb-3">{t("wizard.situationHelp")}</p>
             <div className="flex flex-wrap gap-2">
-              {SITUATION_OPTIONS.map(opt => {
-                const selected = situations.includes(opt.id);
+              {SITUATION_OPTION_IDS.map(id => {
+                const selected = situations.includes(id);
                 return (
                   <button
-                    key={opt.id}
+                    key={id}
                     type="button"
-                    onClick={() => toggleSituation(opt.id)}
+                    onClick={() => toggleSituation(id)}
                     aria-pressed={selected}
                     className={cn(
                       "px-3.5 py-2.5 min-h-[44px] rounded-full text-sm border transition-all duration-150 select-none",
@@ -238,7 +240,7 @@ export default function ActionsStep() {
                         : "bg-white text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
                     )}
                   >
-                    {opt.label}
+                    {t(`wizard.situations.${id}` as any)}
                   </button>
                 );
               })}
@@ -249,9 +251,9 @@ export default function ActionsStep() {
         {/* Location */}
         <div className="mb-8">
           <label className="block text-sm font-medium text-foreground mb-0.5">
-            I live in&hellip;
+            {t("wizard.iLiveIn")}
           </label>
-          <p className="text-xs text-muted-foreground mb-3">We use this to recommend nearby activities.</p>
+          <p className="text-xs text-muted-foreground mb-3">{t("wizard.iLiveInHelp")}</p>
           <div className="relative max-w-xs">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
@@ -264,14 +266,14 @@ export default function ActionsStep() {
                 setLocationMeta(null);
               }}
               onBlur={handleLocationBlur}
-              placeholder="e.g. Manchester, M1, SW1A 2AA…"
+              placeholder={t("wizard.postcodePlaceholder")}
               className="w-full pl-9 pr-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
           <div className="mt-1.5 h-5">
             {lookupState === 'loading' && (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Looking up postcode…
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("wizard.lookingUpPostcode")}
               </span>
             )}
             {lookupState === 'found' && resolvedRegion && (
@@ -280,7 +282,7 @@ export default function ActionsStep() {
               </span>
             )}
             {lookupState === 'error' && (
-              <span className="text-xs text-muted-foreground">Postcode not found. Try a town or city name instead.</span>
+              <span className="text-xs text-muted-foreground">{t("wizard.postcodeNotFound")}</span>
             )}
           </div>
         </div>
@@ -288,10 +290,10 @@ export default function ActionsStep() {
         {/* Interest chips */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-foreground mb-1">
-            Things I care about&hellip;
+            {t("wizard.thingsICareAbout")}
           </label>
           <p className="text-xs text-muted-foreground mb-4">
-            Select all that apply. We'll use this to personalise your activities and suggestions.
+            {t("wizard.thingsICareAboutHelp")}
           </p>
           <div className="flex flex-wrap gap-2 mb-3">
             {INTEREST_OPTIONS.filter(option => option.id !== 'military' || situations.includes('armed_forces')).map(option => {
@@ -323,7 +325,7 @@ export default function ActionsStep() {
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mt-1"
             >
               <Plus className="w-3.5 h-3.5" />
-              Something else? Add your own
+              {t("wizard.addYourOwn")}
             </button>
           ) : (
             <motion.div
@@ -335,7 +337,7 @@ export default function ActionsStep() {
                 type="text"
                 value={customInterest}
                 onChange={e => setCustomInterest(e.target.value)}
-                placeholder="e.g. Refugee support, domestic violence, prison reform…"
+                placeholder={t("wizard.customInterestPlaceholder")}
                 className="w-full px-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 autoFocus
               />
@@ -371,10 +373,10 @@ export default function ActionsStep() {
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground leading-snug">
-                  I'm currently on a career break / returning to work
+                  {t("wizard.onCareerBreak")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  We'll highlight how your activities build transferable skills and help you frame this period on your CV.
+                  {t("wizard.onCareerBreakDesc")}
                 </p>
               </div>
             </label>
@@ -387,7 +389,7 @@ export default function ActionsStep() {
             disabled={!canProceed}
             className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Next: Add activities <ArrowRight className="w-4 h-4" />
+            {t("wizard.nextAddActivities")} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </motion.div>

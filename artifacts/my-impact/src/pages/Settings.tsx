@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause, Languages } from "lucide-react";
 import {
   isPushSupported,
   currentPermission,
@@ -15,6 +15,8 @@ import {
 import { useAuth, type VoicePersona } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
+import { useT } from "@/i18n";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import PublicProfileSettings from "./PublicProfileSettings";
 import CalendarSyncSection from "@/components/CalendarSyncSection";
 import { StorageUsageBar } from "@/components/Attachments";
@@ -35,6 +37,7 @@ export default function Settings() {
   const { user, updateProfile, logout } = useAuth();
   const { isHighContrast, toggleTheme } = useTheme();
   const { toast } = useToast();
+  const t = useT();
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [saving, setSaving] = useState(false);
@@ -49,15 +52,13 @@ export default function Settings() {
     try {
       await updateProfile({ emailDigestOptIn: next });
       toast({
-        title: next ? "Monthly recap on" : "Monthly recap off",
-        description: next
-          ? "We'll send a personalised summary on the 1st of each month."
-          : "You won't receive monthly recap emails.",
+        title: next ? t("settings.monthlyRecapOnToast") : t("settings.monthlyRecapOffToast"),
+        description: next ? t("settings.monthlyRecapOnDesc") : t("settings.monthlyRecapOffDesc"),
       });
     } catch {
       toast({
-        title: "Could not update preference",
-        description: "Please try again.",
+        title: t("settings.couldNotUpdate"),
+        description: t("settings.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -102,14 +103,12 @@ export default function Settings() {
       const data = await res.json();
       setEmailOptIn(data.emailOptIn);
       toast({
-        title: next ? "Emails turned on" : "Emails turned off",
-        description: next
-          ? "You'll get the onboarding sequence and the monthly digest."
-          : "We won't send you onboarding or monthly digest emails.",
+        title: next ? t("settings.emailsOnToast") : t("settings.emailsOffToast"),
+        description: next ? t("settings.emailsOnDesc") : t("settings.emailsOffDesc"),
       });
     } catch {
       setEmailOptIn(!next);
-      toast({ title: "Could not save", description: "Please try again.", variant: "destructive" });
+      toast({ title: t("settings.couldNotSave"), description: t("settings.pleaseTryAgain"), variant: "destructive" });
     } finally {
       setEmailToggleSaving(false);
     }
@@ -122,10 +121,10 @@ export default function Settings() {
     try {
       await updateProfile({ displayName: displayName.trim() || null });
       setSaved(true);
-      toast({ title: "Name saved", description: "Your display name has been updated." });
+      toast({ title: t("settings.nameSavedToast"), description: t("settings.nameSavedDesc") });
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      toast({ title: "Could not save", description: "Please try again.", variant: "destructive" });
+      toast({ title: t("settings.couldNotSave"), description: t("settings.pleaseTryAgain"), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -136,24 +135,24 @@ export default function Settings() {
   return (
     <div className="max-w-lg mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-display font-bold text-foreground">Account settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage your profile and preferences.</p>
+        <h1 className="text-2xl font-display font-bold text-foreground">{t("settings.title")}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t("settings.subtitle")}</p>
       </div>
 
       {/* Profile section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <User className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Profile</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.profile")}</h2>
         </div>
         <div className="px-5 py-5 space-y-5">
           {/* Display name */}
           <div>
             <label htmlFor="display-name" className="block text-sm font-medium text-foreground mb-1.5">
-              Display name
+              {t("settings.displayName")}
             </label>
             <p className="text-xs text-muted-foreground mb-2">
-              This is how you appear in milestones and exports. Leave blank to use your email.
+              {t("settings.displayNameHelp")}
             </p>
             <div className="flex gap-2">
               <input
@@ -162,7 +161,7 @@ export default function Settings() {
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && nameChanged) handleSaveName(); }}
-                placeholder="e.g. Alex Smith"
+                placeholder={t("settings.displayNamePlaceholder")}
                 maxLength={80}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
               />
@@ -172,7 +171,7 @@ export default function Settings() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {saved ? <CheckCircle className="w-4 h-4" aria-hidden="true" /> : null}
-                {saving ? "Saving…" : saved ? "Saved" : "Save"}
+                {saving ? t("common.saving") : saved ? t("common.saved") : t("common.save")}
               </button>
             </div>
           </div>
@@ -180,14 +179,14 @@ export default function Settings() {
           {/* Email — read-only */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Email address
+              {t("settings.emailAddress")}
             </label>
             <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-3 py-2">
               <Mail className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="text-sm text-foreground">{user?.email}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">
-              Your email is used for sign-in only and can't be changed here.
+              {t("settings.emailHelp")}
             </p>
           </div>
         </div>
@@ -197,17 +196,17 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Eye className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Preferences</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.preferences")}</h2>
         </div>
-        <div className="py-1">
+        <div className="py-1 divide-y divide-border">
           <button
             onClick={toggleTheme}
             aria-pressed={isHighContrast}
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left"
           >
             <div>
-              <p className="text-sm font-medium text-foreground">High contrast mode</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Increases colour contrast for better readability.</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.highContrastLabel")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.highContrastDesc")}</p>
             </div>
             <div
               className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
@@ -219,6 +218,16 @@ export default function Settings() {
               />
             </div>
           </button>
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="pr-2">
+              <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Languages className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+                {t("settings.languageLabel")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.languageDesc")}</p>
+            </div>
+            <LanguageToggle variant="inline" showToast />
+          </div>
         </div>
       </section>
 
@@ -228,7 +237,7 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Mail className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Email</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.email")}</h2>
         </div>
         <div className="py-1 divide-y divide-border">
           <button
@@ -238,9 +247,9 @@ export default function Settings() {
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <div className="pr-4">
-              <p className="text-sm font-medium text-foreground">Onboarding emails</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.onboardingEmails")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Welcome and getting-started tips in your first month after signing up.
+                {t("settings.onboardingEmailsDesc")}
               </p>
             </div>
             <div
@@ -260,9 +269,9 @@ export default function Settings() {
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
           >
             <div className="pr-3">
-              <p className="text-sm font-medium text-foreground">Monthly impact recap</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.monthlyRecap")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                A short personalised summary on the 1st of each month — hours, social value, milestones, and one journal highlight. Unsubscribe in one click from the email or here.
+                {t("settings.monthlyRecapDesc")}
               </p>
             </div>
             <div
@@ -282,7 +291,7 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Organisation</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.organisation")}</h2>
         </div>
         <div className="py-1 divide-y divide-border">
           <Link
@@ -290,8 +299,8 @@ export default function Settings() {
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-foreground">My organisation</p>
-              <p className="text-xs text-muted-foreground mt-0.5">View or join your organisation on My Impact.</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.myOrganisation")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.myOrganisationDesc")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
@@ -303,11 +312,11 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <HardDrive className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Storage</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.storage")}</h2>
         </div>
         <div className="px-5 py-5">
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-            Photos and donation receipts you attach to your records and journal entries are stored privately, just for you.
+            {t("settings.storageDesc")}
           </p>
           <StorageUsageBar />
         </div>
@@ -329,7 +338,7 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Year in impact</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.yearInImpact")}</h2>
         </div>
         <div className="py-1">
           <Link
@@ -338,8 +347,8 @@ export default function Settings() {
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-foreground">View my {getRecapYear()} recap</p>
-              <p className="text-xs text-muted-foreground mt-0.5">A Spotify-style story of your year, with a shareable card.</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.viewYearRecap", { year: getRecapYear() })}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.viewYearRecapDesc")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
@@ -350,7 +359,7 @@ export default function Settings() {
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-8 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Smartphone className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">App</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("settings.app")}</h2>
         </div>
         <div className="py-1">
           <Link
@@ -358,8 +367,8 @@ export default function Settings() {
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-foreground">About My Impact</p>
-              <p className="text-xs text-muted-foreground mt-0.5">How the platform works and what the numbers mean.</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.aboutMyImpact")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.aboutMyImpactDesc")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
@@ -372,7 +381,7 @@ export default function Settings() {
         className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-colors"
       >
         <LogOut className="w-4 h-4" aria-hidden="true" />
-        Sign out
+        {t("settings.signOut")}
       </button>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, ArrowRight, CheckCircle, X, Building2, Lock } from "lucide-react";
+import { useT } from "@/i18n";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -33,6 +34,7 @@ function MicrosoftIcon({ className }: { className?: string }) {
 
 export default function Login() {
   const { requestMagicLink } = useAuth();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -103,7 +105,7 @@ export default function Login() {
       }
       setSent(true);
     } catch (err: any) {
-      setError(err.message ?? "Something went wrong. Please try again.");
+      setError(err.message ?? t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export default function Login() {
         <div className="bg-white rounded-2xl p-8 shadow-2xl relative">
           <button
             onClick={handleClose}
-            aria-label="Close and go back"
+            aria-label={t("login.closeAndGoBack")}
             className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-[#F06127]/40"
           >
             <X className="w-5 h-5" aria-hidden="true" />
@@ -152,19 +154,18 @@ export default function Login() {
                 <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} aria-hidden="true" />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">
-                {isOrgLogin ? "Check your work inbox" : "Check your inbox"}
+                {isOrgLogin ? t("login.checkWorkInbox") : t("login.checkInbox")}
               </h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
                 {isOrgLogin
-                  ? <>We've sent your organisation sign-in link to <strong>{email}</strong>. It expires in 15 minutes.</>
-                  : <>We've sent a sign-in link to <strong>{email}</strong>. It expires in 15 minutes.</>
-                }
+                  ? t("login.sentOrgDesc", { email })
+                  : t("login.sentDesc", { email })}
               </p>
               <button
                 onClick={() => { setSent(false); setEmail(""); }}
                 className="text-sm text-muted-foreground hover:underline"
               >
-                Use a different email
+                {t("login.useDifferentEmail")}
               </button>
             </div>
           ) : (
@@ -174,16 +175,16 @@ export default function Login() {
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(232,99,58,0.10)" }}>
                     <Building2 className="w-5 h-5 text-primary" aria-hidden="true" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground mb-1">Log in to your organisation dashboard</h2>
+                  <h2 className="text-xl font-bold text-foreground mb-1">{t("login.orgSignIn")}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Access your team's impact data and reports.
+                    {t("login.orgSignInDesc")}
                   </p>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-bold text-foreground mb-1">Sign in</h2>
+                  <h2 className="text-xl font-bold text-foreground mb-1">{t("login.signIn")}</h2>
                   <p className="text-sm text-muted-foreground mb-6">
-                    We'll email you a magic link, no password needed.
+                    {t("login.signInDesc")}
                   </p>
                 </>
               )}
@@ -191,7 +192,7 @@ export default function Login() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
-                    Email address
+                    {t("login.emailAddress")}
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -200,7 +201,7 @@ export default function Login() {
                       type="email"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                      placeholder="you@example.com"
+                      placeholder={t("login.emailPlaceholder")}
                       required
                       className="w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
                     />
@@ -249,7 +250,7 @@ export default function Login() {
                     className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
                     style={{ background: "#F06127" }}
                   >
-                    {loading ? "Sending..." : <>Send sign-in link <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}
+                    {loading ? t("login.sending") : <>{t("login.sendLink")} <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}
                   </button>
                 )}
 
@@ -266,9 +267,9 @@ export default function Login() {
 
               {!isOrgLogin && (
                 <p className="text-xs text-muted-foreground text-center mt-5">
-                  New here?{" "}
+                  {t("login.newHere")}{" "}
                   <Link href="/wizard/actions" className="underline hover:text-foreground">
-                    Calculate your impact first
+                    {t("login.calculateFirst")}
                   </Link>
                 </p>
               )}

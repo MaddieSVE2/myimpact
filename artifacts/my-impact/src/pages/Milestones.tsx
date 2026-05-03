@@ -9,6 +9,7 @@ import { ArrowLeft, Lock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
+import { useT } from "@/i18n";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -21,6 +22,7 @@ function getYearMonth(isoDate: string): string {
 
 export default function Milestones() {
   const { user } = useAuth();
+  const t = useT();
   const { data, isLoading, isError } = useGetImpactHistory(
     { userId: user?.id ?? "" },
     { query: { enabled: !!user?.id } }
@@ -155,9 +157,9 @@ export default function Milestones() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-display font-semibold text-foreground mb-1">My milestones</h1>
+        <h1 className="text-2xl font-display font-semibold text-foreground mb-1">{t("milestones.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Earned through your positive contributions. Keep going to unlock more.
+          {t("milestones.subtitle")}
         </p>
       </div>
 
@@ -168,13 +170,13 @@ export default function Milestones() {
       ) : isError ? (
         <div className="py-12 flex flex-col items-center gap-3 text-center">
           <AlertCircle className="w-8 h-8 text-destructive" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">Could not load your milestones. Please refresh.</p>
+          <p className="text-sm text-muted-foreground">{t("milestones.couldNotLoad")}</p>
         </div>
       ) : (
         <>
           {/* Milestone progress strip */}
           <div className="bg-white border border-border rounded-xl p-5 mb-6">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Milestone progress</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">{t("milestones.progress")}</p>
             <div className="space-y-3">
               {[100, 500, 1000, 5000].map(threshold => {
                 const reached = currentTotal >= threshold;
@@ -199,7 +201,7 @@ export default function Milestones() {
             </div>
             {!latest && (
               <p className="text-xs text-muted-foreground mt-3">
-                <Link href="/wizard/actions" className="text-primary hover:underline">Calculate your impact</Link> to start earning milestones.
+                <Link href="/wizard/actions" className="text-primary hover:underline">{t("milestones.calculateLink")}</Link> {t("milestones.calculateToStart")}
               </p>
             )}
           </div>
@@ -207,7 +209,7 @@ export default function Milestones() {
           {/* Earned milestones */}
           {earnedBadges.length > 0 && (
             <div className="mb-6">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Earned ({earnedBadges.length})</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">{t("milestones.earned")} ({earnedBadges.length})</p>
               <div className="grid grid-cols-2 gap-3">
                 {earnedBadges.map((badge, i) => (
                   <motion.div
@@ -234,7 +236,7 @@ export default function Milestones() {
           {/* Locked non-secret milestones */}
           {lockedNonSecretBadges.length > 0 && (
             <div className="mb-6">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Locked ({lockedNonSecretBadges.length})</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">{t("milestones.locked")} ({lockedNonSecretBadges.length})</p>
               <div className="grid grid-cols-2 gap-3">
                 {lockedNonSecretBadges.map(badge => (
                   <div
@@ -258,7 +260,7 @@ export default function Milestones() {
           {/* Locked secret milestones */}
           {lockedSecretBadges.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Discover more ({lockedSecretBadges.length})</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">{t("milestones.discoverMore")} ({lockedSecretBadges.length})</p>
               <div className="grid grid-cols-2 gap-3">
                 {lockedSecretBadges.map(badge => (
                   <div
@@ -271,7 +273,7 @@ export default function Milestones() {
                         <p className="text-sm font-semibold text-muted-foreground">???</p>
                         <Lock className="w-3 h-3 text-muted-foreground" />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">Keep exploring to discover this milestone</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{t("milestones.keepExploring")}</p>
                     </div>
                   </div>
                 ))}
@@ -283,7 +285,7 @@ export default function Milestones() {
 
       <div className="mt-8">
         <Link href="/history" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to history
+          <ArrowLeft className="w-3.5 h-3.5" /> {t("milestones.backToHistory")}
         </Link>
       </div>
 

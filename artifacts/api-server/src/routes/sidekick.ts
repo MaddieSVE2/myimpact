@@ -204,8 +204,11 @@ router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, r
         sdgs?: string[];
         interests?: string[];
         situation?: string;
+        locale?: string;
       };
     };
+
+    const isWelsh = context?.locale === "cy";
 
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: "messages array is required" });
@@ -227,6 +230,14 @@ router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, r
     const systemMessages: { role: "system"; content: string }[] = [
       { role: "system", content: SYSTEM_PROMPT },
     ];
+
+    if (isWelsh) {
+      systemMessages.push({
+        role: "system",
+        content:
+          "IMPORTANT LANGUAGE OVERRIDE: The user has selected Welsh (Cymraeg) as their preferred language. Respond entirely in natural, idiomatic Welsh (Cymraeg). Use clear, plain Welsh suitable for everyday users. Keep the same warm, encouraging tone and the same practical guidance. Do not mix English and Welsh in the same sentence except for proper nouns (e.g. 'My Impact', SDG names, organisation names). Replace 'British English' style guidance with standard Welsh conventions, but keep all the substantive rules about not making things up, not giving legal/medical/financial advice, and avoiding jargon.",
+      });
+    }
 
     if (context) {
       const contextParts: string[] = [];
