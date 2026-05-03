@@ -361,42 +361,42 @@ function OnePager() {
         <View style={s.hero}>
           <Text style={s.eyebrow}>For Schools · Universities · Employers · Charities</Text>
           <Text style={s.headline}>
-            Quantify the social value{"\n"}
-            your people <Text style={s.headlineAccent}>actually create.</Text>
+            Inspire your people.{"\n"}
+            See the <Text style={s.headlineAccent}>difference they make.</Text>
           </Text>
           <Text style={s.subhead}>
-            My Impact gives your organisation a clear, pounds and pence picture of all the
-            volunteering, mentoring and giving your people do. It is ready to drop straight
-            into your annual report, your next funding bid, or the story you tell the world.
+            My Impact is more than a tracker. It helps your community discover new ways to
+            give back, connects them to causes they care about, celebrates every milestone,
+            and gives your organisation a clear picture of all the good that comes from it.
           </Text>
         </View>
 
         {/* Body */}
         <View style={s.body}>
           <View style={s.leftCol}>
-            <Text style={s.sectionTitle}>How it works for your organisation</Text>
+            <Text style={s.sectionTitle}>What My Impact does for you</Text>
             <Feature
               num="1"
-              title="Invite your people"
-              desc="Send a sign up link with your logo on it to your staff, students or volunteers. Joining takes less than a minute."
+              title="Inspire fresh ideas"
+              desc="Members get gentle nudges and suggestions for ways to volunteer, give or help out, matched to the causes and skills they care about."
               variant={0}
             />
             <Feature
               num="2"
-              title="They log, you see it all"
-              desc="Members add their hours, donations and activities in a simple app. We do the maths and roll it up into one shared dashboard for your team."
+              title="Connect your community"
+              desc="Bring your staff, students or volunteers together in one place. They can log what they do, share reflections, and feel part of something bigger."
               variant={1}
             />
             <Feature
               num="3"
-              title="Approve, match, celebrate"
-              desc="Tick off member hours, match what your team gives, run friendly challenges, and shine a light on the people doing the most."
+              title="Celebrate every milestone"
+              desc="Recognise the moments that matter with badges, journal highlights and friendly challenges that keep people coming back."
               variant={2}
             />
             <Feature
               num="4"
-              title="Share the story"
-              desc="Export beautiful PDF reports, a public impact page and a spreadsheet of the numbers. Hand them to funders, your board, or anyone who asks."
+              title="Make it visible to you"
+              desc="A live dashboard, beautiful PDF reports and a public impact page, ready to share with funders, your board or the wider world."
               variant={3}
             />
           </View>
@@ -411,23 +411,23 @@ function OnePager() {
         {/* Stats strip */}
         <View style={s.statsStrip}>
           <View style={s.stat}>
-            <Text style={s.statValue}>£8+</Text>
-            <Text style={s.statLabel}>of value for every £1 invested</Text>
+            <Text style={s.statValue}>Inspire</Text>
+            <Text style={s.statLabel}>fresh ways to give back</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>17 Goals</Text>
-            <Text style={s.statLabel}>linked to UN global goals</Text>
+            <Text style={s.statValue}>Connect</Text>
+            <Text style={s.statLabel}>your people and your causes</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>Verified</Text>
-            <Text style={s.statLabel}>hours signed off by your team</Text>
+            <Text style={s.statValue}>Celebrate</Text>
+            <Text style={s.statLabel}>every milestone, big or small</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
-            <Text style={s.statValue}>Yours</Text>
-            <Text style={s.statLabel}>your logo on every report</Text>
+            <Text style={s.statValue}>Show</Text>
+            <Text style={s.statLabel}>the difference you all make</Text>
           </View>
         </View>
 
