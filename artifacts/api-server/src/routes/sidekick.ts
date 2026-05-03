@@ -12,6 +12,7 @@ import {
   TTS_CHARACTERS_CAP,
   VOICE_CAP_REACHED_MESSAGE,
   atomicReserveTranscribeSeconds,
+  atomicReserveTtsChars,
   estimateTranscribeCostPence,
   estimateTtsCostPence,
   getUserVoiceUsage,
@@ -419,17 +420,17 @@ router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req: Authenti
     }
 
     const userId = req.user!.id;
-    const usage = await getUserVoiceUsage(userId);
-    // Prospective cap check: reject when this reply's character count would
-    // push the user over their monthly TTS budget. Use text.length as the
-    // billable measure — that's what gets recorded after a successful call.
-    if (usage.ttsCharactersRemaining <= 0 || text.length > usage.ttsCharactersRemaining) {
-      if (usage.ttsCharactersRemaining > 0) {
-        console.log(
-          `[voice-usage] speak-blocked user=${userId} chars=${text.length} ` +
-            `remaining=${usage.ttsCharactersRemaining}/${TTS_CHARACTERS_CAP}`
-        );
-      }
+
+    // Atomic quota reservation: a single SQL upsert with a cap-enforcing
+    // WHERE clause prevents concurrent requests from all reading the same
+    // stale remaining balance and racing past the monthly TTS limit.
+    const charCount = text.length;
+    const reserved = await atomicReserveTtsChars(userId, charCount, TTS_CHARACTERS_CAP);
+    if (!reserved) {
+      console.log(
+        `[voice-usage] speak-blocked user=${userId} chars=${charCount} ` +
+          `cap=${TTS_CHARACTERS_CAP}`
+      );
       res.status(429).json({
         error: VOICE_CAP_REACHED_MESSAGE,
         code: "voice_cap_reached",
@@ -444,13 +445,10 @@ router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req: Authenti
 
     const audio = await textToSpeech(text, chosenVoice, "mp3");
 
-    const charCount = text.length;
-    await recordTtsUsage(userId, charCount);
-
     const costPence = estimateTtsCostPence(charCount);
     console.log(
       `[voice-usage] speak user=${userId} chars=${charCount} ` +
-        `est_cost_pence=${costPence.toFixed(4)} month_chars_used=${usage.ttsCharacters + charCount}/${TTS_CHARACTERS_CAP}`
+        `est_cost_pence=${costPence.toFixed(4)} cap=${TTS_CHARACTERS_CAP}`
     );
 
     res.setHeader("Content-Type", "audio/mpeg");

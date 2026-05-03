@@ -17,6 +17,8 @@ import {
   purgeUnregisteredAttachments,
   getUserPrefixBytes,
 } from "../lib/objectStorage.js";
+import { createRateLimiter } from "../lib/rateLimiter.js";
+import { attachmentPendingReservationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -26,6 +28,107 @@ const USER_QUOTA_BYTES   = 200 * 1024 * 1024;        // 200 MB per user
 const MAX_PHOTOS_PER_RECORD = 4;
 const MAX_ATTACHMENTS_PER_JOURNAL = 1;
 const MAX_RECEIPTS_PER_RECORD = 1;
+
+// Maximum outstanding (issued but not yet registered) upload URLs per user.
+const MAX_PENDING_UPLOADS_PER_USER = 5;
+
+// Signed URLs are valid for 15 minutes; reservations expire at the same time.
+const PENDING_RESERVATION_TTL_MS = 15 * 60 * 1000;
+
+// Rate-limit upload-url minting to 10 requests per minute per IP.
+const uploadUrlRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: "Too many upload URL requests. Please slow down.",
+});
+
+// ── DB-backed pending-upload reservation helpers ───────────────────────────────
+/**
+ * Atomically check and reserve quota for a pending upload.
+ *
+ * Uses a PostgreSQL advisory lock (`pg_advisory_xact_lock`) keyed on the
+ * user ID to serialise all concurrent /upload-url requests for the same user
+ * across every API instance. Within the lock:
+ *   1. Count non-expired pending reservations and sum their bytes.
+ *   2. Reject if the pending count >= cap or stored + pending + new > quota.
+ *   3. Insert the new reservation row unconditionally (guard already passed).
+ *
+ * The advisory lock is released automatically when the transaction commits
+ * or rolls back, so a crashed request cannot hold it indefinitely.
+ */
+async function atomicReservePendingUpload(
+  userId: string,
+  storageKey: string,
+  byteSize: number,
+  quotaBytes: number,
+  maxPending: number,
+  ttlMs: number,
+): Promise<{ granted: boolean; reason?: "quota" | "cap" }> {
+  const expiresAt = new Date(Date.now() + ttlMs);
+
+  return await db.transaction(async (tx) => {
+    // Acquire a per-user exclusive advisory lock for the duration of this
+    // transaction. hashtext() returns a 32-bit int; we cast to bigint for the
+    // single-argument form. In the unlikely event two user IDs hash to the
+    // same value they are serialised unnecessarily (not incorrectly).
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(('x' || substr(md5(${userId}), 1, 15))::bit(60)::bigint)`
+    );
+
+    // Read both stored bytes (DB-registered attachments) and pending bytes
+    // inside the lock so that the full stored+pending+new quota check is
+    // strictly serialised per user across all API instances.
+    const usageResult = await tx.execute(sql`
+      SELECT
+        COALESCE((
+          SELECT SUM(byte_size) FROM attachments WHERE user_id = ${userId}
+        ), 0)::bigint AS stored_bytes,
+        COUNT(r.id)::int                         AS pending_cnt,
+        COALESCE(SUM(r.byte_size), 0)::bigint    AS pending_bytes
+      FROM attachment_pending_reservations r
+      WHERE r.user_id   = ${userId}
+        AND r.expires_at > NOW()
+    `);
+
+    const usageRow = usageResult.rows[0] as {
+      stored_bytes: string | number;
+      pending_cnt: number;
+      pending_bytes: string | number;
+    };
+
+    const storedBytes = Number(usageRow.stored_bytes ?? 0);
+    const pendingCnt = Number(usageRow.pending_cnt ?? 0);
+    const pendingBytes = Number(usageRow.pending_bytes ?? 0);
+
+    if (pendingCnt >= maxPending) return { granted: false as const, reason: "cap" as const };
+    if (storedBytes + pendingBytes + byteSize > quotaBytes) return { granted: false as const, reason: "quota" as const };
+
+    // Guard passed — insert the reservation.
+    await tx.execute(sql`
+      INSERT INTO attachment_pending_reservations (user_id, storage_key, byte_size, expires_at)
+      VALUES (${userId}, ${storageKey}, ${byteSize}, ${expiresAt})
+    `);
+
+    return { granted: true as const };
+  });
+}
+
+/** Release a pending reservation once the upload is registered (or permanently failed). */
+async function releasePendingReservation(storageKey: string): Promise<void> {
+  await db
+    .delete(attachmentPendingReservationsTable)
+    .where(eq(attachmentPendingReservationsTable.storageKey, storageKey));
+}
+
+// Periodically sweep expired reservation rows so the table stays small.
+const reservationSweepTimer = setInterval(async () => {
+  try {
+    await db
+      .delete(attachmentPendingReservationsTable)
+      .where(sql`expires_at < NOW()`);
+  } catch { /* best-effort */ }
+}, 5 * 60 * 1000);
+if (reservationSweepTimer.unref) reservationSweepTimer.unref();
 
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -115,7 +218,7 @@ router.get("/usage", authenticate, async (req: AuthenticatedRequest, res) => {
  * Validates ownership of target record/journal, file size, mime type, and
  * checks the user's quota before issuing a URL.
  */
-router.post("/upload-url", authenticate, async (req: AuthenticatedRequest, res) => {
+router.post("/upload-url", authenticate, uploadUrlRateLimit, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const body = req.body as Record<string, unknown>;
   const mimeType = typeof body.mimeType === "string" ? body.mimeType.toLowerCase() : "";
@@ -236,14 +339,35 @@ router.post("/upload-url", authenticate, async (req: AuthenticatedRequest, res) 
     return;
   }
 
-  // Quota check
-  const usedBytes = await getUserUsageBytes(userId);
-  if (usedBytes + byteSize > USER_QUOTA_BYTES) {
-    res.status(413).json({
-      error: "Storage quota exceeded.",
-      usedBytes,
-      capBytes: USER_QUOTA_BYTES,
-    });
+  // Generate the storage key before the reservation so the key is baked into
+  // the atomic reservation row (unique constraint prevents duplicate keys).
+  const storageKey = generateAttachmentKey(userId);
+
+  // Atomically check pending count + quota and insert the reservation row,
+  // all within a transaction protected by a per-user advisory lock. Both
+  // stored bytes and pending bytes are read inside the lock so the full
+  // stored+pending+new quota check is strictly serialised across all API
+  // instances — no stale-read race is possible.
+  const reservation = await atomicReservePendingUpload(
+    userId,
+    storageKey,
+    byteSize,
+    USER_QUOTA_BYTES,
+    MAX_PENDING_UPLOADS_PER_USER,
+    PENDING_RESERVATION_TTL_MS,
+  );
+
+  if (!reservation.granted) {
+    if (reservation.reason === "cap") {
+      res.status(429).json({
+        error: `Maximum ${MAX_PENDING_UPLOADS_PER_USER} concurrent upload URLs allowed. Please complete or wait for pending uploads to expire.`,
+      });
+    } else {
+      res.status(413).json({
+        error: "Storage quota exceeded.",
+        capBytes: USER_QUOTA_BYTES,
+      });
+    }
     return;
   }
 
@@ -258,8 +382,14 @@ router.post("/upload-url", authenticate, async (req: AuthenticatedRequest, res) 
   const registeredKeys = new Set(registeredRows.map((r) => r.storageKey));
   await purgeUnregisteredAttachments(userId, registeredKeys);
 
-  const storageKey = generateAttachmentKey(userId);
-  const uploadUrl = await getUploadURL(storageKey, mimeType, MAX_FILE_SIZE_BYTES);
+  let uploadUrl: string;
+  try {
+    uploadUrl = await getUploadURL(storageKey, mimeType, MAX_FILE_SIZE_BYTES);
+  } catch (err) {
+    // Release reservation immediately if we fail to mint the URL.
+    await releasePendingReservation(storageKey).catch(() => {});
+    throw err;
+  }
 
   res.json({
     uploadUrl,
@@ -409,6 +539,9 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
       byteSize,
     })
     .returning();
+
+  // Release the pending-upload reservation now that the file is registered.
+  await releasePendingReservation(storageKey).catch(() => {});
 
   res.json({
     id: String(inserted.id),

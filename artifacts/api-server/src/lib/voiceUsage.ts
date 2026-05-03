@@ -164,6 +164,38 @@ export async function recordTtsUsage(userId: string, characters: number): Promis
 }
 
 /**
+ * Atomically reserve `characters` of TTS quota for a user, enforcing `cap`
+ * in a single SQL statement so that concurrent requests cannot all read the
+ * same remaining balance and race past the monthly limit.
+ *
+ * Returns `true` if the quota was reserved (usage row updated/inserted within
+ * the cap), or `false` if the increment would exceed the cap.
+ */
+export async function atomicReserveTtsChars(
+  userId: string,
+  characters: number,
+  cap: number,
+): Promise<boolean> {
+  if (!(characters > 0)) return true;
+  const yearMonth = currentMonthKey();
+  const intChars = Math.max(1, Math.round(characters));
+
+  if (intChars > cap) return false;
+
+  const result = await db.execute(sql`
+    INSERT INTO voice_usage (user_id, year_month, transcribe_seconds, tts_characters, updated_at)
+    VALUES (${userId}, ${yearMonth}, 0, ${intChars}, NOW())
+    ON CONFLICT (user_id, year_month) DO UPDATE
+      SET tts_characters = voice_usage.tts_characters + ${intChars},
+          updated_at = NOW()
+      WHERE voice_usage.tts_characters + ${intChars} <= ${cap}
+    RETURNING tts_characters
+  `);
+
+  return result.rows.length > 0;
+}
+
+/**
  * Return the duration of an audio buffer in seconds using ffprobe. If
  * ffprobe is not available or the buffer is unreadable, returns 0 (in
  * which case the caller should fall back to a length-based estimate so
