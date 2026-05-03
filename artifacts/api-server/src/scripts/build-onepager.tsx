@@ -89,9 +89,9 @@ const s = StyleSheet.create({
   },
   // Hero
   hero: {
-    paddingTop: 18,
+    paddingTop: 22,
     paddingHorizontal: 36,
-    paddingBottom: 2,
+    paddingBottom: 4,
   },
   eyebrow: {
     fontSize: 8.5,
@@ -135,7 +135,7 @@ const s = StyleSheet.create({
   body: {
     flexDirection: "row",
     paddingHorizontal: 36,
-    paddingTop: 12,
+    paddingTop: 16,
     gap: 22,
   },
   leftCol: {
@@ -179,7 +179,7 @@ const s = StyleSheet.create({
   },
   featureRow: {
     flexDirection: "row",
-    marginBottom: 9,
+    marginBottom: 11,
     alignItems: "flex-start",
   },
   bullet: {
@@ -223,11 +223,11 @@ const s = StyleSheet.create({
   },
   // Credibility strip
   credStrip: {
-    marginTop: 10,
+    marginTop: 14,
     marginHorizontal: 36,
     backgroundColor: NAVY,
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -265,10 +265,10 @@ const s = StyleSheet.create({
   },
   // Who uses
   whoStrip: {
-    marginTop: 10,
+    marginTop: 14,
     marginHorizontal: 36,
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
   },
   whoCard: {
     flex: 1,
@@ -280,7 +280,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#E8E5DE",
     borderRadius: 6,
-    padding: 9,
+    padding: 11,
   },
   whoCardOlive: {
     borderLeftColor: OLIVE,
@@ -302,10 +302,10 @@ const s = StyleSheet.create({
   },
   // Footer
   footer: {
-    marginTop: 10,
+    marginTop: "auto",
     backgroundColor: NAVY,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 36,
     flexDirection: "row",
     alignItems: "center",
@@ -411,9 +411,6 @@ function OnePager() {
             Caring for a neighbour, volunteering, mentoring, recycling, giving blood. All
             of it has tremendous value. My Impact helps your people understand and celebrate
             that value, and lets your organisation see the good that grows from it all.
-          </Text>
-          <Text style={s.tagline}>
-            Plain English. <Text style={s.taglineAccent}>Real numbers.</Text>
           </Text>
         </View>
 
