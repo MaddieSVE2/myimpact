@@ -59,3 +59,9 @@ id = "_dEqFDPw-sVYBha6OsmM7"
 uri = "file://.local/outputs/My-Impact.pptx"
 type = "slides"
 title = "My Impact.pptx"
+
+[[outputs]]
+id = "W8981aTP7Avf02sxzeqG4"
+uri = "file://attached_assets/onepager/MyImpact_OnePager.pdf"
+type = "pdf"
+title = "My Impact — One-Pager"
