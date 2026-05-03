@@ -365,9 +365,11 @@ function OnePager() {
             See the <Text style={s.headlineAccent}>difference they make.</Text>
           </Text>
           <Text style={s.subhead}>
-            My Impact is more than a tracker. It helps your community discover new ways to
-            give back, connects them to causes they care about, celebrates every milestone,
-            and gives your organisation a clear picture of all the good that comes from it.
+            For a long time, the everyday good that people do has gone largely unseen.
+            Caring for a neighbour, volunteering, mentoring, recycling, giving blood. All
+            of it has tremendous value. My Impact helps your people understand and celebrate
+            that value, find new ways to give back, and lets your organisation see the good
+            that grows from it all.
           </Text>
         </View>
 
