@@ -8,3 +8,4 @@ export * from "./calendar";
 export * from "./challenges";
 export * from "./analytics";
 export * from "./voice-usage";
+export * from "./text-ai-usage";

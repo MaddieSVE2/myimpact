@@ -123,12 +123,10 @@ router.post("/api-keys/:id/revoke", authenticate, async (req: AuthenticatedReque
 // Webhooks
 // ---------------------------------------------------------------------------
 
-function isHttpsOrLocalhost(url: string): boolean {
+function isAllowedWebhookUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    if (u.protocol === "https:") return true;
-    if (u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1")) return true;
-    return false;
+    return u.protocol === "https:";
   } catch {
     return false;
   }
@@ -179,8 +177,8 @@ router.post("/webhooks", authenticate, async (req: AuthenticatedRequest, res) =>
   if (!m) return;
 
   const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
-  if (!url || !isHttpsOrLocalhost(url) || url.length > 500) {
-    res.status(400).json({ error: "url is required and must be an https URL (or http://localhost for testing)." });
+  if (!url || !isAllowedWebhookUrl(url) || url.length > 500) {
+    res.status(400).json({ error: "url is required and must be an https URL." });
     return;
   }
 

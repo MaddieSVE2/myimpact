@@ -2,6 +2,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
+import { textAiQuota } from "../lib/textAiUsage.js";
 import { searchCharities } from "../lib/charity-commission";
 import { searchOSCRCharities } from "../lib/oscr";
 import { geocodePostcode, geocodePostcodes, haversineMiles } from "../lib/postcode.js";
@@ -30,7 +31,10 @@ function isScottishLocation(location: string): boolean {
   return Array.from(SCOTTISH_TERMS).some(t => lower.includes(t));
 }
 
-router.post("/suggest", authenticate, localCharitiesRateLimit, async (req, res) => {
+const MAX_LOCATION_CHARS = 100;
+const MAX_ACTIVITY_NAME_CHARS = 200;
+
+router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, async (req, res) => {
   try {
     const { location, activityName } = req.body as {
       location: string;
@@ -39,6 +43,16 @@ router.post("/suggest", authenticate, localCharitiesRateLimit, async (req, res) 
 
     if (!location?.trim() || !activityName?.trim()) {
       res.status(400).json({ error: "location and activityName are required" });
+      return;
+    }
+
+    if (location.length > MAX_LOCATION_CHARS) {
+      res.status(400).json({ error: `location must be at most ${MAX_LOCATION_CHARS} characters.` });
+      return;
+    }
+
+    if (activityName.length > MAX_ACTIVITY_NAME_CHARS) {
+      res.status(400).json({ error: `activityName must be at most ${MAX_ACTIVITY_NAME_CHARS} characters.` });
       return;
     }
 

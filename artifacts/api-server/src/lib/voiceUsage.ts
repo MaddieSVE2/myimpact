@@ -102,6 +102,45 @@ export async function recordTranscribeUsage(userId: string, seconds: number): Pr
     });
 }
 
+/**
+ * Atomically reserve `seconds` of transcription quota for a user, enforcing
+ * `cap` in a single SQL statement so that concurrent requests cannot all read
+ * the same remaining balance and race past the monthly limit.
+ *
+ * Returns `true` if the quota was reserved (usage row updated/inserted within
+ * the cap), or `false` if the increment would exceed the cap.
+ */
+export async function atomicReserveTranscribeSeconds(
+  userId: string,
+  seconds: number,
+  cap: number,
+): Promise<boolean> {
+  if (!(seconds > 0)) return true;
+  const yearMonth = currentMonthKey();
+  const intSeconds = Math.max(1, Math.round(seconds));
+
+  // Reject immediately if this single clip alone exceeds the cap — avoids
+  // inserting an over-cap row on the brand-new-user (INSERT) path.
+  if (intSeconds > cap) return false;
+
+  // The ON CONFLICT ... WHERE clause is only evaluated for the UPDATE branch.
+  // If the condition fails (adding intSeconds would exceed cap) PostgreSQL
+  // performs a no-op and returns zero rows, which we treat as "cap exceeded".
+  // For a brand-new row (INSERT path) intSeconds <= cap is guaranteed above.
+  const result = await db.execute(sql`
+    INSERT INTO voice_usage (user_id, year_month, transcribe_seconds, tts_characters, updated_at)
+    VALUES (${userId}, ${yearMonth}, ${intSeconds}, 0, NOW())
+    ON CONFLICT (user_id, year_month) DO UPDATE
+      SET transcribe_seconds = voice_usage.transcribe_seconds + ${intSeconds},
+          updated_at = NOW()
+      WHERE voice_usage.transcribe_seconds + ${intSeconds} <= ${cap}
+    RETURNING transcribe_seconds
+  `);
+
+  // Zero rows returned means the UPDATE WHERE clause blocked the increment.
+  return result.rows.length > 0;
+}
+
 export async function recordTtsUsage(userId: string, characters: number): Promise<void> {
   if (!(characters > 0)) return;
   const yearMonth = currentMonthKey();

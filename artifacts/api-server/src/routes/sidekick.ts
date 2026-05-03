@@ -11,13 +11,14 @@ import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
   VOICE_CAP_REACHED_MESSAGE,
+  atomicReserveTranscribeSeconds,
   estimateTranscribeCostPence,
   estimateTtsCostPence,
   getUserVoiceUsage,
   probeAudioDurationSeconds,
-  recordTranscribeUsage,
   recordTtsUsage,
 } from "../lib/voiceUsage.js";
+import { textAiQuota } from "../lib/textAiUsage.js";
 
 const router = Router();
 
@@ -193,7 +194,7 @@ const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_COMPLETION_TOKENS = 1024;
 
-router.post("/chat", authenticate, sidekickRateLimit, async (req, res) => {
+router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, res) => {
   try {
     const { messages, context } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -322,6 +323,21 @@ router.post(
       }
 
       const userId = req.user!.id;
+
+      // Cheap size guard: at the minimum practical audio bitrate (~32 kbps,
+      // 4000 bytes/second) a payload larger than the entire monthly cap in
+      // seconds * 4000 bytes could not fit within quota. Rejecting it here
+      // avoids feeding pathologically large or corrupt payloads through the
+      // expensive ffmpeg transcoding step.
+      const MAX_TRANSCRIBE_BYTES = TRANSCRIBE_SECONDS_CAP * 4000;
+      if (audioBuffer.length > MAX_TRANSCRIBE_BYTES) {
+        res.status(413).json({ error: "Audio file exceeds the maximum permitted size." });
+        return;
+      }
+
+      // Non-atomic early-reject: avoids expensive ffmpeg work when the user
+      // is already well over their cap. The authoritative, race-safe check is
+      // the atomic reservation below.
       const usage = await getUserVoiceUsage(userId);
       if (usage.transcribeSecondsRemaining <= 0) {
         res.status(429).json({
@@ -341,13 +357,14 @@ router.post(
         durationSeconds = Math.max(1, audioBuffer.length / 4000);
       }
 
-      // Prospective cap check: refuse the request if processing this clip
-      // would push the user over their monthly transcription budget. This
-      // stops a single long recording near the limit from blowing the cap.
-      if (Math.round(durationSeconds) > usage.transcribeSecondsRemaining) {
+      // Atomic quota reservation: a single SQL upsert with a cap-enforcing
+      // WHERE clause prevents concurrent requests from all reading the same
+      // stale remaining balance and racing past the monthly limit.
+      const reserved = await atomicReserveTranscribeSeconds(userId, durationSeconds, TRANSCRIBE_SECONDS_CAP);
+      if (!reserved) {
         console.log(
           `[voice-usage] transcribe-blocked user=${userId} clip_seconds=${durationSeconds.toFixed(2)} ` +
-            `remaining=${usage.transcribeSecondsRemaining}/${TRANSCRIBE_SECONDS_CAP}`
+            `cap=${TRANSCRIBE_SECONDS_CAP}`
         );
         res.status(429).json({
           error: VOICE_CAP_REACHED_MESSAGE,
@@ -358,13 +375,10 @@ router.post(
 
       const transcript = await speechToText(buffer, format);
 
-      // Record after the call so failures don't burn quota.
-      await recordTranscribeUsage(userId, durationSeconds);
-
       const costPence = estimateTranscribeCostPence(durationSeconds);
       console.log(
         `[voice-usage] transcribe user=${userId} seconds=${durationSeconds.toFixed(2)} ` +
-          `est_cost_pence=${costPence.toFixed(4)} month_seconds_used=${usage.transcribeSeconds + Math.round(durationSeconds)}/${TRANSCRIBE_SECONDS_CAP}`
+          `est_cost_pence=${costPence.toFixed(4)} cap=${TRANSCRIBE_SECONDS_CAP}`
       );
 
       res.json({ transcript: (transcript ?? "").trim() });

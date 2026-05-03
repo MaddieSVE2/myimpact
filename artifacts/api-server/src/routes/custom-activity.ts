@@ -2,6 +2,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
+import { textAiQuota } from "../lib/textAiUsage.js";
 import proxiesData from "../lib/proxyData.json";
 import { ACTIVITIES } from "../lib/impactData";
 
@@ -62,12 +63,20 @@ const customActivityRateLimit = createRateLimiter({
   message: "Too many requests. Please slow down.",
 });
 
-router.post("/analyse", authenticate, customActivityRateLimit, async (req, res) => {
+const MAX_NAME_CHARS = 200;
+const MAX_DESCRIPTION_CHARS = 500;
+
+router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, async (req, res) => {
   try {
     const { name } = req.body as { name: string };
 
     if (!name?.trim()) {
       res.status(400).json({ error: "activity name is required" });
+      return;
+    }
+
+    if (name.length > MAX_NAME_CHARS) {
+      res.status(400).json({ error: `Activity name must be at most ${MAX_NAME_CHARS} characters.` });
       return;
     }
 
@@ -159,12 +168,17 @@ ${candidateList || "No candidates found."}`,
   }
 });
 
-router.post("/parse-description", authenticate, customActivityRateLimit, async (req, res) => {
+router.post("/parse-description", authenticate, customActivityRateLimit, textAiQuota, async (req, res) => {
   try {
     const { description } = req.body as { description: string };
 
     if (!description?.trim()) {
       res.status(400).json({ error: "description is required" });
+      return;
+    }
+
+    if (description.length > MAX_DESCRIPTION_CHARS) {
+      res.status(400).json({ error: `Description must be at most ${MAX_DESCRIPTION_CHARS} characters.` });
       return;
     }
 

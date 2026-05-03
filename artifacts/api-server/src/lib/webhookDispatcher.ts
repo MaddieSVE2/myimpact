@@ -1,6 +1,57 @@
 import { createHmac, randomUUID } from "crypto";
+import { promises as dns } from "dns";
 import { db, orgWebhooksTable, webhookDeliveriesTable } from "@workspace/db";
 import { and, eq, lte, sql } from "drizzle-orm";
+
+/**
+ * Patterns matching IP addresses that must never be the target of an outbound
+ * webhook request. Includes loopback, RFC-1918, link-local, CGNAT, and the
+ * IPv6 equivalents so that a stored HTTPS URL cannot be used as an SSRF
+ * vector against internal services — even via DNS rebinding.
+ */
+const PRIVATE_IP_PATTERNS: RegExp[] = [
+  /^127\./,                                         // IPv4 loopback
+  /^10\./,                                          // RFC 1918
+  /^172\.(1[6-9]|2\d|3[01])\./,                    // RFC 1918
+  /^192\.168\./,                                    // RFC 1918
+  /^169\.254\./,                                    // link-local (APIPA)
+  /^100\.(6[4-9]|[7-9]\d|1([01]\d|2[0-7]))\./,    // CGNAT (RFC 6598)
+  /^0\./,                                           // "this" network
+  /^::1$/,                                          // IPv6 loopback
+  /^fc/i,                                           // IPv6 ULA (fc00::/7)
+  /^fd/i,                                           // IPv6 ULA (fd00::/8)
+  /^fe80:/i,                                        // IPv6 link-local
+];
+
+function isPrivateIp(ip: string): boolean {
+  return PRIVATE_IP_PATTERNS.some(r => r.test(ip));
+}
+
+/**
+ * Resolves the hostname of `urlStr` via DNS and returns `false` if any
+ * resolved address is in a private or reserved range, guarding against SSRF
+ * and DNS-rebinding attacks. Returns `false` also when the hostname cannot be
+ * resolved at all (fail-closed).
+ */
+async function isSafeWebhookUrl(urlStr: string): Promise<boolean> {
+  let hostname: string;
+  try {
+    hostname = new URL(urlStr).hostname;
+  } catch {
+    return false;
+  }
+
+  const [v4, v6] = await Promise.all([
+    dns.resolve4(hostname).catch(() => [] as string[]),
+    dns.resolve6(hostname).catch(() => [] as string[]),
+  ]);
+  const addresses = [...v4, ...v6];
+
+  // Fail-closed: if DNS returns nothing we cannot safely proceed.
+  if (addresses.length === 0) return false;
+
+  return !addresses.some(isPrivateIp);
+}
 
 export type WebhookEvent =
   | "member.joined"
@@ -65,6 +116,15 @@ export function signPayload(secret: string, body: string, timestamp: number): st
 interface AttemptResult { ok: boolean; status?: number; error?: string }
 
 async function attemptDelivery(url: string, secret: string, payload: unknown): Promise<AttemptResult> {
+  // Resolve the destination hostname and reject any address that falls within
+  // a private/reserved range. This runs at delivery time (not just at
+  // registration) to prevent DNS-rebinding attacks, where an initially safe
+  // hostname is later made to resolve to an internal address.
+  const safe = await isSafeWebhookUrl(url);
+  if (!safe) {
+    return { ok: false, error: "Webhook URL resolves to a disallowed (private/internal) address" };
+  }
+
   const body = JSON.stringify(payload);
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = signPayload(secret, body, timestamp);
@@ -82,6 +142,7 @@ async function attemptDelivery(url: string, secret: string, payload: unknown): P
         "X-MyImpact-Event": typeof (payload as { type?: string }).type === "string" ? (payload as { type?: string }).type! : "",
       },
       body,
+      redirect: "error",
       signal: controller.signal,
     });
     clearTimeout(timer);
