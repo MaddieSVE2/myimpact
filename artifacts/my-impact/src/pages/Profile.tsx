@@ -7,6 +7,7 @@ import { Lock, ChevronRight, Loader2, Check, AlertCircle, Trophy, Plus } from "l
 import RecapBanner from "@/components/RecapBanner";
 import StreakChip from "@/components/StreakChip";
 import StreakCelebration from "@/components/StreakCelebration";
+import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -106,6 +107,8 @@ export default function Profile() {
   const { data: profileData, isLoading, isError, refetch } = useGetProfile();
   const { mutateAsync: updateProfile } = useUpdateProfile();
   const { mutateAsync: ackMilestone } = useAckStreakMilestone();
+  const { user } = useAuth();
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
   const [celebrationMilestone, setCelebrationMilestone] = useState<number | null>(null);
 
   const [situation, setSituation] = useState<string[]>([]);
@@ -121,6 +124,7 @@ export default function Profile() {
   const [savedPostcode, setSavedPostcode] = useState("");
 
   useEffect(() => {
+    if (!gamificationEnabled) return;
     const streak = profileData?.streak;
     if (!streak) return;
     const lastAcked = streak.lastAckedMilestone ?? 0;
@@ -131,7 +135,7 @@ export default function Profile() {
     ackMilestone({ data: { milestone } })
       .then(() => refetch())
       .catch(() => {});
-  }, [profileData?.streak, ackMilestone, refetch]);
+  }, [profileData?.streak, ackMilestone, refetch, gamificationEnabled]);
 
   useEffect(() => {
     if (!isLoading && profileData !== undefined) {
@@ -230,10 +234,12 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <StreakCelebration milestone={celebrationMilestone} onDismiss={() => setCelebrationMilestone(null)} />
+      {gamificationEnabled && (
+        <StreakCelebration milestone={celebrationMilestone} onDismiss={() => setCelebrationMilestone(null)} />
+      )}
       <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
         <h1 className="text-2xl font-bold text-foreground">My profile</h1>
-        {profileData?.streak && (
+        {gamificationEnabled && profileData?.streak && (
           <StreakChip streak={profileData.streak} size="md" showLongest />
         )}
       </div>

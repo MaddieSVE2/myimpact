@@ -23,6 +23,7 @@ function getYearMonth(isoDate: string): string {
 export default function Milestones() {
   const { user } = useAuth();
   const t = useT();
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
   const { data, isLoading, isError } = useGetImpactHistory(
     { userId: user?.id ?? "" },
     { query: { enabled: !!user?.id } }
@@ -153,6 +154,34 @@ export default function Milestones() {
   }, [user?.id, earnedBadges]);
 
   const currentTotal = latest?.impactResult.totalValue ?? 0;
+
+  if (!gamificationEnabled) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-10" data-testid="milestones-hidden">
+        <div className="bg-white border border-border rounded-2xl p-8 text-center">
+          <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
+          <h1 className="text-xl font-display font-semibold text-foreground mb-2">
+            {t("milestones.hiddenTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            {t("milestones.hiddenDesc")}
+          </p>
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white"
+            style={{ background: "#F06127" }}
+          >
+            {t("milestones.openSettings")}
+          </Link>
+        </div>
+        <div className="mt-6">
+          <Link href="/history" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" /> {t("milestones.backToHistory")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">

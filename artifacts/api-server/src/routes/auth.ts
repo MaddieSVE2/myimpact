@@ -394,6 +394,7 @@ router.get("/me", async (req: any, res) => {
         voiceEnabled: user.voiceEnabled,
         voicePersona: user.voicePersona,
         preferredLocale: user.preferredLocale ?? "en",
+        gamificationEnabled: user.gamificationEnabled,
       },
     });
   } catch {
@@ -409,13 +410,14 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, preferredLocale } = req.body ?? {};
+    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, preferredLocale, gamificationEnabled } = req.body ?? {};
     const updates: {
       displayName?: string | null;
       emailDigestOptIn?: boolean;
       voiceEnabled?: boolean;
       voicePersona?: string;
       preferredLocale?: string;
+      gamificationEnabled?: boolean;
     } = {};
 
     if (displayName !== undefined) {
@@ -460,6 +462,14 @@ router.patch("/me", async (req: any, res) => {
       updates.preferredLocale = preferredLocale;
     }
 
+    if (gamificationEnabled !== undefined) {
+      if (typeof gamificationEnabled !== "boolean") {
+        res.status(400).json({ error: "gamificationEnabled must be a boolean" });
+        return;
+      }
+      updates.gamificationEnabled = gamificationEnabled;
+    }
+
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "No updatable fields supplied" });
       return;
@@ -480,6 +490,7 @@ router.patch("/me", async (req: any, res) => {
         voiceEnabled: updated.voiceEnabled,
         voicePersona: updated.voicePersona,
         preferredLocale: updated.preferredLocale ?? "en",
+        gamificationEnabled: updated.gamificationEnabled,
       },
     });
   } catch {

@@ -153,6 +153,7 @@ function RecordDetail({ result, recordId, hasDonations }: { result: any; recordI
 export default function History() {
   const { user } = useAuth();
   const isAuthenticated = !!user?.id;
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { loadFromRecord } = useWizard();
@@ -442,7 +443,7 @@ export default function History() {
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <h1 className="text-2xl font-display font-semibold text-foreground">My impact history</h1>
-            {isAuthenticated && serverData?.streak && (
+            {isAuthenticated && serverData?.streak && gamificationEnabled && (
               <StreakChip streak={serverData.streak} showLongest />
             )}
           </div>

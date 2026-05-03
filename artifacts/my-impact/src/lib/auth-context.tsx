@@ -14,6 +14,7 @@ interface User {
   voiceEnabled?: boolean;
   voicePersona?: VoicePersona;
   preferredLocale?: "en" | "cy";
+  gamificationEnabled?: boolean;
 }
 
 interface DemoLoginResult {
@@ -39,6 +40,7 @@ interface AuthContextType {
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
     preferredLocale?: "en" | "cy";
+    gamificationEnabled?: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -117,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
     preferredLocale?: "en" | "cy";
+    gamificationEnabled?: boolean;
   }) => {
     const res = await fetch(`${BASE}/api/auth/me`, {
       method: "PATCH",

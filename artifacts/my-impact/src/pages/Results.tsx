@@ -1156,6 +1156,7 @@ export default function Results() {
     track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel });
   };
 
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
   const earnedBadges = computeBadges(
     { totalValue: result.totalValue, activityBreakdowns: result.activityBreakdowns },
     true
@@ -1335,7 +1336,7 @@ export default function Results() {
       )}
 
       {/* Milestones earned */}
-      {earnedBadges.length > 0 && (
+      {gamificationEnabled && earnedBadges.length > 0 && (
         <motion.div
           className="mb-6"
           initial={{ opacity: 0, y: 8 }}
@@ -1366,7 +1367,7 @@ export default function Results() {
       )}
 
       {/* Milestone progress */}
-      {nextMilestone && (
+      {gamificationEnabled && nextMilestone && (
         <motion.div
           className="bg-white border border-border rounded-xl p-4 mb-6"
           initial={{ opacity: 0, y: 8 }}

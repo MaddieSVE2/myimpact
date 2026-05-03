@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   voiceEnabled: boolean("voice_enabled").default(false).notNull(),
   voicePersona: text("voice_persona").default("alloy").notNull(),
   preferredLocale: text("preferred_locale").default("en").notNull(),
+  gamificationEnabled: boolean("gamification_enabled").default(true).notNull(),
 });
 
 export const magicTokensTable = pgTable("magic_tokens", {

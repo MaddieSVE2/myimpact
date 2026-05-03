@@ -66,6 +66,30 @@ export default function Settings() {
     }
   };
 
+  const [gamificationSaving, setGamificationSaving] = useState(false);
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
+
+  const handleToggleGamification = async () => {
+    if (gamificationSaving) return;
+    setGamificationSaving(true);
+    const next = !gamificationEnabled;
+    try {
+      await updateProfile({ gamificationEnabled: next });
+      toast({
+        title: next ? t("settings.gamificationOnToast") : t("settings.gamificationOffToast"),
+        description: next ? t("settings.gamificationOnDesc") : t("settings.gamificationOffDesc"),
+      });
+    } catch {
+      toast({
+        title: t("settings.couldNotUpdate"),
+        description: t("settings.pleaseTryAgain"),
+        variant: "destructive",
+      });
+    } finally {
+      setGamificationSaving(false);
+    }
+  };
+
   const [emailOptIn, setEmailOptIn] = useState<boolean | null>(null);
   const [emailToggleSaving, setEmailToggleSaving] = useState(false);
 
@@ -215,6 +239,27 @@ export default function Settings() {
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                 style={{ transform: isHighContrast ? "translateX(16px)" : "translateX(0)" }}
+              />
+            </div>
+          </button>
+          <button
+            onClick={handleToggleGamification}
+            aria-pressed={gamificationEnabled}
+            disabled={gamificationSaving}
+            data-testid="toggle-gamification"
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
+          >
+            <div className="pr-3">
+              <p className="text-sm font-medium text-foreground">{t("settings.gamificationLabel")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.gamificationDesc")}</p>
+            </div>
+            <div
+              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+              style={{ background: gamificationEnabled ? "#F06127" : "#d1d5db" }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: gamificationEnabled ? "translateX(16px)" : "translateX(0)" }}
               />
             </div>
           </button>
