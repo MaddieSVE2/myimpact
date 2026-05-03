@@ -34,14 +34,29 @@ function fromResult(r: Record<string, unknown>): PostcodeLookup | null {
   const lat = typeof r.latitude === "number" ? r.latitude : null;
   const lng = typeof r.longitude === "number" ? r.longitude : null;
   if (lat === null || lng === null) return null;
-  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  // /postcodes returns scalar strings; /outcodes returns string[] for the same fields.
+  const firstStr = (v: unknown): string => {
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) {
+      const s = v.find((x) => typeof x === "string" && x.length > 0);
+      return typeof s === "string" ? s : "";
+    }
+    return "";
+  };
   return {
     lat,
     lng,
-    adminDistrict: str(r.admin_district) || str(r.admin_county) || str(r.region),
-    region: str(r.region) || str(r.country),
-    country: str(r.country),
+    adminDistrict: firstStr(r.admin_district) || firstStr(r.admin_county) || firstStr(r.region),
+    region: firstStr(r.region) || firstStr(r.country),
+    country: firstStr(r.country),
   };
+}
+
+// Outward-code-only postcodes (e.g. "M1", "EH1", "SW1A") are common when users
+// give just the area for privacy. postcodes.io exposes them via /outcodes.
+const OUTCODE_RE = /^[A-Z]{1,2}[0-9][A-Z0-9]?$/;
+function isOutcodeOnly(key: string): boolean {
+  return OUTCODE_RE.test(key);
 }
 
 function readCache(key: string): PostcodeLookup | null {
@@ -76,23 +91,43 @@ export async function geocodePostcode(raw: string): Promise<PostcodeLookup | nul
   if (readNegative(key)) return null;
 
   try {
+    // Outward-code-only inputs (e.g. "M1", "EH1") must use /outcodes; the
+    // /postcodes endpoint requires a full postcode and 404s for outcodes.
+    if (isOutcodeOnly(key)) {
+      const lookup = await fetchOutcode(key);
+      if (lookup) {
+        writeCache(key, lookup);
+        return lookup;
+      }
+      writeNegative(key);
+      return null;
+    }
+
     const resp = await fetch(`${POSTCODES_BASE}/postcodes/${encodeURIComponent(key)}`);
-    if (!resp.ok) {
-      writeNegative(key);
-      return null;
+    if (resp.ok) {
+      const json = (await resp.json()) as { status?: number; result?: Record<string, unknown> };
+      if (json.status === 200 && json.result) {
+        const lookup = fromResult(json.result);
+        if (lookup) {
+          writeCache(key, lookup);
+          return lookup;
+        }
+      }
     }
+    writeNegative(key);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchOutcode(outcode: string): Promise<PostcodeLookup | null> {
+  try {
+    const resp = await fetch(`${POSTCODES_BASE}/outcodes/${encodeURIComponent(outcode)}`);
+    if (!resp.ok) return null;
     const json = (await resp.json()) as { status?: number; result?: Record<string, unknown> };
-    if (json.status !== 200 || !json.result) {
-      writeNegative(key);
-      return null;
-    }
-    const lookup = fromResult(json.result);
-    if (!lookup) {
-      writeNegative(key);
-      return null;
-    }
-    writeCache(key, lookup);
-    return lookup;
+    if (json.status !== 200 || !json.result) return null;
+    return fromResult(json.result);
   } catch {
     return null;
   }
