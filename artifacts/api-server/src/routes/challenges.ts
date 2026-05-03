@@ -435,6 +435,18 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       res.status(400).json({ error: "This challenge has already ended" }); return;
     }
 
+    if (challenge.scope === "org" && challenge.orgId) {
+      const membership = await db.query.orgMembersTable.findFirst({
+        where: and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.orgId, challenge.orgId)
+        ),
+      });
+      if (!membership) {
+        res.status(403).json({ error: "You must be a member of the organisation to join this challenge" }); return;
+      }
+    }
+
     await ensureParticipant(challenge.id, userId);
 
     res.json({ ok: true, challenge: serializeChallenge(challenge) });
