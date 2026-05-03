@@ -83,7 +83,9 @@ router.get("/lookup", async (req, res) => {
   const cfg = await db.query.orgSsoConfigsTable.findFirst({
     where: eq(orgSsoConfigsTable.domain, domain),
   });
-  if (!cfg) {
+  // Only surface verified configs to the login UI. Pending/error configs are
+  // not yet usable for sign-in so should be invisible to the login form.
+  if (!cfg || cfg.status !== "verified") {
     res.json({ sso: null });
     return;
   }
@@ -149,6 +151,12 @@ router.get("/:provider/start", ssoStartRateLimit, async (req, res) => {
   if (!cfg) {
     res.status(400).send(
       `No ${provider} SSO is configured for ${domain}. Ask your organisation admin to set it up.`,
+    );
+    return;
+  }
+  if (cfg.status !== "verified") {
+    res.status(400).send(
+      `Your organisation's ${provider} SSO setup has not been verified yet. Ask your admin to complete the SSO test before signing in this way.`,
     );
     return;
   }
@@ -251,18 +259,31 @@ router.get("/test/start", ssoStartRateLimit, async (req, res) => {
   res.redirect(url);
 });
 
+/** Escape a string for safe interpolation into HTML text or attribute contexts. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 /** Render an HTML page that closes the OAuth flow on the user's side. */
 function renderResultPage(res: Response, opts: { ok: boolean; title: string; message: string; redirectTo?: string | null }) {
   const safeRedirect = isSafePath(opts.redirectTo ?? null) ? opts.redirectTo! : null;
-  const meta = safeRedirect
-    ? `<meta http-equiv="refresh" content="1;url=${safeRedirect}" />`
+  const safeRedirectEscaped = safeRedirect ? escapeHtml(safeRedirect) : null;
+  const meta = safeRedirectEscaped
+    ? `<meta http-equiv="refresh" content="1;url=${safeRedirectEscaped}" />`
     : "";
+  const titleEscaped = escapeHtml(opts.title);
+  const messageEscaped = escapeHtml(opts.message);
   res.status(opts.ok ? 200 : 400).type("html").send(`<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 ${meta}
-<title>${opts.title} · My Impact</title>
+<title>${titleEscaped} · My Impact</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 32px 24px; color: #213547; text-align: center; }
   h1 { font-size: 22px; margin: 0 0 12px; }
@@ -272,9 +293,9 @@ ${meta}
 </style>
 </head><body>
 <div class="icon">${opts.ok ? "✓" : "✕"}</div>
-<h1>${opts.title}</h1>
-<p>${opts.message}</p>
-${safeRedirect ? `<p><a class="btn" href="${safeRedirect}">Continue</a></p>` : `<p><a class="btn" href="/">Back to My Impact</a></p>`}
+<h1>${titleEscaped}</h1>
+<p>${messageEscaped}</p>
+${safeRedirectEscaped ? `<p><a class="btn" href="${safeRedirectEscaped}">Continue</a></p>` : `<p><a class="btn" href="/">Back to My Impact</a></p>`}
 </body></html>`);
 }
 
@@ -360,23 +381,37 @@ router.get("/:provider/callback", async (req, res) => {
     return;
   }
 
-  // ── Test mode: mark verified, send admin back to portal ──
+  // ── Test mode: confirm IdP handshake works but do NOT mark verified.
+  // Domain ownership is proved separately via DNS TXT challenge
+  // (POST /api/org/sso/config/:id/verify-domain). ──
   if (payload.mode === "test") {
     await db
       .update(orgSsoConfigsTable)
-      .set({ status: "verified", lastTestAt: new Date(), updatedAt: new Date() })
+      .set({ lastTestAt: new Date(), updatedAt: new Date() })
       .where(eq(orgSsoConfigsTable.id, cfg.id));
     res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
     renderResultPage(res, {
       ok: true,
       title: "SSO test successful",
-      message: `Sign-in worked for ${identity.email}. Your organisation's SSO is ready to use.`,
+      message: `The IdP handshake worked for ${identity.email}. To enable SSO sign-in, complete domain verification from your organisation settings.`,
       redirectTo: payload.returnTo ?? "/org",
     });
     return;
   }
 
   // ── Sign-in mode: find or create user, link to org, issue session ──
+  // Re-check verified status here to close any TOCTOU window between
+  // /start and /callback (e.g. admin reverts verification mid-flow).
+  if (cfg.status !== "verified") {
+    renderResultPage(res, {
+      ok: false,
+      title: "SSO not ready",
+      message: "Your organisation's SSO domain has not been verified yet. Please ask your admin to complete domain verification before signing in this way.",
+      redirectTo: "/login",
+    });
+    return;
+  }
+
   let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
   if (!user) {
     const [created] = await db
@@ -428,14 +463,6 @@ router.get("/:provider/callback", async (req, res) => {
       message: "Your account is already linked to a different organisation on My Impact. Please contact support to switch.",
     });
     return;
-  }
-
-  // Mark config verified on first successful real sign-in too
-  if (cfg.status !== "verified") {
-    await db
-      .update(orgSsoConfigsTable)
-      .set({ status: "verified", lastTestAt: new Date(), updatedAt: new Date() })
-      .where(eq(orgSsoConfigsTable.id, cfg.id));
   }
 
   issueSession(res, user);

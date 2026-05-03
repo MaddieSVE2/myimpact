@@ -151,6 +151,8 @@ export const orgSsoConfigsTable = pgTable("org_sso_configs", {
   tenantId: text("tenant_id"), // Required for Microsoft Entra; ignored for Google
   enforceSSO: boolean("enforce_sso").notNull().default(false),
   status: text("status").notNull().default("pending"), // 'pending' | 'verified' | 'error'
+  // Token placed as a DNS TXT record at _mi-sso-verify.<domain> to prove domain control.
+  verificationToken: text("verification_token"),
   lastTestAt: timestamp("last_test_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

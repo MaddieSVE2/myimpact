@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, asc, desc, isNull } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
+import { promises as dnsPromises } from "dns";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -1125,21 +1126,36 @@ router.post("/sso/config", authenticate, async (req: AuthenticatedRequest, res) 
     return;
   }
 
+  // Enforcement can only be enabled on a verified configuration. For new
+  // configs or configs where provider/tenant is changing (which resets status
+  // to pending), silently downgrade enforceSSO to false so the caller cannot
+  // lock out users before the domain is confirmed.
   const id = randomUUID();
   const now = new Date();
 
   if (existingForDomain && existingForDomain.orgId === membership.orgId) {
-    // Update in place
+    // Changing provider or tenant ID invalidates the previous verification and
+    // requires a fresh DNS challenge.
+    const providerOrTenantChanged =
+      existingForDomain.provider !== provider || existingForDomain.tenantId !== cleanTenantId;
+    const newStatus = providerOrTenantChanged ? "pending" : existingForDomain.status;
+
+    // SSO may only be enforced once the domain config is verified.
+    const safeEnforce = enforce && newStatus === "verified";
+
+    // Issue a new verification token whenever the config resets to pending.
+    const newVerificationToken = providerOrTenantChanged
+      ? randomBytes(24).toString("hex")
+      : existingForDomain.verificationToken;
+
     const [updated] = await db
       .update(orgSsoConfigsTable)
       .set({
         provider,
         tenantId: cleanTenantId,
-        enforceSSO: enforce,
-        // Changing provider/tenant invalidates any previous verification
-        status: existingForDomain.provider !== provider || existingForDomain.tenantId !== cleanTenantId
-          ? "pending"
-          : existingForDomain.status,
+        enforceSSO: safeEnforce,
+        status: newStatus,
+        verificationToken: newVerificationToken,
         updatedAt: now,
       })
       .where(eq(orgSsoConfigsTable.id, existingForDomain.id))
@@ -1148,6 +1164,9 @@ router.post("/sso/config", authenticate, async (req: AuthenticatedRequest, res) 
     return;
   }
 
+  // New configs always start as pending with a fresh verification token.
+  // enforceSSO cannot be true until the domain is verified via DNS challenge.
+  const verificationToken = randomBytes(24).toString("hex");
   const [created] = await db
     .insert(orgSsoConfigsTable)
     .values({
@@ -1156,8 +1175,9 @@ router.post("/sso/config", authenticate, async (req: AuthenticatedRequest, res) 
       provider,
       domain: cleanedDomain,
       tenantId: cleanTenantId,
-      enforceSSO: enforce,
+      enforceSSO: false,
       status: "pending",
+      verificationToken,
     })
     .returning();
   res.json({ config: serializeConfig(created) });
@@ -1179,6 +1199,79 @@ router.delete("/sso/config/:id", authenticate, async (req: AuthenticatedRequest,
   res.json({ ok: true });
 });
 
+/**
+ * Manager-only: verify domain ownership via DNS TXT record.
+ *
+ * The manager must have added a TXT record at `_mi-sso-verify.<domain>`
+ * containing the config's verificationToken. This endpoint performs a live
+ * DNS lookup and, if the token is found, transitions status to "verified",
+ * which is the only path that unlocks SSO enforcement and sign-in.
+ *
+ * POST /api/org/sso/config/:id/verify-domain
+ */
+router.post("/sso/config/:id/verify-domain", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireOrgManager(req, res);
+  if (!membership) return;
+
+  const id = String(req.params.id);
+  const cfg = await db.query.orgSsoConfigsTable.findFirst({
+    where: and(eq(orgSsoConfigsTable.id, id), eq(orgSsoConfigsTable.orgId, membership.orgId)),
+  });
+  if (!cfg) {
+    res.status(404).json({ error: "SSO config not found." });
+    return;
+  }
+  if (cfg.status === "verified") {
+    res.json({ ok: true, message: "Domain is already verified." });
+    return;
+  }
+  if (!cfg.verificationToken) {
+    res.status(400).json({ error: "No verification token exists for this config. Please recreate it." });
+    return;
+  }
+
+  const recordName = makeDnsChallengeRecord(cfg.domain);
+  let txtRecords: string[][];
+  try {
+    txtRecords = await dnsPromises.resolveTxt(recordName);
+  } catch (err: any) {
+    const code = err?.code;
+    if (code === "ENOTFOUND" || code === "ENODATA" || code === "ESERVFAIL") {
+      res.status(400).json({
+        error: `DNS TXT record not found for ${recordName}. Please add the TXT record and try again.`,
+        recordName,
+        expectedValue: cfg.verificationToken,
+      });
+    } else {
+      console.error("DNS lookup error:", err);
+      res.status(500).json({ error: "DNS lookup failed. Please try again in a moment." });
+    }
+    return;
+  }
+
+  const flatValues = txtRecords.flatMap((chunks) => chunks.join(""));
+  if (!flatValues.includes(cfg.verificationToken)) {
+    res.status(400).json({
+      error: `Verification token not found in TXT records for ${recordName}. Ensure you have saved the DNS record and DNS changes have propagated.`,
+      recordName,
+      expectedValue: cfg.verificationToken,
+    });
+    return;
+  }
+
+  const [updated] = await db
+    .update(orgSsoConfigsTable)
+    .set({ status: "verified", updatedAt: new Date() })
+    .where(eq(orgSsoConfigsTable.id, cfg.id))
+    .returning();
+
+  res.json({ ok: true, config: serializeConfig(updated) });
+});
+
+function makeDnsChallengeRecord(domain: string): string {
+  return `_mi-sso-verify.${domain}`;
+}
+
 function serializeConfig(c: typeof orgSsoConfigsTable.$inferSelect) {
   return {
     id: c.id,
@@ -1187,6 +1280,8 @@ function serializeConfig(c: typeof orgSsoConfigsTable.$inferSelect) {
     tenantId: c.tenantId,
     enforceSSO: c.enforceSSO,
     status: c.status,
+    verificationToken: c.verificationToken ?? null,
+    dnsChallengeRecord: makeDnsChallengeRecord(c.domain),
     lastTestAt: c.lastTestAt,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,

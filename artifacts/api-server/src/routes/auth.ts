@@ -56,7 +56,7 @@ router.post("/request", async (req, res) => {
     const ssoCfg = await db.query.orgSsoConfigsTable.findFirst({
       where: eq(orgSsoConfigsTable.domain, emailDomain),
     });
-    if (ssoCfg?.enforceSSO) {
+    if (ssoCfg?.enforceSSO && ssoCfg.status === "verified") {
       const providerAvailable = isProviderConfigured(ssoCfg.provider as SsoProvider);
       res.status(403).json({
         error: providerAvailable
@@ -71,9 +71,12 @@ router.post("/request", async (req, res) => {
   }
 
   // Demo persona accounts: skip the magic link entirely and issue a session
-  // immediately. The list of persona emails is hardcoded below; anything else
-  // falls through to the normal magic link flow.
+  // immediately. Only available outside of production or when explicitly enabled.
   if (PERSONA_ACCOUNTS[normalizedEmail]) {
+    if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN !== "true") {
+      res.status(403).json({ error: "Demo login is not available." });
+      return;
+    }
     try {
       const result = await loginPersonaAccount(res, normalizedEmail);
       res.json({ ok: true, instantLogin: true, ...result });
@@ -347,6 +350,11 @@ async function loginPersonaAccount(res: any, normalizedEmail: string) {
 // Legacy direct demo-login endpoint, kept for back-compat. Use /api/auth/request
 // instead, which auto-detects persona emails.
 router.post("/demo-login", async (req, res) => {
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN !== "true") {
+    res.status(403).json({ error: "Demo login is not available." });
+    return;
+  }
+
   const { email } = req.body;
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
