@@ -1,4 +1,7 @@
 #!/bin/bash
+# Reminder: when shipping a user-visible feature, also add a card to the
+# latest dated section in artifacts/my-impact/src/pages/WhatsNew.tsx so the
+# /whats-new page stays in sync with what's actually live.
 set -e
 pnpm install --frozen-lockfile
 pnpm --filter @workspace/db run migrate

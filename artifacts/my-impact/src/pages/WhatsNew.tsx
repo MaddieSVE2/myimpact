@@ -1,3 +1,17 @@
+// What's New page — rolling changelog of user-visible features.
+//
+// Convention: when shipping a user-visible feature, add a card to the
+// LATEST release at the top of RELEASES below. Older releases stay in
+// place and render as collapsible "Previous updates" entries, so the page
+// reads as a rolling history. If the latest release is more than a month
+// or two old, prepend a new release object (with a fresh `id`, `date`,
+// `title`, `intro`, and `groups`) and the hero will pick up the new date
+// automatically.
+//
+// Keep copy plain-English and short (one sentence). Use `lucide-react`
+// icons consistent with the existing style. Group items under one of the
+// existing badges ("For you", "Tools", "Organisations", "All users") via
+// `BADGE_COLORS`, or add a new badge if it genuinely fits better.
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Footer } from "@/components/layout/Footer";
