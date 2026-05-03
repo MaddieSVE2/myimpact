@@ -3,10 +3,12 @@ import {
   Document,
   Page,
   Text,
+  Image,
   View,
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import { MYIMPACT_LOGO_DATA_URL } from "./logoAsset.js";
 
 Font.register({
   family: "Outfit",
@@ -79,17 +81,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  logoMy: {
-    color: ORANGE,
-    fontSize: 18,
-    fontFamily: "Outfit",
-    fontWeight: "bold",
+  logoImageDark: {
+    height: 40,
+    width: 78,
+    objectFit: "contain",
   },
-  logoImpact: {
-    color: WHITE,
-    fontSize: 18,
-    fontFamily: "Outfit",
-    fontWeight: "bold",
+  logoImageHeader: {
+    height: 26,
+    width: 51,
+    objectFit: "contain",
+  },
+  pageHeaderLogoChip: {
+    backgroundColor: NAVY,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   coverTagline: {
     color: "rgba(255,255,255,0.45)",
@@ -172,18 +178,6 @@ const styles = StyleSheet.create({
   pageHeaderLogo: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  pageHeaderLogoMy: {
-    color: ORANGE,
-    fontSize: 12,
-    fontFamily: "Outfit",
-    fontWeight: "bold",
-  },
-  pageHeaderLogoImpact: {
-    color: NAVY,
-    fontSize: 12,
-    fontFamily: "Outfit",
-    fontWeight: "bold",
   },
   metricGrid: {
     flexDirection: "row",
@@ -493,8 +487,7 @@ function CoverPage({ data }: { data: PdfData }) {
       <View style={styles.coverInner}>
         <View>
           <View style={styles.logoRow}>
-            <Text style={styles.logoMy}>My</Text>
-            <Text style={styles.logoImpact}>Impact</Text>
+            <Image src={MYIMPACT_LOGO_DATA_URL} style={styles.logoImageDark} />
           </View>
           <Text style={styles.coverTagline}>POWERED BY THE SOCIAL VALUE ENGINE</Text>
         </View>
@@ -510,7 +503,7 @@ function CoverPage({ data }: { data: PdfData }) {
         </View>
 
         <View style={styles.coverFooter}>
-          <Text style={styles.coverFooterUrl}>myimpact.social</Text>
+          <Text style={styles.coverFooterUrl}>myimpact.uk</Text>
           <Text style={styles.coverFooterSroi}>
             Calculated using Social Return{"\n"}on Investment methodology
           </Text>
@@ -549,9 +542,8 @@ function MetricsPage({ data }: { data: PdfData }) {
       <View style={styles.pageInner}>
         <View style={styles.pageHeader}>
           <Text style={styles.pageHeaderTitle}>How I Create Value</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
+          <View style={styles.pageHeaderLogoChip}>
+            <Image src={MYIMPACT_LOGO_DATA_URL} style={styles.logoImageHeader} />
           </View>
         </View>
 
@@ -602,9 +594,8 @@ function ActivitiesPage({ data }: { data: PdfData }) {
       <View style={styles.pageInner}>
         <View style={styles.pageHeader}>
           <Text style={styles.pageHeaderTitle}>My Activities</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
+          <View style={styles.pageHeaderLogoChip}>
+            <Image src={MYIMPACT_LOGO_DATA_URL} style={styles.logoImageHeader} />
           </View>
         </View>
 
@@ -649,9 +640,8 @@ function SdgPage({ data }: { data: PdfData }) {
       <View style={styles.pageInner}>
         <View style={styles.pageHeader}>
           <Text style={styles.pageHeaderTitle}>UN SDGs I Support</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
+          <View style={styles.pageHeaderLogoChip}>
+            <Image src={MYIMPACT_LOGO_DATA_URL} style={styles.logoImageHeader} />
           </View>
         </View>
 
@@ -714,8 +704,7 @@ function ClosingPage({ data }: { data: PdfData }) {
     <Page size="A4" style={styles.closingPage}>
       <View style={styles.closingInner}>
         <View style={styles.logoRow}>
-          <Text style={styles.logoMy}>My</Text>
-          <Text style={styles.logoImpact}>Impact</Text>
+          <Image src={MYIMPACT_LOGO_DATA_URL} style={styles.logoImageDark} />
         </View>
 
         <View style={styles.closingHero}>
@@ -732,7 +721,7 @@ function ClosingPage({ data }: { data: PdfData }) {
 
         <View style={styles.closingFooter}>
           <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, fontFamily: "DM Sans" }}>
-            myimpact.social
+            myimpact.uk
           </Text>
           <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 9, textAlign: "right", fontFamily: "DM Sans" }}>
             5 / 5

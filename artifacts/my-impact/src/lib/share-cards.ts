@@ -65,6 +65,7 @@ export interface ResultsShareCardData {
   contributionValue: number;
   donationsValue: number;
   personalDevelopmentValue: number;
+  logoSrc?: string;
 }
 
 export async function paintResultsShareCard(
@@ -103,13 +104,21 @@ export async function paintResultsShareCard(
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
 
-  // Wordmark "My" + "Impact"
-  setFont(ctx, 22, 800, FONT_DISPLAY);
-  const myW = ctx.measureText("My").width;
-  ctx.fillStyle = "#E8633A";
-  ctx.fillText("My", 48, headerY);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText("Impact", 48 + myW, headerY);
+  // Wordmark — real logo image (preloaded as data URL so html2canvas/canvas
+  // captures it reliably). Falls back to text lockup if image fails to load.
+  const logoImg = data.logoSrc ? await loadImage(data.logoSrc) : null;
+  if (logoImg && logoImg.naturalWidth > 0) {
+    const logoH = 36;
+    const logoW = (logoImg.naturalWidth / logoImg.naturalHeight) * logoH;
+    ctx.drawImage(logoImg, 48, headerY - logoH / 2, logoW, logoH);
+  } else {
+    setFont(ctx, 22, 800, FONT_DISPLAY);
+    const myW = ctx.measureText("My").width;
+    ctx.fillStyle = "#E8633A";
+    ctx.fillText("My", 48, headerY);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("Impact", 48 + myW, headerY);
+  }
 
   // Eyebrow right-aligned, with letter spacing
   setFont(ctx, 11, 600, FONT_DISPLAY);
@@ -195,7 +204,7 @@ export async function paintResultsShareCard(
   // Footer
   setFont(ctx, 10, 500, FONT_DISPLAY);
   ctx.fillStyle = "rgba(255,255,255,0.3)";
-  const footer = "myimpact.social";
+  const footer = "myimpact.uk";
   const fChars = Array.from(footer);
   const fWidths = fChars.map((c) => ctx.measureText(c).width);
   let fx = 48;
@@ -474,7 +483,7 @@ export async function paintMilestoneShareCard(
     ctx.font = `700 15px ${FONT_DISPLAY}`;
     ctx.fillStyle = "#e8622a";
     ctx.textAlign = "right";
-    ctx.fillText(data.appUrl, width - paddingH, height - padding);
+    ctx.fillText("myimpact.uk", width - paddingH, height - padding);
   } else {
     ctx.font = `italic 400 16px ${FONT_BODY}`;
     ctx.fillStyle = "#7a9aaa";
@@ -492,7 +501,7 @@ export async function paintMilestoneShareCard(
     }
     ctx.font = `700 18px ${FONT_DISPLAY}`;
     ctx.fillStyle = "#e8622a";
-    ctx.fillText(data.appUrl, paddingH, ny + 4);
+    ctx.fillText("myimpact.uk", paddingH, ny + 4);
   }
 
   ctx.restore();

@@ -718,10 +718,7 @@ export default function AnnualRecap() {
               totalHours: recap!.biggestSession.totalHours,
             }
           : null,
-      appUrl:
-        typeof window !== "undefined"
-          ? window.location.hostname.replace(/^www\./, "")
-          : "myimpact.com",
+      appUrl: "myimpact.uk",
       logoImage,
     };
   }

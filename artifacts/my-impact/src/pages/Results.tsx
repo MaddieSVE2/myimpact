@@ -20,6 +20,25 @@ import { useToast } from "@/hooks/use-toast";
 
 import { useAuth } from "@/lib/auth-context";
 import { paintResultsShareCard } from "@/lib/share-cards";
+
+const RESULTS_BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+const RESULTS_LOGO_SRC = `${RESULTS_BASE_URL}/images/myimpact.png`;
+
+async function loadLogoDataUrl(src: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
+}
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -1071,12 +1090,14 @@ export default function Results() {
   const handleExportPNG = async () => {
     setExporting(true);
     try {
+      const logoSrc = await loadLogoDataUrl(RESULTS_LOGO_SRC);
       const canvas = await paintResultsShareCard({
         totalValue: result.totalValue,
         impactValue: result.impactValue,
         contributionValue: result.contributionValue,
         donationsValue: result.donationsValue,
         personalDevelopmentValue: result.personalDevelopmentValue,
+        logoSrc,
       });
       const link = document.createElement("a");
       link.download = "my-impact.png";

@@ -30,7 +30,10 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
     const { width, height } = CARD_SIZES[format];
     const padding = format === "landscape" ? 56 : 80;
     const paddingH = format === "landscape" ? 72 : 80;
-    const displayUrl = appUrl ?? (typeof window !== "undefined" ? window.location.hostname : "myimpact.com");
+    // Footer URL is always the public brand domain — never window.location,
+    // which would leak the Replit preview hostname into downloaded PNGs.
+    const displayUrl = "myimpact.uk";
+    void appUrl;
 
     const headerH = HEADER_HEIGHT[format];
     const footerH = FOOTER_HEIGHT[format];
