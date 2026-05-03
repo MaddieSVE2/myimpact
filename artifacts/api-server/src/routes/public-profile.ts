@@ -396,11 +396,15 @@ async function buildWidgetPayload(slug: string) {
   // Build a short version hash from every signal that affects what the
   // widget renders. Must stay in sync with `buildWidgetStatus` so that
   // status.version === payload.version for the same data.
+  // Only include impact activity aggregates when at least one activity-related
+  // field is publicly visible; otherwise private activity changes must not
+  // affect the version and leak behavioral timing to unauthenticated observers.
+  const showAnyActivity = profile.showHours || profile.showSroi || profile.showCategories;
   const versionInput = [
     profile.updatedAt.toISOString(),
     user.displayName ?? "",
-    impactMaxCreatedAt?.toISOString() ?? "0",
-    impactSumTotalRaw,
+    showAnyActivity ? (impactMaxCreatedAt?.toISOString() ?? "0") : "0",
+    showAnyActivity ? impactSumTotalRaw : "0",
     journalMaxUpdatedAt?.toISOString() ?? "0",
     profile.isEnabled ? "1" : "0",
     profile.showHours ? "h" : "-",
@@ -494,15 +498,21 @@ async function buildWidgetStatus(
     .limit(1);
   if (!user) return null;
 
-  const [impactAgg] = await db
-    .select({
-      maxCreatedAt: drizzleMax(impactRecordsTable.createdAt),
-      sumTotal: drizzleSum(sql`${impactRecordsTable.totalValue}::numeric`),
-    })
-    .from(impactRecordsTable)
-    .where(eq(impactRecordsTable.userId, profile.userId));
-  const impactMax = (impactAgg?.maxCreatedAt as Date | null) ?? null;
-  const impactSum = (impactAgg?.sumTotal as string | null) ?? "0";
+  const showAnyActivity = profile.showHours || profile.showSroi || profile.showCategories;
+
+  let impactMax: Date | null = null;
+  let impactSum = "0";
+  if (showAnyActivity) {
+    const [impactAgg] = await db
+      .select({
+        maxCreatedAt: drizzleMax(impactRecordsTable.createdAt),
+        sumTotal: drizzleSum(sql`${impactRecordsTable.totalValue}::numeric`),
+      })
+      .from(impactRecordsTable)
+      .where(eq(impactRecordsTable.userId, profile.userId));
+    impactMax = (impactAgg?.maxCreatedAt as Date | null) ?? null;
+    impactSum = (impactAgg?.sumTotal as string | null) ?? "0";
+  }
 
   let journalMax: Date | null = null;
   if (profile.showJournalHighlights) {
