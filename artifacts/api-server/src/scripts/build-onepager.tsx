@@ -30,6 +30,8 @@ const LIGHT_BLUE = "#A8C8DA";
 const WHITE = "#FFFFFF";
 const MUTED = "#5A6572";
 
+Font.registerHyphenationCallback((word) => [word]);
+
 Font.register({
   family: "Outfit",
   fonts: [
