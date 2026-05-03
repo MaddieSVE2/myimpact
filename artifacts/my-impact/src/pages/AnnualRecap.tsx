@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Download, Share2, X, Sparkles, Loader2, Coins, Clock, Film } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Share2, X, Sparkles, Loader2, Coins, Clock, Film, RotateCcw } from "lucide-react";
 import { useGetAnnualRecap, getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -184,6 +184,10 @@ export default function AnnualRecap() {
   const videoSupported = useMemo(() => isVideoExportSupported(), []);
   const { toast } = useToast();
   const lastVideoRef = useRef<{ blob: Blob; extension: string; posterBlob: Blob | null; year: number } | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const videoUrlRef = useRef<string | null>(null);
+  const [videoStale, setVideoStale] = useState(false);
+  const [generatedShowMoney, setGeneratedShowMoney] = useState<boolean | null>(null);
 
   const { data: recap, isLoading, isError, refetch } = useGetAnnualRecap(yearFromQuery, {
     query: { enabled: isLoggedIn, queryKey: getGetAnnualRecapQueryKey(yearFromQuery) },
@@ -229,6 +233,36 @@ export default function AnnualRecap() {
     markRecapViewed(yearFromQuery);
     setLocation("/");
   };
+
+  // Mark video stale if money toggle changes after generation
+  useEffect(() => {
+    if (generatedShowMoney !== null && generatedShowMoney !== showMoney) {
+      setVideoStale(true);
+    }
+  }, [showMoney, generatedShowMoney]);
+
+  // Auto-generate the video when reaching the share step
+  const currentStepKind = steps[stepIndex]?.kind;
+  useEffect(() => {
+    if (!recap) return;
+    if (currentStepKind !== "shareCard") return;
+    if (!videoSupported) return;
+    if (generating) return;
+    if (videoUrl && !videoStale) return;
+    ensureVideo(videoStale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStepKind, recap, videoSupported]);
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      const url = videoUrlRef.current;
+      if (url) {
+        try { URL.revokeObjectURL(url); } catch { /* noop */ }
+        videoUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -512,31 +546,79 @@ export default function AnnualRecap() {
                 position: "relative",
                 overflow: "hidden",
               }}
+              data-testid="recap-video-preview"
             >
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  top: -40,
-                  right: -40,
-                  width: 180,
-                  height: 180,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(232,98,42,0.55) 0%, transparent 70%)",
-                }}
-              />
-              <div style={{ textAlign: "center", padding: 24, zIndex: 1 }}>
-                <Film size={36} color="#e8622a" style={{ margin: "0 auto 12px" }} />
-                <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: 0 }}>
-                  {recap.year} recap
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: "white", marginTop: 6, lineHeight: 1.2 }}>
-                  Your year, ready to share
-                </p>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 8, lineHeight: 1.4 }}>
-                  ~12s portrait video for Stories, WhatsApp & more
-                </p>
-              </div>
+              {videoUrl && !generating ? (
+                <>
+                  <video
+                    src={videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls={false}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                    data-testid="video-recap-player"
+                  />
+                  {videoStale ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(26,46,58,0.72)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        padding: 18,
+                      }}
+                    >
+                      <RotateCcw size={28} color="#e8622a" style={{ marginBottom: 10 }} />
+                      <p style={{ fontSize: 14, fontWeight: 700, color: "white", margin: 0 }}>
+                        Preview is out of date
+                      </p>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", margin: "6px 0 0", lineHeight: 1.4 }}>
+                        You changed the {showMoney ? "£ values" : "hours only"} preference. Regenerate to see the new version.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      top: -40,
+                      right: -40,
+                      width: 180,
+                      height: 180,
+                      borderRadius: "50%",
+                      background: "radial-gradient(circle, rgba(232,98,42,0.55) 0%, transparent 70%)",
+                    }}
+                  />
+                  <div style={{ textAlign: "center", padding: 24, zIndex: 1 }}>
+                    <Film size={36} color="#e8622a" style={{ margin: "0 auto 12px" }} />
+                    <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: 0 }}>
+                      {recap.year} recap
+                    </p>
+                    <p style={{ fontSize: 18, fontWeight: 800, color: "white", marginTop: 6, lineHeight: 1.2 }}>
+                      {generating ? "Rendering your year…" : "Your year, ready to share"}
+                    </p>
+                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 8, lineHeight: 1.4 }}>
+                      ~12s portrait video for Stories, WhatsApp & more
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             {generating ? (
@@ -564,21 +646,36 @@ export default function AnnualRecap() {
               </div>
             ) : (
               <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap", justifyContent: "center" }}>
-                <button
-                  onClick={handleShareVideo}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white"
-                  style={{ background: "#e8622a" }}
-                  data-testid="button-share-video"
-                >
-                  <Share2 size={16} /> Share video
-                </button>
-                <button
-                  onClick={handleDownloadVideo}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white border border-white/20 hover:bg-white/10"
-                  data-testid="button-download-video"
-                >
-                  <Download size={16} /> Download video
-                </button>
+                {videoStale ? (
+                  <button
+                    onClick={() => ensureVideo(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white"
+                    style={{ background: "#e8622a" }}
+                    data-testid="button-regenerate-video"
+                  >
+                    <RotateCcw size={16} /> Regenerate video
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleShareVideo}
+                      disabled={!videoUrl}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: "#e8622a" }}
+                      data-testid="button-share-video"
+                    >
+                      <Share2 size={16} /> Share video
+                    </button>
+                    <button
+                      onClick={handleDownloadVideo}
+                      disabled={!videoUrl}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm text-white border border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid="button-download-video"
+                    >
+                      <Download size={16} /> Download video
+                    </button>
+                  </>
+                )}
               </div>
             )}
             <p className="text-xs text-white/40 mt-4">All caught up · close to return home</p>
@@ -636,9 +733,10 @@ export default function AnnualRecap() {
       : `My ${recap!.year} on My Impact: ${formatNumber(recap!.totalHours)} hours given. ${origin}`;
   }
 
-  async function ensureVideo(): Promise<{ blob: Blob; extension: string; posterBlob: Blob | null } | null> {
+  async function ensureVideo(force = false): Promise<{ blob: Blob; extension: string; posterBlob: Blob | null } | null> {
     if (!recap) return null;
     if (
+      !force &&
       lastVideoRef.current &&
       lastVideoRef.current.year === recap.year
     ) {
@@ -658,6 +756,15 @@ export default function AnnualRecap() {
         console.warn("Poster generation failed", err);
       }
       lastVideoRef.current = { blob: result.blob, extension: result.extension, posterBlob, year: recap.year };
+      const newUrl = URL.createObjectURL(result.blob);
+      const previousUrl = videoUrlRef.current;
+      videoUrlRef.current = newUrl;
+      setVideoUrl(newUrl);
+      if (previousUrl) {
+        try { URL.revokeObjectURL(previousUrl); } catch { /* noop */ }
+      }
+      setGeneratedShowMoney(showMoney);
+      setVideoStale(false);
       return lastVideoRef.current;
     } catch (err) {
       console.error("Video generation failed", err);
@@ -671,11 +778,6 @@ export default function AnnualRecap() {
       setGenerating(false);
     }
   }
-
-  // Re-generate next time if money toggle changes
-  useEffect(() => {
-    lastVideoRef.current = null;
-  }, [showMoney]);
 
   function downloadBlob(blob: Blob, fileName: string) {
     const url = URL.createObjectURL(blob);
