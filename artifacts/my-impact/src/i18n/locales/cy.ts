@@ -24,6 +24,11 @@ export const cy: Catalogue = {
     gotIt: "Iawn, deall",
     language: "Iaith",
   },
+  appUpdate: {
+    title: "Mae fersiwn newydd ar gael",
+    description: "Adnewyddwch i gael y diweddariadau diweddaraf.",
+    refresh: "Adnewyddu",
+  },
   navbar: {
     calculate: "Cyfrifo",
     myImpact: "Fy Effaith",

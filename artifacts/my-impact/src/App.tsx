@@ -13,6 +13,7 @@ import { SocialSharingProvider } from "@/lib/social-sharing-context";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { LocaleProvider } from "@/i18n";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { ServiceWorkerUpdatePrompt } from "@/components/ServiceWorkerUpdatePrompt";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
 import { usePageViewTracking } from "@/hooks/usePageViewTracking";
@@ -325,6 +326,7 @@ function App() {
                   </WizardProvider>
                 </SidekickProvider>
               </FeedbackProvider>
+              <ServiceWorkerUpdatePrompt />
             </LocaleProvider>
           </AuthProvider>
           </SocialSharingProvider>

@@ -5,12 +5,7 @@ import "./index.css";
 
 initSentry();
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register(
-      `${import.meta.env.BASE_URL}service-worker.js`
-    );
-  });
-}
+// Service worker registration is handled inside <ServiceWorkerUpdatePrompt />
+// so it can show an in-app toast when a new version is waiting.
 
 createRoot(document.getElementById("root")!).render(<App />);

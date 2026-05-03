@@ -13,7 +13,19 @@ self.addEventListener("install", (event) => {
       .then((cache) => cache.add(new Request("./", { cache: "reload" })))
       .catch(() => undefined)
   );
-  self.skipWaiting();
+  // Note: we no longer call self.skipWaiting() unconditionally on install.
+  // A waiting worker stays waiting so the app can prompt the user to refresh
+  // (see the `message` listener below). On a true first install there's no
+  // controller, so we activate immediately and avoid an unnecessary prompt.
+  if (!self.registration.active) {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

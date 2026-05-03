@@ -22,6 +22,11 @@ export const en = {
     gotIt: "Got it",
     language: "Language",
   },
+  appUpdate: {
+    title: "A new version is available",
+    description: "Refresh to get the latest improvements.",
+    refresh: "Refresh",
+  },
   navbar: {
     calculate: "Calculate",
     myImpact: "My Impact",
