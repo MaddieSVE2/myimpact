@@ -202,6 +202,15 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const periodLabel = body.period ?? null;
 
+  // Recompute impact server-side from the submitted activities so that
+  // client-supplied totals in body.impactResult are never trusted or stored.
+  const serverImpactResult = calculateImpact(
+    body.activities,
+    body.donationsGBP,
+    body.additionalVolunteerHours,
+    body.customActivities ?? []
+  );
+
   // Snapshot the user's existing record count BEFORE writing so we can
   // emit `first_record_logged` on the very first save.
   const priorCountRows = await db
@@ -214,14 +223,14 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const newValues = {
     name: body.name,
     periodLabel,
-    totalValue: String(body.impactResult.totalValue),
-    impactValue: String(body.impactResult.impactValue),
-    contributionValue: String(body.impactResult.contributionValue),
-    donationsValue: String(body.impactResult.donationsValue),
-    personalDevelopmentValue: String(body.impactResult.personalDevelopmentValue),
-    totalHours: body.impactResult.totalHours,
+    totalValue: String(serverImpactResult.totalValue),
+    impactValue: String(serverImpactResult.impactValue),
+    contributionValue: String(serverImpactResult.contributionValue),
+    donationsValue: String(serverImpactResult.donationsValue),
+    personalDevelopmentValue: String(serverImpactResult.personalDevelopmentValue),
+    totalHours: serverImpactResult.totalHours,
     activitiesJson: body.activities,
-    resultJson: body.impactResult,
+    resultJson: serverImpactResult,
     region: body.region ?? null,
     outwardCode: body.outwardCode ?? null,
     lat: body.lat != null ? String(body.lat) : null,
@@ -261,8 +270,8 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       userId,
       surface: "member",
       props: {
-        totalValue: Math.round(body.impactResult.totalValue),
-        totalHours: Math.round(body.impactResult.totalHours),
+        totalValue: Math.round(serverImpactResult.totalValue),
+        totalHours: Math.round(serverImpactResult.totalHours),
         activityCount: body.activities?.length ?? 0,
       },
     });
@@ -284,8 +293,8 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
           member: { ref: userId, email: req.user!.email },
           name: record.name,
           period: record.periodLabel ?? null,
-          hours: body.impactResult.totalHours,
-          socialValueGBP: Math.round(body.impactResult.totalValue * 100) / 100,
+          hours: serverImpactResult.totalHours,
+          socialValueGBP: Math.round(serverImpactResult.totalValue * 100) / 100,
           attested: false,
           loggedAt: new Date().toISOString(),
         },
@@ -301,7 +310,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     name: record.name,
     period: record.periodLabel ?? null,
     createdAt: record.createdAt.toISOString(),
-    impactResult: body.impactResult,
+    impactResult: serverImpactResult,
   });
 });
 

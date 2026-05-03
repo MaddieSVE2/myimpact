@@ -139,40 +139,42 @@ export const SaveImpactBody = zod.object({
   userId: zod.string(),
   name: zod.string(),
   period: zod.string().nullish(),
-  impactResult: zod.object({
-    totalValue: zod.number(),
-    impactValue: zod.number(),
-    contributionValue: zod.number(),
-    donationsValue: zod.number(),
-    personalDevelopmentValue: zod.number(),
-    totalHours: zod.number(),
-    activityBreakdowns: zod.array(
-      zod.object({
-        activityId: zod.string(),
-        activityName: zod.string(),
-        category: zod.string(),
-        proxy: zod.string().optional(),
-        proxyYear: zod.string().optional(),
-        sdg: zod.string(),
-        sdgColor: zod.string(),
-        impactValue: zod.number(),
-        hours: zod.number(),
+  impactResult: zod
+    .object({
+      totalValue: zod.number(),
+      impactValue: zod.number(),
+      contributionValue: zod.number(),
+      donationsValue: zod.number(),
+      personalDevelopmentValue: zod.number(),
+      totalHours: zod.number(),
+      activityBreakdowns: zod.array(
+        zod.object({
+          activityId: zod.string(),
+          activityName: zod.string(),
+          category: zod.string(),
+          proxy: zod.string().optional(),
+          proxyYear: zod.string().optional(),
+          sdg: zod.string(),
+          sdgColor: zod.string(),
+          impactValue: zod.number(),
+          hours: zod.number(),
+        }),
+      ),
+      sdgBreakdowns: zod.array(
+        zod.object({
+          sdg: zod.string(),
+          sdgColor: zod.string(),
+          value: zod.number(),
+        }),
+      ),
+      explanations: zod.object({
+        impact: zod.string(),
+        contribution: zod.string(),
+        donations: zod.string(),
+        personalDevelopment: zod.string(),
       }),
-    ),
-    sdgBreakdowns: zod.array(
-      zod.object({
-        sdg: zod.string(),
-        sdgColor: zod.string(),
-        value: zod.number(),
-      }),
-    ),
-    explanations: zod.object({
-      impact: zod.string(),
-      contribution: zod.string(),
-      donations: zod.string(),
-      personalDevelopment: zod.string(),
-    }),
-  }),
+    })
+    .optional(),
   activities: zod.array(
     zod.object({
       activityId: zod.string(),

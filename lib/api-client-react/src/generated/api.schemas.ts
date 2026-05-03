@@ -100,7 +100,7 @@ export interface SaveImpactInput {
   userId: string;
   name: string;
   period?: string | null;
-  impactResult: ImpactResult;
+  impactResult?: ImpactResult;
   activities: SelectedActivity[];
   customActivities?: CustomActivityInput[];
   donationsGBP: number;

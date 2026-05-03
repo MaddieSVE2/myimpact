@@ -661,7 +661,6 @@ components:
       required:
         - userId
         - name
-        - impactResult
         - activities
         - donationsGBP
         - additionalVolunteerHours
