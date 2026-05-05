@@ -414,7 +414,7 @@ export function Sidekick() {
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
     if (situation) ctx.situation = situation;
     const effectiveInterests = [...interests];
-    if (isOrgManager && !effectiveInterests.includes("org_manager")) {
+    if (isOrgManager && isOnOrgPage && !effectiveInterests.includes("org_manager")) {
       effectiveInterests.push("org_manager");
     }
     if (effectiveInterests.length) ctx.interests = effectiveInterests;
@@ -552,7 +552,7 @@ export function Sidekick() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, result, interests, situations, isOrgManager]
+    [messages, streaming, result, interests, situations, isOrgManager, isOnOrgPage, locale]
   );
 
   const fireTemplate = useCallback(
