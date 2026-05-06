@@ -52,6 +52,22 @@ Thumbs.db
 .local/
 database_backup.sql
 
+# Pitch decks must NEVER be pushed to GitHub (kept on disk locally only).
+# Exception: .replit-artifact/artifact.toml is just registration metadata
+# (kind/port/title) with no slide content — kept tracked so the local
+# Replit artifact reconciler can keep the pitch-deck workflows registered.
+artifacts/pitch-deck/*
+!artifacts/pitch-deck/.replit-artifact/
+artifacts/pitch-deck/.replit-artifact/*
+!artifacts/pitch-deck/.replit-artifact/artifact.toml
+artifacts/pitch-deck-orgs/*
+!artifacts/pitch-deck-orgs/.replit-artifact/
+artifacts/pitch-deck-orgs/.replit-artifact/*
+!artifacts/pitch-deck-orgs/.replit-artifact/artifact.toml
+
+# GitHub Actions workflows are managed outside this repo's PAT scope.
+.github/workflows/
+
 # Database backup dumps must NEVER be committed.
 # They contain production user data (PII) and authentication artifacts.
 # All backup snapshots live in App Storage under backups/{dev,prod}/.
