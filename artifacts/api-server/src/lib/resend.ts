@@ -7,6 +7,6 @@ export async function getUncachableResendClient() {
   }
   return {
     client: new Resend(apiKey),
-    fromEmail: "My Impact <maddie@socialvalueengine.com>",
+    fromEmail: "My Impact <hello@myimpact.uk>",
   };
 }

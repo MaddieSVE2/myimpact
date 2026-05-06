@@ -58,4 +58,8 @@ router.use("/push", pushRouter);
 // returns 404 for every request unless E2E_TEST_MODE=1 is set.
 router.use("/test", testOnlyRouter);
 
+// Test-only endpoints are mounted unconditionally; the router itself
+// returns 404 for every request unless E2E_TEST_MODE=1 is set.
+router.use("/test", testOnlyRouter);
+
 export default router;
