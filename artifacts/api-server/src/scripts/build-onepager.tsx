@@ -17,11 +17,11 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), "../../../..");
 
-const LOGO = path.join(ROOT, "artifacts/my-impact/public/images/myimpact.png");
+const LOGO = path.join(ROOT, "attached_assets/onepager/myimpact_logo_inverted.png");
 const SCREENSHOT = path.join(ROOT, "attached_assets/onepager/screenshot_orgs.jpg");
 const OUT = path.join(ROOT, "attached_assets/onepager/MyImpact_OnePager_Organisations.pdf");
 
-const ORANGE = "#E8633A";
+const ORANGE = "#FF6908";
 const NAVY = "#213547";
 const CREAM = "#F7F5EF";
 const OLIVE = "#B5BE2E";
@@ -58,8 +58,8 @@ const s = StyleSheet.create({
   // Header band
   header: {
     backgroundColor: NAVY,
-    paddingTop: 22,
-    paddingBottom: 22,
+    paddingTop: 18,
+    paddingBottom: 18,
     paddingHorizontal: 36,
     flexDirection: "row",
     alignItems: "center",
@@ -75,8 +75,9 @@ const s = StyleSheet.create({
     backgroundColor: ORANGE,
   },
   logoImg: {
-    height: 40,
-    width: 70,
+    height: 50,
+    width: 87,
+    objectFit: "contain",
   },
   headerTagline: {
     color: CREAM,
