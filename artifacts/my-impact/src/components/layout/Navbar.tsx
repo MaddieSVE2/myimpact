@@ -217,7 +217,7 @@ export function Navbar() {
   return (
     <>
       <nav style={{ background: DARK }} className="sticky top-0 z-50 w-full border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
 
           {/* Logo */}
           <Link
@@ -225,7 +225,7 @@ export function Navbar() {
             className="flex items-center gap-2 shrink-0"
             onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
           >
-            <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-14" />
+            <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-10 my-3" />
           </Link>
 
           {/* Desktop nav */}

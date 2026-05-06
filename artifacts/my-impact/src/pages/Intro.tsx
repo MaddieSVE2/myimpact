@@ -294,9 +294,9 @@ export default function Intro() {
         {/* Faces image — blended into right side of hero */}
         <div style={{
           position: "absolute", top: 0, right: 0, bottom: 0,
-          width: "45%", zIndex: 1, pointerEvents: "none",
-          maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.55) 100%)",
-          WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.55) 100%)",
+          width: "55%", zIndex: 1, pointerEvents: "none",
+          maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
+          WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
         }}>
           <img
             src={`${import.meta.env.BASE_URL}images/faces.png`}
@@ -304,8 +304,9 @@ export default function Intro() {
             aria-hidden="true"
             style={{
               width: "100%", height: "100%",
-              objectFit: "contain", objectPosition: "right center",
+              objectFit: "cover", objectPosition: "center top",
               opacity: 0.10,
+              mixBlendMode: "luminosity",
             }}
           />
         </div>
