@@ -65,9 +65,6 @@ artifacts/pitch-deck-orgs/*
 artifacts/pitch-deck-orgs/.replit-artifact/*
 !artifacts/pitch-deck-orgs/.replit-artifact/artifact.toml
 
-# GitHub Actions workflows are managed outside this repo's PAT scope.
-.github/workflows/
-
 # Database backup dumps must NEVER be committed.
 # They contain production user data (PII) and authentication artifacts.
 # All backup snapshots live in App Storage under backups/{dev,prod}/.
