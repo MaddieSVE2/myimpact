@@ -207,7 +207,7 @@ const ADVISORY = {
     { name: "Jesse Jackson", role: "Loughborough College." },
     { name: "Heather Arnatt", role: "Voluntary Centre Services." },
     { name: "Abigail Appleton", role: "HCA." },
-    { name: "Chris Cowcher", role: "Ex-Plunket UK." },
+    { name: "Chris Cowcher", role: "Ex-Plunkett UK." },
     { name: "James Tedder", role: "Loughborough College." },
   ],
 };
