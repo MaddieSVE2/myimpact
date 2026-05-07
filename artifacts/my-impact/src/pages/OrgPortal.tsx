@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Share2, Eye, X, Copy, Check, AlertCircle, Webhook, Code2, Trash2, CreditCard, Sparkles, BadgeCheck, CheckCircle2, XCircle } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
+import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -12,7 +13,6 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
-import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -1194,7 +1194,7 @@ function CopyableCode({ value, label }: { value: string; label?: string }) {
   );
 }
 
-function DeveloperApiSection() {
+export function DeveloperApiSection() {
   const queryClient = useQueryClient();
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyLabel, setNewKeyLabel] = useState("");
@@ -1916,7 +1916,7 @@ function CopyShareLinkButton({ slug }: { slug: string }) {
   );
 }
 
-function ShareLinkManager() {
+export function ShareLinkManager() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [scope, setScope] = useState<ShareLink["scope"]>("all");
@@ -2155,6 +2155,14 @@ export default function OrgPortal() {
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const inOrg = !!orgData?.org;
   const isManager = orgData?.org?.role === "manager";
+  const [, setLocation] = useLocation();
+
+  // Demo org managers always land on the new mock-data dashboard.
+  useEffect(() => {
+    if (inOrg && isManager && orgData?.org?.id === DEMO_ORG_ID) {
+      setLocation("/org/dashboard", { replace: true });
+    }
+  }, [inOrg, isManager, orgData?.org?.id, setLocation]);
 
   const [preset, setPreset] = useState<PresetKey>("all");
   const [customFrom, setCustomFrom] = useState("");
@@ -2244,8 +2252,6 @@ export default function OrgPortal() {
         </div>
       ) : stats ? (
         <>
-          <OrgSsoConfigPanel orgId={orgData!.org!.id} />
-
           <PeriodSelector
             preset={preset}
             from={preset === "all" ? customFrom : from}
@@ -2342,8 +2348,6 @@ export default function OrgPortal() {
 
           <MatchProgrammeSection from={from} to={to} />
 
-          <DeveloperApiSection />
-
           {/* Impact over time */}
           <motion.div
             className="bg-white border border-border rounded-xl p-5 mb-6"
@@ -2434,8 +2438,6 @@ export default function OrgPortal() {
               <p className="text-xs text-muted-foreground">Your dashboard will populate as members complete the wizard and save their impact. Share the invite code with your team to get started.</p>
             </motion.div>
           )}
-
-          <ShareLinkManager />
 
           <motion.div
             className="bg-primary/5 border border-primary/20 rounded-xl p-5 flex items-start justify-between gap-4"

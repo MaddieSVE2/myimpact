@@ -32,6 +32,8 @@ import History from "@/pages/History";
 import Journal from "@/pages/Journal";
 import Milestones from "@/pages/Milestones";
 import OrgPortal from "@/pages/OrgPortal";
+import OrgDashboard from "@/pages/OrgDashboard";
+import OrgSettings from "@/pages/OrgSettings";
 import OrgRegister from "@/pages/OrgRegister";
 import OrgDemoPage from "@/pages/OrgDemoPage";
 import Pricing from "@/pages/Pricing";
@@ -297,6 +299,12 @@ function AppRouter() {
             <Route path="/org/demo" component={OrgDemoPage} />
             <Route path="/org/register" component={OrgRegister} />
             <Route path="/org/share/:slug" component={OrgSharePage} />
+            <Route path="/org/dashboard">
+              {() => <PrivateRoute component={OrgDashboard} />}
+            </Route>
+            <Route path="/org/settings">
+              {() => <PrivateRoute component={OrgSettings} />}
+            </Route>
             <Route path="/org">
               {() => <OrgGuestRoute />}
             </Route>

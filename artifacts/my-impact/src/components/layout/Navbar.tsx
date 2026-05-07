@@ -17,7 +17,7 @@ import { useLocale } from "@/i18n";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string } | null }>({
+  return useQuery<{ org: { id: string; name: string; type: string; role?: string } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -182,6 +182,10 @@ export function Navbar() {
   const { t } = useLocale();
   const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
   const inOrg = !orgLoading && !!orgData?.org;
+  const isOrgManager = inOrg && orgData?.org?.role === "manager";
+  const isDemoOrgManager = isOrgManager && orgData?.org?.id === "demo-org-0000000000000";
+  // Only the demo-org manager has the new dashboard/settings pages today.
+  const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
 
   const navItems = [
     { href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle },
@@ -363,12 +367,23 @@ export function Navbar() {
                         </Link>
                         {!orgLoading && (
                           <Link
-                            href="/org"
+                            href={orgHomeHref}
                             onClick={() => setUserMenuOpen(false)}
                             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
                           >
                             <Building2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                             {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
+                          </Link>
+                        )}
+                        {isDemoOrgManager && (
+                          <Link
+                            href="/org/settings"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                            data-testid="link-org-settings-dropdown"
+                          >
+                            <Settings className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                            Organisation settings
                           </Link>
                         )}
                         {isAdmin && (
@@ -564,12 +579,23 @@ export function Navbar() {
 
             {isLoggedIn && !orgLoading && (
               <Link
-                href="/org"
+                href={orgHomeHref}
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
               >
                 <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
+              </Link>
+            )}
+
+            {isDemoOrgManager && (
+              <Link
+                href="/org/settings"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <Settings className="w-4 h-4 shrink-0" aria-hidden="true" />
+                Organisation settings
               </Link>
             )}
 
