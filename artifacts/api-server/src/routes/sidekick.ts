@@ -195,6 +195,42 @@ const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_COMPLETION_TOKENS = 1024;
 
+// How often to send a lightweight SSE comment line while we wait for the
+// model's first token. This stops the Replit proxy and intermediate networks
+// from killing the connection during a long "thinking" phase.
+const SSE_KEEPALIVE_MS = 12_000;
+
+// If we still have not produced a first token after this long, abort the
+// upstream stream and send the user a friendly "took too long" message
+// instead of leaving them staring at a spinner.
+const FIRST_TOKEN_TIMEOUT_MS = 75_000;
+
+// UK postcode regex (loose — full or outward part).
+const UK_POSTCODE_REGEX = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*\d[A-Z]{2}\b|\b([A-Z]{1,2}\d[A-Z\d]?)\b/i;
+const NEAR_ME_PATTERNS = [
+  /\bnear\s+me\b/i,
+  /\bnearby\b/i,
+  /\blocal\s+to\s+me\b/i,
+  /\bin\s+my\s+area\b/i,
+  /\baround\s+(?:me|here)\b/i,
+  /\bclose\s+to\s+me\b/i,
+];
+
+function looksLikeLocationQuestion(text: string): boolean {
+  if (NEAR_ME_PATTERNS.some((p) => p.test(text))) return true;
+  // Postcode mentions in volunteering / opportunities / activity context.
+  if (UK_POSTCODE_REGEX.test(text) && /\b(volunteer|volunteering|opportunit|charit|group|near|local|in\b)/i.test(text)) {
+    return true;
+  }
+  return false;
+}
+
+const LOCATION_SIGNPOSTING_INSTRUCTION = `LOCATION QUERY DETECTED: The user is asking about volunteering or opportunities near a place or postcode. You cannot browse live listings. Answer immediately, briefly, and honestly:
+1. State plainly in one sentence that you can't pull up live local listings.
+2. Point them to specific real signposting they can search themselves: Do-it.org (do-it.org), NCVO (ncvo.org.uk), their local Volunteer Centre or Council for Voluntary Service (find via NAVCA at navca.org.uk), and their local council's volunteering page (search "[council name] volunteering").
+3. Ask one short clarifying question — what cause area interests them, or how much time they have — so they can narrow their search.
+Keep the whole reply short (a few sentences). Do not invent specific organisation names, addresses, or contact details for their area.`;
+
 router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, res) => {
   try {
     const { messages, context } = req.body as {
@@ -270,6 +306,15 @@ router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, r
       }
     }
 
+    // Detect location/"near me" questions on the latest user message and
+    // inject a focused signposting instruction. This keeps the answer fast
+    // and useful instead of sending the model into a long, fruitless
+    // reasoning loop trying to invent local listings.
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUserMessage && looksLikeLocationQuestion(lastUserMessage.content)) {
+      systemMessages.push({ role: "system", content: LOCATION_SIGNPOSTING_INSTRUCTION });
+    }
+
     const chatMessages = [
       ...systemMessages,
       ...messages,
@@ -278,24 +323,114 @@ router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, r
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const stream = await openai.chat.completions.create({
+    let firstTokenSeen = false;
+    let clientClosed = false;
+    let timedOut = false;
+
+    // SSE keepalive: send a comment line every SSE_KEEPALIVE_MS while we
+    // wait for the model's first token. SSE comments start with ":" and are
+    // ignored by EventSource clients, but they keep the TCP connection and
+    // any intermediate proxies alive. We stop as soon as the first real
+    // token arrives.
+    const keepaliveTimer: NodeJS.Timeout = setInterval(() => {
+      if (firstTokenSeen || clientClosed) return;
+      try {
+        res.write(`: keepalive ${Date.now()}\n\n`);
+      } catch {
+        // Connection likely gone; the close handler will tidy up.
+      }
+    }, SSE_KEEPALIVE_MS);
+
+    const stopKeepalive = () => {
+      clearInterval(keepaliveTimer);
+    };
+
+    let stream: Awaited<ReturnType<typeof openai.chat.completions.create>> & AsyncIterable<unknown>;
+    // Pass an explicit low reasoning effort so gpt-5-mini doesn't spend a
+    // long time silently "thinking" before producing anything. If the
+    // installed SDK / model rejects the option, retry without it so the
+    // chat path still works.
+    const baseParams = {
       model: "gpt-5-mini",
       max_completion_tokens: MAX_COMPLETION_TOKENS,
       messages: chatMessages,
-      stream: true,
-    });
+      stream: true as const,
+    };
+    try {
+      stream = (await openai.chat.completions.create({
+        ...baseParams,
+        reasoning_effort: "low",
+      } as Parameters<typeof openai.chat.completions.create>[0])) as typeof stream;
+    } catch (err) {
+      console.warn("Sidekick: reasoning_effort not accepted, retrying without it:", err);
+      stream = (await openai.chat.completions.create(baseParams)) as typeof stream;
+    }
+
+    // Soft first-token timeout. If we still haven't seen any model output
+    // after FIRST_TOKEN_TIMEOUT_MS, abort the upstream request and tell
+    // the user it took too long.
+    const firstTokenTimer: NodeJS.Timeout = setTimeout(() => {
+      if (firstTokenSeen || clientClosed) return;
+      timedOut = true;
+      try {
+        stream.controller.abort();
+      } catch {
+        // ignore
+      }
+    }, FIRST_TOKEN_TIMEOUT_MS);
 
     req.on("close", () => {
-      stream.controller.abort();
+      clientClosed = true;
+      stopKeepalive();
+      clearTimeout(firstTokenTimer);
+      try {
+        stream.controller.abort();
+      } catch {
+        // ignore
+      }
     });
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+    try {
+      for await (const chunk of stream as AsyncIterable<{
+        choices: { delta?: { content?: string } }[];
+      }>) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) {
+          if (!firstTokenSeen) {
+            firstTokenSeen = true;
+            stopKeepalive();
+            clearTimeout(firstTokenTimer);
+          }
+          res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+        }
       }
+    } catch (streamErr) {
+      stopKeepalive();
+      clearTimeout(firstTokenTimer);
+      if (clientClosed) {
+        return;
+      }
+      if (timedOut) {
+        const message =
+          "This is taking longer than usual. Try rephrasing your question, or asking something more specific — that usually helps me reply faster.";
+        res.write(`data: ${JSON.stringify({ delta: message, timeout: true })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      throw streamErr;
+    }
+
+    stopKeepalive();
+    clearTimeout(firstTokenTimer);
+
+    if (!firstTokenSeen && !clientClosed) {
+      const message =
+        "Sorry, I couldn't put together a reply for that one. Try rephrasing it or asking something a bit more specific.";
+      res.write(`data: ${JSON.stringify({ delta: message })}\n\n`);
     }
 
     res.write("data: [DONE]\n\n");

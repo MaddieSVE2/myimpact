@@ -292,6 +292,7 @@ export function Sidekick() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -406,6 +407,22 @@ export function Sidekick() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Drive a per-second "Thinking… Ns" counter while we're waiting on the
+  // model. Resets to zero whenever streaming ends so the next request
+  // starts from scratch.
+  useEffect(() => {
+    if (!streaming) {
+      setThinkingSeconds(0);
+      return;
+    }
+    setThinkingSeconds(0);
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      setThinkingSeconds(Math.floor((Date.now() - started) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [streaming]);
 
   const buildContext = () => {
     const ctx: Record<string, unknown> = {};
@@ -535,14 +552,35 @@ export function Sidekick() {
         } finally {
           reader.cancel().catch(() => {});
         }
+
+        // If the stream ended cleanly but the server never sent any text,
+        // surface a visible message instead of leaving the user with a
+        // stuck-looking spinner that just disappears.
+        setMessages((prev) => {
+          const updated = [...prev];
+          const current = updated[assistantIndex];
+          if (current && !current.content) {
+            updated[assistantIndex] = {
+              ...current,
+              role: "assistant",
+              content:
+                "Sorry, I didn't manage to put a reply together that time. Please try again, or rephrase your question.",
+            };
+          }
+          return updated;
+        });
       } catch (err: unknown) {
         if (err instanceof Error && err.name !== "AbortError") {
           setMessages((prev) => {
             const updated = [...prev];
+            const existing = updated[assistantIndex]?.content ?? "";
             updated[assistantIndex] = {
               ...updated[assistantIndex],
               role: "assistant",
-              content: "Sorry, I couldn't get a response. Please try again.",
+              content: existing
+                ? existing +
+                  "\n\n(Sorry, the connection dropped before I finished. Please try again.)"
+                : "Sorry, I couldn't get a response. Please check your connection and try again.",
             };
             return updated;
           });
@@ -976,17 +1014,30 @@ export function Sidekick() {
                         style={msg.role === "user" ? { backgroundColor: "#F06127" } : undefined}
                       >
                         {msg.content || (
-                          <span className="flex items-center gap-1 py-0.5" aria-label="Assistant is typing">
-                            {[0, 1, 2].map((i) => (
-                              <span
-                                key={i}
-                                className="w-2 h-2 rounded-full bg-gray-500 inline-block"
-                                style={{
-                                  animation: "sidekick-bounce 1.2s ease-in-out infinite",
-                                  animationDelay: `${i * 0.2}s`,
-                                }}
-                              />
-                            ))}
+                          <span
+                            className="flex items-center gap-2 py-0.5 text-[12px] text-muted-foreground"
+                            aria-label="Assistant is thinking"
+                            data-testid="sidekick-thinking"
+                          >
+                            <span className="flex items-center gap-1">
+                              {[0, 1, 2].map((dotIdx) => (
+                                <span
+                                  key={dotIdx}
+                                  className="w-2 h-2 rounded-full bg-gray-500 inline-block"
+                                  style={{
+                                    animation: "sidekick-bounce 1.2s ease-in-out infinite",
+                                    animationDelay: `${dotIdx * 0.2}s`,
+                                  }}
+                                />
+                              ))}
+                            </span>
+                            <span>
+                              Thinking…{thinkingSeconds > 0 ? ` ${thinkingSeconds}s` : ""}
+                              {thinkingSeconds >= 20 && thinkingSeconds < 60
+                                ? " (still working on it)"
+                                : ""}
+                              {thinkingSeconds >= 60 ? " (this one's a long one)" : ""}
+                            </span>
                           </span>
                         )}
                       </div>
