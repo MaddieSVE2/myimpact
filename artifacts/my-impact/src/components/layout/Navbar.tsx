@@ -17,7 +17,7 @@ import { useLocale } from "@/i18n";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string; role?: string } | null }>({
+  return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -183,6 +183,7 @@ export function Navbar() {
   const { data: orgData, isLoading: orgLoading } = useMyOrgMembership(isLoggedIn);
   const inOrg = !orgLoading && !!orgData?.org;
   const isOrgManager = inOrg && orgData?.org?.role === "manager";
+  const aiDisabledByOrg = inOrg && orgData?.org?.aiSidekickEnabled === false;
   const isDemoOrgManager = isOrgManager && orgData?.org?.id === "demo-org-0000000000000";
   // Only the demo-org manager has the new dashboard/settings pages today.
   const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
@@ -444,15 +445,18 @@ export function Navbar() {
               </>
             )}
 
-            {/* Sidekick icon — mobile only */}
-            <button
-              className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-              onClick={() => { setMobileOpen(false); openSidekick(true); }}
-              aria-label={t("navbar.openSidekick")}
-            >
-              <MessageCircle className="w-5 h-5" aria-hidden="true" />
-            </button>
+            {/* Sidekick icon — mobile only. Hidden when an org manager has
+                turned off AI features for the organisation. */}
+            {!aiDisabledByOrg && (
+              <button
+                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+                onClick={() => { setMobileOpen(false); openSidekick(true); }}
+                aria-label={t("navbar.openSidekick")}
+              >
+                <MessageCircle className="w-5 h-5" aria-hidden="true" />
+              </button>
+            )}
 
             {/* Hamburger — mobile only */}
             <button

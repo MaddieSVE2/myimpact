@@ -233,7 +233,55 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  res.json({ org: { id: org.id, name: org.name, type: org.type, role: membership.role } });
+  res.json({ org: { id: org.id, name: org.name, type: org.type, role: membership.role, aiSidekickEnabled: org.aiSidekickEnabled } });
+});
+
+// Manager-only: update org-level settings (currently just the AI Sidekick toggle).
+router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+  if (!membership) {
+    res.status(404).json({ error: "You are not a member of any organisation." });
+    return;
+  }
+  if (membership.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can change settings." });
+    return;
+  }
+
+  const { aiSidekickEnabled } = req.body ?? {};
+  const updates: { aiSidekickEnabled?: boolean } = {};
+  if (typeof aiSidekickEnabled === "boolean") {
+    updates.aiSidekickEnabled = aiSidekickEnabled;
+  }
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid settings provided." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(organisationsTable)
+    .set(updates)
+    .where(eq(organisationsTable.id, membership.orgId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Organisation not found." });
+    return;
+  }
+
+  res.json({
+    org: {
+      id: updated.id,
+      name: updated.name,
+      type: updated.type,
+      role: membership.role,
+      aiSidekickEnabled: updated.aiSidekickEnabled,
+    },
+  });
 });
 
 router.get("/my-join-link", authenticate, async (req: AuthenticatedRequest, res) => {

@@ -7,6 +7,9 @@ import {
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { db, organisationsTable, orgMembersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import type { NextFunction, Response } from "express";
 import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
@@ -22,6 +25,36 @@ import {
 import { textAiQuota } from "../lib/textAiUsage.js";
 
 const router = Router();
+
+/**
+ * Reject requests when the caller belongs to an organisation whose manager
+ * has disabled the in-app AI Sidekick. Individuals (no org membership) and
+ * orgs with the toggle on continue to pass through. The matching UI is
+ * hidden client-side; this middleware enforces the same rule on the server
+ * so a curious member can't poke the endpoints directly.
+ */
+async function requireOrgAiEnabled(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) { next(); return; }
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) { next(); return; }
+    const org = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, membership.orgId),
+      columns: { aiSidekickEnabled: true },
+    });
+    if (org && org.aiSidekickEnabled === false) {
+      res.status(403).json({ error: "AI features have been turned off by your organisation." });
+      return;
+    }
+    next();
+  } catch (err) {
+    console.error("[sidekick] requireOrgAiEnabled check failed:", err);
+    next();
+  }
+}
 
 const sidekickRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
@@ -231,7 +264,7 @@ const LOCATION_SIGNPOSTING_INSTRUCTION = `LOCATION QUERY DETECTED: The user is a
 3. Ask one short clarifying question — what cause area interests them, or how much time they have — so they can narrow their search.
 Keep the whole reply short (a few sentences). Do not invent specific organisation names, addresses, or contact details for their area.`;
 
-router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, res) => {
+router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textAiQuota, async (req, res) => {
   try {
     const { messages, context } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -456,6 +489,7 @@ router.post("/chat", authenticate, sidekickRateLimit, textAiQuota, async (req, r
 router.post(
   "/transcribe",
   authenticate,
+  requireOrgAiEnabled,
   sidekickVoiceRateLimit,
   express.raw({ type: () => true, limit: "10mb" }),
   async (req: AuthenticatedRequest, res) => {
@@ -543,7 +577,7 @@ router.post(
  * play it back. Returns the audio bytes directly with the appropriate
  * Content-Type header.
  */
-router.post("/speak", authenticate, sidekickVoiceRateLimit, async (req: AuthenticatedRequest, res) => {
+router.post("/speak", authenticate, requireOrgAiEnabled, sidekickVoiceRateLimit, async (req: AuthenticatedRequest, res) => {
   try {
     const { text, voice } = req.body as { text?: unknown; voice?: unknown };
 

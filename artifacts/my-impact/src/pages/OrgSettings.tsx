@@ -1,21 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, ArrowLeft, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, ArrowLeft, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2 } from "lucide-react";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { ShareLinkManager, DeveloperApiSection } from "@/pages/OrgPortal";
 import {
   DEMO_ORG_ID, DEMO_ORG_NAME, DEMO_ORG_TYPE, DEMO_INVITE_CODE,
   DEMO_ORG_CONTACT_EMAIL, DEMO_MEMBERS,
-  getOrgAiEnabled, setOrgAiEnabled,
   getOrgInviteCode, setOrgInviteCode, generateInviteCode,
   getRemovedMemberIds, setRemovedMemberIds,
 } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean } | null }
 
 function useMyOrg() {
   return useQuery<MyOrgResponse>({
@@ -314,16 +313,44 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
   );
 }
 
-function AiFeaturesTab({ orgId }: { orgId: string }) {
-  const [enabled, setEnabled] = useState<boolean>(() => getOrgAiEnabled(orgId));
+function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState<boolean>(initialEnabled);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { setEnabled(getOrgAiEnabled(orgId)); }, [orgId]);
+  useEffect(() => { setEnabled(initialEnabled); }, [initialEnabled]);
+
+  const mutation = useMutation<{ org: { aiSidekickEnabled: boolean } }, Error, boolean>({
+    mutationFn: async (next) => {
+      const res = await fetch(`${BASE}/api/org/my/settings`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiSidekickEnabled: next }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to save");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setEnabled(data.org.aiSidekickEnabled);
+      setSavedAt(Date.now());
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["my-org"] });
+    },
+    onError: (err) => {
+      setEnabled(initialEnabled);
+      setError(err.message);
+    },
+  });
 
   function toggle(next: boolean) {
-    setEnabled(next);
-    setOrgAiEnabled(orgId, next);
-    setSavedAt(Date.now());
+    setEnabled(next); // optimistic
+    setError(null);
+    mutation.mutate(next);
   }
 
   return (
@@ -339,8 +366,9 @@ function AiFeaturesTab({ orgId }: { orgId: string }) {
           type="button"
           role="switch"
           aria-checked={enabled}
+          disabled={mutation.isPending}
           onClick={() => toggle(!enabled)}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${enabled ? "bg-primary" : "bg-muted"}`}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${enabled ? "bg-primary" : "bg-muted"}`}
           data-testid="toggle-ai"
         >
           <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
@@ -350,10 +378,18 @@ function AiFeaturesTab({ orgId }: { orgId: string }) {
         <p className={enabled ? "text-green-700" : "text-muted-foreground"}>
           AI Sidekick is currently <strong>{enabled ? "enabled" : "disabled"}</strong> for everyone in this organisation.
         </p>
-        {savedAt && (
+        {mutation.isPending && (
+          <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
+            <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+          </p>
+        )}
+        {!mutation.isPending && savedAt && !error && (
           <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
             <Check className="w-3 h-3 text-green-600" /> Saved
           </p>
+        )}
+        {error && (
+          <p className="text-[11px] text-red-600 mt-1">{error}</p>
         )}
       </div>
     </div>
@@ -455,7 +491,7 @@ export default function OrgSettings() {
 
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} />}
-        {active === "ai"        && <AiFeaturesTab orgId={orgData.org.id} />}
+        {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} />}
         {active === "developer" && <DeveloperApiSection />}
         {active === "share"     && <ShareLinkManager />}

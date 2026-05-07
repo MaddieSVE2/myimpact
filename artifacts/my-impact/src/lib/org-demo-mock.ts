@@ -125,21 +125,6 @@ export function computeDemoAggregates(activities: DemoActivity[] = DEMO_ACTIVITI
   };
 }
 
-// AI features toggle persisted per-org via localStorage. Mock-backed for the demo
-// org so the UI state survives reload; swap to a server-backed org-settings record
-// in the follow-up that introduces a settings table.
-const AI_KEY = (orgId: string) => `org-ai-sidekick-enabled:${orgId}`;
-export function getOrgAiEnabled(orgId: string): boolean {
-  try {
-    const v = localStorage.getItem(AI_KEY(orgId));
-    if (v === null) return true; // default on
-    return v === "1";
-  } catch { return true; }
-}
-export function setOrgAiEnabled(orgId: string, enabled: boolean): void {
-  try { localStorage.setItem(AI_KEY(orgId), enabled ? "1" : "0"); } catch { /* ignore */ }
-}
-
 // Aggregate social value & activity counts by month (YYYY-MM) for the trend chart.
 export interface MonthlyTrendPoint { month: string; label: string; value: number; activities: number; hours: number }
 export function computeMonthlyTrend(activities: DemoActivity[] = DEMO_ACTIVITIES): MonthlyTrendPoint[] {

@@ -7,6 +7,9 @@ export const organisationsTable = pgTable("organisations", {
   name: text("name").notNull(),
   type: text("type").notNull(),
   inviteCode: text("invite_code").notNull().unique(),
+  // Org-level toggle controlling whether members of this org see / can use
+  // the in-app AI Sidekick. Managed from /org/settings → AI features.
+  aiSidekickEnabled: boolean("ai_sidekick_enabled").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

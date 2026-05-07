@@ -22,7 +22,7 @@ import {
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string } | null }>({
+  return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -304,6 +304,9 @@ export function Sidekick() {
   const { locale } = useLocale();
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
   const isOrgManager = !!(orgData?.org);
+  // When the user belongs to an org whose manager has disabled AI features,
+  // hide the Sidekick entirely. Individuals (no org) always see it.
+  const aiDisabledByOrg = !!orgData?.org && orgData.org.aiSidekickEnabled === false;
   const isOnOrgPage = location === "/org" || location.startsWith("/org/");
 
   // Voice mode: a per-session toggle that defaults to the user's saved
@@ -1166,6 +1169,10 @@ export function Sidekick() {
       )}
     </>
   );
+
+  if (aiDisabledByOrg) {
+    return null;
+  }
 
   return (
     <>
