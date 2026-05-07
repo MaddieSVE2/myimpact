@@ -31,6 +31,59 @@ function useMyOrgMembership(enabled: boolean) {
 
 const DARK = "#213547";
 
+const AI_DISABLED_DISMISSED_KEY_PREFIX = "myimpact:aiDisabledByOrgNoticeDismissed";
+
+function aiDisabledDismissedKey(userId?: string | null) {
+  return userId
+    ? `${AI_DISABLED_DISMISSED_KEY_PREFIX}:${userId}`
+    : AI_DISABLED_DISMISSED_KEY_PREFIX;
+}
+
+function AiDisabledByOrgMobileNotice({ userId }: { userId?: string | null }) {
+  const storageKey = aiDisabledDismissedKey(userId);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(storageKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setDismissed(window.localStorage.getItem(storageKey) === "1");
+    } catch {
+      setDismissed(false);
+    }
+  }, [storageKey]);
+  if (dismissed) return null;
+  return (
+    <div
+      className="flex items-start gap-2 px-3 py-3 rounded-md text-sm mb-1"
+      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)" }}
+      role="status"
+      aria-live="polite"
+    >
+      <MessageCircle className="w-4 h-4 mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
+      <span className="flex-1 leading-snug">
+        AI features are turned off by your organisation.
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          try { window.localStorage.setItem(storageKey, "1"); } catch {}
+          setDismissed(true);
+        }}
+        className="p-1 rounded hover:bg-white/10 -mr-1 -mt-1 min-w-[32px] min-h-[32px] flex items-center justify-center"
+        aria-label="Dismiss notice that AI features are turned off by your organisation"
+      >
+        <X className="w-4 h-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -446,7 +499,8 @@ export function Navbar() {
             )}
 
             {/* Sidekick icon — mobile only. Hidden when an org manager has
-                turned off AI features for the organisation. */}
+                turned off AI features for the organisation. In that case the
+                mobile dropdown shows a one-line dismissible explanation. */}
             {!aiDisabledByOrg && (
               <button
                 className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -474,6 +528,9 @@ export function Navbar() {
         {/* Mobile dropdown */}
         {mobileOpen && (
           <div className="lg:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-0.5" style={{ background: DARK }}>
+            {isLoggedIn && aiDisabledByOrg && (
+              <AiDisabledByOrgMobileNotice userId={user?.id ?? null} />
+            )}
             {isLoggedIn && navItems.map((item) => {
               const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
               return (

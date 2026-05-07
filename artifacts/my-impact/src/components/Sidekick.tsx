@@ -286,6 +286,76 @@ function pickRecorderMimeType(): string | undefined {
   return undefined;
 }
 
+const AI_DISABLED_DISMISSED_KEY_PREFIX = "myimpact:aiDisabledByOrgNoticeDismissed";
+
+function aiDisabledDismissedKey(userId?: string | null) {
+  return userId
+    ? `${AI_DISABLED_DISMISSED_KEY_PREFIX}:${userId}`
+    : AI_DISABLED_DISMISSED_KEY_PREFIX;
+}
+
+function useAiDisabledNoticeDismissed(userId?: string | null) {
+  const storageKey = aiDisabledDismissedKey(userId);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(storageKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setDismissed(window.localStorage.getItem(storageKey) === "1");
+    } catch {
+      setDismissed(false);
+    }
+  }, [storageKey]);
+  const dismiss = useCallback(() => {
+    try {
+      window.localStorage.setItem(storageKey, "1");
+    } catch {}
+    setDismissed(true);
+  }, [storageKey]);
+  return { dismissed, dismiss };
+}
+
+function AiDisabledByOrgRail({ userId }: { userId?: string | null }) {
+  const { dismissed, dismiss } = useAiDisabledNoticeDismissed(userId);
+  if (dismissed) return null;
+  return (
+    <div
+      className="hidden lg:flex sticky top-0 h-screen flex-col items-center justify-start pt-16 px-2 gap-3 bg-white flex-shrink-0"
+      style={{ width: 48, borderLeft: "1px solid #e5e7eb" }}
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        className="flex flex-col items-center gap-2 px-1 py-3 rounded-lg"
+        style={{ backgroundColor: "#F3F4F6", color: "#4B5563" }}
+        title="AI features are turned off by your organisation."
+      >
+        <Bot className="w-4 h-4" aria-hidden="true" />
+        <span
+          className="text-[10px] font-semibold tracking-[1.5px] uppercase"
+          style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+        >
+          AI off · org
+        </span>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="mt-1 p-1 rounded hover:bg-black/5"
+          aria-label="Dismiss notice that AI features are turned off by your organisation"
+        >
+          <X className="w-3 h-3" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Sidekick() {
   const { open, setOpen } = useSidekick();
   const [tab, setTab] = useState<SidekickTab>("chat");
@@ -305,7 +375,10 @@ export function Sidekick() {
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
   const isOrgManager = !!(orgData?.org);
   // When the user belongs to an org whose manager has disabled AI features,
-  // hide the Sidekick entirely. Individuals (no org) always see it.
+  // replace the Sidekick with a small dismissible "AI off" notice (see
+  // AiDisabledByOrgRail) so members understand why the chat is missing
+  // instead of it silently disappearing. Individuals (no org) always see
+  // the full Sidekick.
   const aiDisabledByOrg = !!orgData?.org && orgData.org.aiSidekickEnabled === false;
   const isOnOrgPage = location === "/org" || location.startsWith("/org/");
 
@@ -1171,7 +1244,7 @@ export function Sidekick() {
   );
 
   if (aiDisabledByOrg) {
-    return null;
+    return <AiDisabledByOrgRail userId={user?.id ?? null} />;
   }
 
   return (
