@@ -350,7 +350,13 @@ const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
   "veteran@veteran.org": { situation: ["armed_forces"] },
   "apprentice@apprentice.org": { situation: ["apprenticeship"] },
   "jobseeker@jobseeker.org": { situation: ["job_seeking"] },
+  "organisation@organisation.org": { situation: [] },
 };
+
+const ORG_PERSONA_EMAILS = new Set<string>([
+  "demo@demo.org",
+  "organisation@organisation.org",
+]);
 
 async function loginPersonaAccount(res: any, normalizedEmail: string) {
   const persona = PERSONA_ACCOUNTS[normalizedEmail];
@@ -378,7 +384,7 @@ async function loginPersonaAccount(res: any, normalizedEmail: string) {
       set: { situation: persona.situation },
     });
 
-  if (normalizedEmail === "demo@demo.org") {
+  if (ORG_PERSONA_EMAILS.has(normalizedEmail)) {
     const existingOrg = await db.query.organisationsTable.findFirst({
       where: eq(organisationsTable.id, DEMO_ORG_ID),
     });
@@ -392,19 +398,26 @@ async function loginPersonaAccount(res: any, normalizedEmail: string) {
       }).onConflictDoNothing();
     }
 
+    const desiredRole = normalizedEmail === "organisation@organisation.org" ? "manager" : "member";
+
     const existingMembership = await db.query.orgMembersTable.findFirst({
       where: (t, { and }) => and(eq(t.orgId, DEMO_ORG_ID), eq(t.userId, user!.id)),
     });
 
     if (!existingMembership) {
-      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id }).onConflictDoNothing();
+      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id, role: desiredRole }).onConflictDoNothing();
+    } else if (desiredRole === "manager" && existingMembership.role !== "manager") {
+      await db
+        .update(orgMembersTable)
+        .set({ role: "manager" })
+        .where(and(eq(orgMembersTable.orgId, DEMO_ORG_ID), eq(orgMembersTable.userId, user.id)));
     }
   }
 
   issueSession(res, user);
   return {
     user: { id: user.id, email: user.email },
-    orgRedirect: normalizedEmail === "demo@demo.org",
+    orgRedirect: ORG_PERSONA_EMAILS.has(normalizedEmail),
   };
 }
 

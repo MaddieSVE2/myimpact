@@ -49,6 +49,7 @@ const PERSONA_EMAILS = new Set<string>([
   "veteran@veteran.org",
   "apprentice@apprentice.org",
   "jobseeker@jobseeker.org",
+  "organisation@organisation.org",
 ]);
 
 const ACTIVITY_BY_ID = new Map(ACTIVITIES.map((a) => [a.id, a]));

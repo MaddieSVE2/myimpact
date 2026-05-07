@@ -85,9 +85,25 @@ pnpm --filter @workspace/api-server run backup:fetch myimpact-db-backup-2026-05-
 
 ## Demo seed
 
-`seed-demo.ts` — idempotently creates the demo user, organisation, and
-membership used for screenshots and demos.
+`seed-demo.ts` — idempotently creates the demo users, organisation, and
+memberships used for screenshots and demos.
 
 ```bash
 pnpm --filter @workspace/api-server run seed:demo
 ```
+
+Demo accounts created/updated by this script (and recognised by
+`/api/auth/request` as instant-login persona accounts when
+`ENABLE_DEMO_LOGIN=true` / `VITE_ENABLE_DEMO_LOGIN=true`):
+
+- `demo@demo.org` — regular **member** of the Demo Organisation.
+- `organisation@organisation.org` — **manager** of the Demo Organisation.
+  After login the client is redirected straight to the org portal (`/org`),
+  where all manager-only sections (members list, invite link, SSO config,
+  surveys, billing) are visible.
+
+Other persona logins (individual side, no org membership):
+
+- `volunteer@volunteer.org`, `student@student.org`, `carer@carer.org`,
+  `veteran@veteran.org`, `apprentice@apprentice.org`,
+  `jobseeker@jobseeker.org`.
