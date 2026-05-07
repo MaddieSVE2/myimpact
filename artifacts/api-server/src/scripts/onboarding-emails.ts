@@ -106,7 +106,10 @@ async function findEligibleUsersForStep(step: OnboardingStep, now: Date): Promis
       and(
         gte(usersTable.createdAt, windowStart),
         lte(usersTable.createdAt, windowEnd),
-        or(isNull(userProfilesTable.userId), eq(userProfilesTable.emailOptIn, true)),
+        // GDPR: only send onboarding emails to users with an explicit opt-in
+        // recorded on user_profiles. Missing profile rows are treated as
+        // opted-OUT (no implicit consent).
+        eq(userProfilesTable.emailOptIn, true),
         isNull(onboardingEmailSendsTable.id),
         // Must have at least one confirmed magic token (i.e. a real magic-link sign-in).
         sql`EXISTS (SELECT 1 FROM ${magicTokensTable} mt WHERE mt.user_id = ${usersTable.id} AND mt.confirmed = true)`

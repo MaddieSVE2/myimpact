@@ -41,6 +41,7 @@ import About from "@/pages/About";
 import Methodology from "@/pages/Methodology";
 import WhatsNew from "@/pages/WhatsNew";
 import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
@@ -250,6 +251,7 @@ function AppRouter() {
             <Route path="/methodology" component={Methodology} />
             <Route path="/whats-new" component={WhatsNew} />
             <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
             <Route path="/pricing" component={Pricing} />
 
             {/* Wizard routes — open to all */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause, Languages } from "lucide-react";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause, Languages, ShieldCheck, Download, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   isPushSupported,
   currentPermission,
@@ -402,6 +403,9 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* GDPR / your data section */}
+      <YourDataSection />
+
       {/* App section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-8 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
@@ -431,6 +435,270 @@ export default function Settings() {
         {t("settings.signOut")}
       </button>
     </div>
+  );
+}
+
+function YourDataSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [exporting, setExporting] = useState(false);
+  const [wipingImpact, setWipingImpact] = useState(false);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`${BASE}/api/profile/export`, { credentials: "include" });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `my-impact-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export ready",
+        description: "Your data has been downloaded as a JSON file.",
+      });
+    } catch {
+      toast({
+        title: "Couldn't export your data",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleWipeImpact = async () => {
+    if (wipingImpact) return;
+    setWipingImpact(true);
+    try {
+      const res = await fetch(`${BASE}/api/impact/all`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      setConfirmWipe(false);
+      toast({
+        title: "Impact data deleted",
+        description: "All your impact records and journal entries have been removed.",
+      });
+    } catch {
+      toast({
+        title: "Couldn't delete your impact data",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setWipingImpact(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleting) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch(`${BASE}/api/profile/delete-account`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmEmail: confirmEmail.trim().toLowerCase() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not delete your account.");
+      }
+      // Hard reload to reset all client state and head to the home page.
+      window.location.href = `${BASE}/`;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not delete your account.";
+      setDeleteError(message);
+      setDeleting(false);
+    }
+  };
+
+  const userEmail = user?.email ?? "";
+  const confirmMatches =
+    confirmEmail.trim().toLowerCase() === userEmail.trim().toLowerCase() && userEmail.length > 0;
+
+  return (
+    <section
+      className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden"
+      data-testid="section-your-data"
+    >
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <ShieldCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Your data</h2>
+      </div>
+      <div className="px-5 py-5 space-y-4">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          You're in control of your data. Download a complete copy any time, wipe just your impact
+          history, or permanently delete your account.
+        </p>
+
+        <button
+          onClick={handleDownload}
+          disabled={exporting}
+          data-testid="button-export-data"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-border hover:bg-muted/30 transition-colors text-left disabled:opacity-60"
+        >
+          <div className="flex items-center gap-3">
+            <Download className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Download my data</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Get a JSON file containing every record we hold for your account.
+              </p>
+            </div>
+          </div>
+          {exporting ? (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          )}
+        </button>
+
+        {!confirmWipe ? (
+          <button
+            onClick={() => setConfirmWipe(true)}
+            data-testid="button-wipe-impact"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-border hover:bg-muted/30 transition-colors text-left"
+          >
+            <div className="flex items-center gap-3">
+              <Trash2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Delete all my impact data</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Removes every impact record, journal entry, attachment and recurring template.
+                  Your account itself stays.
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          </button>
+        ) : (
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3"
+            data-testid="confirm-wipe-impact"
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-sm text-amber-900">
+                Are you sure? This permanently removes all your impact records, journal entries
+                and attachments. It can't be undone.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmWipe(false)}
+                disabled={wipingImpact}
+                className="flex-1 px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWipeImpact}
+                disabled={wipingImpact}
+                data-testid="button-wipe-impact-confirm"
+                className="flex-1 px-3 py-2 rounded-lg bg-amber-600 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60"
+              >
+                {wipingImpact ? "Deleting…" : "Yes, delete it all"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => {
+            setConfirmEmail("");
+            setDeleteError(null);
+            setShowDeleteModal(true);
+          }}
+          data-testid="button-open-delete-account"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3">
+            <Trash2 className="w-4 h-4 text-red-700" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-red-900">Delete my account</p>
+              <p className="text-xs text-red-800/80 mt-0.5">
+                Permanently erases your account, all data and attachments. We'll email you a
+                confirmation.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-red-700" aria-hidden="true" />
+        </button>
+      </div>
+
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          data-testid="modal-delete-account"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 id="delete-account-title" className="text-lg font-bold text-foreground mb-2">
+              Delete your account?
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+              This permanently erases your account, every impact record, every journal entry,
+              every attachment and your preferences. We'll send a confirmation email when it's
+              done. This <strong>cannot be undone</strong>.
+            </p>
+            <label htmlFor="confirm-email" className="block text-sm font-medium text-foreground mb-1.5">
+              Type <strong>{userEmail}</strong> to confirm:
+            </label>
+            <input
+              id="confirm-email"
+              type="email"
+              autoComplete="off"
+              value={confirmEmail}
+              onChange={(e) => { setConfirmEmail(e.target.value); setDeleteError(null); }}
+              placeholder={userEmail}
+              data-testid="input-confirm-delete-email"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            />
+            {deleteError && (
+              <p className="mt-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                {deleteError}
+              </p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => { if (!deleting) setShowDeleteModal(false); }}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border text-sm font-semibold text-foreground hover:bg-muted/30 transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={!confirmMatches || deleting}
+                data-testid="button-confirm-delete-account"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Deleting…" : "Permanently delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

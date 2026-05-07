@@ -32,7 +32,11 @@ interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
-  requestMagicLink: (email: string, returnTo?: string) => Promise<MagicLinkResult>;
+  requestMagicLink: (
+    email: string,
+    returnTo?: string,
+    options?: { marketingOptIn?: boolean },
+  ) => Promise<MagicLinkResult>;
   demoLogin: (email: string) => Promise<DemoLoginResult>;
   updateProfile: (fields: {
     displayName?: string | null;
@@ -49,7 +53,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   user: null,
   isLoading: true,
-  requestMagicLink: async () => ({ instantLogin: false }),
+  requestMagicLink: async (_e: string, _r?: string, _o?: { marketingOptIn?: boolean }) => ({ instantLogin: false }),
   demoLogin: async () => { throw new Error("Not implemented") as Error & { status: number }; },
   updateProfile: async () => {},
   logout: async () => {},
@@ -71,12 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSentryUser(user ? { id: user.id } : null);
   }, [user]);
 
-  const requestMagicLink = async (email: string, returnTo?: string): Promise<MagicLinkResult> => {
+  const requestMagicLink = async (
+    email: string,
+    returnTo?: string,
+    options?: { marketingOptIn?: boolean },
+  ): Promise<MagicLinkResult> => {
     const res = await fetch(`${BASE}/api/auth/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email, returnTo: returnTo ?? null }),
+      body: JSON.stringify({
+        email,
+        returnTo: returnTo ?? null,
+        marketingOptIn: options?.marketingOptIn === true,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {

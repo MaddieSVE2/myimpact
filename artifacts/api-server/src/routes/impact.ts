@@ -18,9 +18,10 @@ import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";
+import { recordAuditEvent } from "../lib/auditLog.js";
 import {
   deleteAttachmentsForRecord,
-  deleteAllRecordAttachmentsForUser,
+  deleteAllAttachmentsForUser,
 } from "../lib/attachmentCleanup.js";
 
 const router: IRouter = Router();
@@ -371,10 +372,41 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.delete("/all", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  // Remove every record-linked attachment (DB row + GCS object) before
-  // dropping the records themselves so storage is fully reclaimed.
-  await deleteAllRecordAttachmentsForUser(userId);
+  const userEmail = req.user!.email;
+  // Count what we're about to wipe so the audit row is meaningful and
+  // matches what the Settings copy promises (impact records + journal
+  // entries + recurring templates + every linked attachment).
+  const [{ recordCount }] = await db
+    .select({ recordCount: sql<number>`count(*)::int` })
+    .from(impactRecordsTable)
+    .where(eq(impactRecordsTable.userId, userId));
+  const [{ journalCount }] = await db
+    .select({ journalCount: sql<number>`count(*)::int` })
+    .from(journalEntriesTable)
+    .where(eq(journalEntriesTable.userId, userId));
+  const [{ recurringCount }] = await db
+    .select({ recurringCount: sql<number>`count(*)::int` })
+    .from(recurringTemplatesTable)
+    .where(eq(recurringTemplatesTable.userId, userId));
+  // Remove every linked attachment (DB row + GCS object) for both
+  // records AND journal entries before dropping the parents so storage
+  // is fully reclaimed.
+  const attachmentsRemoved = await deleteAllAttachmentsForUser(userId);
+  await db.delete(journalEntriesTable).where(eq(journalEntriesTable.userId, userId));
+  await db.delete(recurringTemplatesTable).where(eq(recurringTemplatesTable.userId, userId));
   await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
+  await recordAuditEvent({
+    userId,
+    userEmail,
+    action: "impact_data_wipe",
+    req,
+    metadata: {
+      recordsRemoved: recordCount,
+      journalEntriesRemoved: journalCount,
+      recurringTemplatesRemoved: recurringCount,
+      attachmentsRemoved,
+    },
+  });
   res.json({ success: true });
 });
 

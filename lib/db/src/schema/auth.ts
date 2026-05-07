@@ -32,6 +32,8 @@ export const userProfilesTable = pgTable("user_profiles", {
   inviteSharedAt: timestamp("invite_shared_at"),
   emailOptIn: boolean("email_opt_in").default(true).notNull(),
   lastAckedStreakMilestone: integer("last_acked_streak_milestone").default(0).notNull(),
+  marketingConsentAt: timestamp("marketing_consent_at"),
+  marketingConsentSource: text("marketing_consent_source"),
 });
 
 // Tracks the three transactional onboarding emails (Day 1, Day 7, Day 30)

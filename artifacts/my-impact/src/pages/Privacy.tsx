@@ -72,11 +72,12 @@ const SECTIONS: Section[] = [
           <li><strong>Account information</strong> — your email address and, optionally, a display name, when you create an account.</li>
           <li><strong>Profile information</strong> — details you choose to share about your situation (e.g. student, carer, armed forces) to personalise your experience. This is always optional.</li>
           <li><strong>Impact data</strong> — the activities, actions, and contributions you log, along with associated hours and dates.</li>
-          <li><strong>Journal entries</strong> — any written reflections you save against your impact records.</li>
+          <li><strong>Journal entries &amp; attachments</strong> — any written reflections, photos or receipts you save against your impact records.</li>
+          <li><strong>Sidekick AI conversations</strong> — if you use the optional Sidekick assistant, the prompts you send (and any context you choose to include) are processed to generate replies. We don't use these conversations to train any model.</li>
           <li><strong>Usage data</strong> — anonymised, aggregated analytics about how pages are used, to help us improve the service. We do not use advertising trackers.</li>
           <li><strong>Organisation data</strong> — if you register an organisation, we collect your organisation's name, type, and contact email.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>We do not collect payment information. My Impact is free to use.</p>
+        <p style={{ marginTop: 12 }}>Some features (such as paid organisation plans) involve payments processed by Stripe — we never see or store your card details ourselves.</p>
       </>
     ),
   },
@@ -137,9 +138,22 @@ const SECTIONS: Section[] = [
       <>
         <p>My Impact uses a small number of cookies that are strictly necessary for the service to function:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Session cookie</strong> — keeps you logged in while you use the app. Expires when you close your browser or log out.</li>
-          <li><strong>Wizard state cookie</strong> — remembers your progress through the impact calculator so you don't lose your work.</li>
+          <li><strong><code>mi_session</code></strong> — keeps you logged in while you use the app. HTTP-only, secure, expires after 30 days or when you log out.</li>
+          <li><strong><code>mi_sso_state</code></strong> — set briefly during single sign-on with Google or Microsoft to protect against CSRF. Expires within minutes.</li>
         </ul>
+        <p style={{ marginTop: 12 }}>We also use your browser's <strong>localStorage</strong> on the device you're using — never sent to our servers — to remember a few preferences and drafts. The exact keys are:</p>
+        <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+          <li><code>mi-theme</code> — your light/dark theme choice.</li>
+          <li><code>mi-social-sharing</code> — whether you've opted into social-share prompts.</li>
+          <li><code>mi-recap-viewed-&lt;year&gt;</code> — which annual recap you've already viewed.</li>
+          <li><code>mi-recap-show-money</code> — whether your recap shows monetary impact values.</li>
+          <li><code>mi-pulse-dismiss-&lt;id&gt;</code> — pulse cards you've dismissed.</li>
+          <li><code>wizard_draft_v1</code> — your in-progress wizard answers, so you don't lose them on reload.</li>
+          <li><code>myimpact_journal</code> — your in-progress journal autosave draft.</li>
+          <li><code>mi_local_history</code> — guest-mode impact history (cleared once you sign in).</li>
+          <li><code>mi_tracked_milestones_&lt;userId&gt;</code> — which milestones you've already acknowledged.</li>
+        </ul>
+        <p style={{ marginTop: 12 }}>You can clear any of these at any time via your browser's site-data controls; the app will simply rebuild them as needed.</p>
         <p style={{ marginTop: 12 }}>We do not use advertising cookies, social media tracking pixels, or third-party analytics cookies that follow you across the web. Our usage analytics are anonymised and processed in-house.</p>
         <p style={{ marginTop: 12 }}>Because we only use strictly necessary cookies, we do not require a cookie consent banner.</p>
       </>
@@ -150,11 +164,14 @@ const SECTIONS: Section[] = [
     title: "Third-party services",
     content: (
       <>
-        <p>We use a small number of trusted third-party services to operate My Impact:</p>
+        <p>We use a small number of named, trusted processors to operate My Impact. Each is bound by a data processing agreement and only sees the minimum data required for their job:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Social Value Engine</strong> — we use their accredited SROI methodology and values to calculate impact scores. We do not share your personal data with them.</li>
-          <li><strong>Transactional email</strong> — we use a UK-based email delivery service to send account and notification emails. Your email address is shared only to deliver emails you have requested.</li>
-          <li><strong>Hosting infrastructure</strong> — our servers and database are hosted in UK data centres under strict data processing agreements.</li>
+          <li><strong>Resend</strong> (email delivery, USA) — receives your email address and the body of transactional emails (magic links, account notifications, deletion confirmations) so they can be delivered. Transfer protected by the EU/UK–US Data Privacy Framework and standard contractual clauses.</li>
+          <li><strong>Stripe</strong> (payments, Ireland &amp; USA) — for paid organisation plans only, Stripe processes card details directly. We never see or store your card number. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>OpenAI</strong> (Sidekick AI assistant, USA) — when you use Sidekick, your prompt (and the recent context you've chosen to include, such as your latest activity totals) is sent to OpenAI to generate a reply. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Sentry</strong> (error monitoring, USA) — receives anonymised error reports (stack traces, browser metadata, your internal user id) so we can fix bugs. Sensitive form values are scrubbed before sending. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Replit Deployments</strong> (hosting + PostgreSQL, USA) — hosts the application server and our PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Social Value Engine</strong> (methodology, United Kingdom) — we use their accredited SROI values to calculate impact scores. No personal data is shared with them.</li>
         </ul>
         <p style={{ marginTop: 12 }}>All third-party processors we work with are bound by data processing agreements and are required to handle your data in accordance with UK GDPR.</p>
       </>
@@ -175,7 +192,7 @@ const SECTIONS: Section[] = [
           <li><strong>Right to object</strong> — you can object to processing based on legitimate interests.</li>
           <li><strong>Rights related to automated decision-making</strong> — you have the right not to be subject to decisions made solely by automated means that have a significant effect on you.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>To exercise any of these rights, please contact us at <a href="mailto:hello@myimpact.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.uk</a>. We will respond within 30 days.</p>
+        <p style={{ marginTop: 12 }}>You can exercise the most common rights yourself, immediately, from <Link href="/settings" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Settings</Link>: <strong>Download my data</strong> gives you a complete JSON export of everything we hold, and <strong>Delete my account</strong> permanently erases your data and sends you a confirmation email. For any other request please contact <a href="mailto:hello@myimpact.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.uk</a> — we will respond within 30 days.</p>
         <p style={{ marginTop: 12 }}>If you are unhappy with how we handle your data, you have the right to lodge a complaint with the <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Information Commissioner's Office (ICO)</a>.</p>
       </>
     ),
@@ -233,7 +250,7 @@ export default function Privacy() {
           </p>
 
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 29 March 2026
+            Last updated: 7 May 2026
           </p>
         </div>
       </section>

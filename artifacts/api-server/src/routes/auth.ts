@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { isProviderConfigured, type SsoProvider } from "../lib/oidc.js";
 import { trackServerEvent } from "../lib/analytics.js";
+import { recordAuditEvent } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
@@ -34,13 +35,14 @@ function issueSession(res: any, user: { id: string; email: string }) {
 }
 
 router.post("/request", async (req, res) => {
-  const { email, returnTo } = req.body;
+  const { email, returnTo, marketingOptIn } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required" });
     return;
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+  const hasMarketingConsent = marketingOptIn === true;
 
   const safeReturnTo =
     typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
@@ -97,6 +99,59 @@ router.post("/request", async (req, res) => {
       .values({ id: randomBytes(12).toString("hex"), email: normalizedEmail })
       .returning();
     user = created;
+  }
+
+  // GDPR: every magic-link request carries the current state of the
+  // marketing-consent checkbox. We persist it on every request — not just
+  // the first one — so that:
+  //   * brand-new accounts get a profile row with the explicit choice
+  //     (defaulting to opted-OUT when the box was not ticked);
+  //   * existing accounts that don't yet have a profile row get one
+  //     created with the explicit choice (no implicit opt-in);
+  //   * users who tick the box on a later sign-in have their consent
+  //     flipped on (and audited);
+  //   * users who don't tick the box are never silently opted in.
+  // We only ever audit and persist a marketing-consent timestamp when the
+  // user actively ticked the box; we never overwrite a previous opt-in
+  // back to false here (that's done from Settings).
+  const existingProfile = await db.query.userProfilesTable.findFirst({
+    where: eq(userProfilesTable.userId, user.id),
+  });
+  if (!existingProfile) {
+    await db
+      .insert(userProfilesTable)
+      .values({
+        userId: user.id,
+        emailOptIn: hasMarketingConsent,
+        marketingConsentAt: hasMarketingConsent ? new Date() : null,
+        marketingConsentSource: hasMarketingConsent ? "signup" : null,
+      })
+      .onConflictDoNothing();
+    if (hasMarketingConsent) {
+      await recordAuditEvent({
+        userId: user.id,
+        userEmail: normalizedEmail,
+        action: "consent_recorded",
+        req,
+        metadata: { kind: "onboarding_emails", source: "signup" },
+      });
+    }
+  } else if (hasMarketingConsent && !existingProfile.emailOptIn) {
+    await db
+      .update(userProfilesTable)
+      .set({
+        emailOptIn: true,
+        marketingConsentAt: new Date(),
+        marketingConsentSource: "login",
+      })
+      .where(eq(userProfilesTable.userId, user.id));
+    await recordAuditEvent({
+      userId: user.id,
+      userEmail: normalizedEmail,
+      action: "consent_recorded",
+      req,
+      metadata: { kind: "onboarding_emails", source: "login" },
+    });
   }
 
   // Rate-limit: at most one magic link per 60 seconds per user.

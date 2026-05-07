@@ -39,6 +39,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -97,7 +98,9 @@ export default function Login() {
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
-      const result = await requestMagicLink(normalizedEmail, postLoginTo ?? undefined);
+      const result = await requestMagicLink(normalizedEmail, postLoginTo ?? undefined, {
+        marketingOptIn,
+      });
       if (result.instantLogin) {
         const target = result.orgRedirect ? "/org" : postLoginTo ?? "/";
         navigate(target);
@@ -241,6 +244,35 @@ export default function Login() {
 
                 {error && (
                   <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+                )}
+
+                {!enforced && !isOrgLogin && (
+                  <label
+                    htmlFor="marketing-opt-in"
+                    className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer select-none"
+                  >
+                    <input
+                      id="marketing-opt-in"
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-border text-[#F06127] focus:ring-[#F06127]/40"
+                      data-testid="checkbox-marketing-opt-in"
+                    />
+                    <span>
+                      Send me occasional onboarding tips and updates from My Impact. You can
+                      unsubscribe any time.
+                    </span>
+                  </label>
+                )}
+
+                {!enforced && !isOrgLogin && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    By continuing you agree to our{" "}
+                    <Link href="/terms" className="underline hover:text-foreground">Terms</Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+                  </p>
                 )}
 
                 {!enforced && (

@@ -3,20 +3,13 @@ import {
   db,
   usersTable,
   magicTokensTable,
-  userProfilesTable,
-  pageViewsTable,
-  feedbackTable,
-  onboardingEmailSendsTable,
   organisationsTable,
   orgMembersTable,
   orgRegistrationsTable,
-  publicProfilesTable,
-  journalEntriesTable,
-  impactRecordsTable,
-  recurringTemplatesTable,
 } from "@workspace/db";
 import { eq, like, gt, desc, and, sql } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
+import { eraseUserData } from "../lib/userDeletion.js";
 
 /**
  * Test-only endpoints. Mounted only when E2E_TEST_MODE=1 is set.
@@ -35,21 +28,9 @@ router.use((_req, res, next) => {
   next();
 });
 
-async function deleteUserCascade(userId: string): Promise<void> {
-  // The schema does NOT cascade from users.id to most tables, so delete
-  // dependents explicitly. Order matters where FKs exist.
-  await db.delete(magicTokensTable).where(eq(magicTokensTable.userId, userId));
-  await db.delete(userProfilesTable).where(eq(userProfilesTable.userId, userId));
-  await db.delete(pageViewsTable).where(eq(pageViewsTable.userId, userId));
-  await db.delete(feedbackTable).where(eq(feedbackTable.userId, userId));
-  await db.delete(onboardingEmailSendsTable).where(eq(onboardingEmailSendsTable.userId, userId));
-  await db.delete(orgMembersTable).where(eq(orgMembersTable.userId, userId));
-  await db.delete(publicProfilesTable).where(eq(publicProfilesTable.userId, userId));
-  await db.delete(journalEntriesTable).where(eq(journalEntriesTable.userId, userId));
-  await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
-  await db.delete(recurringTemplatesTable).where(eq(recurringTemplatesTable.userId, userId));
-  await db.delete(usersTable).where(eq(usersTable.id, userId));
-}
+// Single source of truth for user deletion lives in lib/userDeletion.ts so
+// the e2e teardown path matches the production right-to-erasure path.
+const deleteUserCascade = (userId: string) => eraseUserData(userId).then(() => undefined);
 
 /**
  * Delete a single user (and all their data) by email.
