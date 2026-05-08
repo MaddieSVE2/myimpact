@@ -36,6 +36,18 @@ interface PromptsResponseLite {
   challenges: OrgChallengeLite[];
 }
 
+interface JournalEntryLite {
+  id: string;
+  type: string;
+  reflectionText?: string;
+  periodLabel?: string;
+  createdAt: string;
+}
+
+interface JournalResponseLite {
+  entries: JournalEntryLite[];
+}
+
 function firstNameFrom(displayName: string | null | undefined): string | null {
   const trimmed = displayName?.trim();
   if (!trimmed) return null;
@@ -340,6 +352,56 @@ export default function Intro() {
 
   const firstName = firstNameFrom(user?.displayName);
 
+  // Pick up where you left off: surface the user's most recent activity card
+  // that's still missing a reflection ("draft"), so they can continue it.
+  const journalQuery = useQuery<JournalResponseLite>({
+    queryKey: ["journal-recent"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/journal`, { credentials: "include" });
+      if (!res.ok) return { entries: [] };
+      return res.json();
+    },
+    enabled: isLoggedIn,
+    retry: false,
+  });
+
+  const draftEntry = (journalQuery.data?.entries ?? [])
+    .find(e => e.type === "activity" && !(e.reflectionText && e.reflectionText.trim().length > 0));
+
+  const overdueTemplate = (templatesQuery.data?.templates ?? []).find(t => t.isDue);
+
+  // Priority of personalised primary CTA: overdue regular activity beats
+  // a draft reflection beats the generic "Calculate" call-to-action.
+  type PersonalCta =
+    | { kind: "overdue"; label: string; href: string; testId: string; onClick?: (e: React.MouseEvent) => void }
+    | { kind: "draft"; label: string; href: string; testId: string }
+    | null;
+
+  let personalCta: PersonalCta = null;
+  if (overdueTemplate) {
+    personalCta = {
+      kind: "overdue",
+      label: `Log ${overdueTemplate.label} →`,
+      href: "#quick-log-section",
+      testId: "welcome-cta-log-overdue",
+      onClick: (e) => {
+        const target = document.getElementById("quick-log-section");
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      },
+    };
+  } else if (draftEntry) {
+    const periodLabel = draftEntry.periodLabel?.trim();
+    personalCta = {
+      kind: "draft",
+      label: periodLabel ? `Continue your draft: ${periodLabel} →` : "Continue your draft →",
+      href: `/journal#entry-${draftEntry.id}`,
+      testId: "welcome-cta-continue-draft",
+    };
+  }
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
@@ -453,9 +515,29 @@ export default function Intro() {
               data-testid="welcome-individual-ctas"
               style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}
             >
+              {personalCta && (
+                personalCta.kind === "overdue" ? (
+                  <a
+                    href={personalCta.href}
+                    className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                    data-testid={personalCta.testId}
+                    onClick={personalCta.onClick}
+                  >
+                    {personalCta.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={personalCta.href}
+                    className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                    data-testid={personalCta.testId}
+                  >
+                    {personalCta.label}
+                  </Link>
+                )
+              )}
               <Link
                 href="/wizard/actions"
-                className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                className={(hasActivePulse || hasActiveChallenge || personalCta) ? "mi-btn-ghost-hero" : "mi-btn-hero"}
                 data-testid="welcome-cta-calculate"
               >
                 Calculate my impact →
@@ -560,7 +642,7 @@ export default function Intro() {
 
       {/* ── QUICK LOG (logged-in users with active recurring templates only) ── */}
       {hasQuickLogContent && (
-        <section style={{ background: "white", padding: "32px 5% 0" }}>
+        <section id="quick-log-section" style={{ background: "white", padding: "32px 5% 0", scrollMarginTop: 80 }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <QuickLog showManageLink />
           </div>

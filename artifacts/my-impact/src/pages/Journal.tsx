@@ -387,6 +387,21 @@ export default function Journal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, authLoading, filters.q, filters.tags.join(",")]);
 
+  useEffect(() => {
+    if (loadingEntries || entries.length === 0) return;
+    const hash = window.location.hash;
+    if (!hash.startsWith("#entry-")) return;
+    const id = hash.slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.style.transition = "box-shadow 0.6s ease";
+      target.style.boxShadow = "0 0 0 3px rgba(240,97,39,0.45)";
+      setTimeout(() => { target.style.boxShadow = ""; }, 1800);
+    });
+  }, [loadingEntries, entries.length]);
+
   const handleAdd = async () => {
     if (!draft.trim()) return;
     const newEntry: JournalEntry = {
@@ -639,13 +654,14 @@ export default function Journal() {
             {entries.map((item, i) => {
               if (item.type === "activity") {
                 return (
-                  <ActivityCardItem
-                    key={item.id}
-                    card={item}
-                    onDelete={handleDelete}
-                    onSaveReflection={handleSaveReflection}
-                    onChangeTags={handleChangeTags}
-                  />
+                  <div key={item.id} id={`entry-${item.id}`}>
+                    <ActivityCardItem
+                      card={item}
+                      onDelete={handleDelete}
+                      onSaveReflection={handleSaveReflection}
+                      onChangeTags={handleChangeTags}
+                    />
+                  </div>
                 );
               }
               const entry = item as JournalEntry;
@@ -653,6 +669,7 @@ export default function Journal() {
               return (
                 <motion.div
                   key={entry.id}
+                  id={`entry-${entry.id}`}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97 }}
