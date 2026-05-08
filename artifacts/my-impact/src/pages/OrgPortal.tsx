@@ -1790,10 +1790,10 @@ export default function OrgPortal() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-display font-semibold text-foreground mb-1">
-                  Submit activities to {orgData!.org!.name}
+                  Log my volunteering hours
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Log the activities you've completed for your organisation. They'll be added straight to your organisation's totals.
+                  Log the activities you've completed for {orgData!.org!.name}. They'll be added straight to your organisation's totals.
                 </p>
                 <Link
                   href="/org/submit"
