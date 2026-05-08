@@ -125,10 +125,10 @@ export function ShareLinkManager() {
         <div>
           <div className="flex items-center gap-2">
             <Share2 className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Share with funder</h3>
+            <h3 className="text-sm font-semibold text-foreground">Share with external organisations</h3>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Create a read-only, no-login link to share live dashboard data with a specific funder. Revoke any link instantly.
+            Create a read-only, no-login link to share live dashboard data with a funder, partner or other external organisation. Revoke any link instantly.
           </p>
         </div>
         {!creating && (
@@ -146,7 +146,7 @@ export function ShareLinkManager() {
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">Funder name (optional)</label>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Recipient organisation (optional)</label>
             <input
               type="text"
               value={funderLabel}
@@ -222,7 +222,7 @@ export function ShareLinkManager() {
             <div className="animate-spin w-5 h-5 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         ) : links.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">No share links yet. Create one to share a snapshot with a funder.</p>
+          <p className="text-xs text-muted-foreground text-center py-6">No share links yet. Create one to share a snapshot with an external organisation.</p>
         ) : (
           <div className="space-y-2">
             {[...active, ...inactive].map(link => {
@@ -238,7 +238,7 @@ export function ShareLinkManager() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-foreground truncate">
-                        {link.funderLabel || "Unnamed funder"}
+                        {link.funderLabel || "Unnamed recipient"}
                       </span>
                       <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${inactiveLink ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
                         {isRevoked ? "Revoked" : isExpired ? "Expired" : "Active"}
