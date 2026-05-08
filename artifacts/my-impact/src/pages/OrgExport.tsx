@@ -11,6 +11,7 @@ import {
 } from "@/lib/org-demo-mock";
 import {
   useMyOrg, memberLabel, downloadCsv, activityExportRows, sdgExportRows, buildOrgPdf,
+  buildOrgPdfBlobAsync,
 } from "@/lib/org-export";
 import { PdfPager } from "@/components/PdfPager";
 
@@ -154,17 +155,16 @@ export default function OrgExport() {
     setPreviewError(null);
     const handle = window.setTimeout(async () => {
       try {
-        const blob = await buildOrgPdf(
-          pdfArgs.orgName,
-          pdfArgs.rowsForPdf,
-          pdfArgs.totals,
-          pdfArgs.trend,
-          pdfArgs.rangeSummary,
-          pdfArgs.highlights,
-          pdfArgs.sdgs,
-          pdfArgs.branding,
-          "blob",
-        );
+        const blob = await buildOrgPdfBlobAsync({
+          orgName: pdfArgs.orgName,
+          rows: pdfArgs.rowsForPdf,
+          totals: pdfArgs.totals,
+          monthlyTrend: pdfArgs.trend,
+          filterSummary: pdfArgs.rangeSummary,
+          highlights: pdfArgs.highlights,
+          sdgs: pdfArgs.sdgs,
+          branding: pdfArgs.branding,
+        });
         if (mySeq !== previewSeq.current) return;
         if (!(blob instanceof Blob)) {
           setPreviewError("Could not build preview");

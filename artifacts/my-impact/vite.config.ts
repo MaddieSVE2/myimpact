@@ -113,6 +113,12 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: uploadSourceMaps ? "hidden" : false,
   },
+  // ESM worker output so the org PDF worker (which dynamically pulls in jspdf
+  // chunks) can be code-split. Vite's default IIFE worker format errors when
+  // a worker imports anything that triggers code-splitting.
+  worker: {
+    format: "es",
+  },
   server: {
     port,
     host: "0.0.0.0",
