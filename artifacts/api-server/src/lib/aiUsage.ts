@@ -33,6 +33,7 @@ function envFloat(name: string, fallback: number): number {
   return Number.isFinite(raw) && raw >= 0 ? raw : fallback;
 }
 
+export const AI_INFLIGHT_TTL_MS = envInt("AI_INFLIGHT_TTL_MS", 120_000);
 export const AI_DAILY_LIMIT_ANON = envInt("AI_DAILY_LIMIT_ANON", 10);
 export const AI_DAILY_LIMIT_USER = envInt("AI_DAILY_LIMIT_USER", 50);
 export const AI_MONTHLY_TOKEN_LIMIT_ANON = envInt("AI_MONTHLY_TOKEN_LIMIT_ANON", 200_000);
@@ -159,23 +160,128 @@ export async function getRemainingQuota(userKey: string): Promise<RemainingQuota
 }
 
 // ---------------------------------------------------------------------------
-// In-flight reservations
+// In-flight reservations (persisted)
 // ---------------------------------------------------------------------------
 
-const inflightCounts = new Map<string, number>();
+/**
+ * In-flight reservations are persisted to `ai_inflight_reservations` so they
+ * survive an API-server restart. The previous implementation kept them in an
+ * in-process Map, meaning a deploy / crash / autoscale event would wipe every
+ * caller's reservations and a parallel burst could briefly slip past the
+ * daily cap before the next quota read caught up.
+ *
+ * Acquire = INSERT one row with `expires_at = NOW() + AI_INFLIGHT_TTL_MS`,
+ * returning its id (the reservation token).
+ * Release = DELETE that row by id.
+ * Count   = COUNT non-expired rows for the caller's user key.
+ *
+ * The TTL is a safety net for crashed / dropped requests — `releaseInflight`
+ * is wired up to fire on `res.on("close"|"finish")` so the common case
+ * removes the row immediately. A periodic `sweepExpiredInflightReservations`
+ * job deletes stale rows so the table stays small.
+ */
 
-export function getInflightCount(userKey: string): number {
-  return inflightCounts.get(userKey) ?? 0;
+export async function getInflightCount(userKey: string): Promise<number> {
+  const result = (await db.execute(sql`
+    SELECT COUNT(*)::int AS count
+    FROM ai_inflight_reservations
+    WHERE user_key = ${userKey} AND expires_at > NOW()
+  `)) as { rows?: Array<{ count?: number | string }> };
+  return Number(result.rows?.[0]?.count ?? 0);
 }
 
-export function acquireInflight(userKey: string): void {
-  inflightCounts.set(userKey, (inflightCounts.get(userKey) ?? 0) + 1);
+export type InflightToken = number;
+
+export async function acquireInflight(userKey: string): Promise<InflightToken> {
+  const expiresAt = new Date(Date.now() + AI_INFLIGHT_TTL_MS);
+  const result = (await db.execute(sql`
+    INSERT INTO ai_inflight_reservations (user_key, expires_at)
+    VALUES (${userKey}, ${expiresAt})
+    RETURNING id
+  `)) as { rows?: Array<{ id?: number | string }> };
+  return Number(result.rows?.[0]?.id ?? 0);
 }
 
-export function releaseInflight(userKey: string): void {
-  const next = (inflightCounts.get(userKey) ?? 1) - 1;
-  if (next <= 0) inflightCounts.delete(userKey);
-  else inflightCounts.set(userKey, next);
+export async function releaseInflight(token: InflightToken): Promise<void> {
+  if (!token) return;
+  await db.execute(sql`
+    DELETE FROM ai_inflight_reservations WHERE id = ${token}
+  `);
+}
+
+/**
+ * Atomic admission check + reservation insert, all inside one DB transaction
+ * with a per-`userKey` advisory lock. The lock serialises every concurrent
+ * gate check for the same caller (across processes!) so the read-then-insert
+ * pair cannot race: any other transaction holding the same lock blocks here
+ * until we commit, at which point the in-flight COUNT it reads will include
+ * our newly-inserted row. This preserves the "11 concurrent requests when
+ * the cap is 10 admit at most 10" property that the in-process Map version
+ * had within a single process, and now extends it across processes too.
+ *
+ * Returns `{ ok: true, token }` for the caller to release on response close,
+ * or `{ ok: false, code }` for the gate to translate into a 429 message.
+ */
+export type SidekickAdmission =
+  | { ok: true; token: InflightToken }
+  | { ok: false; code: "ai_daily_limit_reached" | "ai_monthly_token_limit_reached" };
+
+export async function tryAcquireSidekickSlot(userKey: string): Promise<SidekickAdmission> {
+  const isAuth = isAuthenticatedKey(userKey);
+  const dailyLimit = isAuth ? AI_DAILY_LIMIT_USER : AI_DAILY_LIMIT_ANON;
+  const monthlyTokenLimit = isAuth ? AI_MONTHLY_TOKEN_LIMIT_USER : AI_MONTHLY_TOKEN_LIMIT_ANON;
+  const today = todayUtc();
+  const { start, end } = currentMonthRangeUtc();
+  const expiresAt = new Date(Date.now() + AI_INFLIGHT_TTL_MS);
+
+  return await db.transaction(async (tx) => {
+    // Per-user-key transactional advisory lock. Any other call to
+    // tryAcquireSidekickSlot for the same userKey blocks here until our
+    // transaction commits/rolls back — that closes the read-then-insert
+    // race window across processes.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userKey}))`);
+
+    const todayRow = (await tx.execute(sql`
+      SELECT COALESCE(SUM(question_count), 0)::int AS q
+      FROM ai_usage WHERE user_key = ${userKey} AND date = ${today}
+    `)) as { rows?: Array<{ q?: number | string }> };
+    const monthRow = (await tx.execute(sql`
+      SELECT COALESCE(SUM(input_tokens + output_tokens), 0)::int AS t
+      FROM ai_usage
+      WHERE user_key = ${userKey} AND date >= ${start} AND date < ${end}
+    `)) as { rows?: Array<{ t?: number | string }> };
+    const inflightRow = (await tx.execute(sql`
+      SELECT COUNT(*)::int AS c
+      FROM ai_inflight_reservations
+      WHERE user_key = ${userKey} AND expires_at > NOW()
+    `)) as { rows?: Array<{ c?: number | string }> };
+
+    const used = Number(todayRow.rows?.[0]?.q ?? 0);
+    const tokens = Number(monthRow.rows?.[0]?.t ?? 0);
+    const inflight = Number(inflightRow.rows?.[0]?.c ?? 0);
+
+    if (used + inflight >= dailyLimit) {
+      return { ok: false, code: "ai_daily_limit_reached" as const };
+    }
+    if (tokens + inflight * AI_INFLIGHT_AVG_TOKENS >= monthlyTokenLimit) {
+      return { ok: false, code: "ai_monthly_token_limit_reached" as const };
+    }
+
+    const insRes = (await tx.execute(sql`
+      INSERT INTO ai_inflight_reservations (user_key, expires_at)
+      VALUES (${userKey}, ${expiresAt})
+      RETURNING id
+    `)) as { rows?: Array<{ id?: number | string }> };
+    return { ok: true as const, token: Number(insRes.rows?.[0]?.id ?? 0) };
+  });
+}
+
+/** Best-effort sweep of expired reservation rows. Returns rows removed. */
+export async function sweepExpiredInflightReservations(): Promise<number> {
+  const result = (await db.execute(sql`
+    DELETE FROM ai_inflight_reservations WHERE expires_at <= NOW()
+  `)) as { rowCount?: number | null };
+  return Number(result.rowCount ?? 0);
 }
 
 /**
@@ -183,11 +289,15 @@ export function releaseInflight(userKey: string): void {
  * `AI_INFLIGHT_AVG_TOKENS` tokens) on top of the persisted quota so that
  * 20 simultaneous requests from the same caller cannot all read the same
  * stale "remaining" balance and race past the daily cap. The caller that
- * holds the reservation ITSELF is excluded so its own slot doesn't count
- * twice when checking whether to admit it.
+ * holds the reservation ITSELF is excluded by passing `excludeSelf: true`
+ * so its own slot doesn't count twice when checking whether to admit it.
  */
-export function applyInflightToQuota(quota: RemainingQuota, userKey: string, excludeSelf: boolean): RemainingQuota {
-  const others = Math.max(0, getInflightCount(userKey) - (excludeSelf ? 1 : 0));
+export function applyInflightToQuota(
+  quota: RemainingQuota,
+  inflightCount: number,
+  excludeSelf: boolean,
+): RemainingQuota {
+  const others = Math.max(0, inflightCount - (excludeSelf ? 1 : 0));
   if (others === 0) return quota;
   return {
     ...quota,
@@ -288,29 +398,24 @@ export function sidekickQuotaGate(req: Request, res: Response, next: NextFunctio
   const userKey = getUserKey(req);
   res.locals.aiUserKey = userKey;
 
-  getRemainingQuota(userKey)
-    .then((q) => {
-      const withInflight = applyInflightToQuota(q, userKey, /* excludeSelf */ false);
-      if (withInflight.questionsLeft <= 0) {
-        res.status(429).json({
-          message: AI_DAILY_LIMIT_REACHED_MESSAGE,
-          code: "ai_daily_limit_reached",
-        });
+  tryAcquireSidekickSlot(userKey)
+    .then((result) => {
+      if (!result.ok) {
+        const message =
+          result.code === "ai_daily_limit_reached"
+            ? AI_DAILY_LIMIT_REACHED_MESSAGE
+            : AI_MONTHLY_TOKEN_LIMIT_REACHED_MESSAGE;
+        res.status(429).json({ message, code: result.code });
         return;
       }
-      if (withInflight.tokensLeft <= 0) {
-        res.status(429).json({
-          message: AI_MONTHLY_TOKEN_LIMIT_REACHED_MESSAGE,
-          code: "ai_monthly_token_limit_reached",
-        });
-        return;
-      }
-      acquireInflight(userKey);
+      const { token } = result;
       let released = false;
       const release = () => {
         if (released) return;
         released = true;
-        releaseInflight(userKey);
+        releaseInflight(token).catch((err) => {
+          console.error("[ai-usage] failed to release in-flight reservation", err);
+        });
       };
       res.on("close", release);
       res.on("finish", release);
@@ -320,6 +425,29 @@ export function sidekickQuotaGate(req: Request, res: Response, next: NextFunctio
       console.error("[ai-usage] quota gate error", err);
       res.status(503).json({ message: "Service temporarily unavailable. Please try again shortly." });
     });
+}
+
+// ---------------------------------------------------------------------------
+// In-flight reservation sweep job
+// ---------------------------------------------------------------------------
+
+const INFLIGHT_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Start the recurring sweep that deletes expired `ai_inflight_reservations`
+ * rows. The release-on-close handler removes rows immediately for normal
+ * traffic; this sweep is a safety net for crashed processes / dropped
+ * connections and keeps the table small.
+ */
+export function startInflightReservationSweepJob(): void {
+  const run = () => {
+    sweepExpiredInflightReservations().catch((err) => {
+      console.error("[ai-usage] inflight sweep failed", err);
+    });
+  };
+  run();
+  const timer = setInterval(run, INFLIGHT_SWEEP_INTERVAL_MS);
+  timer.unref();
 }
 
 // ---------------------------------------------------------------------------

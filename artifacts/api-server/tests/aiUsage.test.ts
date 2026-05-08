@@ -8,6 +8,7 @@ import {
   AI_DAILY_LIMIT_ANON,
   AI_DAILY_LIMIT_USER,
   AI_INFLIGHT_AVG_TOKENS,
+  AI_INFLIGHT_TTL_MS,
   AI_MONTHLY_TOKEN_LIMIT_ANON,
   AI_MONTHLY_TOKEN_LIMIT_USER,
   acquireInflight,
@@ -21,6 +22,7 @@ import {
   incrementUsage,
   isAuthenticatedKey,
   releaseInflight,
+  sweepExpiredInflightReservations,
   todayUtc,
 } from "../src/lib/aiUsage.js";
 
@@ -46,10 +48,6 @@ beforeEach(() => {
   dbMocks.execute.mockClear();
   dbMocks.select.mockClear();
   dbMocks.findFirst.mockClear();
-  // Drain any leaked inflight reservations from earlier tests.
-  for (const k of ["user:u1", "ip:1.2.3.4", "ip:9.9.9.9", "ip:10.0.0.1", "ip:127.0.0.1", "sess:abcdef"]) {
-    while (getInflightCount(k) > 0) releaseInflight(k);
-  }
 });
 
 describe("getUserKey", () => {
@@ -139,33 +137,22 @@ describe("getRemainingQuota", () => {
 });
 
 describe("applyInflightToQuota", () => {
+  const base = {
+    questionsLeft: 10,
+    tokensLeft: 100_000,
+    dailyLimit: 10,
+    monthlyTokenLimit: 100_000,
+    questionsUsedToday: 0,
+    tokensUsedThisMonth: 0,
+    isAuthenticated: false,
+  };
+
   it("returns the same quota when no in-flight reservations exist", () => {
-    const base = {
-      questionsLeft: 10,
-      tokensLeft: 1000,
-      dailyLimit: 10,
-      monthlyTokenLimit: 1000,
-      questionsUsedToday: 0,
-      tokensUsedThisMonth: 0,
-      isAuthenticated: false,
-    };
-    expect(applyInflightToQuota(base, "ip:9.9.9.9", false)).toEqual(base);
+    expect(applyInflightToQuota(base, 0, false)).toEqual(base);
   });
 
   it("subtracts other in-flight reservations from the quota", () => {
-    acquireInflight("ip:9.9.9.9");
-    acquireInflight("ip:9.9.9.9");
-    acquireInflight("ip:9.9.9.9");
-    const base = {
-      questionsLeft: 10,
-      tokensLeft: 100_000,
-      dailyLimit: 10,
-      monthlyTokenLimit: 100_000,
-      questionsUsedToday: 0,
-      tokensUsedThisMonth: 0,
-      isAuthenticated: false,
-    };
-    const out = applyInflightToQuota(base, "ip:9.9.9.9", false);
+    const out = applyInflightToQuota(base, 3, false);
     expect(out.questionsLeft).toBe(10 - 3);
     expect(out.tokensLeft).toBe(100_000 - 3 * AI_INFLIGHT_AVG_TOKENS);
     expect(out.questionsUsedToday).toBe(3);
@@ -173,35 +160,66 @@ describe("applyInflightToQuota", () => {
   });
 
   it("excludes the caller's own reservation when excludeSelf=true", () => {
-    acquireInflight("ip:9.9.9.9");
-    acquireInflight("ip:9.9.9.9");
-    const base = {
-      questionsLeft: 10,
-      tokensLeft: 100_000,
-      dailyLimit: 10,
-      monthlyTokenLimit: 100_000,
-      questionsUsedToday: 0,
-      tokensUsedThisMonth: 0,
-      isAuthenticated: false,
-    };
-    const out = applyInflightToQuota(base, "ip:9.9.9.9", true);
+    const out = applyInflightToQuota(base, 2, true);
     expect(out.questionsLeft).toBe(10 - 1);
   });
 
   it("clamps to zero when in-flight count exceeds quota", () => {
-    for (let i = 0; i < 50; i++) acquireInflight("ip:9.9.9.9");
-    const base = {
-      questionsLeft: 10,
-      tokensLeft: 1000,
-      dailyLimit: 10,
-      monthlyTokenLimit: 1000,
-      questionsUsedToday: 0,
-      tokensUsedThisMonth: 0,
-      isAuthenticated: false,
-    };
-    const out = applyInflightToQuota(base, "ip:9.9.9.9", false);
+    const out = applyInflightToQuota(base, 50, false);
     expect(out.questionsLeft).toBe(0);
     expect(out.tokensLeft).toBe(0);
+  });
+});
+
+describe("acquireInflight / releaseInflight / getInflightCount (persisted)", () => {
+  it("acquireInflight INSERTs a row with a TTL'd expires_at and returns its id", async () => {
+    dbState.executeResults.push({ rows: [{ id: 42 }] });
+    const token = await acquireInflight("ip:1.2.3.4");
+    expect(token).toBe(42);
+    const call = dbState.executes.at(-1)!;
+    const sql = call.chunks.filter((c) => typeof c === "string").join(" ");
+    expect(sql).toMatch(/INSERT INTO ai_inflight_reservations/);
+    expect(sql).toMatch(/RETURNING id/);
+    expect(call.values).toContain("ip:1.2.3.4");
+    // The configured TTL is also referenced by the helper so the gate
+    // can't accidentally hand out forever-locks.
+    expect(AI_INFLIGHT_TTL_MS).toBeGreaterThan(0);
+  });
+
+  it("releaseInflight DELETEs by id and is a no-op for falsy tokens", async () => {
+    await releaseInflight(0);
+    expect(dbMocks.execute).not.toHaveBeenCalled();
+
+    await releaseInflight(7);
+    const call = dbState.executes.at(-1)!;
+    const sql = call.chunks.filter((c) => typeof c === "string").join(" ");
+    expect(sql).toMatch(/DELETE FROM ai_inflight_reservations/);
+    expect(call.values).toContain(7);
+  });
+
+  it("getInflightCount counts non-expired rows for the user key", async () => {
+    dbState.executeResults.push({ rows: [{ count: 3 }] });
+    const n = await getInflightCount("ip:9.9.9.9");
+    expect(n).toBe(3);
+    const call = dbState.executes.at(-1)!;
+    const sql = call.chunks.filter((c) => typeof c === "string").join(" ");
+    expect(sql).toMatch(/SELECT COUNT/);
+    expect(sql).toMatch(/FROM ai_inflight_reservations/);
+    expect(sql).toMatch(/expires_at > NOW\(\)/);
+    expect(call.values).toContain("ip:9.9.9.9");
+  });
+
+  it("getInflightCount returns 0 when the row is missing", async () => {
+    expect(await getInflightCount("ip:nobody")).toBe(0);
+  });
+
+  it("sweepExpiredInflightReservations DELETEs expired rows and returns the rowCount", async () => {
+    dbState.executeResults.push({ rowCount: 4 });
+    const removed = await sweepExpiredInflightReservations();
+    expect(removed).toBe(4);
+    const call = dbState.executes.at(-1)!;
+    const sql = call.chunks.filter((c) => typeof c === "string").join(" ");
+    expect(sql).toMatch(/DELETE FROM ai_inflight_reservations WHERE expires_at <= NOW\(\)/);
   });
 });
 
@@ -218,9 +236,6 @@ describe("incrementUsage", () => {
     const joined = call.chunks.filter((c) => typeof c === "string").join(" ");
     expect(joined).toMatch(/INSERT INTO ai_usage/);
     expect(joined).toMatch(/ON CONFLICT \(user_key, date, model\) DO UPDATE/);
-    // The five primitive number deltas (countDelta, toolCalls, inputTokens,
-    // outputTokens, plus the two repeats inside the SET clause) and the
-    // string params (user_key, date, model) all flow through.
     const values = call.values;
     expect(values).toContain("ip:1.2.3.4");
     expect(values).toContain("gpt-5-mini");
@@ -236,7 +251,6 @@ describe("incrementUsage", () => {
     expect(dbMocks.execute).toHaveBeenCalledTimes(1);
     const values = dbState.executes[0].values;
     expect(values).toContain(1); // countDelta default
-    // Three remaining deltas default to 0 — at least one occurrence.
     expect(values.filter((v) => v === 0).length).toBeGreaterThanOrEqual(3);
   });
 
@@ -245,7 +259,6 @@ describe("incrementUsage", () => {
     const values = dbState.executes[0].values;
     expect(values).toContain(50);
     expect(values).toContain(25);
-    // questionCount delta is 0 in both INSERT and UPDATE positions.
     const zeros = values.filter((v) => v === 0).length;
     expect(zeros).toBeGreaterThanOrEqual(2);
   });
@@ -265,12 +278,10 @@ describe("getMonthlyUsageReport", () => {
     expect(report.monthEnd).toBe(range.end);
 
     expect(report.rows).toHaveLength(3);
-    // Sorted by cost descending.
     expect(report.rows[0].userKey).toBe("user:big");
     expect(report.rows[2].userKey).toBe("ip:b");
     expect(report.rows[2].estimatedCostUsd).toBe(0);
 
-    // Per-row cost matches estimateCostUsd
     for (const row of report.rows) {
       expect(row.estimatedCostUsd).toBeCloseTo(estimateCostUsd(row.inputTokens, row.outputTokens), 9);
     }

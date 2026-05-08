@@ -13,12 +13,18 @@ import { vi } from "vitest";
 export const dbState = {
   selectResults: [] as unknown[][],
   executes: [] as { chunks: unknown[]; values: unknown[] }[],
+  // Canned responses for `db.execute(sql\`...\`)` calls (one per call, in
+  // order). Each entry is `{ rows?: unknown[]; rowCount?: number }`. The
+  // in-flight reservation helpers in aiUsage.ts use raw SQL via execute,
+  // so tests queue the COUNT/RETURNING/DELETE rows here.
+  executeResults: [] as Array<{ rows?: unknown[]; rowCount?: number }>,
   alertState: null as { key: string; lastSentAt: Date } | null,
 };
 
 export function resetDbState(): void {
   dbState.selectResults.length = 0;
   dbState.executes.length = 0;
+  dbState.executeResults.length = 0;
   dbState.alertState = null;
 }
 
@@ -83,14 +89,23 @@ const select = vi.fn((_cols?: unknown) => ({
 
 const execute = vi.fn(async (sqlObj: { queryChunks?: unknown[] }) => {
   dbState.executes.push(flattenSql(sqlObj));
-  return { rows: [] };
+  const next = dbState.executeResults.shift();
+  return next ?? { rows: [] };
 });
 
 const findFirst = vi.fn(async (_opts?: unknown) => dbState.alertState);
 
+// `db.transaction(cb)` invokes the callback with a tx-like handle that
+// shares the same `execute` (and `select`) recorder so tests can queue
+// canned responses for the SQL the transaction issues, in order.
+const transaction = vi.fn(async (cb: (tx: { execute: typeof execute; select: typeof select }) => unknown) => {
+  return await cb({ execute, select });
+});
+
 export const db = {
   select,
   execute,
+  transaction,
   query: {
     aiAlertStateTable: { findFirst },
   },
@@ -98,5 +113,6 @@ export const db = {
 
 export const aiUsageTable = { _: "ai_usage" } as unknown;
 export const aiAlertStateTable = { _: "ai_alert_state" } as unknown;
+export const aiInflightReservationsTable = { _: "ai_inflight_reservations" } as unknown;
 
-export const dbMocks = { select, execute, findFirst };
+export const dbMocks = { select, execute, transaction, findFirst };

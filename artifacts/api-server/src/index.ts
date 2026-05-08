@@ -11,6 +11,7 @@ async function bootstrap(): Promise<void> {
   const { startWebhookDispatcher } = await import("./lib/webhookDispatcher.js");
   const { startAttachmentGCJob } = await import("./lib/attachmentGC.js");
   const { startAiSpendAlertJob } = await import("./lib/aiSpendAlert.js");
+  const { startInflightReservationSweepJob } = await import("./lib/aiUsage.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -46,6 +47,7 @@ async function bootstrap(): Promise<void> {
     startWebhookDispatcher();
     startAttachmentGCJob();
     startAiSpendAlertJob();
+    startInflightReservationSweepJob();
   });
 }
 

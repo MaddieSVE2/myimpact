@@ -27,6 +27,7 @@ import {
   aiPerIpLimiter,
   aiPerUserLimiter,
   applyInflightToQuota,
+  getInflightCount,
   getRemainingQuota,
   getUserKey,
   incrementUsage,
@@ -296,9 +297,12 @@ router.get("/quota", async (req, res) => {
   try {
     attachUserIfPresent(req, res, () => {});
     const userKey = getUserKey(req);
-    const quota = await getRemainingQuota(userKey);
+    const [quota, inflightCount] = await Promise.all([
+      getRemainingQuota(userKey),
+      getInflightCount(userKey),
+    ]);
     res.json({
-      quota: applyInflightToQuota(quota, userKey, /* excludeSelf */ false),
+      quota: applyInflightToQuota(quota, inflightCount, /* excludeSelf */ false),
     });
   } catch (err) {
     console.error("[sidekick] quota error:", err);
