@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -198,10 +198,84 @@ router.post("/suggestions", (req, res) => {
   res.json({ suggestions: output });
 });
 
+// Calendar-year helpers --------------------------------------------------
+// Every entry has an `entryDate` that determines which calendar year and
+// month it belongs to. These helpers keep that logic in one place so the
+// dashboard, year picker, recap, and habit-bulk-create stay consistent.
+function parseEntryDate(raw: unknown): Date {
+  if (typeof raw === "string" && raw) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
+}
+
+function calendarMonthLabel(d: Date): string {
+  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function startOfYearUTC(year: number): Date {
+  return new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+}
+
+// Exclusive upper bound for calendar-year queries: midnight on Jan 1 of the
+// next year. All year filters must use this as a strict `<` so that an entry
+// dated 1 Jan of the following year never leaks back into the prior year's
+// totals.
+function endOfYearUTC(year: number): Date {
+  return new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+}
+
+function startOfMonthOfDate(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
+}
+
+// Pick out the activity ids embedded in a stored `activitiesJson` payload so
+// /save can detect when a user is about to create a new entry that would
+// overlap an already-existing habit entry for the same calendar month.
+function extractActivityIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids: string[] = [];
+  for (const a of raw) {
+    if (a && typeof a === "object" && typeof (a as { activityId?: unknown }).activityId === "string") {
+      ids.push((a as { activityId: string }).activityId);
+    }
+  }
+  return ids;
+}
+
+function startOfMonthUTC(year: number, monthIndex: number): Date {
+  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0));
+}
+
 router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const body = SaveImpactBody.parse(req.body);
   const userId = req.user!.id;
-  const periodLabel = body.period ?? null;
+  const rawBody = req.body as Record<string, unknown>;
+  const entryDate = parseEntryDate(rawBody.entryDate);
+  const todayUTC = new Date();
+  // If the entry is dated to a prior calendar year, mark its source so the
+  // UI can label it "added later". Habit-spawned entries are never created
+  // through /save (see /templates/:id/confirm), so source is one of
+  // "user" | "retrospective".
+  const isRetrospective = entryDate.getUTCFullYear() < todayUTC.getUTCFullYear();
+  const source = isRetrospective ? "retrospective" : "user";
+  // Derive a calendar period label when the client doesn't supply one,
+  // so existing UI surfaces (history list, org webhooks) keep showing a
+  // human-friendly window.
+  const periodLabel = body.period ?? calendarMonthLabel(entryDate);
+
+  // Optional `targetRecordId` lets the client deliberately edit a specific
+  // existing record (used by the History "edit" flow). When omitted, /save
+  // always creates a new row — we no longer upsert by periodLabel, because
+  // habits now legitimately produce multiple records sharing the same label.
+  const targetRecordIdRaw = rawBody.targetRecordId;
+  const targetRecordId = typeof targetRecordIdRaw === "number" && Number.isFinite(targetRecordIdRaw)
+    ? targetRecordIdRaw
+    : typeof targetRecordIdRaw === "string" && /^\d+$/.test(targetRecordIdRaw)
+      ? parseInt(targetRecordIdRaw, 10)
+      : null;
+  const force = rawBody.force === true;
 
   // Recompute impact server-side from the submitted activities so that
   // client-supplied totals in body.impactResult are never trusted or stored.
@@ -236,28 +310,80 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     outwardCode: body.outwardCode ?? null,
     lat: body.lat != null ? String(body.lat) : null,
     lng: body.lng != null ? String(body.lng) : null,
+    entryDate,
+    source,
   };
 
   let record;
 
-  if (periodLabel !== null) {
-    const existing = await db
-      .select()
+  if (targetRecordId != null) {
+    // Explicit edit. Verify ownership before updating so users can't touch
+    // each other's rows by guessing ids.
+    const [owned] = await db
+      .select({
+        id: impactRecordsTable.id,
+        source: impactRecordsTable.source,
+        habitTemplateId: impactRecordsTable.habitTemplateId,
+      })
       .from(impactRecordsTable)
-      .where(and(eq(impactRecordsTable.userId, userId), eq(impactRecordsTable.periodLabel, periodLabel)))
+      .where(and(eq(impactRecordsTable.id, targetRecordId), eq(impactRecordsTable.userId, userId)))
       .limit(1);
-
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(impactRecordsTable)
-        .set({ ...newValues, createdAt: sql`now()` })
-        .where(eq(impactRecordsTable.id, existing[0].id))
-        .returning();
-      record = updated;
+    if (!owned) {
+      res.status(404).json({ error: "Target record not found" });
+      return;
     }
-  }
+    // CRITICAL: when editing a habit-generated entry (the canonical
+    // conflict-resolution path), keep its `source` and `habitTemplateId`
+    // intact. Otherwise the row would lose its habit identity and a
+    // subsequent overlapping save in the same month would slip past the
+    // 409 conflict check and silently double-count.
+    const updateValues = owned.habitTemplateId != null || owned.source === "habit"
+      ? { ...newValues, source: owned.source, habitTemplateId: owned.habitTemplateId }
+      : newValues;
+    const [updated] = await db
+      .update(impactRecordsTable)
+      .set(updateValues)
+      .where(eq(impactRecordsTable.id, owned.id))
+      .returning();
+    record = updated;
+  } else {
+    // No silent merge: if a habit-generated entry already covers the same
+    // calendar month with any overlapping activity, return 409 so the
+    // client can offer the user the choice to edit that existing entry
+    // (or pass `force: true` to log an additional one anyway).
+    if (!force) {
+      const monthStart = startOfMonthOfDate(entryDate);
+      const monthEnd = new Date(Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth() + 1, 1, 0, 0, 0));
+      // Treat a row as habit-generated for conflict purposes if EITHER its
+      // source is "habit" OR it has a habitTemplateId. Belt-and-braces in
+      // case `source` was ever rewritten by an earlier code path.
+      const candidates = await db
+        .select({ id: impactRecordsTable.id, activitiesJson: impactRecordsTable.activitiesJson, periodLabel: impactRecordsTable.periodLabel, source: impactRecordsTable.source, habitTemplateId: impactRecordsTable.habitTemplateId })
+        .from(impactRecordsTable)
+        .where(
+          and(
+            eq(impactRecordsTable.userId, userId),
+            gte(impactRecordsTable.entryDate, monthStart),
+            lt(impactRecordsTable.entryDate, monthEnd),
+          ),
+        )
+        .then((rows) => rows.filter((r) => r.source === "habit" || r.habitTemplateId != null));
+      const newActivityIds = new Set(extractActivityIds(body.activities as unknown));
+      const conflict = candidates.find((c) =>
+        extractActivityIds(c.activitiesJson).some((id) => newActivityIds.has(id)),
+      );
+      if (conflict) {
+        res.status(409).json({
+          error: "habit_entry_conflict",
+          message:
+            "A recurring habit already has an entry for this month with overlapping activities. Edit it from your history, or resend with force=true to add this as a separate entry.",
+          existingRecordId: String(conflict.id),
+          period: conflict.periodLabel ?? periodLabel,
+        });
+        return;
+      }
+    }
 
-  if (!record) {
     const [inserted] = await db
       .insert(impactRecordsTable)
       .values({ userId, ...newValues })
@@ -311,7 +437,11 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     name: record.name,
     period: record.periodLabel ?? null,
     createdAt: record.createdAt.toISOString(),
+    entryDate: record.entryDate.toISOString().slice(0, 10),
+    source: record.source,
+    habitTemplateId: record.habitTemplateId ?? null,
     impactResult: serverImpactResult,
+    tags: record.tags ?? [],
   });
 });
 
@@ -323,7 +453,7 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const body = req.body as { periodLabel?: string; tags?: unknown };
+  const body = req.body as { periodLabel?: string; tags?: unknown; entryDate?: string };
   const { periodLabel } = body;
 
   const updates: Record<string, unknown> = {};
@@ -337,9 +467,13 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
       .filter(Boolean);
     updates.tags = Array.from(new Set(tags));
   }
+  if (typeof body.entryDate === "string" && body.entryDate) {
+    const d = new Date(body.entryDate);
+    if (!isNaN(d.getTime())) updates.entryDate = d;
+  }
 
   if (Object.keys(updates).length === 0) {
-    res.status(400).json({ error: "Provide periodLabel or tags" });
+    res.status(400).json({ error: "Provide periodLabel, entryDate, or tags" });
     return;
   }
 
@@ -366,6 +500,9 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     name: updated.name,
     period: updated.periodLabel ?? null,
     createdAt: updated.createdAt.toISOString(),
+    entryDate: updated.entryDate.toISOString().slice(0, 10),
+    source: updated.source,
+    habitTemplateId: updated.habitTemplateId ?? null,
     tags: updated.tags ?? [],
   });
 });
@@ -452,6 +589,14 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
 
   const conditions = [eq(impactRecordsTable.userId, userId)];
 
+  // Calendar-year filter — when the dashboard's year picker selects a year,
+  // only entries whose entry_date falls in that year come back.
+  const yearParam = typeof req.query.year === "string" ? parseInt(req.query.year, 10) : NaN;
+  if (!isNaN(yearParam) && yearParam >= 2000 && yearParam <= 2100) {
+    conditions.push(gte(impactRecordsTable.entryDate, startOfYearUTC(yearParam)));
+    conditions.push(lt(impactRecordsTable.entryDate, endOfYearUTC(yearParam)));
+  }
+
   if (q) {
     const like = `%${q}%`;
     const searchClause = or(
@@ -470,7 +615,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     .select()
     .from(impactRecordsTable)
     .where(and(...conditions))
-    .orderBy(desc(impactRecordsTable.createdAt));
+    .orderBy(desc(impactRecordsTable.entryDate), desc(impactRecordsTable.createdAt));
 
   const profile = await db.query.userProfilesTable.findFirst({
     where: eq(userProfilesTable.userId, userId),
@@ -508,6 +653,9 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     name: r.name,
     period: r.periodLabel ?? null,
     createdAt: r.createdAt.toISOString(),
+    entryDate: r.entryDate.toISOString().slice(0, 10),
+    source: r.source,
+    habitTemplateId: r.habitTemplateId ?? null,
     impactResult: r.resultJson,
     activities: r.activitiesJson,
     region: r.region ?? null,
@@ -673,8 +821,8 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       return;
     }
 
-    const start = new Date(Date.UTC(yearParam, 0, 1, 0, 0, 0));
-    const end = new Date(Date.UTC(yearParam + 1, 0, 1, 0, 0, 0));
+    const start = startOfYearUTC(yearParam);
+    const end = endOfYearUTC(yearParam);
 
     const yearRecords = await db
       .select()
@@ -682,11 +830,11 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       .where(
         and(
           eq(impactRecordsTable.userId, userId),
-          gte(impactRecordsTable.createdAt, start),
-          lte(impactRecordsTable.createdAt, end),
+          gte(impactRecordsTable.entryDate, start),
+          lt(impactRecordsTable.entryDate, end),
         ),
       )
-      .orderBy(desc(impactRecordsTable.createdAt));
+      .orderBy(desc(impactRecordsTable.entryDate));
 
     const lifetimeRecords = await db
       .select()
@@ -1131,11 +1279,33 @@ router.delete("/templates/:id", authenticate, async (req: AuthenticatedRequest, 
     return;
   }
 
+  // Untoggle behaviour: when ?removeFutureEntries=true is set, also delete
+  // every habit-generated impact entry for this template dated to the
+  // current month or later. Past months are preserved so the user's
+  // historical totals don't shift retroactively.
+  let removedFutureEntries = 0;
+  const removeFuture = req.query.removeFutureEntries === "true" || req.query.removeFutureEntries === "1";
+  if (removeFuture) {
+    const now = new Date();
+    const cutoff = startOfMonthUTC(now.getUTCFullYear(), now.getUTCMonth());
+    const removed = await db
+      .delete(impactRecordsTable)
+      .where(
+        and(
+          eq(impactRecordsTable.userId, userId),
+          eq(impactRecordsTable.habitTemplateId, id),
+          gte(impactRecordsTable.entryDate, cutoff),
+        ),
+      )
+      .returning({ id: impactRecordsTable.id });
+    removedFutureEntries = removed.length;
+  }
+
   await db
     .delete(recurringTemplatesTable)
     .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)));
 
-  res.json({ success: true });
+  res.json({ success: true, removedFutureEntries });
 });
 
 router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -1157,13 +1327,230 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     return;
   }
 
+  // Bulk-create one impact entry per remaining month of the current calendar
+  // year (from this month through December), each dated to the 1st of the
+  // month. The recurring template row stays intact as the "this habit is on"
+  // flag for the year-rollover prompt. Months that already have a habit-
+  // generated entry for this template are skipped so the user can re-tick a
+  // habit without piling up duplicates.
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const startMonth = now.getUTCMonth();
+
+  const existingHabitEntries = await db
+    .select({ entryDate: impactRecordsTable.entryDate })
+    .from(impactRecordsTable)
+    .where(
+      and(
+        eq(impactRecordsTable.userId, userId),
+        eq(impactRecordsTable.habitTemplateId, id),
+        gte(impactRecordsTable.entryDate, startOfYearUTC(year)),
+        lt(impactRecordsTable.entryDate, endOfYearUTC(year)),
+      ),
+    );
+  const existingMonths = new Set(existingHabitEntries.map((r) => r.entryDate.getUTCMonth()));
+
+  const activitiesJson = existing.defaultActivities as unknown;
+  const activities = Array.isArray(activitiesJson) ? (activitiesJson as Parameters<typeof calculateImpact>[0]) : [];
+  const donations = Number(existing.defaultDonationsGBP ?? 0);
+  const result = calculateImpact(activities, donations, 0, []);
+
+  const inserts: Array<typeof impactRecordsTable.$inferInsert> = [];
+  for (let m = startMonth; m <= 11; m++) {
+    if (existingMonths.has(m)) continue;
+    inserts.push({
+      userId,
+      name: existing.label,
+      periodLabel: calendarMonthLabel(startOfMonthUTC(year, m)),
+      totalValue: String(result.totalValue),
+      impactValue: String(result.impactValue),
+      contributionValue: String(result.contributionValue),
+      donationsValue: String(result.donationsValue),
+      personalDevelopmentValue: String(result.personalDevelopmentValue),
+      totalHours: result.totalHours,
+      activitiesJson: activities,
+      resultJson: result,
+      entryDate: startOfMonthUTC(year, m),
+      source: "habit",
+      habitTemplateId: id,
+    });
+  }
+  if (inserts.length > 0) {
+    await db.insert(impactRecordsTable).values(inserts);
+  }
+
   const [updated] = await db
     .update(recurringTemplatesTable)
     .set({ lastConfirmedAt: new Date() })
     .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
     .returning();
 
-  res.json(serializeTemplate(updated as TemplateRow, new Date()));
+  const serialized = serializeTemplate(updated as TemplateRow, new Date()) as Record<string, unknown>;
+  serialized.entriesCreated = inserts.length;
+  res.json(serialized);
+});
+
+// List the calendar years the user has logged anything in. Powers the year
+// picker on the dashboard, history, and stats panels — whichever years come
+// back are the ones the user can switch between.
+router.get("/years", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const rows = await db
+    .select({
+      year: sql<number>`EXTRACT(YEAR FROM ${impactRecordsTable.entryDate})::int`,
+      entryCount: sql<number>`count(*)::int`,
+    })
+    .from(impactRecordsTable)
+    .where(eq(impactRecordsTable.userId, userId))
+    .groupBy(sql`EXTRACT(YEAR FROM ${impactRecordsTable.entryDate})`)
+    .orderBy(desc(sql`EXTRACT(YEAR FROM ${impactRecordsTable.entryDate})`));
+
+  res.json({
+    years: rows.map((r) => ({ year: Number(r.year), entryCount: Number(r.entryCount) })),
+    currentYear: new Date().getUTCFullYear(),
+  });
+});
+
+// Year-rollover prompt — on the user's first visit on/after 1 January, the
+// UI shows this state. The prompt is "due" when the user has any prior-year
+// entries but no entries dated in the current calendar year yet. The habit
+// list comes straight from `recurring_templates` so the user can confirm,
+// edit, or untoggle each one before the new year's monthly entries are
+// bulk-created.
+router.get("/year-rollover", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const priorYear = currentYear - 1;
+
+  const [{ currentYearCount }] = await db
+    .select({ currentYearCount: sql<number>`count(*)::int` })
+    .from(impactRecordsTable)
+    .where(
+      and(
+        eq(impactRecordsTable.userId, userId),
+        gte(impactRecordsTable.entryDate, startOfYearUTC(currentYear)),
+        lt(impactRecordsTable.entryDate, endOfYearUTC(currentYear)),
+      ),
+    );
+
+  const priorYearRecords = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(
+      and(
+        eq(impactRecordsTable.userId, userId),
+        gte(impactRecordsTable.entryDate, startOfYearUTC(priorYear)),
+        lt(impactRecordsTable.entryDate, endOfYearUTC(priorYear)),
+      ),
+    );
+
+  let priorTotal = 0;
+  let priorHours = 0;
+  for (const r of priorYearRecords) {
+    const raw = r.resultJson as Record<string, unknown> | null;
+    if (raw && typeof raw.totalValue === "number") priorTotal += raw.totalValue;
+    if (raw && typeof raw.totalHours === "number") priorHours += raw.totalHours;
+  }
+
+  const habits = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(eq(recurringTemplatesTable.userId, userId));
+
+  const shouldShow = Number(currentYearCount) === 0 && priorYearRecords.length > 0;
+
+  res.json({
+    shouldShow,
+    priorYear: priorYearRecords.length > 0 ? priorYear : null,
+    priorYearTotalValue: priorYearRecords.length > 0 ? Math.round(priorTotal * 100) / 100 : null,
+    priorYearTotalHours: priorYearRecords.length > 0 ? priorHours : null,
+    currentYear,
+    habits: habits.map((h) => ({
+      templateId: h.id,
+      label: h.label,
+      defaultDonationsGBP: Number(h.defaultDonationsGBP ?? 0),
+      defaultActivities: h.defaultActivities,
+    })),
+  });
+});
+
+router.post("/year-rollover", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const body = req.body as { confirmedTemplateIds?: unknown };
+  const ids = Array.isArray(body.confirmedTemplateIds)
+    ? body.confirmedTemplateIds.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+    : [];
+
+  const now = new Date();
+  const year = now.getUTCFullYear();
+
+  if (ids.length === 0) {
+    res.json({ entriesCreated: 0, year });
+    return;
+  }
+
+  const habits = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(and(inArray(recurringTemplatesTable.id, ids), eq(recurringTemplatesTable.userId, userId)));
+
+  // Skip any template/month combos already populated, so re-confirming the
+  // prompt doesn't double-write entries.
+  const existingHabitEntries = await db
+    .select({
+      habitTemplateId: impactRecordsTable.habitTemplateId,
+      entryDate: impactRecordsTable.entryDate,
+    })
+    .from(impactRecordsTable)
+    .where(
+      and(
+        eq(impactRecordsTable.userId, userId),
+        gte(impactRecordsTable.entryDate, startOfYearUTC(year)),
+        lt(impactRecordsTable.entryDate, endOfYearUTC(year)),
+        inArray(impactRecordsTable.habitTemplateId, ids),
+      ),
+    );
+  const existingKey = new Set(
+    existingHabitEntries
+      .filter((r) => r.habitTemplateId != null)
+      .map((r) => `${r.habitTemplateId}:${r.entryDate.getUTCMonth()}`),
+  );
+
+  const inserts: Array<typeof impactRecordsTable.$inferInsert> = [];
+  for (const h of habits) {
+    const activitiesJson = h.defaultActivities as unknown;
+    const activities = Array.isArray(activitiesJson)
+      ? (activitiesJson as Parameters<typeof calculateImpact>[0])
+      : [];
+    const donations = Number(h.defaultDonationsGBP ?? 0);
+    const result = calculateImpact(activities, donations, 0, []);
+    for (let m = 0; m <= 11; m++) {
+      if (existingKey.has(`${h.id}:${m}`)) continue;
+      inserts.push({
+        userId,
+        name: h.label,
+        periodLabel: calendarMonthLabel(startOfMonthUTC(year, m)),
+        totalValue: String(result.totalValue),
+        impactValue: String(result.impactValue),
+        contributionValue: String(result.contributionValue),
+        donationsValue: String(result.donationsValue),
+        personalDevelopmentValue: String(result.personalDevelopmentValue),
+        totalHours: result.totalHours,
+        activitiesJson: activities,
+        resultJson: result,
+        entryDate: startOfMonthUTC(year, m),
+        source: "habit",
+        habitTemplateId: h.id,
+      });
+    }
+  }
+
+  if (inserts.length > 0) {
+    await db.insert(impactRecordsTable).values(inserts);
+  }
+
+  res.json({ entriesCreated: inserts.length, year });
 });
 
 router.get("/match-info", authenticate, async (req: AuthenticatedRequest, res) => {

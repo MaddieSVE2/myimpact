@@ -160,8 +160,41 @@ export default function History() {
   const { loadFromRecord } = useWizard();
 
   const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
+  const currentYear = new Date().getUTCFullYear();
+  // The dashboard always shows totals for one calendar year. The picker
+  // defaults to the current year and persists the user's last choice in
+  // localStorage so a returning user lands back where they were.
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem("mi_history_year") : null;
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return !isNaN(parsed) && parsed >= 2000 && parsed <= 2100 ? parsed : currentYear;
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("mi_history_year", String(selectedYear)); } catch { /* ignore */ }
+  }, [selectedYear]);
+
+  // Available years come from the API once we know the user has any data;
+  // we always include the current year in the dropdown so freshly-signed-up
+  // users still see something they can switch between as they log entries.
+  const { data: yearsData } = useQuery<{ years: { year: number; entryCount: number }[]; currentYear: number }>({
+    queryKey: ["impact-years", user?.id ?? ""],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/impact/years`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load years");
+      return res.json();
+    },
+  });
+  const yearOptions = useMemo(() => {
+    const set = new Set<number>([currentYear, selectedYear]);
+    for (const y of yearsData?.years ?? []) set.add(y.year);
+    return Array.from(set).sort((a, b) => b - a);
+  }, [yearsData, currentYear, selectedYear]);
+
   const historyParams = {
     userId: user?.id ?? "",
+    year: selectedYear,
     ...(filters.q ? { q: filters.q } : {}),
     ...(filters.tags.length > 0 ? { tags: filters.tags.join(",") } : {}),
   };
@@ -202,7 +235,14 @@ export default function History() {
   const matchByRecordId = new Map<string, MatchInfoEntry>();
   (matchInfo?.matches ?? []).forEach(m => matchByRecordId.set(m.recordId, m));
   const orgName = matchInfo?.org?.name ?? null;
-  const lifetimeMatched = (matchInfo?.matches ?? []).reduce((s, m) => s + m.matchedValue, 0);
+  // Match-info is all-time; the dashboard now shows a single calendar year
+  // at a time, so only sum matches that belong to records in `serverData`
+  // (which is already year-filtered by the API). This keeps the year total
+  // honest when the user flips between years.
+  const yearRecordIds = new Set((serverData?.records ?? []).map(r => String(r.id)));
+  const lifetimeMatched = (matchInfo?.matches ?? [])
+    .filter(m => yearRecordIds.has(String(m.recordId)))
+    .reduce((s, m) => s + m.matchedValue, 0);
 
   const numericRecordIds: number[] = isAuthenticated
     ? (serverData?.records ?? [])
@@ -424,9 +464,9 @@ export default function History() {
 
   function inferPeriodType(label: string | null | undefined): string {
     if (!label) return "unknown";
-    if (/academic year/i.test(label)) return "academic";
     const months = /January|February|March|April|May|June|July|August|September|October|November|December/i;
     if (months.test(label)) return "monthly";
+    if (/^\d{4}$/.test(label.trim())) return "yearly";
     return "custom";
   }
 
@@ -448,7 +488,21 @@ export default function History() {
               <StreakChip streak={serverData.streak} showLongest />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">Watch your social value grow over time.</p>
+          <p className="text-sm text-muted-foreground">Calendar-year totals for everything you've logged.</p>
+          <div className="mt-3 inline-flex items-center gap-2">
+            <label htmlFor="year-picker" className="text-xs text-muted-foreground">Showing</label>
+            <select
+              id="year-picker"
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
+              className="px-2 py-1.5 rounded-md border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              data-testid="select-history-year"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}{y === currentYear ? " (this year)" : ""}</option>
+              ))}
+            </select>
+          </div>
         </div>
         {records.length > 0 && (
           <button
@@ -540,10 +594,10 @@ export default function History() {
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="bg-white border border-border rounded-xl p-5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">All-time total</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{selectedYear} total</p>
                 <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(allTimeTotal + lifetimeMatched)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Across {records.length} {records.length === 1 ? "record" : "records"}
+                  Across {records.length} {records.length === 1 ? "record" : "records"} in {selectedYear}
                 </p>
                 {lifetimeMatched > 0 && orgName && (
                   <p className="text-[11px] text-primary font-semibold mt-1.5 flex items-center gap-1">

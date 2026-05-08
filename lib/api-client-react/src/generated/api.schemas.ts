@@ -100,6 +100,12 @@ export interface SaveImpactInput {
   userId: string;
   name: string;
   period?: string | null;
+  /** ISO date (YYYY-MM-DD) the entry counts toward. Determines which
+calendar year and month the entry shows up in. Defaults to today
+when omitted. Any past date — current year or prior years — is
+allowed.
+ */
+  entryDate?: string | null;
   impactResult?: ImpactResult;
   activities: SelectedActivity[];
   customActivities?: CustomActivityInput[];
@@ -109,6 +115,19 @@ export interface SaveImpactInput {
   outwardCode?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** When set, /save updates this specific record (must be owned by
+the caller) instead of creating a new one. Used by the History
+"edit" flow so backdated edits move records to the correct
+calendar year without leaving an orphan.
+ */
+  targetRecordId?: string | null;
+  /** Bypass the habit-overlap check. By default, /save returns 409
+when the entryDate's month already has a habit-generated entry
+with any overlapping activity, so the UI can prompt the user to
+edit that entry instead of silently double-counting. Set true
+to log an additional entry anyway.
+ */
+  force?: boolean | null;
 }
 
 export interface SavedImpact {
@@ -117,8 +136,59 @@ export interface SavedImpact {
   name: string;
   period?: string | null;
   createdAt: string;
+  /** ISO date the entry counts toward (YYYY-MM-DD). */
+  entryDate: string;
+  /** "user" | "habit" | "retrospective" | "member-submitted" — describes
+how the entry was created so the UI can label it (e.g. show a
+"from your habit" badge on bulk-created monthly entries).
+ */
+  source: string;
+  /** ID of the recurring template that generated this entry, if any.
+Lets the client cross-reference bulk-created monthly entries with
+their parent habit.
+ */
+  habitTemplateId?: number | null;
   impactResult: ImpactResult;
   tags: string[];
+}
+
+export type ImpactYearsResponseYearsItem = {
+  year: number;
+  entryCount: number;
+};
+
+export interface ImpactYearsResponse {
+  years: ImpactYearsResponseYearsItem[];
+  currentYear: number;
+}
+
+export interface YearRolloverHabit {
+  templateId: number;
+  label: string;
+  defaultDonationsGBP: number;
+  defaultActivities: SelectedActivity[];
+}
+
+export interface YearRolloverResponse {
+  /** True when the user is on/after 1 January of the new calendar year
+and has not yet confirmed habits for it (and at least one prior
+year had entries).
+ */
+  shouldShow: boolean;
+  priorYear?: number | null;
+  priorYearTotalValue?: number | null;
+  priorYearTotalHours?: number | null;
+  currentYear: number;
+  habits: YearRolloverHabit[];
+}
+
+export interface YearRolloverConfirmInput {
+  confirmedTemplateIds: number[];
+}
+
+export interface YearRolloverConfirmResponse {
+  entriesCreated: number;
+  year: number;
 }
 
 export interface StreakInfo {
@@ -293,6 +363,10 @@ export interface RecurringTemplatesResponse {
 
 export interface DeleteRecurringTemplateResponse {
   success: boolean;
+  /** Number of habit-generated impact entries removed alongside the
+template (0 unless `removeFutureEntries=true` was passed).
+ */
+  removedFutureEntries?: number;
 }
 
 export type GetImpactHistoryParams = {
@@ -302,6 +376,14 @@ export type GetImpactHistoryParams = {
    * Comma-separated list of tag names to filter by (records must contain all)
    */
   tags?: string;
+  /**
+   * Filter to entries whose entryDate falls in this calendar year (UTC).
+   */
+  year?: number;
+};
+
+export type DeleteRecurringTemplateParams = {
+  removeFutureEntries?: boolean;
 };
 
 export type AckStreakMilestoneBody = {

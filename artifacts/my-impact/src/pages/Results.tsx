@@ -903,7 +903,7 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta, interests, careerBreak, situations } = useWizard();
+  const { result, input, locationMeta, interests, careerBreak, situations, entryDate } = useWizard();
   const situation = situations[0] ?? null;
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
@@ -916,6 +916,11 @@ export default function Results() {
   const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState<{
+    existingRecordId: string;
+    period: string;
+    attemptedPeriod: string;
+  } | null>(null);
   const [chosenPeriod, setChosenPeriod] = useState("");
   const [customPeriod, setCustomPeriod] = useState("");
   const [statementCopied, setStatementCopied] = useState(false);
@@ -935,14 +940,11 @@ export default function Results() {
   const year = now.getFullYear();
   const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const termLabel = month >= 9 ? `Autumn Term ${year}` : month >= 5 ? `Summer Term ${year}` : `Spring Term ${year}`;
-  const academicYear = month >= 9 ? `${year}/${String(year + 1).slice(2)}` : `${year - 1}/${String(year).slice(2)}`;
-  const lastAcademicYearStart = month >= 9 ? year - 1 : year - 2;
-  const lastAcademicYear = `${lastAcademicYearStart}/${String(lastAcademicYearStart + 1).slice(2)}`;
   const PERIOD_PRESETS = [
     { label: "This month", value: monthLabel },
     { label: "Current term", value: termLabel },
-    { label: "Academic year", value: `Academic Year ${academicYear}` },
-    ...(month < 9 ? [{ label: "Last academic year", value: `Academic Year ${lastAcademicYear}` }] : []),
+    { label: "This year", value: String(year) },
+    { label: "Last year", value: String(year - 1) },
   ];
 
   if (!result) {
@@ -972,7 +974,10 @@ export default function Results() {
     );
   }
 
-  const handleSave = async (period: string) => {
+  const handleSave = async (
+    period: string,
+    opts?: { targetRecordId?: string; force?: boolean },
+  ) => {
     if (!isLoggedIn) {
       setLocation("/login?from=/results");
       return;
@@ -983,10 +988,13 @@ export default function Results() {
           userId: user?.id ?? "",
           name: "My Impact Record",
           period: period || undefined,
+          entryDate: entryDate || undefined,
           impactResult: result,
           activities: input.activities,
           donationsGBP: input.donationsGBP,
           additionalVolunteerHours: input.additionalVolunteerHours,
+          ...(opts?.targetRecordId ? { targetRecordId: opts.targetRecordId } : {}),
+          ...(opts?.force ? { force: true } : {}),
           ...(locationMeta ? {
             region: locationMeta.region,
             outwardCode: locationMeta.outwardCode,
@@ -1089,7 +1097,24 @@ export default function Results() {
         setTplLabel(period || firstActivity);
         setShowRecurringPrompt(true);
       }
-    } catch {
+    } catch (err) {
+      // The API returns 409 when this save would overlap a habit-generated
+      // entry for the same calendar month. Open a conflict dialog so the
+      // user can either replace the existing entry's quantity (the
+      // task's required edit-existing flow) or explicitly opt-in to log
+      // an additional entry anyway via `force`.
+      const apiErr = err as { status?: number; data?: { error?: string; existingRecordId?: string; period?: string } };
+      if (apiErr?.status === 409 && apiErr?.data?.error === "habit_entry_conflict") {
+        const existingId = apiErr.data.existingRecordId ?? "";
+        const periodLabel = apiErr.data.period ?? "this month";
+        setShowSaveDialog(false);
+        setConflictInfo({
+          existingRecordId: existingId,
+          period: periodLabel,
+          attemptedPeriod: period,
+        });
+        return;
+      }
       toast({ title: "Unable to save", description: "Something went wrong. Are you logged in?", variant: "destructive" });
     }
   };
@@ -1682,6 +1707,82 @@ export default function Results() {
                 style={{ background: "#213547" }}
               >
                 {saveMutation.isPending ? "Saving…" : "Save record"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Conflict dialog — opens when /save returns 409 habit_entry_conflict.
+          The user can either replace the existing habit-generated entry
+          (the canonical "edit existing entry" flow), open it in history
+          for a fuller edit, or explicitly opt-in to log an additional
+          entry alongside it via the `force` flag. */}
+      {conflictInfo && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => setConflictInfo(null)}
+          data-testid="habit-conflict-dialog"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-foreground mb-1">
+              {conflictInfo.period} is already covered
+            </h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              One of your recurring habits already created an entry for this
+              month with overlapping activities. To avoid double-counting,
+              choose what to do with this new entry.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={async () => {
+                  const info = conflictInfo;
+                  setConflictInfo(null);
+                  await handleSave(info.attemptedPeriod, { targetRecordId: info.existingRecordId });
+                }}
+                disabled={saveMutation.isPending}
+                className="w-full px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: "#213547" }}
+                data-testid="conflict-replace"
+              >
+                {saveMutation.isPending ? "Updating…" : "Update the existing entry"}
+              </button>
+              <button
+                onClick={() => {
+                  const id = conflictInfo.existingRecordId;
+                  setConflictInfo(null);
+                  setLocation(`/history?edit=${encodeURIComponent(id)}`);
+                }}
+                className="w-full px-4 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
+                data-testid="conflict-open-history"
+              >
+                Open in history to edit
+              </button>
+              <button
+                onClick={async () => {
+                  const info = conflictInfo;
+                  setConflictInfo(null);
+                  await handleSave(info.attemptedPeriod, { force: true });
+                }}
+                disabled={saveMutation.isPending}
+                className="w-full px-4 py-3 min-h-[44px] rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 transition-colors disabled:opacity-60"
+                data-testid="conflict-force"
+              >
+                Log this as an additional entry anyway
+              </button>
+              <button
+                onClick={() => setConflictInfo(null)}
+                className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </motion.div>

@@ -117,27 +117,41 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   if (visibleTemplates.length === 0) return null;
 
   const handleConfirm = async (template: RecurringTemplate) => {
-    const overlaid = buildOverlaidActivities(
-      template.defaultActivities,
-      historyQuery.data?.records,
-    );
-    loadFromTemplate(overlaid, template.defaultDonationsGBP ?? 0);
-
-    // Mark the current scheduled occurrence confirmed before navigating away.
-    // Failure here shouldn't block the wizard — confirmation is a UX hint
-    // (it stops the card showing as "due"), not a data-integrity step.
+    // Ticking a habit bulk-creates one impact entry per remaining month of
+    // the current calendar year. The wizard pre-fill flow remains as a
+    // fallback path for users who want to amend before saving — but the
+    // primary action here is the bulk confirm, so we don't navigate away.
     try {
-      await confirmMutation.mutateAsync({ id: template.id });
+      const result = (await confirmMutation.mutateAsync({ id: template.id })) as { entriesCreated?: number };
       queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
+      const created = result?.entriesCreated ?? 0;
+      if (created > 0) {
+        toast({
+          title: `Logged "${template.label}"`,
+          description: `Added ${created} monthly ${created === 1 ? "entry" : "entries"} for the rest of ${new Date().getFullYear()}.`,
+        });
+      } else {
+        // Nothing new created — the user already has habit entries for the
+        // remaining months. Nudge them to the wizard if they want to adjust.
+        const overlaid = buildOverlaidActivities(
+          template.defaultActivities,
+          historyQuery.data?.records,
+        );
+        loadFromTemplate(overlaid, template.defaultDonationsGBP ?? 0);
+        toast({
+          title: `"${template.label}" already logged for the year`,
+          description: "Want to adjust this month? Edit the entry from your history, or save a new one below.",
+        });
+        navigate("/wizard/contributions");
+      }
     } catch {
-      // best-effort
+      toast({
+        title: "Couldn't log this habit",
+        description: "Please try again, or open the wizard to log it manually.",
+        variant: "destructive",
+      });
     }
-
-    navigate("/wizard/contributions");
-    toast({
-      title: `Logging "${template.label}"`,
-      description: "We've pre-filled your usual values. Adjust them if needed and save.",
-    });
   };
 
   const isCompact = variant === "compact";

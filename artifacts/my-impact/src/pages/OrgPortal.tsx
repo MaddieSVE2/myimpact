@@ -78,22 +78,11 @@ interface PendingVerification {
   createdAt: string;
 }
 
-type PresetKey = "all" | "academic" | "calendar" | "last12";
+type PresetKey = "all" | "calendar" | "last12";
 
 interface DateRange {
   from: string;
   to: string;
-}
-
-function getAcademicYearRange(): DateRange {
-  const now = new Date();
-  const month = now.getMonth(); // 0-indexed
-  const year = now.getFullYear();
-  const startYear = month >= 8 ? year : year - 1;
-  return {
-    from: `${startYear}-09-01`,
-    to: `${startYear + 1}-08-31`,
-  };
 }
 
 function getCalendarYearRange(): DateRange {
@@ -1000,7 +989,6 @@ function PeriodSelector({
 }) {
   const presets: Array<{ key: PresetKey; label: string }> = [
     { key: "all", label: "All time" },
-    { key: "academic", label: "This academic year" },
     { key: "calendar", label: "This calendar year" },
     { key: "last12", label: "Last 12 months" },
   ];
@@ -1705,7 +1693,6 @@ export default function OrgPortal() {
   const [customTo, setCustomTo] = useState("");
 
   function getDateRange(): { from: string; to: string } {
-    if (preset === "academic") return getAcademicYearRange();
     if (preset === "calendar") return getCalendarYearRange();
     if (preset === "last12") return getLast12MonthsRange();
     return { from: customFrom, to: customTo };

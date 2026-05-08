@@ -65,6 +65,10 @@ interface WizardState {
   result: ImpactResult | null;
   activitySelection: ActivitySelectionDraft;
   activityMode: ActivityMode;
+  // ISO YYYY-MM-DD date the in-progress record will count toward.
+  // Defaults to today; the user can backdate it from the Contributions step
+  // when logging a past activity. Drives the calendar-year bucketing.
+  entryDate: string;
 }
 
 export interface HistoryRecord {
@@ -98,6 +102,7 @@ interface WizardContextType extends WizardState {
   hasDraft: boolean;
   setActivitySelection: (sel: Partial<ActivitySelectionDraft>) => void;
   setActivityMode: (mode: ActivityMode) => void;
+  setEntryDate: (iso: string) => void;
 }
 
 const defaultInput: ImpactInput = {
@@ -115,6 +120,10 @@ const defaultActivitySelection: ActivitySelectionDraft = {
   quantifyIndex: 0,
 };
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const defaultState: WizardState = {
   location: '',
   locationMeta: null,
@@ -127,6 +136,7 @@ const defaultState: WizardState = {
   result: null,
   activitySelection: defaultActivitySelection,
   activityMode: 'pick',
+  entryDate: todayIso(),
 };
 
 const DRAFT_KEY = 'wizard_draft_v1';
@@ -188,6 +198,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         result: null,
         activitySelection: draft.activitySelection ?? defaultActivitySelection,
         activityMode: (draft.activityMode as ActivityMode | undefined) ?? 'pick',
+        entryDate: typeof draft.entryDate === 'string' && draft.entryDate ? draft.entryDate : todayIso(),
       },
       hasDraft: true,
     };
@@ -210,6 +221,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [result, setResultState] = useState<ImpactResult | null>(null);
   const [activitySelection, setActivitySelectionState] = useState<ActivitySelectionDraft>(initialState.activitySelection);
   const [activityMode, setActivityModeState] = useState<ActivityMode>(initialState.activityMode);
+  const [entryDate, setEntryDateState] = useState<string>(initialState.entryDate);
+  const setEntryDate = useCallback((iso: string) => setEntryDateState(iso || todayIso()), []);
 
   const setActivitySelection = useCallback((sel: Partial<ActivitySelectionDraft>) => {
     setActivitySelectionState(prev => ({ ...prev, ...sel }));
@@ -222,12 +235,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode });
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate });
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -313,6 +326,11 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       setLocationMetaState(null);
     }
     setActivitySelectionState(defaultActivitySelection);
+    // Loading a past record into the wizard is for re-using its activities,
+    // not for re-asserting its date. Reset entryDate to today so the next
+    // save lands in the current calendar bucket unless the user picks a
+    // different date in ContributionsStep.
+    setEntryDateState(todayIso());
     removeDraft();
     setHasDraft(false);
   }, []);
@@ -357,6 +375,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setResultState(null);
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
+    setEntryDateState(todayIso());
     removeDraft();
     setHasDraft(false);
   };
@@ -373,16 +392,17 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setResultState(null);
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
+    setEntryDateState(todayIso());
     removeDraft();
     setHasDraft(false);
   }, []);
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode,
+      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadFromTemplate, reset,
-      clearDraft, hasDraft, setActivitySelection, setActivityMode,
+      clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate,
     }}>
       {children}
     </WizardContext.Provider>

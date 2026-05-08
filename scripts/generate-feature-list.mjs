@@ -237,7 +237,7 @@ const doc = new Document({
         bullet("Users can join an organisation from within their own account"),
         bullet("Admin dashboard showing aggregated, anonymised social value and hours across all members"),
         bullet("Organisation type switcher in the demo dashboard (charity, school, university, local authority)"),
-        bullet("Period selector supporting both academic year and calendar year views"),
+        bullet("Period selector with calendar year, last 12 months, all time, and custom date ranges"),
         bullet("Bulk member invite functionality"),
         bullet("PDF report export for the organisation's aggregated impact data"),
         bullet("Education-specific dashboard language and statistics"),

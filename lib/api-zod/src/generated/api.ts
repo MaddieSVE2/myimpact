@@ -139,6 +139,12 @@ export const SaveImpactBody = zod.object({
   userId: zod.string(),
   name: zod.string(),
   period: zod.string().nullish(),
+  entryDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "ISO date (YYYY-MM-DD) the entry counts toward. Determines which\ncalendar year and month the entry shows up in. Defaults to today\nwhen omitted. Any past date — current year or prior years — is\nallowed.\n",
+    ),
   impactResult: zod
     .object({
       totalValue: zod.number(),
@@ -205,6 +211,18 @@ export const SaveImpactBody = zod.object({
   outwardCode: zod.string().nullish(),
   lat: zod.number().nullish(),
   lng: zod.number().nullish(),
+  targetRecordId: zod
+    .string()
+    .nullish()
+    .describe(
+      'When set, \/save updates this specific record (must be owned by\nthe caller) instead of creating a new one. Used by the History\n\"edit\" flow so backdated edits move records to the correct\ncalendar year without leaving an orphan.\n',
+    ),
+  force: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "Bypass the habit-overlap check. By default, \/save returns 409\nwhen the entryDate's month already has a habit-generated entry\nwith any overlapping activity, so the UI can prompt the user to\nedit that entry instead of silently double-counting. Set true\nto log an additional entry anyway.\n",
+    ),
 });
 
 export const SaveImpactResponse = zod.object({
@@ -213,6 +231,20 @@ export const SaveImpactResponse = zod.object({
   name: zod.string(),
   period: zod.string().nullish(),
   createdAt: zod.string(),
+  entryDate: zod
+    .string()
+    .describe("ISO date the entry counts toward (YYYY-MM-DD)."),
+  source: zod
+    .string()
+    .describe(
+      '\"user\" | \"habit\" | \"retrospective\" | \"member-submitted\" — describes\nhow the entry was created so the UI can label it (e.g. show a\n\"from your habit\" badge on bulk-created monthly entries).\n',
+    ),
+  habitTemplateId: zod
+    .number()
+    .nullish()
+    .describe(
+      "ID of the recurring template that generated this entry, if any.\nLets the client cross-reference bulk-created monthly entries with\ntheir parent habit.\n",
+    ),
   impactResult: zod.object({
     totalValue: zod.number(),
     impactValue: zod.number(),
@@ -262,6 +294,12 @@ export const GetImpactHistoryQueryParams = zod.object({
     .describe(
       "Comma-separated list of tag names to filter by (records must contain all)",
     ),
+  year: zod.coerce
+    .number()
+    .optional()
+    .describe(
+      "Filter to entries whose entryDate falls in this calendar year (UTC).",
+    ),
 });
 
 export const GetImpactHistoryResponse = zod.object({
@@ -272,6 +310,20 @@ export const GetImpactHistoryResponse = zod.object({
       name: zod.string(),
       period: zod.string().nullish(),
       createdAt: zod.string(),
+      entryDate: zod
+        .string()
+        .describe("ISO date the entry counts toward (YYYY-MM-DD)."),
+      source: zod
+        .string()
+        .describe(
+          '\"user\" | \"habit\" | \"retrospective\" | \"member-submitted\" — describes\nhow the entry was created so the UI can label it (e.g. show a\n\"from your habit\" badge on bulk-created monthly entries).\n',
+        ),
+      habitTemplateId: zod
+        .number()
+        .nullish()
+        .describe(
+          "ID of the recurring template that generated this entry, if any.\nLets the client cross-reference bulk-created monthly entries with\ntheir parent habit.\n",
+        ),
       impactResult: zod.object({
         totalValue: zod.number(),
         impactValue: zod.number(),
@@ -319,6 +371,70 @@ export const GetImpactHistoryResponse = zod.object({
       lastAckedMilestone: zod.number(),
     })
     .optional(),
+});
+
+/**
+ * @summary List the calendar years the authenticated user has entries in
+ */
+export const ListImpactYearsResponse = zod.object({
+  years: zod.array(
+    zod.object({
+      year: zod.number(),
+      entryCount: zod.number(),
+    }),
+  ),
+  currentYear: zod.number(),
+});
+
+/**
+ * Returns whether a year-rollover prompt should be shown (the user has not
+yet confirmed habits for the current calendar year and at least one
+prior year had logged entries), along with the list of ongoing habits
+from `recurring_templates` so the UI can render checkboxes.
+
+ * @summary Get the year-rollover prompt state for the authenticated user
+ */
+export const GetYearRolloverResponse = zod.object({
+  shouldShow: zod
+    .boolean()
+    .describe(
+      "True when the user is on\/after 1 January of the new calendar year\nand has not yet confirmed habits for it (and at least one prior\nyear had entries).\n",
+    ),
+  priorYear: zod.number().nullish(),
+  priorYearTotalValue: zod.number().nullish(),
+  priorYearTotalHours: zod.number().nullish(),
+  currentYear: zod.number(),
+  habits: zod.array(
+    zod.object({
+      templateId: zod.number(),
+      label: zod.string(),
+      defaultDonationsGBP: zod.number(),
+      defaultActivities: zod.array(
+        zod.object({
+          activityId: zod.string(),
+          quantity: zod.number(),
+          hoursPerYear: zod.number(),
+          description: zod.string().optional(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * Bulk-creates 12 monthly impact entries (Jan–Dec, dated to the 1st of
+each month) for every confirmed habit in the new year. Habits that
+already have entries in this year are skipped.
+
+ * @summary Confirm carried-forward habits for the new calendar year
+ */
+export const ConfirmYearRolloverBody = zod.object({
+  confirmedTemplateIds: zod.array(zod.number()),
+});
+
+export const ConfirmYearRolloverResponse = zod.object({
+  entriesCreated: zod.number(),
+  year: zod.number(),
 });
 
 /**
@@ -541,14 +657,29 @@ export const UpdateRecurringTemplateResponse = zod.object({
 });
 
 /**
+ * Untoggling a habit. Pass `removeFutureEntries=true` to also delete
+every habit-generated impact entry for this template dated to the
+current month or later. Past months are always preserved so totals
+for prior calendar years don't shift retroactively.
+
  * @summary Delete a recurring activity template
  */
 export const DeleteRecurringTemplateParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const DeleteRecurringTemplateQueryParams = zod.object({
+  removeFutureEntries: zod.coerce.boolean().optional(),
+});
+
 export const DeleteRecurringTemplateResponse = zod.object({
   success: zod.boolean(),
+  removedFutureEntries: zod
+    .number()
+    .optional()
+    .describe(
+      "Number of habit-generated impact entries removed alongside the\ntemplate (0 unless `removeFutureEntries=true` was passed).\n",
+    ),
 });
 
 /**

@@ -61,8 +61,21 @@ export const impactRecordsTable = pgTable("impact_records", {
   submittedToOrgAt: timestamp("submitted_to_org_at"),
   source: text("source").notNull().default("user"),
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
+  // The date this entry counts toward — determines which calendar year and
+  // month the entry belongs to on the dashboard. Defaults to the time the
+  // record was created but can be backdated by the user when they log a
+  // retrospective entry. Existing rows are backfilled from created_at by
+  // migration 0025.
+  entryDate: timestamp("entry_date").defaultNow().notNull(),
+  // Set on entries that were bulk-created when a user ticked an ongoing
+  // habit (one entry per remaining month of the calendar year). Lets us
+  // trace habit-spawned entries back to their template for overlap warnings
+  // and the year-rollover prompt. NULL for one-off / manual entries.
+  habitTemplateId: integer("habit_template_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),
+}));
 
 export const insertImpactRecordSchema = createInsertSchema(impactRecordsTable).omit({ id: true, createdAt: true });
 export type InsertImpactRecord = z.infer<typeof insertImpactRecordSchema>;

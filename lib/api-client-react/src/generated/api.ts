@@ -22,12 +22,14 @@ import type {
   AnnualRecapResponse,
   DeleteAllImpactRecordsResponse,
   DeleteImpactRecordResponse,
+  DeleteRecurringTemplateParams,
   DeleteRecurringTemplateResponse,
   GetImpactHistoryParams,
   HealthStatus,
   ImpactHistoryResponse,
   ImpactInput,
   ImpactResult,
+  ImpactYearsResponse,
   ProfileInput,
   ProfileResponse,
   RecurringTemplate,
@@ -40,6 +42,9 @@ import type {
   SuggestionsResponse,
   UpdateImpactRecordInput,
   UpdateImpactRecordResponse,
+  YearRolloverConfirmInput,
+  YearRolloverConfirmResponse,
+  YearRolloverResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -556,6 +561,252 @@ export function useGetImpactHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List the calendar years the authenticated user has entries in
+ */
+export const getListImpactYearsUrl = () => {
+  return `/api/impact/years`;
+};
+
+export const listImpactYears = async (
+  options?: RequestInit,
+): Promise<ImpactYearsResponse> => {
+  return customFetch<ImpactYearsResponse>(getListImpactYearsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListImpactYearsQueryKey = () => {
+  return [`/api/impact/years`] as const;
+};
+
+export const getListImpactYearsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listImpactYears>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listImpactYears>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListImpactYearsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listImpactYears>>> = ({
+    signal,
+  }) => listImpactYears({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listImpactYears>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListImpactYearsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listImpactYears>>
+>;
+export type ListImpactYearsQueryError = ErrorType<void>;
+
+/**
+ * @summary List the calendar years the authenticated user has entries in
+ */
+
+export function useListImpactYears<
+  TData = Awaited<ReturnType<typeof listImpactYears>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listImpactYears>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListImpactYearsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns whether a year-rollover prompt should be shown (the user has not
+yet confirmed habits for the current calendar year and at least one
+prior year had logged entries), along with the list of ongoing habits
+from `recurring_templates` so the UI can render checkboxes.
+
+ * @summary Get the year-rollover prompt state for the authenticated user
+ */
+export const getGetYearRolloverUrl = () => {
+  return `/api/impact/year-rollover`;
+};
+
+export const getYearRollover = async (
+  options?: RequestInit,
+): Promise<YearRolloverResponse> => {
+  return customFetch<YearRolloverResponse>(getGetYearRolloverUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetYearRolloverQueryKey = () => {
+  return [`/api/impact/year-rollover`] as const;
+};
+
+export const getGetYearRolloverQueryOptions = <
+  TData = Awaited<ReturnType<typeof getYearRollover>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getYearRollover>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetYearRolloverQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getYearRollover>>> = ({
+    signal,
+  }) => getYearRollover({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getYearRollover>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetYearRolloverQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getYearRollover>>
+>;
+export type GetYearRolloverQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the year-rollover prompt state for the authenticated user
+ */
+
+export function useGetYearRollover<
+  TData = Awaited<ReturnType<typeof getYearRollover>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getYearRollover>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetYearRolloverQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Bulk-creates 12 monthly impact entries (Jan–Dec, dated to the 1st of
+each month) for every confirmed habit in the new year. Habits that
+already have entries in this year are skipped.
+
+ * @summary Confirm carried-forward habits for the new calendar year
+ */
+export const getConfirmYearRolloverUrl = () => {
+  return `/api/impact/year-rollover`;
+};
+
+export const confirmYearRollover = async (
+  yearRolloverConfirmInput: YearRolloverConfirmInput,
+  options?: RequestInit,
+): Promise<YearRolloverConfirmResponse> => {
+  return customFetch<YearRolloverConfirmResponse>(getConfirmYearRolloverUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(yearRolloverConfirmInput),
+  });
+};
+
+export const getConfirmYearRolloverMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmYearRollover>>,
+    TError,
+    { data: BodyType<YearRolloverConfirmInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmYearRollover>>,
+  TError,
+  { data: BodyType<YearRolloverConfirmInput> },
+  TContext
+> => {
+  const mutationKey = ["confirmYearRollover"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmYearRollover>>,
+    { data: BodyType<YearRolloverConfirmInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return confirmYearRollover(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmYearRolloverMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmYearRollover>>
+>;
+export type ConfirmYearRolloverMutationBody =
+  BodyType<YearRolloverConfirmInput>;
+export type ConfirmYearRolloverMutationError = ErrorType<void>;
+
+/**
+ * @summary Confirm carried-forward habits for the new calendar year
+ */
+export const useConfirmYearRollover = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmYearRollover>>,
+    TError,
+    { data: BodyType<YearRolloverConfirmInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmYearRollover>>,
+  TError,
+  { data: BodyType<YearRolloverConfirmInput> },
+  TContext
+> => {
+  return useMutation(getConfirmYearRolloverMutationOptions(options));
+};
 
 /**
  * @summary Delete all impact records for the authenticated user
@@ -1154,18 +1405,39 @@ export const useUpdateRecurringTemplate = <
 };
 
 /**
+ * Untoggling a habit. Pass `removeFutureEntries=true` to also delete
+every habit-generated impact entry for this template dated to the
+current month or later. Past months are always preserved so totals
+for prior calendar years don't shift retroactively.
+
  * @summary Delete a recurring activity template
  */
-export const getDeleteRecurringTemplateUrl = (id: string) => {
-  return `/api/impact/templates/${id}`;
+export const getDeleteRecurringTemplateUrl = (
+  id: string,
+  params?: DeleteRecurringTemplateParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/impact/templates/${id}?${stringifiedParams}`
+    : `/api/impact/templates/${id}`;
 };
 
 export const deleteRecurringTemplate = async (
   id: string,
+  params?: DeleteRecurringTemplateParams,
   options?: RequestInit,
 ): Promise<DeleteRecurringTemplateResponse> => {
   return customFetch<DeleteRecurringTemplateResponse>(
-    getDeleteRecurringTemplateUrl(id),
+    getDeleteRecurringTemplateUrl(id, params),
     {
       ...options,
       method: "DELETE",
@@ -1180,14 +1452,14 @@ export const getDeleteRecurringTemplateMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof deleteRecurringTemplate>>,
     TError,
-    { id: string },
+    { id: string; params?: DeleteRecurringTemplateParams },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof deleteRecurringTemplate>>,
   TError,
-  { id: string },
+  { id: string; params?: DeleteRecurringTemplateParams },
   TContext
 > => {
   const mutationKey = ["deleteRecurringTemplate"];
@@ -1201,11 +1473,11 @@ export const getDeleteRecurringTemplateMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof deleteRecurringTemplate>>,
-    { id: string }
+    { id: string; params?: DeleteRecurringTemplateParams }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, params } = props ?? {};
 
-    return deleteRecurringTemplate(id, requestOptions);
+    return deleteRecurringTemplate(id, params, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1227,14 +1499,14 @@ export const useDeleteRecurringTemplate = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof deleteRecurringTemplate>>,
     TError,
-    { id: string },
+    { id: string; params?: DeleteRecurringTemplateParams },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof deleteRecurringTemplate>>,
   TError,
-  { id: string },
+  { id: string; params?: DeleteRecurringTemplateParams },
   TContext
 > => {
   return useMutation(getDeleteRecurringTemplateMutationOptions(options));

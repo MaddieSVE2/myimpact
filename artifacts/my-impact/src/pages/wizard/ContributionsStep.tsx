@@ -10,12 +10,13 @@ import { useT } from "@/i18n";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
-  const { input, updateInput, setResult, customActivities } = useWizard();
+  const { input, updateInput, setResult, customActivities, entryDate, setEntryDate } = useWizard();
   const t = useT();
-  
+
   const [donations, setDonations] = useState<number>(input.donationsGBP || 0);
   const [hours, setHours] = useState<number>(input.additionalVolunteerHours || 0);
   const [calcError, setCalcError] = useState<string | null>(null);
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   const calculateMutation = useCalculateImpact();
 
@@ -77,6 +78,24 @@ export default function ContributionsStep() {
                 className="w-full min-h-[44px] py-3 pl-8 pr-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
               />
             </div>
+          </div>
+
+          <div className="bg-background p-5 rounded-lg border border-border">
+            <label htmlFor="entry-date" className="block text-sm font-medium text-foreground mb-1">
+              When did this happen?
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Pick the date this entry counts toward. Today by default — backdate it for past activity.
+            </p>
+            <input
+              id="entry-date"
+              type="date"
+              max={todayIso}
+              value={entryDate}
+              onChange={e => setEntryDate(e.target.value)}
+              className="w-full min-h-[44px] py-3 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+              data-testid="input-entry-date"
+            />
           </div>
 
           <div className="bg-background p-5 rounded-lg border border-border">
