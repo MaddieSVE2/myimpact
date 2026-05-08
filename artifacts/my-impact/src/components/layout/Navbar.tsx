@@ -5,6 +5,7 @@ import {
   Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
   MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
+  Users as UsersIcon, Flag, ClipboardList, Download,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -241,16 +242,30 @@ export function Navbar() {
   // Only the demo-org manager has the new dashboard/settings pages today.
   const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
 
-  const navItems = [
-    { href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle },
-    { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
-    { href: "/history", label: t("navbar.history"), icon: History },
-    ...(gamificationEnabled
-      ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
-      : []),
-    { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
-    { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
-  ];
+  // Demo-org managers get an org-context top nav (Dashboard, Activities,
+  // Challenges, Pulse, Export, Settings) instead of the personal wizard
+  // nav. Personal pages remain reachable from the user dropdown. Real-org
+  // managers don't have these pages wired yet, so they keep the personal
+  // nav for now (matches the existing /org/dashboard demo-only gate).
+  const navItems = isDemoOrgManager
+    ? [
+        { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
+        { href: "/org/activities", label: "Activities", icon: UsersIcon },
+        { href: "/org/challenges", label: "Challenges", icon: Flag },
+        { href: "/org/pulse",      label: "Pulse",      icon: ClipboardList },
+        { href: "/org/export",     label: "Export",     icon: Download },
+        { href: "/org/settings",   label: "Settings",   icon: Settings },
+      ]
+    : [
+        { href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle },
+        { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
+        { href: "/history", label: t("navbar.history"), icon: History },
+        ...(gamificationEnabled
+          ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
+          : []),
+        { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
+        { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
+      ];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

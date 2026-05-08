@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, ArrowLeft, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette } from "lucide-react";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette } from "lucide-react";
+import { OrgSubNav } from "@/components/layout/OrgSubNav";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
@@ -745,13 +746,12 @@ export default function OrgSettings() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <Link href="/org/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to dashboard
-      </Link>
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl font-display font-semibold text-foreground">Organisation settings</h1>
         <p className="text-sm text-muted-foreground">{orgData.org.name}</p>
       </div>
+
+      <OrgSubNav />
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1" role="tablist">
         {TABS.map(t => {

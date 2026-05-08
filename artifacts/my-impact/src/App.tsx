@@ -33,6 +33,10 @@ import Journal from "@/pages/Journal";
 import Milestones from "@/pages/Milestones";
 import OrgPortal from "@/pages/OrgPortal";
 import OrgDashboard from "@/pages/OrgDashboard";
+import OrgActivities from "@/pages/OrgActivities";
+import OrgChallenges from "@/pages/OrgChallenges";
+import OrgPulse from "@/pages/OrgPulse";
+import OrgExport from "@/pages/OrgExport";
 import OrgSettings from "@/pages/OrgSettings";
 import OrgRegister from "@/pages/OrgRegister";
 import OrgDemoPage from "@/pages/OrgDemoPage";
@@ -301,6 +305,18 @@ function AppRouter() {
             <Route path="/org/share/:slug" component={OrgSharePage} />
             <Route path="/org/dashboard">
               {() => <PrivateRoute component={OrgDashboard} />}
+            </Route>
+            <Route path="/org/activities">
+              {() => <PrivateRoute component={OrgActivities} />}
+            </Route>
+            <Route path="/org/challenges">
+              {() => <PrivateRoute component={OrgChallenges} />}
+            </Route>
+            <Route path="/org/pulse">
+              {() => <PrivateRoute component={OrgPulse} />}
+            </Route>
+            <Route path="/org/export">
+              {() => <PrivateRoute component={OrgExport} />}
             </Route>
             <Route path="/org/settings">
               {() => <PrivateRoute component={OrgSettings} />}
