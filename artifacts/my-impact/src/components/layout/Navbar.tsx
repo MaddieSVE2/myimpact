@@ -257,7 +257,9 @@ export function Navbar() {
         { href: "/org/settings",   label: "Settings",   icon: Settings },
       ]
     : [
-        { href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle },
+        ...(inOrg
+          ? []
+          : [{ href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle }]),
         { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
         { href: "/history", label: t("navbar.history"), icon: History },
         ...(gamificationEnabled
@@ -327,14 +329,16 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
               <>
-                {/* CTA — desktop only */}
-                <Link
-                  href="/wizard/actions"
-                  className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
-                  style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
-                >
-                  {t("navbar.calculateCta")}
-                </Link>
+                {/* CTA — desktop only. Hidden for organisation users. */}
+                {!inOrg && (
+                  <Link
+                    href="/wizard/actions"
+                    className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
+                    style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
+                  >
+                    {t("navbar.calculateCta")}
+                  </Link>
+                )}
 
                 {/* User menu — desktop only */}
                 <div className="relative hidden lg:block" ref={userMenuRef}>
@@ -564,14 +568,16 @@ export function Navbar() {
               );
             })}
 
-            <Link
-              href="/wizard/actions"
-              onClick={() => setMobileOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
-              style={{ background: "#F06127" }}
-            >
-              {t("navbar.calculateCta")}
-            </Link>
+            {!(isLoggedIn && inOrg) && (
+              <Link
+                href="/wizard/actions"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
+                style={{ background: "#F06127" }}
+              >
+                {t("navbar.calculateCta")}
+              </Link>
+            )}
 
             {/* Divider before account actions — only when logged in */}
             {isLoggedIn && <div className="my-1 border-t border-white/10" />}
