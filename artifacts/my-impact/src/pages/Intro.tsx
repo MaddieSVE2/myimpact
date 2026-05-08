@@ -444,7 +444,7 @@ export default function Intro() {
             />
           </div>
 
-          <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
+          <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: 860 }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               background: "rgba(255,255,255,0.08)",
@@ -581,7 +581,7 @@ export default function Intro() {
           />
         </div>
 
-        <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
+        <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: 860 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,0.08)",

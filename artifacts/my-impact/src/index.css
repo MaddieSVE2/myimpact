@@ -184,6 +184,15 @@
   background: radial-gradient(circle, color-mix(in srgb, var(--brand-light-blue) 13%, transparent) 0%, transparent 70%);
   pointer-events: none;
 }
+.mi-hero-inner { padding: 0 5% 80px; }
+/* When the org prompts section actually renders content directly below the
+   logged-in welcome hero, tighten the hero's bottom padding so the cards
+   sit close to the hero rather than below ~112px of dead space. Uses
+   :has(:not(:empty)) so this reacts to the section being truly visible —
+   when local snooze/dismiss empties it, the full padding returns. */
+.mi-hero[data-testid="welcome-home"]:has(+ #org-prompts-section:not(:empty)) .mi-hero-inner {
+  padding-bottom: 16px;
+}
 .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
 .mi-section-label {
   font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
