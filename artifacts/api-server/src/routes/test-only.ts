@@ -6,6 +6,9 @@ import {
   organisationsTable,
   orgMembersTable,
   orgRegistrationsTable,
+  orgSurveysTable,
+  challengesTable,
+  challengeParticipantsTable,
 } from "@workspace/db";
 import { eq, like, gt, desc, and, sql } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
@@ -180,6 +183,118 @@ router.post("/delete-org", async (req, res) => {
   await db.delete(orgMembersTable).where(eq(orgMembersTable.orgId, orgId));
   await db.delete(organisationsTable).where(eq(organisationsTable.id, orgId));
   res.json({ ok: true });
+});
+
+/**
+ * Seed an org-wide pulse survey. Returns the new survey id.
+ * createdBy is an arbitrary existing member of the org so the FK holds.
+ */
+router.post("/seed-org-survey", async (req, res) => {
+  const orgId = typeof req.body?.orgId === "string" ? req.body.orgId : "";
+  const template = typeof req.body?.template === "string" ? req.body.template : "meaningfulness";
+  const question =
+    typeof req.body?.question === "string" && req.body.question.trim()
+      ? req.body.question
+      : "How meaningful did your work feel this month?";
+  const schedule = typeof req.body?.schedule === "string" ? req.body.schedule : "monthly";
+  const anonymous = req.body?.anonymous === false ? false : true;
+  if (!orgId) {
+    res.status(400).json({ error: "orgId required" });
+    return;
+  }
+  const member = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.orgId, orgId),
+  });
+  if (!member) {
+    res.status(400).json({ error: "org has no members yet — join one first" });
+    return;
+  }
+  const id = `e2e-survey-${randomUUID().slice(0, 8)}`;
+  await db.insert(orgSurveysTable).values({
+    id,
+    orgId,
+    template,
+    question,
+    schedule,
+    anonymous,
+    createdBy: member.userId,
+  });
+  res.json({ ok: true, id });
+});
+
+/**
+ * Seed an active org-wide challenge and add every existing org member as a
+ * participant. Returns the new challenge id.
+ */
+router.post("/seed-org-challenge", async (req, res) => {
+  const orgId = typeof req.body?.orgId === "string" ? req.body.orgId : "";
+  const name = typeof req.body?.name === "string" && req.body.name.trim()
+    ? req.body.name
+    : "E2E Org Challenge";
+  const goalType = typeof req.body?.goalType === "string" ? req.body.goalType : "hours";
+  const target = typeof req.body?.target === "number" ? req.body.target : 100;
+  if (!orgId) {
+    res.status(400).json({ error: "orgId required" });
+    return;
+  }
+  const id = `e2e-ch-${randomUUID().slice(0, 8)}`;
+  const inviteCode = `E2EC-${randomBytes(3).toString("hex").toUpperCase()}`;
+  const now = new Date();
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  await db.insert(challengesTable).values({
+    id,
+    name,
+    description: "Seeded by E2E test",
+    goalType,
+    target: String(target),
+    startDate: start,
+    endDate: end,
+    ownerId: null,
+    orgId,
+    scope: "org",
+    inviteCode,
+  });
+  const members = await db.query.orgMembersTable.findMany({
+    where: eq(orgMembersTable.orgId, orgId),
+  });
+  if (members.length > 0) {
+    await db
+      .insert(challengeParticipantsTable)
+      .values(members.map((m) => ({ challengeId: id, userId: m.userId })))
+      .onConflictDoNothing();
+  }
+  res.json({ ok: true, id, inviteCode });
+});
+
+/**
+ * Insert an APPROVED org_registrations row matching `inviteCode` + `contactEmail`.
+ * When the user with that email next calls /api/org/join with the same invite
+ * code, they will be promoted to manager. Used by the org-prompts spec to make
+ * one of two test users the manager of the same org.
+ */
+router.post("/seed-approved-registration", async (req, res) => {
+  const orgName = typeof req.body?.orgName === "string" ? req.body.orgName : "E2E Org";
+  const type = typeof req.body?.type === "string" ? req.body.type : "charity";
+  const contactEmail =
+    typeof req.body?.contactEmail === "string" ? req.body.contactEmail.trim().toLowerCase() : "";
+  const inviteCode =
+    typeof req.body?.inviteCode === "string" ? req.body.inviteCode.trim().toUpperCase() : "";
+  if (!contactEmail || !inviteCode) {
+    res.status(400).json({ error: "contactEmail and inviteCode required" });
+    return;
+  }
+  const id = `e2e-reg-${randomUUID().slice(0, 8)}`;
+  await db.insert(orgRegistrationsTable).values({
+    id,
+    orgName,
+    type,
+    contactName: "E2E Manager",
+    contactEmail,
+    status: "approved",
+    inviteCode,
+  });
+  res.json({ ok: true, id });
 });
 
 export default router;

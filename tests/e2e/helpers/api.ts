@@ -113,4 +113,40 @@ export class TestApi {
   async deleteOrg(orgId: string): Promise<void> {
     await this.ctx.post("/api/test/delete-org", { data: { orgId } });
   }
+
+  /** Seed an active monthly pulse survey for the org. Returns its id. */
+  async seedOrgSurvey(orgId: string): Promise<string> {
+    const res = await this.ctx.post("/api/test/seed-org-survey", { data: { orgId } });
+    if (!res.ok()) {
+      throw new Error(`seed-org-survey failed (${res.status()}): ${await res.text()}`);
+    }
+    return ((await res.json()) as { id: string }).id;
+  }
+
+  /** Seed an active org-wide challenge with all current org members as participants. */
+  async seedOrgChallenge(orgId: string, name?: string): Promise<string> {
+    const res = await this.ctx.post("/api/test/seed-org-challenge", { data: { orgId, name } });
+    if (!res.ok()) {
+      throw new Error(`seed-org-challenge failed (${res.status()}): ${await res.text()}`);
+    }
+    return ((await res.json()) as { id: string }).id;
+  }
+
+  /**
+   * Insert an approved org_registrations row so that the next /api/org/join
+   * call from `contactEmail` with `inviteCode` promotes the user to manager.
+   */
+  async seedApprovedRegistration(opts: {
+    orgName: string;
+    contactEmail: string;
+    inviteCode: string;
+    type?: string;
+  }): Promise<void> {
+    const res = await this.ctx.post("/api/test/seed-approved-registration", {
+      data: opts,
+    });
+    if (!res.ok()) {
+      throw new Error(`seed-approved-registration failed (${res.status()}): ${await res.text()}`);
+    }
+  }
 }
