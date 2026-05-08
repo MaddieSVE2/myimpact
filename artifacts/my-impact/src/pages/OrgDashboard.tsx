@@ -20,9 +20,9 @@ import {
 } from "@/lib/org-demo-mock";
 import { useMyOrg, hexToHslVar } from "@/lib/org-export";
 
-function StatCard({ icon: Icon, label, value, sub, highlight, tone }: {
+function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: number; sub?: string; highlight?: boolean;
-  tone?: "accent";
+  tone?: "accent"; prefix?: string;
 }) {
   const accentBorder = tone === "accent" && !highlight ? "border-l-4 border-l-accent" : "";
   return (
@@ -32,7 +32,7 @@ function StatCard({ icon: Icon, label, value, sub, highlight, tone }: {
         <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
       </div>
       <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>
-        <AnimatedNumber value={value} formatter={v => v.toLocaleString("en-GB")} />
+        {prefix}<AnimatedNumber value={value} formatter={v => v.toLocaleString("en-GB")} />
       </p>
       {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
     </div>
@@ -173,7 +173,7 @@ export default function OrgDashboard() {
 
       {/* Aggregated stats */}
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <StatCard icon={TrendingUp} label="Total social value" value={`£${Number(aggregates.totalSocialValue).toLocaleString("en-GB")}`} sub={`£${aggregates.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
+        <StatCard icon={TrendingUp} label="Total social value" value={aggregates.totalSocialValue} prefix="£" sub={`£${aggregates.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
         <StatCard icon={Users} label="Active members" value={aggregates.activeMembers} sub={`of ${aggregates.totalMembers} total`} />
         <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} />
         <StatCard icon={BadgeCheck} label="Avg per member" value={aggregates.averagePerMember} sub="across all members" />
