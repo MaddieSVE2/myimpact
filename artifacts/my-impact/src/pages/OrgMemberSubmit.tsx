@@ -115,6 +115,21 @@ export default function OrgMemberSubmit() {
   const selectedIds = Object.keys(lines);
   const orderedSelected: SelectedLine[] = selectedIds.map(id => lines[id]);
 
+  const hoursWarnings = useMemo(() => {
+    const out: { activityId: string; name: string; hoursPerYear: number; reason: "high" | "zero" }[] = [];
+    for (const line of orderedSelected) {
+      const def = activitiesById.get(line.activityId);
+      if (!def) continue;
+      const isHourly = def.unit === "hour";
+      if (line.hoursPerYear > 2000) {
+        out.push({ activityId: line.activityId, name: def.name, hoursPerYear: line.hoursPerYear, reason: "high" });
+      } else if (!isHourly && line.hoursPerYear === 0) {
+        out.push({ activityId: line.activityId, name: def.name, hoursPerYear: line.hoursPerYear, reason: "zero" });
+      }
+    }
+    return out;
+  }, [orderedSelected, activitiesById]);
+
   const totals = useMemo(() => {
     let value = 0;
     let hours = 0;
@@ -688,6 +703,31 @@ export default function OrgMemberSubmit() {
               </ul>
             </div>
           </div>
+
+          {hoursWarnings.length > 0 && (
+            <div
+              className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-900 flex items-start gap-2"
+              data-testid="member-submit-hours-warning"
+            >
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-semibold mb-1">Quick sanity check on your hours</p>
+                <p className="text-xs mb-2">
+                  These look unusual — you can still submit, but it's worth a glance to make sure they're right.
+                </p>
+                <ul className="text-xs space-y-0.5 list-disc pl-4">
+                  {hoursWarnings.map(w => (
+                    <li key={w.activityId} data-testid={`member-submit-hours-warning-${w.activityId}`}>
+                      <span className="font-medium">{w.name}</span>{" "}
+                      {w.reason === "high"
+                        ? `— ${w.hoursPerYear.toLocaleString("en-GB")} hrs/yr seems very high (more than a full-time job is ~2,000).`
+                        : "— 0 hrs/yr looks like it might have been left blank."}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
 
           {submitError && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm text-red-700 flex items-start gap-2" data-testid="member-submit-error">
