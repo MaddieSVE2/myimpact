@@ -49,6 +49,7 @@ import Methodology from "@/pages/Methodology";
 import WhatsNew from "@/pages/WhatsNew";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
+import Security from "@/pages/Security";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import ProfileSetup from "@/pages/ProfileSetup";
@@ -259,6 +260,7 @@ function AppRouter() {
             <Route path="/whats-new" component={WhatsNew} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/security" component={Security} />
             <Route path="/pricing" component={Pricing} />
 
             {/* Wizard routes — open to all */}
