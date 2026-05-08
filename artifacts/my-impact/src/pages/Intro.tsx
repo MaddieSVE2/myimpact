@@ -12,6 +12,36 @@ import { QuickLog } from "@/components/QuickLog";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 import { useListRecurringTemplates } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface MyOrgResponse {
+  org: { id: string; name: string; type: string; role: string } | null;
+}
+
+interface ActiveSurveyLite {
+  id: string;
+  windowKey: string;
+}
+
+interface OrgChallengeLite {
+  id: string;
+  name: string;
+}
+
+interface PromptsResponseLite {
+  inOrg: boolean;
+  surveys: ActiveSurveyLite[];
+  challenges: OrgChallengeLite[];
+}
+
+function firstNameFrom(displayName: string | null | undefined): string | null {
+  const trimmed = displayName?.trim();
+  if (!trimmed) return null;
+  const first = trimmed.split(/\s+/)[0];
+  return first || null;
+}
 
 const C = {
   dark: "var(--brand-dark)",
@@ -263,7 +293,7 @@ function TestimonialsCarousel() {
 
 export default function Intro() {
   const { interests, situations } = useWizard();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, user } = useAuth();
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
 
   const showRecapBanner =
@@ -274,6 +304,41 @@ export default function Intro() {
   });
   const hasQuickLogContent =
     isLoggedIn && (templatesQuery.data?.templates?.length ?? 0) > 0;
+
+  const myOrgQuery = useQuery<MyOrgResponse>({
+    queryKey: ["my-org"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/org/my`, { credentials: "include" });
+      if (!res.ok) return { org: null };
+      return res.json();
+    },
+    enabled: isLoggedIn,
+    retry: false,
+  });
+
+  const orgRole = myOrgQuery.data?.org?.role;
+  const isOrgMember = !!myOrgQuery.data?.org && orgRole !== "manager";
+
+  const orgPromptsQuery = useQuery<PromptsResponseLite>({
+    queryKey: ["org-prompts"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/org/prompts`, { credentials: "include" });
+      if (!res.ok) return { inOrg: false, surveys: [], challenges: [] };
+      return res.json();
+    },
+    enabled: isLoggedIn && isOrgMember,
+    retry: false,
+  });
+
+  const activeSurveys = orgPromptsQuery.data?.surveys ?? [];
+  const activeChallenges = orgPromptsQuery.data?.challenges ?? [];
+  const hasActivePulse = isOrgMember && activeSurveys.length > 0;
+  const hasActiveChallenge = isOrgMember && activeChallenges.length > 0;
+  const challengeHref = activeChallenges.length === 1
+    ? `/wizard/actions?challenge=${activeChallenges[0].id}`
+    : `/challenges`;
+
+  const firstName = firstNameFrom(user?.displayName);
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
@@ -289,7 +354,130 @@ export default function Intro() {
         </div>
       )}
 
-      {/* ── HERO ── */}
+      {/* ── HERO ──
+          Logged-out: marketing pitch as before.
+          Logged-in: personalised welcome + quick CTAs in the same vertical slot.
+          While auth is still loading, render a neutral placeholder so we don't
+          flash the marketing hero to a logged-in user. */}
+      {authLoading ? (
+        <section className="mi-hero" aria-hidden="true" />
+      ) : isLoggedIn ? (
+        <section className="mi-hero" data-testid="welcome-home">
+          <div style={{
+            position: "absolute", top: 0, right: 0, bottom: 0,
+            width: "55%", zIndex: 1, pointerEvents: "none",
+            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
+          }}>
+            <img
+              src={`${import.meta.env.BASE_URL}images/faces.png`}
+              alt=""
+              aria-hidden="true"
+              style={{
+                width: "100%", height: "100%",
+                objectFit: "cover", objectPosition: "center top",
+                opacity: 0.10,
+                mixBlendMode: "luminosity",
+              }}
+            />
+          </div>
+
+          <div style={{ position: "relative", zIndex: 2, padding: "0 5% 80px", maxWidth: 860 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.13)",
+              backdropFilter: "blur(8px)",
+              padding: "8px 18px", borderRadius: 100,
+              color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700,
+              letterSpacing: 1.5, textTransform: "uppercase" as const,
+              marginBottom: 28,
+            }}>
+              <span className="mi-dot" /> {isOrgMember && myOrgQuery.data?.org ? myOrgQuery.data.org.name : "My Impact"}
+            </div>
+
+            <h1
+              className="mi-fraunces"
+              data-testid="welcome-heading"
+              style={{
+                fontSize: "clamp(42px, 7vw, 78px)",
+                fontWeight: 900, color: "white",
+                lineHeight: 1.05, marginBottom: 16, letterSpacing: -2,
+              }}
+            >
+              Welcome back{firstName ? `, ` : ""}
+              {firstName && (
+                <span style={{ color: C.orange, fontStyle: "italic" }}>{firstName}</span>
+              )}
+              <span>.</span>
+            </h1>
+
+            <p style={{ fontSize: "clamp(17px, 2vw, 20px)", color: "rgba(255,255,255,0.65)", lineHeight: 1.65, maxWidth: 560, marginBottom: 32 }}>
+              Pick up where you left off, or jump straight into something new.
+            </p>
+
+            {(hasActivePulse || hasActiveChallenge) && (
+              <div
+                data-testid="welcome-org-ctas"
+                style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 18 }}
+              >
+                {hasActivePulse && (
+                  <a
+                    href="#org-prompts-section"
+                    className="mi-btn-hero"
+                    data-testid="welcome-cta-answer-pulse"
+                    onClick={(e) => {
+                      const target = document.getElementById("org-prompts-section");
+                      if (target) {
+                        e.preventDefault();
+                        target.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }}
+                  >
+                    Answer a Pulse →
+                  </a>
+                )}
+                {hasActiveChallenge && (
+                  <Link
+                    href={challengeHref}
+                    className="mi-btn-hero"
+                    data-testid="welcome-cta-add-to-challenge"
+                  >
+                    Add to a Challenge →
+                  </Link>
+                )}
+              </div>
+            )}
+
+            <div
+              data-testid="welcome-individual-ctas"
+              style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}
+            >
+              <Link
+                href="/wizard/actions"
+                className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                data-testid="welcome-cta-calculate"
+              >
+                Calculate my impact →
+              </Link>
+              <Link
+                href="/journal"
+                className="mi-btn-ghost-hero"
+                data-testid="welcome-cta-journal"
+              >
+                View my journal
+              </Link>
+              <Link
+                href="/suggestions"
+                className="mi-btn-ghost-hero"
+                data-testid="welcome-cta-inspire"
+              >
+                Inspire me
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : (
       <section className="mi-hero">
         {/* Faces image — blended into right side of hero */}
         <div style={{
@@ -358,12 +546,17 @@ export default function Intro() {
 
 
       </section>
+      )}
 
       {/* ── FOR YOUR ORGANISATION (member-only prompts) ──
           OrgPromptsSection renders nothing (no DOM, no wrapper) for
           non-members, managers, and members with no open prompts, so
           there is no layout impact for those users. */}
-      {isLoggedIn && <OrgPromptsSection variant="full" />}
+      {isLoggedIn && (
+        <div id="org-prompts-section">
+          <OrgPromptsSection variant="full" />
+        </div>
+      )}
 
       {/* ── QUICK LOG (logged-in users with active recurring templates only) ── */}
       {hasQuickLogContent && (
