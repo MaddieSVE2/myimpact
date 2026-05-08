@@ -116,7 +116,61 @@ export function sdgExportRows(sdgs: SdgBreakdownPoint[]): Array<Record<string, s
   }));
 }
 
-export function buildOrgPdf(
+// --- Internal design system for the org PDF -----------------------------------
+// Kept private to this module so the public `buildOrgPdf` signature is stable.
+
+type RGB = [number, number, number];
+
+function hexToRgb(hex: string): RGB {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function mixRgb(a: RGB, b: RGB, t: number): RGB {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+// Best-effort async loader: fetch a remote image (e.g. an org logo) and
+// convert it to a `data:` URL that jsPDF can consume via `addImage`.
+// Resolves to `null` on any failure (CORS, 404, unsupported format, timeout)
+// so callers can fall back to a typographic lockup without throwing.
+async function loadImageAsDataUrl(
+  url: string,
+  timeoutMs = 2500,
+): Promise<{ dataUrl: string; format: "PNG" | "JPEG" } | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", mode: "cors" });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const ct = (blob.type || "").toLowerCase();
+    let format: "PNG" | "JPEG" | null = null;
+    if (ct.includes("png")) format = "PNG";
+    else if (ct.includes("jpeg") || ct.includes("jpg")) format = "JPEG";
+    if (!format) return null;
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+    return { dataUrl, format };
+  } catch {
+    return null;
+  }
+}
+
+export async function buildOrgPdf(
   orgName: string,
   rows: Array<{ activity: DemoActivity; member: { name: string; email: string } }>,
   totals: { value: number; hours: number; activities: number },
@@ -124,90 +178,312 @@ export function buildOrgPdf(
   filterSummary: string,
   highlights: Array<{ activity: DemoActivity; member: { name: string; email: string } }>,
   sdgs: SdgBreakdownPoint[],
-) {
+  // Optional — extra parameter kept backward compatible so existing callers
+  // (which omit it) continue to work without changes. The function returns
+  // a Promise to support best-effort logo embedding, but legacy non-awaiting
+  // callers still work (the PDF saves once the promise settles).
+  branding?: OrgBranding | null,
+): Promise<void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const margin = 40;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(18);
-  doc.text(`${orgName} — Member impact report`, margin, 50);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(100);
-  doc.text(`Generated ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}`, margin, 66);
-  if (filterSummary) doc.text(filterSummary, margin, 80);
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 48;
+  const contentW = pageW - margin * 2;
 
-  doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(20);
-  doc.text("Summary", margin, 110);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
-  doc.text(`Total social value: £${totals.value.toLocaleString("en-GB")}`, margin, 128);
-  doc.text(`Hours logged: ${Math.round(totals.hours).toLocaleString("en-GB")}`, margin, 144);
-  doc.text(`Activities: ${totals.activities.toLocaleString("en-GB")}`, margin, 160);
+  // ----- Colour tokens ------------------------------------------------------
+  const TEAL: RGB = [13, 148, 136];
+  const validHex = (h: string | null | undefined) => !!h && /^#?[0-9a-f]{6}$/i.test(h);
+  const brand: RGB = validHex(branding?.brandPrimary) ? hexToRgb(branding!.brandPrimary!) : TEAL;
+  // brandAccent is used as the bar-top highlight, the stat-card accent rail
+  // and SDG section ornament when set; otherwise we derive a lighter brand
+  // tint so the design still reads as branded.
+  const accent: RGB = validHex(branding?.brandAccent)
+    ? hexToRgb(branding!.brandAccent!)
+    : mixRgb(brand, [255, 255, 255], 0.30);
+  const brandDark = mixRgb(brand, [0, 0, 0], 0.22);
+  const brandTint = mixRgb(brand, [255, 255, 255], 0.86);
 
-  doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-  doc.text("Monthly trend (social value, £)", margin, 190);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  if (monthlyTrend.length === 0) {
-    doc.text("No data in this range.", margin, 208);
-  } else {
-    const max = Math.max(1, ...monthlyTrend.map(p => p.value));
-    const baseY = 280; const barW = 28; const gap = 14;
-    monthlyTrend.forEach((p, i) => {
-      const x = margin + i * (barW + gap);
-      const h = (p.value / max) * 70;
-      doc.setFillColor(13, 148, 136);
-      doc.rect(x, baseY - h, barW, h, "F");
-      doc.setTextColor(80);
-      doc.text(p.label, x, baseY + 12);
-      doc.text(`£${p.value}`, x, baseY - h - 4);
-    });
+  const INK: RGB = [15, 23, 42];        // primary text
+  const MUTED: RGB = [71, 85, 105];     // secondary text
+  const SUBTLE: RGB = [148, 163, 184];  // tertiary / axis labels
+  const HAIRLINE: RGB = [226, 232, 240];
+  const SURFACE: RGB = [248, 250, 252];
+  const WHITE: RGB = [255, 255, 255];
+
+  // ----- jsPDF colour helpers -----------------------------------------------
+  const setFill = (c: RGB) => doc.setFillColor(c[0], c[1], c[2]);
+  const setText = (c: RGB) => doc.setTextColor(c[0], c[1], c[2]);
+  const setDraw = (c: RGB) => doc.setDrawColor(c[0], c[1], c[2]);
+
+  const FOOTER_RESERVE = 36;
+
+  // ----- Layout helpers -----------------------------------------------------
+  function drawSectionHeading(yIn: number, label: string): number {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); setText(INK);
+    doc.text(label, margin, yIn);
+    setDraw(HAIRLINE); doc.setLineWidth(0.5);
+    doc.line(margin, yIn + 6, margin + contentW, yIn + 6);
+    return yIn + 22;
   }
 
-  doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(20);
-  doc.text("Highlights", margin, 310);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(60);
-  let y = 326;
+  function ensureSpace(currentY: number, needed: number): number {
+    const limit = pageH - FOOTER_RESERVE;
+    if (currentY + needed > limit) {
+      doc.addPage();
+      return margin + 16;
+    }
+    return currentY;
+  }
+
+  // ===== COVER HEADER BAND ==================================================
+  const headerH = 130;
+  setFill(brand);
+  doc.rect(0, 0, pageW, headerH, "F");
+  // Bottom strip uses the brand accent (when set) — falls back to a darker
+  // shade of the brand otherwise. Gives the header band a clear two-tone
+  // edge that picks up `OrgBranding.brandAccent`.
+  setFill(validHex(branding?.brandAccent) ? accent : brandDark);
+  doc.rect(0, headerH, pageW, 4, "F");
+
+  // Logo: try a best-effort embed of `branding.logoUrl` (PNG/JPEG via
+  // `addImage`). On any failure (CORS, 404, unsupported format, timeout)
+  // we silently fall back to the typographic initials lockup in the brand
+  // colour — see "Out of scope" in the task spec.
+  const lockupX = margin;
+  const lockupY = 42;
+  const lockupSize = 56;
+  setFill(WHITE);
+  doc.roundedRect(lockupX, lockupY, lockupSize, lockupSize, 8, 8, "F");
+  let logoEmbedded = false;
+  if (branding?.logoUrl) {
+    const loaded = await loadImageAsDataUrl(branding.logoUrl);
+    if (loaded) {
+      try {
+        const pad = 4;
+        doc.addImage(
+          loaded.dataUrl, loaded.format,
+          lockupX + pad, lockupY + pad,
+          lockupSize - pad * 2, lockupSize - pad * 2,
+          undefined, "FAST",
+        );
+        logoEmbedded = true;
+      } catch {
+        // fall through to typographic lockup below
+      }
+    }
+  }
+  if (!logoEmbedded) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(22); setText(brand);
+    const initials = orgName
+      .split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join("") || "·";
+    const initW = doc.getTextWidth(initials);
+    doc.text(initials, lockupX + 28 - initW / 2, lockupY + 36);
+  }
+
+  // Title block
+  setText(WHITE);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.text("MEMBER IMPACT REPORT", lockupX + 76, lockupY + 14);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(22);
+  doc.text(orgName, lockupX + 76, lockupY + 38);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  const generatedStr = `Generated ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}`;
+  const periodStr = filterSummary && filterSummary.trim().length > 0 ? filterSummary : "All activity to date";
+  doc.text(`${periodStr}  ·  ${generatedStr}`, lockupX + 76, lockupY + 54);
+
+  // ===== SUMMARY STAT CARDS =================================================
+  let y = headerH + 32;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(MUTED);
+  doc.text("AT A GLANCE", margin, y);
+  y += 12;
+
+  const cardGap = 14;
+  const cardW = (contentW - cardGap * 2) / 3;
+  const cardH = 80;
+  const statCards = [
+    { label: "Social value", value: `£${totals.value.toLocaleString("en-GB")}`, sub: "Total generated" },
+    { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member volunteer time" },
+    { label: "Activities",   value: totals.activities.toLocaleString("en-GB"),       sub: "Logged in this period" },
+  ];
+  statCards.forEach((c, i) => {
+    const x = margin + i * (cardW + cardGap);
+    setFill(brandTint);
+    doc.roundedRect(x, y, cardW, cardH, 8, 8, "F");
+    setFill(brand);
+    doc.roundedRect(x, y, 4, cardH, 2, 2, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8); setText(MUTED);
+    doc.text(c.label.toUpperCase(), x + 16, y + 18);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(22); setText(INK);
+    doc.text(c.value, x + 16, y + 48);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+    doc.text(c.sub, x + 16, y + 66);
+  });
+  y += cardH + 26;
+
+  // ===== MONTHLY TREND CHART ================================================
+  y = drawSectionHeading(y, "Monthly social value trend");
+  if (monthlyTrend.length === 0) {
+    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.text("No activity recorded in this period.", margin, y + 14);
+    y += 30;
+  } else {
+    const chartH = 150;
+    const chartTop = y;
+    const chartBottom = y + chartH - 22; // leave room for month labels
+    const chartLeft = margin + 36;       // y-axis label gutter
+    const chartRight = margin + contentW - 4;
+    const chartInnerW = chartRight - chartLeft;
+    const maxVal = Math.max(1, ...monthlyTrend.map(p => p.value));
+    const niceMax = Math.max(50, Math.ceil(maxVal / 50) * 50);
+
+    // Gridlines + y-axis labels
+    setDraw(HAIRLINE); doc.setLineWidth(0.5);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(SUBTLE);
+    const gridLines = 4;
+    for (let i = 0; i <= gridLines; i++) {
+      const gy = chartBottom - (i / gridLines) * (chartBottom - chartTop - 8);
+      doc.line(chartLeft, gy, chartRight, gy);
+      const v = Math.round((i / gridLines) * niceMax);
+      doc.text(`£${v}`, margin, gy + 3);
+    }
+
+    // Bars (width auto-scales to month count, capped to keep things tidy)
+    const n = monthlyTrend.length;
+    const slot = chartInnerW / n;
+    const barW = Math.min(36, Math.max(6, slot * 0.62));
+    monthlyTrend.forEach((p) => {
+      const i = monthlyTrend.indexOf(p);
+      const cx = chartLeft + slot * i + slot / 2;
+      const x = cx - barW / 2;
+      const usableH = chartBottom - chartTop - 8;
+      const h = (p.value / niceMax) * usableH;
+      const by = chartBottom - h;
+      const radius = Math.min(3, barW / 2);
+      // Base fill (brand)
+      setFill(brand);
+      doc.roundedRect(x, by, barW, h, radius, radius, "F");
+      // Two-tone highlight near the top of the bar
+      if (h > 10) {
+        setFill(accent);
+        doc.roundedRect(x, by, barW, Math.min(h * 0.45, 14), radius, radius, "F");
+      }
+      // Value label above bar — only when there's room and width is sensible
+      if (barW >= 14) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); setText(MUTED);
+        const vt = `£${p.value}`;
+        const vw = doc.getTextWidth(vt);
+        doc.text(vt, cx - vw / 2, Math.max(chartTop + 8, by - 3));
+      }
+      // Month label below baseline
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(MUTED);
+      const lw = doc.getTextWidth(p.label);
+      doc.text(p.label, cx - lw / 2, chartBottom + 12);
+    });
+
+    // Baseline
+    setDraw(MUTED); doc.setLineWidth(0.6);
+    doc.line(chartLeft, chartBottom, chartRight, chartBottom);
+    y += chartH + 10;
+  }
+
+  // ===== HIGHLIGHTS =========================================================
+  y = ensureSpace(y, 60);
+  y = drawSectionHeading(y, "Highlights");
   if (highlights.length === 0) {
+    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
     doc.text("No activities to highlight in this range.", margin, y);
-    y += 16;
+    y += 18;
   } else {
     highlights.slice(0, 5).forEach((h) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(20);
-      const head = `• ${h.activity.activity} — £${h.activity.socialValueGBP} (${h.member.name})`;
-      doc.text(head, margin, y);
-      y += 13;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(80);
-      const wrapped = doc.splitTextToSize(h.activity.description, 515);
-      doc.text(wrapped, margin + 10, y);
-      y += wrapped.length * 11 + 6;
+      const sdg = SDG_BY_CATEGORY[h.activity.category];
+      const sdgColor: RGB = sdg ? hexToRgb(sdg.color) : brand;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      const desc = doc.splitTextToSize(h.activity.description, contentW - 30) as string[];
+      const blockH = 44 + desc.length * 11;
+      y = ensureSpace(y, blockH + 8);
+      // Card background
+      setFill(SURFACE);
+      doc.roundedRect(margin, y, contentW, blockH, 6, 6, "F");
+      // Coloured left accent bar
+      setFill(sdgColor);
+      doc.rect(margin, y, 4, blockH, "F");
+      // Title
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(INK);
+      doc.text(h.activity.activity, margin + 14, y + 18);
+      // Meta row
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+      const meta = `${h.member.name}  ·  £${h.activity.socialValueGBP}  ·  ${h.activity.hours}h  ·  SDG ${sdg?.number ?? "—"}`;
+      doc.text(meta, margin + 14, y + 32);
+      // Description
+      setText(MUTED);
+      doc.text(desc, margin + 14, y + 46);
+      y += blockH + 8;
     });
   }
 
-  doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(20);
-  doc.text("UN Sustainable Development Goals (SDGs)", margin, y);
-  y += 14;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(80);
+  // ===== SDG BREAKDOWN ======================================================
+  y += 6;
+  y = ensureSpace(y, 60);
+  y = drawSectionHeading(y, "UN Sustainable Development Goals");
   if (sdgs.length === 0) {
-    doc.text("No SDG-aligned activities in this range.", margin, y); y += 14;
+    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.text("No SDG-aligned activities in this range.", margin, y);
+    y += 18;
   } else {
     const maxVal = Math.max(1, ...sdgs.map(s => s.value));
-    sdgs.forEach((s) => {
-      const hex = s.color.replace("#", "");
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      const labelLine = `SDG ${s.number} · ${s.label}`;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(20);
-      doc.text(labelLine, margin, y);
-      doc.setFont("helvetica", "normal"); doc.setTextColor(80);
-      doc.text(`£${s.value.toLocaleString("en-GB")}  ·  ${s.pct}%  ·  ${s.members} members  ·  ${s.activities} activities`, margin + 280, y);
-      y += 4;
-      const barW = (s.value / maxVal) * 320;
-      doc.setFillColor(r, g, b);
-      doc.rect(margin, y, barW, 6, "F");
-      y += 14;
+    const rowH = 30;
+    const badgeSize = 22;
+    const barAreaX = margin + 210;
+    const barAreaW = contentW - 210 - 90;
+    const valueRightX = margin + contentW - 6;
+    sdgs.forEach((s, i) => {
+      y = ensureSpace(y, rowH + 4);
+      const sdgColor = hexToRgb(s.color);
+      // Alt row tint
+      if (i % 2 === 0) {
+        setFill(SURFACE);
+        doc.roundedRect(margin, y, contentW, rowH, 4, 4, "F");
+      }
+      // SDG number badge
+      const badgeY = y + (rowH - badgeSize) / 2;
+      setFill(sdgColor);
+      doc.roundedRect(margin + 8, badgeY, badgeSize, badgeSize, 4, 4, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(WHITE);
+      const badgeT = String(s.number);
+      const bw = doc.getTextWidth(badgeT);
+      doc.text(badgeT, margin + 8 + badgeSize / 2 - bw / 2, badgeY + badgeSize / 2 + 3.5);
+      // Label + meta
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
+      doc.text(s.label, margin + 38, y + 14);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+      doc.text(`${s.activities} activities  ·  ${s.members} members`, margin + 38, y + 24);
+      // Bar (track + fill)
+      const trackY = y + rowH / 2 - 4;
+      setFill(mixRgb(sdgColor, [255, 255, 255], 0.78));
+      doc.roundedRect(barAreaX, trackY, barAreaW, 8, 3, 3, "F");
+      const fillW = Math.max(2, (s.value / maxVal) * barAreaW);
+      setFill(sdgColor);
+      doc.roundedRect(barAreaX, trackY, fillW, 8, 3, 3, "F");
+      // Value + percent right-aligned
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
+      const valStr = `£${s.value.toLocaleString("en-GB")}`;
+      doc.text(valStr, valueRightX - doc.getTextWidth(valStr), y + 14);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+      const pctStr = `${s.pct}%`;
+      doc.text(pctStr, valueRightX - doc.getTextWidth(pctStr), y + 24);
+      y += rowH + 2;
     });
   }
-  y += 4;
+  y += 12;
+
+  // ===== ACTIVITY TABLE =====================================================
+  // Reserve enough room for the heading + a couple of body rows so the heading
+  // never gets orphaned at the very bottom of a page.
+  y = ensureSpace(y, 110);
+  y = drawSectionHeading(y, "Activity log");
 
   autoTable(doc, {
-    startY: y + 6,
+    startY: y,
     head: [["Date", "Member", "Category", "SDG", "Activity", "Hours", "£"]],
     body: rows.map(({ activity, member }) => {
       const sdg = SDG_BY_CATEGORY[activity.category];
@@ -221,19 +497,45 @@ export function buildOrgPdf(
         `£${activity.socialValueGBP}`,
       ];
     }),
-    styles: { fontSize: 8, cellPadding: 4, valign: "top" },
-    headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: "bold" },
+    styles: {
+      fontSize: 8, cellPadding: 6, valign: "top",
+      textColor: [30, 41, 59], lineColor: HAIRLINE, lineWidth: 0.3,
+    },
+    headStyles: {
+      fillColor: brand, textColor: 255, fontStyle: "bold",
+      fontSize: 8.5, cellPadding: 7, halign: "left",
+    },
+    alternateRowStyles: { fillColor: SURFACE },
     columnStyles: {
       0: { cellWidth: 56 },
       1: { cellWidth: 72 },
       2: { cellWidth: 54 },
       3: { cellWidth: 28, halign: "center" },
-      4: { cellWidth: 215 },
+      4: { cellWidth: 207 },
       5: { cellWidth: 32, halign: "right" },
       6: { cellWidth: 38, halign: "right" },
     },
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, top: margin + 8, bottom: FOOTER_RESERVE + 8 },
+    showHead: "everyPage",
   });
+
+  // ===== FOOTER PASS (every page) ==========================================
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    const fy = pageH - 18;
+    setDraw(HAIRLINE); doc.setLineWidth(0.5);
+    doc.line(margin, fy - 12, pageW - margin, fy - 12);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+    // Left
+    doc.text(p === 1 ? "My Impact" : orgName, margin, fy);
+    // Center
+    const pageStr = `Page ${p} of ${totalPages}`;
+    doc.text(pageStr, (pageW - doc.getTextWidth(pageStr)) / 2, fy);
+    // Right
+    const right = "Generated by My Impact";
+    doc.text(right, pageW - margin - doc.getTextWidth(right), fy);
+  }
 
   doc.save(`${orgName.replace(/\s+/g, "-").toLowerCase()}-impact-report.pdf`);
 }

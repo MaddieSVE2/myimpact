@@ -96,6 +96,7 @@ export default function OrgExport() {
   }
   function handlePdf() {
     if (filtered.length === 0) return;
+    if (!orgData?.org) return;
     const rowsForPdf = filtered.map(a => ({ activity: a, member: memberLabel(a.memberId, anonymise) }));
     const highlights = [...rowsForPdf]
       .sort((a, b) => b.activity.socialValueGBP - a.activity.socialValueGBP)
@@ -108,6 +109,7 @@ export default function OrgExport() {
       rangeSummary(),
       highlights,
       sdgs,
+      orgData.org.branding ?? null,
     );
   }
 
