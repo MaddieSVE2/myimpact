@@ -1,0 +1,85 @@
+Add tiered AI usage controls to my app's assistant endpoint, modelled on a layered "burst → quota → budget" design. The model is OpenAI GPT-5-mini, accessed via the Replit OpenAI integration (no API key handling — use the integration's provided client). Implement all of the following; do not skip layers.
+
+1. Identify the caller (server-side, never trust the client).
+Build a getUserKey(req) helper that returns:
+
+user:<userId> if req.session.userId is set (logged in)
+else ip:<normalized_ip> (strip IPv6 ::ffff: prefix, take first X-Forwarded-For hop only if the platform proxy is trusted)
+else sess:<sessionId> as a last resort
+Two distinct tiers: anon (key starts with ip:/sess:) vs user (key starts with user:).
+
+2. Burst rate limit (Express middleware, in front of the AI route).
+Use express-rate-limit with two stacked limiters:
+
+aiPerIpLimiter: 10 requests / 60s, keyed by IP
+aiPerUserLimiter: 30 requests / 60s, keyed by getUserKey
+Return HTTP 429 with { message: "Too many AI requests. Please slow down." }.
+
+3. Daily + monthly quotas (application logic, before the model call).
+Constants, all overridable by env vars:
+
+AI_DAILY_LIMIT_ANON           = 10     // questions/day
+AI_DAILY_LIMIT_USER           = 50
+AI_MONTHLY_TOKEN_LIMIT_ANON   = 200_000
+AI_MONTHLY_TOKEN_LIMIT_USER   = 1_500_000
+
+Token total = input_tokens + output_tokens from the OpenAI response's usage field. Reset daily on UTC date, monthly on UTC month.
+
+Persist usage in a Postgres table:
+
+CREATE TABLE ai_usage (
+  user_key       text not null,
+  date           date not null,
+  model          text not null,           -- e.g. 'gpt-5-mini'
+  count          int  not null default 0, -- "questions" charged
+  tool_calls     int  not null default 0,
+  input_tokens   int  not null default 0,
+  output_tokens  int  not null default 0,
+  PRIMARY KEY (user_key, date, model)
+);
+
+Helper functions:
+
+getRemainingQuota(userKey) → reads today's row + sum of current month's token rows, applies the right tier limits, returns { questionsLeft, tokensLeft, dailyLimit, monthlyTokenLimit }.
+incrementUsage(userKey, model, { countDelta, toolCalls, inputTokens, outputTokens }) → upserts the daily row.
+When a quota is exceeded, return HTTP 429 with one of:
+
+"Daily question limit reached"
+"Monthly AI usage limit reached"
+4. In-flight de-duplication (prevents parallel-request bypass / TOCTOU).
+Keep an in-memory Map<userKey, count> called inFlightRequests. Before the model call, treat each in-flight request as if it had already consumed 1 question and the average tokens-per-question (configurable, e.g. 8000). Decrement in a finally block. This stops a user from firing 50 parallel requests while their quota check still says "9/10".
+
+5. Global spend alerting (not a hard cutoff).
+Daily cron (node-cron or setInterval with startup delay):
+
+Sum the current month's tokens × current GPT-5-mini list price → estimated USD.
+If > AI_BUDGET_ALERT_USD (default $50), send an email to ADMIN_EMAILS (comma-separated). Don't re-alert within 24h. Log every check.
+Expose GET /api/admin/ai-usage (admin-only, allowlist by email) showing per-user-key breakdowns, totals, and the running cost estimate.
+
+6. Tool-loop and prompt-size bounds (inside the agent loop).
+
+MAX_ITER = 10 — hard cap on tool-call iterations per turn.
+System prompt: instruct the model "You can call up to 10 tools per turn."
+Truncate any single tool result to ~16 KB before feeding back to the model.
+Validate the user's message with Zod: z.string().min(1).max(600).
+Keep the system prompt and tool definitions stable across turns so OpenAI's automatic prompt caching kicks in (it caches identical prefixes ≥1024 tokens for free).
+7. Request flow (must be in this order).
+
+aiPerIpLimiter → 2. aiPerUserLimiter → 3. getRemainingQuota check → 4. incrementInFlight(userKey) → 5. agent loop with OpenAI tool-calling (≤10 iterations, tool results truncated) → 6. incrementUsage with real usage.input_tokens / usage.output_tokens → 7. optional cheap follow-up call for suggestions logged with countDelta: 0 (logs tokens but doesn't burn a "question") → 8. decrementInFlight(userKey) in finally.
+8. Frontend UX.
+
+On 429s, show the server's message in a toast and disable the input briefly.
+In the chat header, show a tiny meter: "Monthly AI usage: 145,000 / 200,000 tokens", and "Questions today: 7 / 10". For anonymous users, append "— sign in for higher limits".
+Never expose another user's usage; the meter only shows the caller's own quota from getRemainingQuota.
+9. Configuration & secrets.
+All limits via env vars (defaults above). The OpenAI integration handles auth — do not store an OPENAI_API_KEY yourself. Configure: ADMIN_EMAILS, AI_BUDGET_ALERT_USD, and the email-sending key (Resend/SMTP). Never log full prompt contents or tool inputs — log only the user key, model, token counts, and tool-call count.
+
+Acceptance checks I want you to run after building:
+
+Anonymous user hitting the endpoint 11 times in a day gets 429 on the 11th with "Daily question limit reached".
+Logged-in user gets 50 questions/day instead.
+Firing 20 parallel requests as one user does not let them exceed the daily cap (in-flight map works).
+Burst of 11 requests in 5 seconds from one IP returns 429 "Too many AI requests...".
+The ai_usage table has one row per (user_key, date, model) after several requests, with token counts that match the OpenAI response's usage field.
+Forcing the monthly token total above AI_BUDGET_ALERT_USD (in a test) sends one email to ADMIN_EMAILS, and not a second one within 24h.
+/api/admin/ai-usage is 403 for non-admins, returns the breakdown for admins.
