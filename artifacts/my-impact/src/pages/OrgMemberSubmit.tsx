@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -728,6 +728,92 @@ export default function OrgMemberSubmit() {
               </div>
             </div>
           )}
+          <div className="bg-white border border-border rounded-xl p-5 mb-4" data-testid="member-submit-manager-preview">
+            <div className="flex items-center gap-2 mb-1">
+              <Eye className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">How your manager will see this</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              A preview of the rows that will appear in {orgName}'s activity dashboard.
+            </p>
+
+            <div className="rounded-lg border border-border bg-muted/10 p-4">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+                <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{orgName} · Activity feed</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {periodLabel.trim() ? `Submission: ${periodLabel.trim()}` : "New submission from you"}
+                    {" · "}
+                    {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Member</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Category</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Activity</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Hours</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderedSelected.map(l => {
+                      const def = activitiesById.get(l.activityId);
+                      if (!def) return null;
+                      return (
+                        <tr key={l.activityId} className="border-b border-border/60 align-top" data-testid={`member-submit-preview-row-${l.activityId}`}>
+                          <td className="py-2 pr-3">
+                            <p className="font-medium text-foreground">{user?.displayName || user?.email || "You"}</p>
+                            {user?.displayName && user?.email && (
+                              <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                            )}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{def.category}</span>
+                          </td>
+                          <td className="py-2 pr-3 max-w-md">
+                            <p className="font-medium text-foreground">{l.title || def.name}</p>
+                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                              {def.unit === "hour"
+                                ? `${l.hoursPerYear} hrs/yr`
+                                : `${l.quantity} ${def.unitLabel}`}
+                              {l.detail && ` · ${l.detail.length > 80 ? l.detail.slice(0, 80) + "…" : l.detail}`}
+                            </p>
+                          </td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{Math.round(l.hoursPerYear).toLocaleString("en-GB")}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap font-semibold text-foreground">{formatGBP(estimatedValue(def, l))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/40">
+                      <td className="py-2 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" colSpan={3}>
+                        Submission total
+                      </td>
+                      <td className="py-2 pr-3 text-right whitespace-nowrap font-bold text-foreground tabular-nums" data-testid="member-submit-preview-total-hours">
+                        {Math.round(totals.hours).toLocaleString("en-GB")}
+                      </td>
+                      <td className="py-2 pr-3 text-right whitespace-nowrap font-bold text-foreground" data-testid="member-submit-preview-total-value">
+                        {formatGBP(totals.value)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground mt-3">
+              This is a preview — your submission will roll into {orgName}'s totals and appear in their activity feed once you confirm below.
+            </p>
+          </div>
 
           {submitError && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm text-red-700 flex items-start gap-2" data-testid="member-submit-error">
