@@ -234,11 +234,8 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  // The org demo account is intentionally never branded — demos start from the
-  // neutral My Impact look. Skip branding fields for the demo org.
-  const isDemo = org.id === "demo-org-0000000000000";
   let logoUrl: string | null = null;
-  if (!isDemo && org.logoKey) {
+  if (org.logoKey) {
     try {
       logoUrl = await getDownloadURL(org.logoKey);
     } catch {
@@ -255,9 +252,9 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       aiSidekickEnabled: org.aiSidekickEnabled,
       branding: {
         logoUrl,
-        logoKey: isDemo ? null : org.logoKey ?? null,
-        brandPrimary: isDemo ? null : org.brandPrimary ?? null,
-        brandAccent: isDemo ? null : org.brandAccent ?? null,
+        logoKey: org.logoKey ?? null,
+        brandPrimary: org.brandPrimary ?? null,
+        brandAccent: org.brandAccent ?? null,
       },
     },
   });
@@ -279,7 +276,6 @@ router.post("/my/branding/logo-upload-url", authenticate, async (req: Authentica
   const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
   if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
   if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can change branding." }); return; }
-  if (membership.orgId === "demo-org-0000000000000") { res.status(400).json({ error: "The demo organisation cannot be branded." }); return; }
 
   const body = req.body as Record<string, unknown>;
   const mimeType = typeof body.mimeType === "string" ? body.mimeType.toLowerCase() : "";
@@ -314,7 +310,6 @@ router.patch("/my/branding", authenticate, async (req: AuthenticatedRequest, res
   const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
   if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
   if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can change branding." }); return; }
-  if (membership.orgId === "demo-org-0000000000000") { res.status(400).json({ error: "The demo organisation cannot be branded." }); return; }
 
   const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, membership.orgId) });
   if (!org) { res.status(404).json({ error: "Organisation not found." }); return; }
@@ -608,11 +603,8 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
 
     const verifiedTotals = await getVerifiedTotalsForOrg(org.id, from, to);
 
-    // Pull the org's branding into the PDF — but never for the demo org so the
-    // demo always renders in My Impact's neutral colours.
-    const isDemo = org.id === "demo-org-0000000000000";
     let logoDataUrl: string | null = null;
-    if (!isDemo && org.logoKey) {
+    if (org.logoKey) {
       try {
         const obj = await readObjectBuffer(org.logoKey);
         if (obj) {
@@ -637,7 +629,7 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
       valueByCategory,
       sdgBreakdowns,
-      branding: isDemo ? undefined : {
+      branding: {
         logoDataUrl,
         brandPrimary: org.brandPrimary ?? null,
         brandAccent: org.brandAccent ?? null,

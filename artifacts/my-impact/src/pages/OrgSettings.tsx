@@ -406,7 +406,8 @@ function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
 function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string; branding?: OrgBranding }; isDemoOrg: boolean }) {
   return (
     <div className="space-y-4">
-      {!isDemoOrg && <BrandingSection branding={org.branding ?? null} />}
+      <BrandingSection branding={org.branding ?? null} />
+
       <div className="bg-white border border-border rounded-xl p-5 space-y-3 text-sm">
       <h3 className="text-sm font-semibold mb-2">Organisation profile</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
