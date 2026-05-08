@@ -86,6 +86,73 @@ export function getDemoMember(id: string): DemoMember | undefined {
   return DEMO_MEMBERS.find(m => m.id === id);
 }
 
+// Each activity category maps to its primary UN Sustainable Development Goal.
+// Numbers, labels and colours follow the official SDG identity set.
+export interface SdgInfo { number: number; label: string; color: string }
+export const SDG_BY_CATEGORY: Record<ActivityCategory, SdgInfo> = {
+  Environment: { number: 13, label: "Climate Action",                    color: "#3F7E44" },
+  Community:   { number: 11, label: "Sustainable Cities & Communities",  color: "#FD9D24" },
+  Health:      { number: 3,  label: "Good Health & Wellbeing",           color: "#4C9F38" },
+  Education:   { number: 4,  label: "Quality Education",                 color: "#C5192D" },
+};
+
+export interface SdgBreakdownPoint extends SdgInfo {
+  value: number;
+  hours: number;
+  activities: number;
+  members: number; // distinct members contributing to this SDG
+  pct: number; // 0-100, share of social value
+}
+
+export function computeSdgBreakdown(activities: DemoActivity[] = DEMO_ACTIVITIES): SdgBreakdownPoint[] {
+  const total = activities.reduce((s, a) => s + a.socialValueGBP, 0);
+  const map = new Map<number, SdgBreakdownPoint>();
+  const memberSets = new Map<number, Set<string>>();
+  for (const a of activities) {
+    const sdg = SDG_BY_CATEGORY[a.category];
+    if (!sdg) continue;
+    if (!map.has(sdg.number)) {
+      map.set(sdg.number, { ...sdg, value: 0, hours: 0, activities: 0, members: 0, pct: 0 });
+      memberSets.set(sdg.number, new Set<string>());
+    }
+    const p = map.get(sdg.number)!;
+    p.value += a.socialValueGBP;
+    p.hours += a.hours;
+    p.activities += 1;
+    memberSets.get(sdg.number)!.add(a.memberId);
+  }
+  for (const [n, set] of memberSets) {
+    const p = map.get(n)!;
+    p.members = set.size;
+  }
+  const arr = Array.from(map.values()).sort((a, b) => b.value - a.value);
+  if (total > 0) for (const p of arr) p.pct = Math.round((p.value / total) * 100);
+  return arr;
+}
+
+// Richer per-category aggregate used by the "Top categories" panel — adds
+// distinct member count on top of value/hours/activities.
+export interface CategoryBreakdownPoint {
+  category: ActivityCategory;
+  value: number;
+  hours: number;
+  activities: number;
+  members: number;
+}
+export function computeCategoryBreakdown(activities: DemoActivity[] = DEMO_ACTIVITIES): CategoryBreakdownPoint[] {
+  const cats: ActivityCategory[] = ["Environment", "Community", "Health", "Education"];
+  return cats.map(c => {
+    const items = activities.filter(a => a.category === c);
+    return {
+      category: c,
+      value: items.reduce((s, a) => s + a.socialValueGBP, 0),
+      hours: items.reduce((s, a) => s + a.hours, 0),
+      activities: items.length,
+      members: new Set(items.map(a => a.memberId)).size,
+    };
+  }).sort((a, b) => b.value - a.value);
+}
+
 export interface DemoOrgAggregates {
   totalMembers: number;
   activeMembers: number;

@@ -4,19 +4,23 @@ import { motion } from "framer-motion";
 import {
   Building2, TrendingUp, Users, Clock, BadgeCheck, Filter, Download,
   FileSpreadsheet, FileText, Settings, ChevronLeft, ChevronRight, Search, EyeOff, AlertCircle,
+  Globe2, Layers, Flag, Plus, X, ClipboardList,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { PulseSurveysSection } from "@/components/PulseSurveysSection";
+import { useT } from "@/i18n";
 import {
   DEMO_ORG_ID, DEMO_INVITE_CODE, DEMO_MEMBERS, DEMO_ACTIVITIES,
-  computeDemoAggregates, computeMonthlyTrend, getDemoMember,
-  getRemovedMemberIds, getOrgInviteCode,
-  type ActivityCategory, type DemoActivity,
+  computeDemoAggregates, computeMonthlyTrend, computeSdgBreakdown, computeCategoryBreakdown,
+  getDemoMember, getRemovedMemberIds, getOrgInviteCode, SDG_BY_CATEGORY,
+  type ActivityCategory, type DemoActivity, type SdgBreakdownPoint,
 } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -89,7 +93,343 @@ function memberLabel(memberId: string, anon: boolean): { name: string; email: st
   return { name: m?.name ?? memberId, email: m?.email ?? "" };
 }
 
-function buildPdf(orgName: string, rows: Array<{ activity: DemoActivity; member: { name: string; email: string } }>, totals: { value: number; hours: number; activities: number }, monthlyTrend: ReturnType<typeof computeMonthlyTrend>, filterSummary: string, highlights: Array<{ activity: DemoActivity; member: { name: string; email: string } }>) {
+interface ApiChallenge {
+  id: string;
+  name: string;
+  description: string | null;
+  goalType: "social_value" | "hours";
+  target: number;
+  startDate: string;
+  endDate: string;
+  ownerId: string | null;
+  orgId: string | null;
+  scope: "personal" | "org";
+  inviteCode: string;
+  hasEnded: boolean;
+  hasStarted: boolean;
+  participantCount: number;
+  isOwner: boolean;
+  progressTotal: number;
+  progressPercent: number;
+  isActive: boolean;
+}
+
+function OrgChallengesPanel({ orgId }: { orgId: string }) {
+  const t = useT();
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [goalType, setGoalType] = useState<"social_value" | "hours">("social_value");
+  const [target, setTarget] = useState<string>("1000");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery<{ challenges: ApiChallenge[] }>({
+    queryKey: ["challenges-mine"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/challenges/mine`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+  });
+
+  const orgChallenges = useMemo(
+    () => (data?.challenges ?? []).filter(c => c.scope === "org" && c.orgId === orgId),
+    [data?.challenges, orgId],
+  );
+
+  const createMut = useMutation({
+    mutationFn: async () => {
+      const body = {
+        name: name.trim(),
+        description: description.trim(),
+        goalType,
+        target: Number(target),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        scope: "org",
+      };
+      const res = await fetch(`${BASE}/api/challenges`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error((json as { error?: string }).error ?? "Failed");
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges-mine"] });
+      setCreating(false);
+      setName("");
+      setDescription("");
+      setTarget("1000");
+      setError(null);
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const endMut = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/api/challenges/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed");
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["challenges-mine"] }),
+  });
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <div className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.challengesTitle")}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
+        </div>
+        {!creating && (
+          <button
+            type="button"
+            onClick={() => { setCreating(true); setError(null); }}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            data-testid="button-new-org-challenge"
+          >
+            <Plus className="w-3.5 h-3.5" /> {t("orgDashboard.challengesNew")}
+          </button>
+        )}
+      </div>
+
+      {creating && (
+        <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
+            <input
+              type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              data-testid="input-challenge-name"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
+            <textarea
+              value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              data-testid="input-challenge-description"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
+              <select
+                value={goalType} onChange={e => setGoalType(e.target.value as "social_value" | "hours")}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary"
+                data-testid="select-challenge-goal-type"
+              >
+                <option value="social_value">{t("orgDashboard.challengesGoalSocialValue")}</option>
+                <option value="hours">{t("orgDashboard.challengesGoalHours")}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
+              <input
+                type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-target"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
+              <input
+                type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-start"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
+              <input
+                type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-end"
+              />
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button" onClick={() => { setCreating(false); setError(null); }}
+              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setError(null); createMut.mutate(); }}
+              disabled={createMut.isPending || !name.trim() || Number(target) <= 0}
+              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              data-testid="button-create-challenge"
+            >
+              {createMut.isPending ? t("common.saving") : t("orgDashboard.challengesCreate")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4">
+        {isLoading ? (
+          <div className="py-6 flex justify-center">
+            <div className="animate-spin w-5 h-5 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : orgChallenges.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.challengesEmpty")}</p>
+        ) : (
+          <div className="space-y-2" data-testid="list-org-challenges">
+            {orgChallenges.map(c => {
+              const pct = Math.min(100, Math.max(0, Math.round(c.progressPercent)));
+              const targetLabel = c.goalType === "social_value" ? `£${c.target.toLocaleString("en-GB")}` : `${c.target} ${t("orgDashboard.challengesHoursUnit")}`;
+              const progressLabel = c.goalType === "social_value" ? `£${Math.round(c.progressTotal).toLocaleString("en-GB")}` : `${Math.round(c.progressTotal)} ${t("orgDashboard.challengesHoursUnit")}`;
+              return (
+                <div key={c.id} className="rounded-lg border border-border p-3" data-testid={`org-challenge-${c.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          href={`/challenges/${c.id}`}
+                          className="text-sm font-semibold text-foreground hover:text-primary truncate"
+                          data-testid={`link-challenge-${c.id}`}
+                        >
+                          {c.name}
+                        </Link>
+                        <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                          {c.hasEnded ? t("orgDashboard.challengesEnded") : t("orgDashboard.challengesActive")}
+                        </span>
+                      </div>
+                      {c.description && <p className="text-xs text-muted-foreground mt-1">{c.description}</p>}
+                    </div>
+                    <div className="shrink-0 flex items-start gap-2">
+                      <p className="text-sm font-bold text-foreground" data-testid={`challenge-percent-${c.id}`}>{pct}%</p>
+                      {!c.hasEnded && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(t("orgDashboard.challengesConfirmEnd"))) endMut.mutate(c.id);
+                          }}
+                          disabled={endMut.isPending}
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
+                          data-testid={`button-end-challenge-${c.id}`}
+                        >
+                          <X className="w-3 h-3" /> {t("orgDashboard.challengesEnd2")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    <span className="font-semibold text-foreground">{progressLabel}</span> {t("orgDashboard.challengesProgressOf")} {targetLabel}
+                    {" · "}
+                    <span className="font-semibold text-foreground">{c.participantCount}</span> {t("orgDashboard.challengesParticipants")}
+                    {" · "}
+                    {new Date(c.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {" – "}
+                    {new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface PulseSummarySurvey {
+  id: string;
+  archivedAt: string | null;
+}
+interface PulseSummaryResults {
+  totals: { responses: number; average: number };
+}
+
+function OrgPulseSummaryCard() {
+  const t = useT();
+  const { data: surveysData } = useQuery<{ surveys: PulseSummarySurvey[] }>({
+    queryKey: ["org-surveys"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/surveys`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+  const activeIds = useMemo(
+    () => (surveysData?.surveys ?? []).filter(s => !s.archivedAt).map(s => s.id),
+    [surveysData?.surveys],
+  );
+  const resultsQueries = useQueries({
+    queries: activeIds.map(id => ({
+      queryKey: ["org-survey-results", id],
+      queryFn: async (): Promise<PulseSummaryResults> => {
+        const res = await fetch(`${BASE}/api/org/surveys/${id}/results`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed");
+        return res.json();
+      },
+    })),
+  });
+  const totals = resultsQueries.reduce(
+    (acc, q) => {
+      const r = q.data;
+      if (!r) return acc;
+      acc.responses += r.totals.responses;
+      acc.weighted += r.totals.average * r.totals.responses;
+      return acc;
+    },
+    { responses: 0, weighted: 0 },
+  );
+  const avg = totals.responses > 0 ? totals.weighted / totals.responses : 0;
+  const hasAny = activeIds.length > 0;
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 mb-4" data-testid="section-pulse-summary">
+      <div className="flex items-center gap-2 mb-3">
+        <ClipboardList className="w-4 h-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.pulseSummaryTitle")}</h3>
+      </div>
+      {!hasAny ? (
+        <p className="text-xs text-muted-foreground">{t("orgDashboard.pulseSummaryNone")}</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
+            <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-active">{activeIds.length}</p>
+          </div>
+          <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
+            <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{totals.responses}</p>
+          </div>
+          <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryAverage")}</p>
+            <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-average">
+              {totals.responses > 0 ? `${avg.toFixed(1)} / 5` : "—"}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildPdf(orgName: string, rows: Array<{ activity: DemoActivity; member: { name: string; email: string } }>, totals: { value: number; hours: number; activities: number }, monthlyTrend: ReturnType<typeof computeMonthlyTrend>, filterSummary: string, highlights: Array<{ activity: DemoActivity; member: { name: string; email: string } }>, sdgs: SdgBreakdownPoint[]) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const margin = 40;
   doc.setFont("helvetica", "bold"); doc.setFontSize(18);
@@ -145,26 +485,59 @@ function buildPdf(orgName: string, rows: Array<{ activity: DemoActivity; member:
     });
   }
 
+  // SDG alignment block — show ranked breakdown so funders see global-goal contribution.
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(20);
+  doc.text("UN Sustainable Development Goals (SDGs)", margin, y);
+  y += 14;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(80);
+  if (sdgs.length === 0) {
+    doc.text("No SDG-aligned activities in this range.", margin, y); y += 14;
+  } else {
+    const maxVal = Math.max(1, ...sdgs.map(s => s.value));
+    sdgs.forEach((s) => {
+      const hex = s.color.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const labelLine = `SDG ${s.number} · ${s.label}`;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(20);
+      doc.text(labelLine, margin, y);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+      doc.text(`£${s.value.toLocaleString("en-GB")}  ·  ${s.pct}%  ·  ${s.members} members  ·  ${s.activities} activities`, margin + 280, y);
+      y += 4;
+      const barW = (s.value / maxVal) * 320;
+      doc.setFillColor(r, g, b);
+      doc.rect(margin, y, barW, 6, "F");
+      y += 14;
+    });
+  }
+  y += 4;
+
   autoTable(doc, {
     startY: y + 6,
-    head: [["Date", "Member", "Category", "Activity", "Hours", "£"]],
-    body: rows.map(({ activity, member }) => [
-      new Date(activity.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-      member.name,
-      activity.category,
-      `${activity.activity}\n${activity.description}`,
-      activity.hours.toString(),
-      `£${activity.socialValueGBP}`,
-    ]),
+    head: [["Date", "Member", "Category", "SDG", "Activity", "Hours", "£"]],
+    body: rows.map(({ activity, member }) => {
+      const sdg = SDG_BY_CATEGORY[activity.category];
+      return [
+        new Date(activity.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        member.name,
+        activity.category,
+        sdg ? `${sdg.number}` : "—",
+        `${activity.activity}\n${activity.description}`,
+        activity.hours.toString(),
+        `£${activity.socialValueGBP}`,
+      ];
+    }),
     styles: { fontSize: 8, cellPadding: 4, valign: "top" },
     headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: "bold" },
     columnStyles: {
-      0: { cellWidth: 60 },
-      1: { cellWidth: 80 },
-      2: { cellWidth: 60 },
-      3: { cellWidth: 230 },
-      4: { cellWidth: 35, halign: "right" },
-      5: { cellWidth: 40, halign: "right" },
+      0: { cellWidth: 56 },
+      1: { cellWidth: 72 },
+      2: { cellWidth: 54 },
+      3: { cellWidth: 28, halign: "center" },
+      4: { cellWidth: 215 },
+      5: { cellWidth: 32, halign: "right" },
+      6: { cellWidth: 38, halign: "right" },
     },
     margin: { left: margin, right: margin },
   });
@@ -221,6 +594,9 @@ export default function OrgDashboard() {
 
   const aggregates = useMemo(() => computeDemoAggregates(filtered), [filtered]);
   const trend = useMemo(() => computeMonthlyTrend(filtered), [filtered]);
+  const sdgBreakdowns = useMemo(() => computeSdgBreakdown(filtered), [filtered]);
+  const categoryBreakdown = useMemo(() => computeCategoryBreakdown(filtered), [filtered]);
+  const t = useT();
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -265,11 +641,14 @@ export default function OrgDashboard() {
   function exportRows() {
     return filtered.map(a => {
       const m = memberLabel(a.memberId, anonymise);
+      const sdg = SDG_BY_CATEGORY[a.category];
       return {
         Date: a.occurredAt,
         Member: m.name,
         Email: m.email,
         Category: a.category,
+        "SDG number": sdg ? sdg.number : "",
+        "SDG label": sdg ? sdg.label : "",
         Activity: a.activity,
         Description: a.description,
         Hours: a.hours,
@@ -277,6 +656,18 @@ export default function OrgDashboard() {
         Verified: a.verified ? "Yes" : "No",
       };
     });
+  }
+
+  function sdgExportRows(): Array<Record<string, string | number>> {
+    return sdgBreakdowns.map(s => ({
+      "SDG number": s.number,
+      "SDG label": s.label,
+      "Social value (GBP)": s.value,
+      "Share (%)": s.pct,
+      Hours: Math.round(s.hours * 10) / 10,
+      Activities: s.activities,
+      Members: s.members,
+    }));
   }
 
   function filterSummary(): string {
@@ -291,7 +682,9 @@ export default function OrgDashboard() {
 
   function handleCsv() {
     if (filtered.length === 0) return;
-    downloadCsv(exportRows(), `${orgData!.org!.name.replace(/\s+/g, "-").toLowerCase()}-activity.csv`);
+    const slug = orgData!.org!.name.replace(/\s+/g, "-").toLowerCase();
+    downloadCsv(exportRows(), `${slug}-activity.csv`);
+    if (sdgBreakdowns.length > 0) downloadCsv(sdgExportRows(), `${slug}-sdg-breakdown.csv`);
   }
   function handlePdf() {
     if (filtered.length === 0) return;
@@ -304,6 +697,7 @@ export default function OrgDashboard() {
       trend,
       filterSummary(),
       highlights,
+      sdgBreakdowns,
     );
   }
 
@@ -385,18 +779,118 @@ export default function OrgDashboard() {
         )}
       </div>
 
-      {/* Category breakdown */}
-      <div className="bg-white border border-border rounded-xl p-5 mb-6">
-        <h3 className="text-sm font-semibold mb-3">By category</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {aggregates.byCategory.map(c => (
-            <div key={c.category} className="rounded-lg bg-muted/30 px-3 py-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{c.category}</p>
-              <p className="text-lg font-display font-bold text-foreground mt-0.5">£{c.value.toLocaleString("en-GB")}</p>
-              <p className="text-[11px] text-muted-foreground">{c.count} activities · {c.hours} hrs</p>
-            </div>
-          ))}
+      {/* SDG alignment */}
+      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-sdg-alignment">
+        <div className="flex items-center gap-2 mb-1">
+          <Globe2 className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">{t("orgDashboard.sdgTitle")}</h3>
         </div>
+        <p className="text-xs text-muted-foreground mb-4">{t("orgDashboard.sdgSubtitle")}</p>
+        {sdgBreakdowns.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.sdgEmpty")}</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sdgBreakdowns}
+                    dataKey="value"
+                    nameKey="label"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={86}
+                    paddingAngle={2}
+                    isAnimationActive
+                  >
+                    {sdgBreakdowns.map((s) => (
+                      <Cell key={s.number} fill={s.color} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(v: number, _n, payload) => {
+                      const p = (payload as unknown as { payload: SdgBreakdownPoint }).payload;
+                      return [`£${v.toLocaleString("en-GB")} · ${p.pct}%`, `SDG ${p.number} ${p.label}`];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ol className="space-y-2" data-testid="list-sdg-ranked">
+              {sdgBreakdowns.map((s, idx) => (
+                <li key={s.number} className="flex items-center gap-3" data-testid={`sdg-rank-${s.number}`}>
+                  <span className="shrink-0 w-7 h-7 rounded-md text-white text-xs font-bold inline-flex items-center justify-center" style={{ backgroundColor: s.color }}>
+                    {s.number}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-foreground truncate">{s.label}</p>
+                      <p className="text-xs font-bold text-foreground shrink-0">{s.pct}%</p>
+                    </div>
+                    <div className="h-1.5 mt-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.color }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {idx === 0 && <span className="font-semibold text-foreground">{t("orgDashboard.sdgLeading")} · </span>}
+                      £{s.value.toLocaleString("en-GB")} · <span data-testid={`sdg-members-${s.number}`}>{s.members}</span> {t("orgDashboard.sdgMembers")} · {s.activities} {t("orgDashboard.sdgActivities")}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+
+      {/* Top categories */}
+      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-top-categories">
+        <div className="flex items-center gap-2 mb-1">
+          <Layers className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">{t("orgDashboard.categoriesTitle")}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">{t("orgDashboard.categoriesSubtitle")}</p>
+        {categoryBreakdown.every(c => c.value === 0) ? (
+          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.categoriesEmpty")}</p>
+        ) : (
+          <div className="space-y-3">
+            {categoryBreakdown.map((c, idx) => {
+              const max = Math.max(1, ...categoryBreakdown.map(x => x.value));
+              const sdg = SDG_BY_CATEGORY[c.category];
+              return (
+                <div key={c.category} className="py-2 px-3 rounded-lg hover:bg-muted/20 transition-colors" data-testid={`category-rank-${c.category}`}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="shrink-0 text-[10px] font-bold text-muted-foreground w-4 text-right">{idx + 1}.</span>
+                      <p className="text-sm font-semibold text-foreground truncate">{c.category}</p>
+                      {idx === 0 && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                          {t("orgDashboard.categoriesLeading")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-foreground shrink-0">£{c.value.toLocaleString("en-GB")}</p>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-1.5">
+                    <div className="h-full rounded-full" style={{ width: `${(c.value / max) * 100}%`, backgroundColor: sdg?.color ?? "hsl(var(--primary))" }} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">{c.members}</span> {t("orgDashboard.categoriesMembers")} · <span className="font-semibold text-foreground">{c.activities}</span> {t("orgDashboard.categoriesActivities")} · <span className="font-semibold text-foreground">{Math.round(c.hours)}</span> {t("orgDashboard.categoriesHours")}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Organisational challenges */}
+      <OrgChallengesPanel orgId={orgData.org.id} />
+
+      {/* Pulse surveys */}
+      <OrgPulseSummaryCard />
+      <div className="mb-2">
+        <PulseSurveysSection />
       </div>
 
       {/* Filters & feed */}
