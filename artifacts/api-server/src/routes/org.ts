@@ -16,6 +16,7 @@ import { featureCap } from "../lib/featureFlags.js";
 import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
 import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
+import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 
 const router: IRouter = Router();
 
@@ -2080,6 +2081,74 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
   } catch (err) {
     console.error("List my submissions error:", err);
     res.status(500).json({ error: "Failed to load your submissions" });
+  }
+});
+
+// ─── DELETE /api/org/member-submissions/:recordId ─────────────────────────
+// Withdraw a member submission. Allowed when the caller is either:
+//   • the submitting member (their own member-submitted record), or
+//   • a manager of the org the record was submitted to.
+// Removes the impact record (which cascades the auto-approved
+// record_verifications row) and any attachments, so org totals re-balance.
+// Writes an audit-log entry attributing the withdrawal.
+router.delete("/member-submissions/:recordId", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const recordId = parseInt(req.params.recordId as string, 10);
+    if (!Number.isFinite(recordId)) {
+      res.status(400).json({ error: "Invalid record id." });
+      return;
+    }
+
+    const record = await db.query.impactRecordsTable.findFirst({
+      where: eq(impactRecordsTable.id, recordId),
+    });
+    if (!record) {
+      res.status(404).json({ error: "Submission not found." });
+      return;
+    }
+    if (record.source !== "member-submitted" || !record.submittedToOrgId) {
+      res.status(400).json({ error: "Only member submissions can be withdrawn here." });
+      return;
+    }
+
+    const orgId = record.submittedToOrgId;
+    const isOwner = record.userId === userId;
+    let actorRole: "member" | "manager" = "member";
+
+    if (!isOwner) {
+      const membership = await db.query.orgMembersTable.findFirst({
+        where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId)),
+      });
+      if (!membership || membership.role !== "manager") {
+        res.status(403).json({ error: "You don't have permission to withdraw this submission." });
+        return;
+      }
+      actorRole = "manager";
+    }
+
+    await deleteAttachmentsForRecord(record.userId, recordId);
+    await db.delete(impactRecordsTable).where(eq(impactRecordsTable.id, recordId));
+
+    await writeAuditLog(orgId, userId, "member.submit.withdraw", "impact_record", String(recordId), {
+      actorRole,
+      submittingUserId: record.userId,
+      totalHours: record.totalHours,
+      totalValue: Number(record.totalValue),
+      submittedAt: (record.submittedToOrgAt ?? record.createdAt).toISOString(),
+    });
+
+    trackServerEvent({
+      eventName: "org_member_submit_withdrawn",
+      userId,
+      surface: "org",
+      props: { orgId, actorRole, recordId },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Withdraw member submission error:", err);
+    res.status(500).json({ error: "Failed to withdraw submission." });
   }
 });
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -56,6 +56,9 @@ export default function OrgMemberSubmit() {
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
   const [mySubs, setMySubs] = useState<MySubmission[] | null>(null);
   const [mySubsError, setMySubsError] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawn, setWithdrawn] = useState(false);
 
   useEffect(() => {
     track(ANALYTICS_EVENTS.ORG_MEMBER_SUBMIT_STARTED);
@@ -141,6 +144,25 @@ export default function OrgMemberSubmit() {
     });
   }
 
+  async function withdrawSubmission() {
+    if (createdRecordId == null) return;
+    setWithdrawError(null);
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/member-submissions/${createdRecordId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to withdraw submission.");
+      setWithdrawn(true);
+    } catch (err) {
+      setWithdrawError((err as Error).message);
+    } finally {
+      setWithdrawing(false);
+    }
+  }
+
   async function submit() {
     if (orderedSelected.length === 0) return;
     setSubmitError(null);
@@ -165,6 +187,8 @@ export default function OrgMemberSubmit() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Submission failed.");
       setCreatedRecordId(data?.record?.id ?? null);
+      setWithdrawn(false);
+      setWithdrawError(null);
       setStep("done");
       loadMySubs();
     } catch (err) {
@@ -588,14 +612,45 @@ export default function OrgMemberSubmit() {
 
       {step === "done" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-border rounded-xl p-8 text-center" data-testid="member-submit-success">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <Check className="w-6 h-6 text-green-600" />
-          </div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-1">Sent to {orgName}</h2>
-          <p className="text-sm text-muted-foreground mb-1">
-            Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are now part of your organisation's totals.
-          </p>
-          <p className="text-xs text-muted-foreground mb-6">Your organisation manager can see them flagged as member-submitted.</p>
+          {withdrawn ? (
+            <>
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <Undo2 className="w-6 h-6 text-amber-600" />
+              </div>
+              <h2 className="text-lg font-display font-semibold text-foreground mb-1">Submission withdrawn</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Your submission to {orgName} has been removed and the org's totals have been re-balanced.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <h2 className="text-lg font-display font-semibold text-foreground mb-1">Sent to {orgName}</h2>
+              <p className="text-sm text-muted-foreground mb-1">
+                Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are now part of your organisation's totals.
+              </p>
+              <p className="text-xs text-muted-foreground mb-4">Your organisation manager can see them flagged as member-submitted.</p>
+              {createdRecordId && (
+                <div className="mb-6">
+                  <button
+                    type="button"
+                    onClick={withdrawSubmission}
+                    disabled={withdrawing}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-60"
+                    data-testid="member-submit-withdraw"
+                  >
+                    {withdrawing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                    {withdrawing ? "Withdrawing…" : "Sent by mistake? Withdraw this submission"}
+                  </button>
+                  {withdrawError && (
+                    <p className="text-xs text-red-600 mt-2" data-testid="member-submit-withdraw-error">{withdrawError}</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <button
               type="button"
@@ -603,11 +658,13 @@ export default function OrgMemberSubmit() {
                 setLines({});
                 setPeriodLabel("");
                 setCreatedRecordId(null);
+                setWithdrawn(false);
+                setWithdrawError(null);
                 setStep("select");
               }}
               className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/30 transition-colors"
             >
-              Submit more
+              {withdrawn ? "Start a new submission" : "Submit more"}
             </button>
             <button
               type="button"
