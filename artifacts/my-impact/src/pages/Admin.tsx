@@ -28,6 +28,32 @@ interface VoiceUsageUser {
   updatedAt: string;
 }
 
+interface AiUsageRow {
+  userKey: string;
+  questionCount: number;
+  toolCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: number;
+}
+
+interface AiUsageReport {
+  monthStart: string;
+  monthEnd: string;
+  rows: AiUsageRow[];
+  totals: {
+    questionCount: number;
+    toolCalls: number;
+    inputTokens: number;
+    outputTokens: number;
+    estimatedCostUsd: number;
+  };
+  budgetAlertUsd?: number;
+}
+
+type AiSortKey = "cost" | "questions" | "tokens";
+type AiFilter = "all" | "user" | "anon";
+
 interface OrgRequest {
   id: string;
   orgName: string;
@@ -74,6 +100,12 @@ export default function Admin() {
   const [voiceFetching, setVoiceFetching] = useState(true);
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
+  const [aiReport, setAiReport] = useState<AiUsageReport | null>(null);
+  const [aiFetching, setAiFetching] = useState(true);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSort, setAiSort] = useState<AiSortKey>("cost");
+  const [aiFilter, setAiFilter] = useState<AiFilter>("all");
+
   const isAdmin = user && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
   useEffect(() => {
@@ -100,6 +132,15 @@ export default function Admin() {
       })
       .catch((err) => setOrgError(err.message ?? "Failed to load org requests"))
       .finally(() => setOrgFetching(false));
+
+    fetch(`${BASE}/api/admin/ai-usage`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setAiReport(data);
+      })
+      .catch((err) => setAiError(err.message ?? "Failed to load AI usage"))
+      .finally(() => setAiFetching(false));
 
     fetch(`${BASE}/api/admin/voice-usage`, { credentials: "include" })
       .then((r) => r.json())
@@ -230,6 +271,163 @@ export default function Admin() {
       <p className="mt-6 text-xs text-muted-foreground">
         {users.length} user{users.length !== 1 ? "s" : ""} total
       </p>
+
+      <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Sidekick AI usage</h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        Monthly Sidekick spend, questions and tokens by caller for{" "}
+        {aiReport ? new Date(aiReport.monthStart).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "this month"}.
+        Estimated cost is a rough approximation based on configured per-1K token prices.
+      </p>
+
+      {aiError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">
+          {aiError}
+        </div>
+      )}
+
+      {aiFetching && !aiError && (
+        <p className="text-sm text-muted-foreground">Loading AI usage…</p>
+      )}
+
+      {!aiFetching && !aiError && aiReport && (() => {
+        const totalCost = aiReport.totals.estimatedCostUsd;
+        const budget = aiReport.budgetAlertUsd ?? 0;
+        const budgetPct = budget > 0 ? Math.min(100, Math.round((totalCost / budget) * 100)) : 0;
+        const overBudget = budget > 0 && totalCost >= budget;
+        const filtered = aiReport.rows.filter((r) => {
+          if (aiFilter === "user") return r.userKey.startsWith("user:");
+          if (aiFilter === "anon") return !r.userKey.startsWith("user:");
+          return true;
+        });
+        const sorted = [...filtered].sort((a, b) => {
+          if (aiSort === "questions") return b.questionCount - a.questionCount;
+          if (aiSort === "tokens") return (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens);
+          return b.estimatedCostUsd - a.estimatedCostUsd;
+        });
+        return (
+          <div data-testid="admin-ai-usage">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Cost to date</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">${totalCost.toFixed(2)}</p>
+                {budget > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">of ${budget.toFixed(2)} alert threshold</p>
+                )}
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Questions</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{aiReport.totals.questionCount.toLocaleString("en-GB")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{aiReport.totals.toolCalls.toLocaleString("en-GB")} tool calls</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Tokens</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
+                  {(aiReport.totals.inputTokens + aiReport.totals.outputTokens).toLocaleString("en-GB")}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {aiReport.totals.inputTokens.toLocaleString("en-GB")} in / {aiReport.totals.outputTokens.toLocaleString("en-GB")} out
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Callers</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{aiReport.rows.length.toLocaleString("en-GB")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {aiReport.rows.filter((r) => r.userKey.startsWith("user:")).length} signed-in
+                </p>
+              </div>
+            </div>
+
+            {budget > 0 && (
+              <div className="mb-6" data-testid="admin-ai-budget-bar">
+                <div className="flex items-center justify-between mb-1.5 text-xs text-muted-foreground">
+                  <span>Budget alert threshold</span>
+                  <span className={overBudget ? "font-semibold text-destructive" : "font-medium text-foreground"}>
+                    {budgetPct}% used
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${overBudget ? "bg-destructive" : budgetPct >= 75 ? "bg-yellow-500" : "bg-green-600"}`}
+                    style={{ width: `${budgetPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <div className="flex items-center gap-1.5 text-xs">
+                <label className="text-muted-foreground font-medium">Show:</label>
+                <select
+                  value={aiFilter}
+                  onChange={(e) => setAiFilter(e.target.value as AiFilter)}
+                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  data-testid="admin-ai-filter"
+                >
+                  <option value="all">All callers</option>
+                  <option value="user">Signed-in only</option>
+                  <option value="anon">Anonymous only</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs">
+                <label className="text-muted-foreground font-medium">Sort by:</label>
+                <select
+                  value={aiSort}
+                  onChange={(e) => setAiSort(e.target.value as AiSortKey)}
+                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  data-testid="admin-ai-sort"
+                >
+                  <option value="cost">Cost</option>
+                  <option value="questions">Questions</option>
+                  <option value="tokens">Tokens</option>
+                </select>
+              </div>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {sorted.length} of {aiReport.rows.length} caller{aiReport.rows.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {sorted.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No callers match this filter.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border shadow-sm" data-testid="admin-ai-usage-table">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50">
+                      <th className="text-left px-4 py-3 font-semibold text-foreground">Caller</th>
+                      <th className="text-left px-4 py-3 font-semibold text-foreground">Type</th>
+                      <th className="text-right px-4 py-3 font-semibold text-foreground">Questions</th>
+                      <th className="text-right px-4 py-3 font-semibold text-foreground">Tool calls</th>
+                      <th className="text-right px-4 py-3 font-semibold text-foreground">Tokens (in / out)</th>
+                      <th className="text-right px-4 py-3 font-semibold text-foreground">Est. cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((row, idx) => {
+                      const isUser = row.userKey.startsWith("user:");
+                      return (
+                        <tr key={row.userKey} className={idx % 2 === 0 ? "bg-background" : "bg-secondary/20"}>
+                          <td className="px-4 py-3 text-foreground font-mono text-xs break-all">{row.userKey}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${isUser ? "bg-green-100 text-green-800 border-green-200" : "bg-secondary text-muted-foreground border-border"}`}>
+                              {isUser ? "Signed-in" : "Anonymous"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-foreground tabular-nums">{row.questionCount.toLocaleString("en-GB")}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">{row.toolCalls.toLocaleString("en-GB")}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground tabular-nums text-xs">
+                            {row.inputTokens.toLocaleString("en-GB")} / {row.outputTokens.toLocaleString("en-GB")}
+                          </td>
+                          <td className="px-4 py-3 text-right text-foreground tabular-nums font-medium">${row.estimatedCostUsd.toFixed(4)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Organisation Requests</h2>
       <p className="text-sm text-muted-foreground mb-6">

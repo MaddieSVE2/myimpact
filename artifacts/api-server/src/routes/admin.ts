@@ -11,7 +11,7 @@ import {
   estimateTranscribeCostPence,
   estimateTtsCostPence,
 } from "../lib/voiceUsage.js";
-import { getMonthlyUsageReport } from "../lib/aiUsage.js";
+import { getMonthlyUsageReport, AI_BUDGET_ALERT_USD } from "../lib/aiUsage.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
 
 const router: IRouter = Router();
@@ -273,7 +273,7 @@ router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => 
     return;
   }
   const report = await getMonthlyUsageReport();
-  res.json(report);
+  res.json({ ...report, budgetAlertUsd: AI_BUDGET_ALERT_USD });
 });
 
 export default router;
