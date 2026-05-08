@@ -114,6 +114,7 @@ async function computeProgress(
     target,
     percent,
     leaderboard,
+    contributingRecordIds: records.map((r) => String(r.id)),
   };
 }
 
@@ -409,6 +410,7 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
         total: progress.total,
         target: progress.target,
         percent: progress.percent,
+        contributingRecordIds: progress.contributingRecordIds,
       },
       leaderboard,
       myContribution: me,

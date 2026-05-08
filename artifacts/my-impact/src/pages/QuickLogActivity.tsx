@@ -27,9 +27,13 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useT } from "@/i18n";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
+import {
+  setChallengeContext,
+  clearChallengeContext,
+  consumeChallengeContextForSave,
+} from "@/lib/challenge-context";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const CHALLENGE_CONTEXT_KEY = "wizard:challenge-context";
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
 const SDG_COLORS: Record<number, string> = {
@@ -157,14 +161,10 @@ export default function QuickLogActivity() {
   // unrelated quick-log save does not trigger challenge-mode behaviour
   // (mirrors ActionsStep).
   useEffect(() => {
-    try {
-      if (challengeId) {
-        window.sessionStorage.setItem(CHALLENGE_CONTEXT_KEY, challengeId);
-      } else {
-        window.sessionStorage.removeItem(CHALLENGE_CONTEXT_KEY);
-      }
-    } catch {
-      /* ignore */
+    if (challengeId) {
+      setChallengeContext(challengeId);
+    } else {
+      clearChallengeContext();
     }
   }, [challengeId]);
 
@@ -431,12 +431,8 @@ export default function QuickLogActivity() {
       // caches, and route home so updated progress is visible (mirrors
       // Results.handleSave). For non-challenge flows, return the user to
       // their originating page.
-      const challengeContext = (() => {
-        try { return window.sessionStorage.getItem(CHALLENGE_CONTEXT_KEY); }
-        catch { return null; }
-      })();
+      const challengeContext = consumeChallengeContextForSave();
       if (challengeContext) {
-        try { window.sessionStorage.removeItem(CHALLENGE_CONTEXT_KEY); } catch { /* ignore */ }
         queryClient.invalidateQueries({ queryKey: ["org-prompts"] });
         queryClient.invalidateQueries({ queryKey: ["challenges-mine"] });
         queryClient.invalidateQueries({ queryKey: ["challenge", challengeContext] });
