@@ -138,14 +138,15 @@ function mixRgb(a: RGB, b: RGB, t: number): RGB {
   ];
 }
 
-// Best-effort async loader: fetch a remote image (e.g. an org logo) and
-// convert it to a `data:` URL that jsPDF can consume via `addImage`.
+// Best-effort async loader: fetch a remote image (e.g. an org logo), convert
+// it to a `data:` URL that jsPDF can consume via `addImage`, and read its
+// natural pixel dimensions so the caller can preserve aspect ratio.
 // Resolves to `null` on any failure (CORS, 404, unsupported format, timeout)
 // so callers can fall back to a typographic lockup without throwing.
 async function loadImageAsDataUrl(
   url: string,
   timeoutMs = 2500,
-): Promise<{ dataUrl: string; format: "PNG" | "JPEG" } | null> {
+): Promise<{ dataUrl: string; format: "PNG" | "JPEG"; width: number; height: number } | null> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -153,10 +154,13 @@ async function loadImageAsDataUrl(
     clearTimeout(timer);
     if (!res.ok) return null;
     const blob = await res.blob();
+    // Detect format from Content-Type first; fall back to URL extension so
+    // signed object URLs without a Content-Type still classify correctly.
     const ct = (blob.type || "").toLowerCase();
+    const lowerUrl = url.toLowerCase();
     let format: "PNG" | "JPEG" | null = null;
-    if (ct.includes("png")) format = "PNG";
-    else if (ct.includes("jpeg") || ct.includes("jpg")) format = "JPEG";
+    if (ct.includes("png") || /\.png(\?|$)/.test(lowerUrl)) format = "PNG";
+    else if (ct.includes("jpeg") || ct.includes("jpg") || /\.jpe?g(\?|$)/.test(lowerUrl)) format = "JPEG";
     if (!format) return null;
     const dataUrl: string = await new Promise((resolve, reject) => {
       const fr = new FileReader();
@@ -164,7 +168,14 @@ async function loadImageAsDataUrl(
       fr.onerror = () => reject(fr.error);
       fr.readAsDataURL(blob);
     });
-    return { dataUrl, format };
+    const dims = await new Promise<{ width: number; height: number } | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth || 1, height: img.naturalHeight || 1 });
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+    if (!dims) return null;
+    return { dataUrl, format, width: dims.width, height: dims.height };
   } catch {
     return null;
   }
@@ -259,11 +270,20 @@ export async function buildOrgPdf(
     const loaded = await loadImageAsDataUrl(branding.logoUrl);
     if (loaded) {
       try {
-        const pad = 4;
+        // Preserve the logo's natural aspect ratio: fit it inside the padded
+        // box and centre any letterbox margin. Without this, wide or tall
+        // logos get visibly stretched.
+        const pad = 6;
+        const boxW = lockupSize - pad * 2;
+        const boxH = lockupSize - pad * 2;
+        const scale = Math.min(boxW / loaded.width, boxH / loaded.height);
+        const drawW = loaded.width * scale;
+        const drawH = loaded.height * scale;
+        const drawX = lockupX + pad + (boxW - drawW) / 2;
+        const drawY = lockupY + pad + (boxH - drawH) / 2;
         doc.addImage(
           loaded.dataUrl, loaded.format,
-          lockupX + pad, lockupY + pad,
-          lockupSize - pad * 2, lockupSize - pad * 2,
+          drawX, drawY, drawW, drawH,
           undefined, "FAST",
         );
         logoEmbedded = true;
