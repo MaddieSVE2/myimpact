@@ -79,6 +79,11 @@ export interface HistoryRecord {
   outwardCode?: string | null;
   lat?: number | null;
   lng?: number | null;
+  // Optional entry date (ISO YYYY-MM-DD). When provided, the wizard
+  // will pre-fill its date picker with this value so an "edit" flow
+  // can keep the entry on its original calendar day unless the user
+  // deliberately changes it.
+  entryDate?: string | null;
 }
 
 interface WizardContextType extends WizardState {
@@ -326,11 +331,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       setLocationMetaState(null);
     }
     setActivitySelectionState(defaultActivitySelection);
-    // Loading a past record into the wizard is for re-using its activities,
-    // not for re-asserting its date. Reset entryDate to today so the next
-    // save lands in the current calendar bucket unless the user picks a
-    // different date in ContributionsStep.
-    setEntryDateState(todayIso());
+    // Pre-fill the wizard's date picker with the record's existing
+    // entryDate so an "edit" flow keeps the entry on its original day
+    // unless the user deliberately changes it. Falls back to today
+    // when the record didn't carry one (e.g. older history items used
+    // for re-running the calculator).
+    setEntryDateState(record.entryDate || todayIso());
     removeDraft();
     setHasDraft(false);
   }, []);

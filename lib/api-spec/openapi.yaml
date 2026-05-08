@@ -1029,6 +1029,12 @@ components:
       properties:
         periodLabel:
           type: string
+        entryDate:
+          type: string
+          description: |
+            ISO date (YYYY-MM-DD) the entry counts toward. Updating this
+            moves the record to a different calendar month / year so the
+            History year-picker totals stay accurate.
         tags:
           type: array
           items:

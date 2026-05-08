@@ -239,7 +239,11 @@ export default function History() {
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [originalEditValue, setOriginalEditValue] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [originalEditDate, setOriginalEditDate] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const todayIso = new Date().toISOString().slice(0, 10);
   const [showResetModal, setShowResetModal] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -302,6 +306,10 @@ export default function History() {
 
   const invalidateHistory = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/impact/history`] });
+    // The year-picker dropdown is fed by a separate query; invalidate it too
+    // so editing an entry's date (which can move it into a new calendar year)
+    // immediately surfaces that year as an option.
+    queryClient.invalidateQueries({ queryKey: ["impact-years", user?.id ?? ""] });
   };
 
   const handleDownloadPdf = async (recordId: string, recordName: string) => {
@@ -326,33 +334,57 @@ export default function History() {
     }
   };
 
-  const handleStartEdit = (record: { id: string; period?: string | null; name: string }) => {
+  const handleStartEdit = (record: { id: string; period?: string | null; name: string; entryDate?: string | null }) => {
     setEditingId(record.id);
-    setEditValue(record.period ?? record.name ?? "");
+    const initialLabel = record.period ?? record.name ?? "";
+    setEditValue(initialLabel);
+    setOriginalEditValue(initialLabel);
+    const initialDate = record.entryDate ?? "";
+    setEditDate(initialDate);
+    setOriginalEditDate(initialDate);
     setDeletingId(null);
   };
 
   const handleSaveEdit = async (recordId: string) => {
     const trimmed = editValue.trim();
-    if (!trimmed) {
+    const labelChanged = !!trimmed && trimmed !== originalEditValue.trim();
+    const dateChanged = !!editDate && editDate !== originalEditDate;
+    if (!labelChanged && !dateChanged) {
       setEditingId(null);
       return;
     }
     if (isAuthenticated) {
       try {
-        await updateRecord.mutateAsync({ id: recordId, data: { periodLabel: trimmed } });
+        const data: { periodLabel?: string; entryDate?: string } = {};
+        if (labelChanged) data.periodLabel = trimmed;
+        if (dateChanged) data.entryDate = editDate;
+        await updateRecord.mutateAsync({ id: recordId, data });
         invalidateHistory();
-        toast({ title: "Period label updated" });
+        toast({
+          title: dateChanged && labelChanged
+            ? "Entry updated"
+            : dateChanged
+              ? "Entry date updated"
+              : "Period label updated",
+        });
       } catch {
-        toast({ title: "Update failed", description: "Could not update the label. Please try again.", variant: "destructive" });
+        toast({ title: "Update failed", description: "Could not update the entry. Please try again.", variant: "destructive" });
       }
     } else {
       const updated = localRecords.map(r =>
-        r.id === recordId ? { ...r, period: trimmed } : r
+        r.id === recordId
+          ? {
+              ...r,
+              ...(labelChanged ? { period: trimmed } : {}),
+              // Local guest mode tracks creation time only; rewriting createdAt
+              // keeps the local history list reflecting the user's chosen date.
+              ...(dateChanged ? { createdAt: new Date(editDate).toISOString() } : {}),
+            }
+          : r
       );
       saveLocalHistory(updated);
       setLocalRecords(updated);
-      toast({ title: "Period label updated" });
+      toast({ title: dateChanged ? "Entry date updated" : "Period label updated" });
     }
     setEditingId(null);
   };
@@ -839,7 +871,7 @@ export default function History() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           {isEditing ? (
-                            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
                               <input
                                 ref={editInputRef}
                                 type="text"
@@ -852,10 +884,24 @@ export default function History() {
                                 className="text-xs border border-primary/40 rounded px-2 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 w-36"
                                 aria-label="Edit period label"
                               />
+                              <input
+                                type="date"
+                                max={todayIso}
+                                value={editDate}
+                                onChange={e => setEditDate(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") handleSaveEdit(record.id);
+                                  if (e.key === "Escape") handleCancelEdit();
+                                }}
+                                className="text-xs border border-primary/40 rounded px-2 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
+                                aria-label="Edit entry date"
+                                data-testid={`input-edit-entry-date-${record.id}`}
+                              />
                               <button
                                 onClick={() => handleSaveEdit(record.id)}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 transition-colors"
                                 aria-label="Save"
+                                data-testid={`button-save-edit-${record.id}`}
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
@@ -974,9 +1020,19 @@ export default function History() {
                       {/* Edit button */}
                       {!isEditing && !isDeleting && (
                         <button
-                          onClick={() => handleStartEdit(record)}
+                          onClick={() => {
+                            const recEntryDate = (record as { entryDate?: string | null }).entryDate
+                              ?? new Date(record.createdAt).toISOString().slice(0, 10);
+                            handleStartEdit({
+                              id: record.id,
+                              period: record.period ?? null,
+                              name: record.name,
+                              entryDate: recEntryDate,
+                            });
+                          }}
                           className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors"
-                          aria-label="Edit period label"
+                          aria-label="Edit period label and date"
+                          data-testid={`button-edit-record-${record.id}`}
                         >
                           <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
@@ -1073,6 +1129,7 @@ export default function History() {
                                   outwardCode: record.outwardCode ?? null,
                                   lat: record.lat ?? null,
                                   lng: record.lng ?? null,
+                                  entryDate: (record as { entryDate?: string | null }).entryDate ?? null,
                                 };
                                 loadFromRecord(histRecord);
                                 navigate("/results");

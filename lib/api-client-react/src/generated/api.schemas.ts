@@ -246,6 +246,11 @@ export interface ProfileInput {
 
 export interface UpdateImpactRecordInput {
   periodLabel?: string;
+  /** ISO date (YYYY-MM-DD) the entry counts toward. Updating this
+moves the record to a different calendar month / year so the
+History year-picker totals stay accurate.
+ */
+  entryDate?: string;
   tags?: string[];
 }
 

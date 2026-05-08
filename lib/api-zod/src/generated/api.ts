@@ -453,6 +453,12 @@ export const UpdateImpactRecordParams = zod.object({
 
 export const UpdateImpactRecordBody = zod.object({
   periodLabel: zod.string().optional(),
+  entryDate: zod
+    .string()
+    .optional()
+    .describe(
+      "ISO date (YYYY-MM-DD) the entry counts toward. Updating this\nmoves the record to a different calendar month \/ year so the\nHistory year-picker totals stay accurate.\n",
+    ),
   tags: zod.array(zod.string()).optional(),
 });
 
