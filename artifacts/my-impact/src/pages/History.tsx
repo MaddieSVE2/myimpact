@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import {
   useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords,
   getGetImpactHistoryQueryKey,
@@ -186,6 +186,34 @@ export default function History() {
       return res.json();
     },
   });
+  // Year-over-year comparison for the currently-selected year. The endpoint
+  // already handles the "compare to same point in prior year" math so the UI
+  // can stay focused on presentation.
+  type YoYData = {
+    selectedYear: number;
+    priorYear: number;
+    isCurrentYear: boolean;
+    cutoffDate: string;
+    priorCutoffDate: string;
+    selectedTotal: number;
+    selectedCount: number;
+    priorPeriodTotal: number;
+    priorPeriodCount: number;
+    priorYearTotal: number;
+    priorYearCount: number;
+    hasPriorData: boolean;
+  };
+  const { data: yoyData } = useQuery<YoYData>({
+    queryKey: ["impact-yoy", user?.id ?? "", selectedYear],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/impact/yoy?year=${selectedYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load year-over-year data");
+      return res.json();
+    },
+  });
+
   const yearOptions = useMemo(() => {
     const set = new Set<number>([currentYear, selectedYear]);
     for (const y of yearsData?.years ?? []) set.add(y.year);
@@ -626,6 +654,90 @@ export default function History() {
               </div>
             </motion.div>
           )}
+
+          {/* Year-over-year comparison */}
+          {yoyData && (() => {
+            const { selectedTotal, priorPeriodTotal, priorYearTotal, isCurrentYear, priorYear, hasPriorData, priorPeriodCount } = yoyData;
+            const cutoff = new Date(yoyData.cutoffDate);
+            const cutoffLabel = cutoff.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+            const baseline = priorPeriodTotal;
+            const diff = selectedTotal - baseline;
+            const pct = baseline > 0 ? (diff / baseline) * 100 : null;
+            const ahead = diff >= 0;
+            const noPriorPeriod = priorPeriodCount === 0;
+
+            // Headline copy varies by data state.
+            let headline: ReactNode;
+            if (!hasPriorData) {
+              headline = (
+                <>No data yet for {priorYear} — keep logging and you'll have a comparison next year.</>
+              );
+            } else if (noPriorPeriod) {
+              headline = (
+                <>
+                  You've logged <strong>{formatCurrency(selectedTotal)}</strong> in {selectedYear}.
+                  No {priorYear} entries by {cutoffLabel}, but {priorYear} totalled <strong>{formatCurrency(priorYearTotal)}</strong> for the year.
+                </>
+              );
+            } else if (pct !== null) {
+              headline = (
+                <>
+                  <strong>{formatCurrency(selectedTotal)}</strong>{isCurrentYear ? " so far" : ""} in {selectedYear} —{" "}
+                  <span className={ahead ? "text-green-700" : "text-amber-700"}>
+                    {Math.abs(pct).toFixed(0)}% {ahead ? "ahead of" : "behind"}
+                  </span>{" "}
+                  {isCurrentYear ? `this point in ${priorYear}` : `${priorYear}`} ({formatCurrency(baseline)}).
+                </>
+              );
+            } else {
+              headline = (
+                <>
+                  <strong>{formatCurrency(selectedTotal)}</strong>{isCurrentYear ? " so far" : ""} in {selectedYear}.
+                </>
+              );
+            }
+
+            return (
+              <motion.div
+                className={`mb-6 rounded-xl border p-5 ${ahead ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/40"}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                data-testid="card-yoy-comparison"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${ahead ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                    <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+                      Year-over-year
+                    </p>
+                    <p className="text-sm text-foreground leading-relaxed">{headline}</p>
+                    {hasPriorData && (
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{selectedYear}{isCurrentYear ? " (to " + cutoffLabel + ")" : ""}</p>
+                          <p className="text-sm font-semibold text-foreground">{formatCurrency(selectedTotal)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            {priorYear}{isCurrentYear ? " (same period)" : ""}
+                          </p>
+                          <p className="text-sm font-semibold text-foreground">{formatCurrency(baseline)}</p>
+                          {isCurrentYear && priorYearTotal > baseline && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Full year: {formatCurrency(priorYearTotal)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
 
           {/* Chart */}
           <motion.div

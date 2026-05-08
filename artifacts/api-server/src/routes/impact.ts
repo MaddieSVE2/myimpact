@@ -1411,6 +1411,84 @@ router.get("/years", authenticate, async (req: AuthenticatedRequest, res) => {
   });
 });
 
+// Year-over-year comparison for the dashboard. Compares the selected year's
+// running total to the same period of the prior year so users can see whether
+// they're tracking ahead or behind. When the selected year is the current
+// calendar year, the cutoff is "today" so the comparison is fair (we compare
+// Jan 1–today vs Jan 1–same day last year). For past years, the cutoff is
+// 31 Dec so we compare the full year against the prior full year.
+router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const yearRaw = typeof req.query.year === "string" ? parseInt(req.query.year, 10) : currentYear;
+  const selectedYear = Number.isFinite(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : currentYear;
+  const priorYear = selectedYear - 1;
+
+  // Cutoff (exclusive upper bound). For the current year we use "now" so that
+  // the prior-year period stops on the equivalent calendar day; for past
+  // years we compare the entire year against the entire prior year.
+  const isCurrentYear = selectedYear === currentYear;
+  const selectedCutoff = isCurrentYear ? now : endOfYearUTC(selectedYear);
+
+  // Equivalent point in the prior year. JS's Date.UTC happily rolls invalid
+  // days forward (29 Feb in a non-leap year becomes 1 Mar), which would
+  // include an extra day in the prior-period comparison. Clamp the day to
+  // the prior year's last-day-of-month before constructing the cutoff.
+  const priorCutoff = (() => {
+    if (!isCurrentYear) return endOfYearUTC(priorYear);
+    const month = selectedCutoff.getUTCMonth();
+    const lastDayOfPriorMonth = new Date(Date.UTC(priorYear, month + 1, 0)).getUTCDate();
+    const day = Math.min(selectedCutoff.getUTCDate(), lastDayOfPriorMonth);
+    return new Date(Date.UTC(
+      priorYear,
+      month,
+      day,
+      selectedCutoff.getUTCHours(),
+      selectedCutoff.getUTCMinutes(),
+      selectedCutoff.getUTCSeconds(),
+    ));
+  })();
+
+  async function sumBetween(start: Date, end: Date): Promise<{ total: number; count: number }> {
+    const [row] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${impactRecordsTable.totalValue}), 0)`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(impactRecordsTable)
+      .where(
+        and(
+          eq(impactRecordsTable.userId, userId),
+          gte(impactRecordsTable.entryDate, start),
+          lt(impactRecordsTable.entryDate, end),
+        ),
+      );
+    return { total: Number(row?.total ?? 0), count: Number(row?.count ?? 0) };
+  }
+
+  const [selected, priorPeriod, priorFull] = await Promise.all([
+    sumBetween(startOfYearUTC(selectedYear), selectedCutoff),
+    sumBetween(startOfYearUTC(priorYear), priorCutoff),
+    sumBetween(startOfYearUTC(priorYear), endOfYearUTC(priorYear)),
+  ]);
+
+  res.json({
+    selectedYear,
+    priorYear,
+    isCurrentYear,
+    cutoffDate: selectedCutoff.toISOString(),
+    priorCutoffDate: priorCutoff.toISOString(),
+    selectedTotal: Math.round(selected.total * 100) / 100,
+    selectedCount: selected.count,
+    priorPeriodTotal: Math.round(priorPeriod.total * 100) / 100,
+    priorPeriodCount: priorPeriod.count,
+    priorYearTotal: Math.round(priorFull.total * 100) / 100,
+    priorYearCount: priorFull.count,
+    hasPriorData: priorFull.count > 0,
+  });
+});
+
 // Year-rollover prompt — on the user's first visit on/after 1 January, the
 // UI shows this state. The prompt is "due" when the user has any prior-year
 // entries but no entries dated in the current calendar year yet. The habit
