@@ -340,8 +340,14 @@ export interface DemoPulseSurvey {
   archivedAt: string | null;
   totals: { responses: number; average: number };
   distribution: Array<{ rating: number; count: number }>;
-  trend: Array<{ windowKey: string; label: string; average: number; count: number }>;
-  comments: Array<{ id: string; comment: string; windowLabel: string; createdAt: string }>;
+  trend: Array<{
+    windowKey: string;
+    label: string;
+    average: number;
+    count: number;
+    distribution: Array<{ rating: number; count: number }>;
+  }>;
+  comments: Array<{ id: string; comment: string; windowKey: string; windowLabel: string; createdAt: string }>;
 }
 
 export const DEMO_COMMENT_PRIVACY_THRESHOLD = 3;
@@ -364,15 +370,53 @@ export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
       { rating: 5, count: 13 },
     ],
     trend: [
-      { windowKey: "2025-09", label: "Sep 2025", average: 3.9, count: 18 },
-      { windowKey: "2025-10", label: "Oct 2025", average: 4.0, count: 21 },
-      { windowKey: "2025-11", label: "Nov 2025", average: 4.2, count: 24 },
-      { windowKey: "2026-04", label: "Apr 2026", average: 4.3, count: 28 },
+      {
+        windowKey: "2025-09", label: "Sep 2025", average: 3.9, count: 18,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 8 },
+          { rating: 5, count: 5 },
+        ],
+      },
+      {
+        windowKey: "2025-10", label: "Oct 2025", average: 4.0, count: 21,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 3 },
+          { rating: 4, count: 11 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2025-11", label: "Nov 2025", average: 4.2, count: 24,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 2 },
+          { rating: 4, count: 12 },
+          { rating: 5, count: 9 },
+        ],
+      },
+      {
+        windowKey: "2026-04", label: "Apr 2026", average: 4.3, count: 28,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 0 },
+          { rating: 3, count: 3 },
+          { rating: 4, count: 13 },
+          { rating: 5, count: 12 },
+        ],
+      },
     ],
     comments: [
-      { id: "demo-cm-001", comment: "The reading-mentor sessions are easily the highlight of my month.", windowLabel: "Apr 2026", createdAt: "2026-04-12T10:00:00.000Z" },
-      { id: "demo-cm-002", comment: "Loving the variety — I feel like I'm actually making a difference locally.", windowLabel: "Apr 2026", createdAt: "2026-04-15T18:00:00.000Z" },
-      { id: "demo-cm-003", comment: "Would love a bit more notice on event dates so I can plan around work.", windowLabel: "Mar 2026", createdAt: "2026-03-20T08:30:00.000Z" },
+      { id: "demo-cm-001", comment: "The reading-mentor sessions are easily the highlight of my month.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-12T10:00:00.000Z" },
+      { id: "demo-cm-002", comment: "Loving the variety — I feel like I'm actually making a difference locally.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-15T18:00:00.000Z" },
+      { id: "demo-cm-003", comment: "Would love a bit more notice on event dates so I can plan around work.", windowKey: "2025-11", windowLabel: "Nov 2025", createdAt: "2025-11-20T08:30:00.000Z" },
+      { id: "demo-cm-004", comment: "Felt really welcomed at my first session — thanks for pairing me with Jas.", windowKey: "2025-11", windowLabel: "Nov 2025", createdAt: "2025-11-18T19:00:00.000Z" },
+      { id: "demo-cm-005", comment: "Could we get a bit more intro training before being put on shift?", windowKey: "2025-10", windowLabel: "Oct 2025", createdAt: "2025-10-09T07:30:00.000Z" },
     ],
   },
   {
@@ -392,14 +436,52 @@ export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
       { rating: 5, count: 7 },
     ],
     trend: [
-      { windowKey: "2025-Q3", label: "Q3 2025", average: 3.7, count: 17 },
-      { windowKey: "2025-Q4", label: "Q4 2025", average: 3.9, count: 19 },
-      { windowKey: "2026-Q1", label: "Q1 2026", average: 4.0, count: 21 },
-      { windowKey: "2026-Q2", label: "Q2 2026", average: 4.1, count: 22 },
+      {
+        windowKey: "2025-Q3", label: "Q3 2025", average: 3.7, count: 17,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 2 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 8 },
+          { rating: 5, count: 3 },
+        ],
+      },
+      {
+        windowKey: "2025-Q4", label: "Q4 2025", average: 3.9, count: 19,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 9 },
+          { rating: 5, count: 5 },
+        ],
+      },
+      {
+        windowKey: "2026-Q1", label: "Q1 2026", average: 4.0, count: 21,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 10 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2026-Q2", label: "Q2 2026", average: 4.1, count: 22,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 10 },
+          { rating: 5, count: 7 },
+        ],
+      },
     ],
     comments: [
-      { id: "demo-cm-101", comment: "The new buddy pairings really help when you're starting out.", windowLabel: "Q2 2026", createdAt: "2026-04-08T12:00:00.000Z" },
-      { id: "demo-cm-102", comment: "More socials would be great — I only really see people on shifts.", windowLabel: "Q1 2026", createdAt: "2026-02-18T18:00:00.000Z" },
+      { id: "demo-cm-101", comment: "The new buddy pairings really help when you're starting out.", windowKey: "2026-Q2", windowLabel: "Q2 2026", createdAt: "2026-04-08T12:00:00.000Z" },
+      { id: "demo-cm-102", comment: "More socials would be great — I only really see people on shifts.", windowKey: "2026-Q1", windowLabel: "Q1 2026", createdAt: "2026-02-18T18:00:00.000Z" },
+      { id: "demo-cm-103", comment: "WhatsApp group has been brilliant for last-minute swaps.", windowKey: "2026-Q2", windowLabel: "Q2 2026", createdAt: "2026-04-25T09:15:00.000Z" },
+      { id: "demo-cm-104", comment: "Quarterly catch-up was a nice touch — felt heard.", windowKey: "2025-Q4", windowLabel: "Q4 2025", createdAt: "2025-12-12T16:00:00.000Z" },
     ],
   },
   {
@@ -419,14 +501,54 @@ export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
       { rating: 5, count: 11 },
     ],
     trend: [
-      { windowKey: "2026-01", label: "Jan 2026", average: 3.5, count: 32 },
-      { windowKey: "2026-02", label: "Feb 2026", average: 3.6, count: 36 },
-      { windowKey: "2026-03", label: "Mar 2026", average: 3.7, count: 39 },
-      { windowKey: "2026-04", label: "Apr 2026", average: 3.8, count: 41 },
+      {
+        windowKey: "2026-01", label: "Jan 2026", average: 3.5, count: 32,
+        distribution: [
+          { rating: 1, count: 2 },
+          { rating: 2, count: 4 },
+          { rating: 3, count: 9 },
+          { rating: 4, count: 11 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2026-02", label: "Feb 2026", average: 3.6, count: 36,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 4 },
+          { rating: 3, count: 10 },
+          { rating: 4, count: 13 },
+          { rating: 5, count: 8 },
+        ],
+      },
+      {
+        windowKey: "2026-03", label: "Mar 2026", average: 3.7, count: 39,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 3 },
+          { rating: 3, count: 10 },
+          { rating: 4, count: 15 },
+          { rating: 5, count: 10 },
+        ],
+      },
+      {
+        windowKey: "2026-04", label: "Apr 2026", average: 3.8, count: 41,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 3 },
+          { rating: 3, count: 9 },
+          { rating: 4, count: 17 },
+          { rating: 5, count: 11 },
+        ],
+      },
     ],
     comments: [
-      { id: "demo-cm-201", comment: "Volunteering has genuinely been good for my own headspace.", windowLabel: "Apr 2026", createdAt: "2026-04-10T20:00:00.000Z" },
-      { id: "demo-cm-202", comment: "Bit run-down this month — taking next week off the rota.", windowLabel: "Apr 2026", createdAt: "2026-04-22T07:30:00.000Z" },
+      { id: "demo-cm-201", comment: "Volunteering has genuinely been good for my own headspace.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-10T20:00:00.000Z" },
+      { id: "demo-cm-202", comment: "Bit run-down this month — taking next week off the rota.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-22T07:30:00.000Z" },
+      { id: "demo-cm-203", comment: "Honestly the social side keeps me going through busy weeks at work.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-28T19:45:00.000Z" },
+      { id: "demo-cm-204", comment: "Felt better after the wellbeing chat session — more of those please.", windowKey: "2026-03", windowLabel: "Mar 2026", createdAt: "2026-03-14T17:00:00.000Z" },
+      { id: "demo-cm-205", comment: "Stretched thin between work and shifts — could do with shorter slots.", windowKey: "2026-02", windowLabel: "Feb 2026", createdAt: "2026-02-09T08:00:00.000Z" },
+      { id: "demo-cm-206", comment: "Energising start to the year — really needed it after the holidays.", windowKey: "2026-01", windowLabel: "Jan 2026", createdAt: "2026-01-21T18:30:00.000Z" },
     ],
   },
 ];
