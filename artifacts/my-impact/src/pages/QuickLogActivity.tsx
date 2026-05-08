@@ -327,6 +327,11 @@ export default function QuickLogActivity() {
 
   const calcMutation = useCalculateImpact();
   const saveMutation = useSaveImpact();
+  // Synchronous in-flight guard: React state/`isPending` flips on the next
+  // render, leaving a small window where a fast double-tap can fire two
+  // saves before the disabled-button state is committed. A ref flips
+  // immediately and blocks the second invocation.
+  const submittingRef = useRef(false);
   const submitting = calcMutation.isPending || saveMutation.isPending;
 
   const canSubmit =
@@ -334,7 +339,8 @@ export default function QuickLogActivity() {
     ((mode === "pick" && !!selectedActivity) || (mode === "describe" && !!analysed));
 
   const handleSubmit = async () => {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit || submitting || submittingRef.current) return;
+    submittingRef.current = true;
 
     let activities: SelectedActivity[] = [];
     let customActivities: CustomActivityInput[] = [];
@@ -451,6 +457,8 @@ export default function QuickLogActivity() {
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      submittingRef.current = false;
     }
   };
 
