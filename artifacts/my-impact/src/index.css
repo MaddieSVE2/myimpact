@@ -191,7 +191,7 @@
    :has(:not(:empty)) so this reacts to the section being truly visible —
    when local snooze/dismiss empties it, the full padding returns. */
 .mi-hero[data-testid="welcome-home"]:has(+ #org-prompts-section:not(:empty)) .mi-hero-inner {
-  padding-bottom: 16px;
+  padding-bottom: 8px;
 }
 .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
 .mi-section-label {

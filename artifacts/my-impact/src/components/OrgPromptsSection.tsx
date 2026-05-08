@@ -474,7 +474,7 @@ export function OrgPromptsSection({ variant = "full" }: OrgPromptsSectionProps) 
   return (
     <section
       data-testid="org-prompts-full"
-      style={{ background: "white", padding: "32px 5% 0" }}
+      style={{ background: "white", padding: "16px 5% 0" }}
     >
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="flex items-center gap-2 mb-3">
