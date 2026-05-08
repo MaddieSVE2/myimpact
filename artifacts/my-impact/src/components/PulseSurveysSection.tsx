@@ -13,6 +13,11 @@ import {
   Users,
   TrendingUp,
 } from "lucide-react";
+import {
+  DEMO_PULSE_SURVEYS,
+  DEMO_COMMENT_PRIVACY_THRESHOLD,
+  type DemoPulseSurvey,
+} from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -84,7 +89,14 @@ function useSurveyResults(id: string | null) {
   });
 }
 
-export function PulseSurveysSection() {
+export function PulseSurveysSection({ isDemoOrg = false }: { isDemoOrg?: boolean } = {}) {
+  if (isDemoOrg) {
+    return <DemoPulseSurveysSection />;
+  }
+  return <LivePulseSurveysSection />;
+}
+
+function LivePulseSurveysSection() {
   const qc = useQueryClient();
   const { data: surveysData, isLoading } = useSurveys();
   const { data: templatesData } = useTemplates();
@@ -493,6 +505,191 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function DemoPulseSurveysSection() {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const surveys = DEMO_PULSE_SURVEYS;
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.06 }}
+      data-testid="section-pulse-surveys"
+    >
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Member pulse surveys</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            30-second prompts that help you measure how your members are feeling and how meaningful their work is. Anonymous by default.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Demo data — actions disabled"
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/40 text-white text-xs font-semibold cursor-not-allowed"
+          data-testid="button-new-pulse-survey"
+        >
+          <Plus className="w-3.5 h-3.5" /> New survey
+        </button>
+      </div>
+
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-pulse">
+        Demo data — actions disabled
+      </p>
+
+      <div className="mt-3 space-y-2">
+        {surveys.map(s => (
+          <DemoSurveyRow
+            key={s.id}
+            survey={s}
+            open={openId === s.id}
+            onToggle={() => setOpenId(openId === s.id ? null : s.id)}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-lg border border-border bg-white" data-testid={`survey-row-${survey.id}`}>
+      <div className="flex items-start justify-between gap-3 p-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-left min-w-0 flex-1"
+          data-testid={`button-toggle-survey-${survey.id}`}
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+              {SCHEDULE_LABELS[survey.schedule]}
+            </span>
+            {survey.anonymous && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5" /> Anonymous
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+          </p>
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            disabled
+            title="Demo data — actions disabled"
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
+            data-testid={`button-archive-survey-${survey.id}`}
+          >
+            <Archive className="w-3 h-3" /> Archive
+          </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="p-1.5 rounded hover:bg-muted/30"
+            aria-label={open ? "Collapse" : "Expand"}
+          >
+            {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+        </div>
+      </div>
+      {open && <DemoSurveyResultsView survey={survey} />}
+    </div>
+  );
+}
+
+function DemoSurveyResultsView({ survey }: { survey: DemoPulseSurvey }) {
+  const max = Math.max(1, ...survey.distribution.map(d => d.count));
+  return (
+    <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${survey.id}`}>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white rounded-lg border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <TrendingUp className="w-3 h-3 text-primary" />
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Average</p>
+          </div>
+          <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-average-${survey.id}`}>
+            {survey.totals.average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span>
+          </p>
+        </div>
+        <div className="bg-white rounded-lg border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Users className="w-3 h-3 text-primary" />
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Responses</p>
+          </div>
+          <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-count-${survey.id}`}>
+            {survey.totals.responses}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Score distribution</p>
+        <div className="space-y-1.5">
+          {survey.distribution.map(d => (
+            <div key={d.rating} className="flex items-center gap-2 text-xs">
+              <span className="w-3 text-muted-foreground">{d.rating}</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-primary/60" style={{ width: `${(d.count / max) * 100}%` }} />
+              </div>
+              <span className="w-6 text-right text-muted-foreground">{d.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {survey.trend.length > 1 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Trend</p>
+          <div className="space-y-1">
+            {survey.trend.map(t => (
+              <div key={t.windowKey} className="flex items-center gap-2 text-xs">
+                <span className="w-20 text-muted-foreground truncate">{t.label}</span>
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-primary/60" style={{ width: `${(t.average / 5) * 100}%` }} />
+                </div>
+                <span className="w-12 text-right text-foreground font-medium">{t.average.toFixed(1)} <span className="text-muted-foreground">({t.count})</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground inline-flex items-center gap-1">
+            <MessageSquare className="w-3 h-3" /> Comments
+          </p>
+          {survey.anonymous && (
+            <span className="text-[10px] text-muted-foreground">
+              Shown only after {DEMO_COMMENT_PRIVACY_THRESHOLD}+ responses per period
+            </span>
+          )}
+        </div>
+        {survey.comments.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">No comments to show yet.</p>
+        ) : (
+          <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {survey.comments.map(c => (
+              <li key={c.id} className="bg-white border border-border rounded-lg p-3 text-xs text-foreground">
+                <p className="leading-relaxed">"{c.comment}"</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5">{c.windowLabel}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

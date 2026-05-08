@@ -214,6 +214,240 @@ export function computeMonthlyTrend(activities: DemoActivity[] = DEMO_ACTIVITIES
   return Array.from(by.values()).sort((a, b) => a.month.localeCompare(b.month));
 }
 
+// ---------------------------------------------------------------------------
+// Challenges (demo org only)
+// ---------------------------------------------------------------------------
+// Shape mirrors the `ApiChallenge` returned by `/api/challenges/mine` so the
+// `OrgChallengesPanel` can render demo data with no rework.
+export interface DemoChallenge {
+  id: string;
+  name: string;
+  description: string;
+  goalType: "social_value" | "hours";
+  target: number;
+  startDate: string; // ISO
+  endDate: string;   // ISO
+  ownerId: string | null;
+  orgId: string;
+  scope: "org";
+  inviteCode: string;
+  hasEnded: boolean;
+  hasStarted: boolean;
+  participantCount: number;
+  isOwner: boolean;
+  progressTotal: number;
+  progressPercent: number;
+  isActive: boolean;
+}
+
+export const DEMO_CHALLENGES: DemoChallenge[] = [
+  {
+    id: "demo-ch-001",
+    name: "Spring community sprint",
+    description: "Hit £3,000 of Community-category social value before the end of June.",
+    goalType: "social_value",
+    target: 3000,
+    progressTotal: 2150,
+    progressPercent: 72,
+    participantCount: 12,
+    startDate: "2026-04-01T00:00:00.000Z",
+    endDate: "2026-06-30T23:59:59.000Z",
+    ownerId: "m-001",
+    orgId: DEMO_ORG_ID,
+    scope: "org",
+    inviteCode: "DEMO-CH01",
+    hasStarted: true,
+    hasEnded: false,
+    isActive: true,
+    isOwner: true,
+  },
+  {
+    id: "demo-ch-002",
+    name: "150 environmental hours",
+    description: "A combined goal across all members to log 150 hours of environmental work this quarter.",
+    goalType: "hours",
+    target: 150,
+    progressTotal: 92,
+    progressPercent: 61,
+    participantCount: 11,
+    startDate: "2026-05-01T00:00:00.000Z",
+    endDate: "2026-07-31T23:59:59.000Z",
+    ownerId: "m-001",
+    orgId: DEMO_ORG_ID,
+    scope: "org",
+    inviteCode: "DEMO-CH02",
+    hasStarted: true,
+    hasEnded: false,
+    isActive: true,
+    isOwner: true,
+  },
+  {
+    id: "demo-ch-003",
+    name: "Reading mentor month",
+    description: "Get 7 members signed up as weekly reading mentors at local primary schools.",
+    goalType: "social_value",
+    target: 1500,
+    progressTotal: 870,
+    progressPercent: 58,
+    participantCount: 7,
+    startDate: "2026-05-01T00:00:00.000Z",
+    endDate: "2026-05-31T23:59:59.000Z",
+    ownerId: "m-001",
+    orgId: DEMO_ORG_ID,
+    scope: "org",
+    inviteCode: "DEMO-CH03",
+    hasStarted: true,
+    hasEnded: false,
+    isActive: true,
+    isOwner: true,
+  },
+  {
+    id: "demo-ch-004",
+    name: "Winter fundraising drive",
+    description: "Reach £5,000 of fundraising activity across the organisation.",
+    goalType: "social_value",
+    target: 5000,
+    progressTotal: 5240,
+    progressPercent: 100,
+    participantCount: 18,
+    startDate: "2025-12-01T00:00:00.000Z",
+    endDate: "2026-02-28T23:59:59.000Z",
+    ownerId: "m-001",
+    orgId: DEMO_ORG_ID,
+    scope: "org",
+    inviteCode: "DEMO-CH04",
+    hasStarted: true,
+    hasEnded: true,
+    isActive: false,
+    isOwner: true,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Pulse surveys (demo org only)
+// ---------------------------------------------------------------------------
+// Shape mirrors `SurveyListItem` + `SurveyResults` so both `OrgPulseSummaryCard`
+// and `PulseSurveysSection` can swap to demo data with no rework.
+export type DemoPulseSchedule = "one_off" | "monthly" | "quarterly";
+export type DemoPulseTemplate = "meaningfulness" | "wellbeing" | "custom";
+export interface DemoPulseSurvey {
+  id: string;
+  template: DemoPulseTemplate;
+  question: string;
+  schedule: DemoPulseSchedule;
+  anonymous: boolean;
+  createdAt: string;
+  archivedAt: string | null;
+  totals: { responses: number; average: number };
+  distribution: Array<{ rating: number; count: number }>;
+  trend: Array<{ windowKey: string; label: string; average: number; count: number }>;
+  comments: Array<{ id: string; comment: string; windowLabel: string; createdAt: string }>;
+}
+
+export const DEMO_COMMENT_PRIVACY_THRESHOLD = 3;
+
+export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
+  {
+    id: "demo-ps-001",
+    template: "meaningfulness",
+    question: "How meaningful does your volunteering feel right now?",
+    schedule: "monthly",
+    anonymous: true,
+    createdAt: "2025-09-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 28, average: 4.3 },
+    distribution: [
+      { rating: 1, count: 0 },
+      { rating: 2, count: 1 },
+      { rating: 3, count: 4 },
+      { rating: 4, count: 10 },
+      { rating: 5, count: 13 },
+    ],
+    trend: [
+      { windowKey: "2025-09", label: "Sep 2025", average: 3.9, count: 18 },
+      { windowKey: "2025-10", label: "Oct 2025", average: 4.0, count: 21 },
+      { windowKey: "2025-11", label: "Nov 2025", average: 4.2, count: 24 },
+      { windowKey: "2026-04", label: "Apr 2026", average: 4.3, count: 28 },
+    ],
+    comments: [
+      { id: "demo-cm-001", comment: "The reading-mentor sessions are easily the highlight of my month.", windowLabel: "Apr 2026", createdAt: "2026-04-12T10:00:00.000Z" },
+      { id: "demo-cm-002", comment: "Loving the variety — I feel like I'm actually making a difference locally.", windowLabel: "Apr 2026", createdAt: "2026-04-15T18:00:00.000Z" },
+      { id: "demo-cm-003", comment: "Would love a bit more notice on event dates so I can plan around work.", windowLabel: "Mar 2026", createdAt: "2026-03-20T08:30:00.000Z" },
+    ],
+  },
+  {
+    id: "demo-ps-002",
+    template: "custom",
+    question: "How connected do you feel to the rest of the team?",
+    schedule: "quarterly",
+    anonymous: true,
+    createdAt: "2025-07-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 22, average: 4.1 },
+    distribution: [
+      { rating: 1, count: 0 },
+      { rating: 2, count: 1 },
+      { rating: 3, count: 4 },
+      { rating: 4, count: 10 },
+      { rating: 5, count: 7 },
+    ],
+    trend: [
+      { windowKey: "2025-Q3", label: "Q3 2025", average: 3.7, count: 17 },
+      { windowKey: "2025-Q4", label: "Q4 2025", average: 3.9, count: 19 },
+      { windowKey: "2026-Q1", label: "Q1 2026", average: 4.0, count: 21 },
+      { windowKey: "2026-Q2", label: "Q2 2026", average: 4.1, count: 22 },
+    ],
+    comments: [
+      { id: "demo-cm-101", comment: "The new buddy pairings really help when you're starting out.", windowLabel: "Q2 2026", createdAt: "2026-04-08T12:00:00.000Z" },
+      { id: "demo-cm-102", comment: "More socials would be great — I only really see people on shifts.", windowLabel: "Q1 2026", createdAt: "2026-02-18T18:00:00.000Z" },
+    ],
+  },
+  {
+    id: "demo-ps-003",
+    template: "wellbeing",
+    question: "How are you feeling about your wellbeing this week?",
+    schedule: "monthly",
+    anonymous: true,
+    createdAt: "2025-10-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 41, average: 3.8 },
+    distribution: [
+      { rating: 1, count: 1 },
+      { rating: 2, count: 3 },
+      { rating: 3, count: 9 },
+      { rating: 4, count: 17 },
+      { rating: 5, count: 11 },
+    ],
+    trend: [
+      { windowKey: "2026-01", label: "Jan 2026", average: 3.5, count: 32 },
+      { windowKey: "2026-02", label: "Feb 2026", average: 3.6, count: 36 },
+      { windowKey: "2026-03", label: "Mar 2026", average: 3.7, count: 39 },
+      { windowKey: "2026-04", label: "Apr 2026", average: 3.8, count: 41 },
+    ],
+    comments: [
+      { id: "demo-cm-201", comment: "Volunteering has genuinely been good for my own headspace.", windowLabel: "Apr 2026", createdAt: "2026-04-10T20:00:00.000Z" },
+      { id: "demo-cm-202", comment: "Bit run-down this month — taking next week off the rota.", windowLabel: "Apr 2026", createdAt: "2026-04-22T07:30:00.000Z" },
+    ],
+  },
+];
+
+// Pre-computed summary used by `OrgPulseSummaryCard` for the demo org.
+export interface DemoPulseSummary {
+  active: number;
+  responses: number;
+  average: number;
+}
+export function computeDemoPulseSummary(surveys: DemoPulseSurvey[] = DEMO_PULSE_SURVEYS): DemoPulseSummary {
+  const active = surveys.filter(s => !s.archivedAt);
+  const responses = active.reduce((s, x) => s + x.totals.responses, 0);
+  const weighted = active.reduce((s, x) => s + x.totals.average * x.totals.responses, 0);
+  return {
+    active: active.length,
+    responses,
+    average: responses > 0 ? weighted / responses : 0,
+  };
+}
+
 // Mock invite link state: managers can revoke + regenerate. Persisted per-org so demos survive a refresh.
 const INVITE_KEY = (orgId: string) => `org-invite-code:${orgId}`;
 export function getOrgInviteCode(orgId: string, fallback: string): string {

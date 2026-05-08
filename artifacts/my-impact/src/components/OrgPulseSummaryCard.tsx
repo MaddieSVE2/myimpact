@@ -3,6 +3,7 @@ import { ClipboardList } from "lucide-react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
 import { BASE } from "@/lib/org-export";
+import { computeDemoPulseSummary } from "@/lib/org-demo-mock";
 
 interface PulseSummarySurvey {
   id: string;
@@ -12,7 +13,14 @@ interface PulseSummaryResults {
   totals: { responses: number; average: number };
 }
 
-export function OrgPulseSummaryCard() {
+export function OrgPulseSummaryCard({ isDemoOrg = false }: { isDemoOrg?: boolean } = {}) {
+  if (isDemoOrg) {
+    return <DemoOrgPulseSummaryCard />;
+  }
+  return <LiveOrgPulseSummaryCard />;
+}
+
+function LiveOrgPulseSummaryCard() {
   const t = useT();
   const { data: surveysData } = useQuery<{ surveys: PulseSummarySurvey[] }>({
     queryKey: ["org-surveys"],
@@ -75,6 +83,35 @@ export function OrgPulseSummaryCard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DemoOrgPulseSummaryCard() {
+  const t = useT();
+  const summary = computeDemoPulseSummary();
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 mb-4" data-testid="section-pulse-summary">
+      <div className="flex items-center gap-2 mb-3">
+        <ClipboardList className="w-4 h-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.pulseSummaryTitle")}</h3>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
+          <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-active">{summary.active}</p>
+        </div>
+        <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
+          <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{summary.responses}</p>
+        </div>
+        <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryAverage")}</p>
+          <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-average">
+            {summary.responses > 0 ? `${summary.average.toFixed(1)} / 5` : "—"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
+import { DEMO_CHALLENGES, DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
 
 const DEMO = {
   org: { name: "Riverside Youth Trust", type: "Charity", location: "North West, England" },
@@ -83,15 +84,8 @@ const DEMO = {
     membersWithMultipleRoles: 18,
     avgMonthsActive: 14,
   },
-  challenges: [
-    { id: "ch-001", name: "Autumn community sprint", description: "Hit £2,000 of Community-category social value before the end of November.", goalType: "social_value" as const, target: 2000, progress: 1340, participants: 9, status: "active" as const, endsLabel: "Ends 30 Nov" },
-    { id: "ch-002", name: "100 environmental hours", description: "Combined goal across all members to log 100 hours of environmental work this quarter.", goalType: "hours" as const, target: 100, progress: 64, participants: 7, status: "active" as const, endsLabel: "Ends 31 Dec" },
-    { id: "ch-003", name: "Summer fundraising drive", description: "Reach £5,000 of fundraising activity across the organisation.", goalType: "social_value" as const, target: 5000, progress: 5240, participants: 14, status: "ended" as const, endsLabel: "Ended 31 Aug" },
-  ],
-  pulse: [
-    { id: "ps-001", question: "How meaningful does your volunteering feel right now?", schedule: "Monthly", anonymous: true, average: 4.3, responses: 28, lastWindow: "Nov 2025" },
-    { id: "ps-002", question: "How are you feeling about your wellbeing this week?", schedule: "Quarterly", anonymous: true, average: 3.8, responses: 22, lastWindow: "Q4 2025" },
-  ],
+  challenges: DEMO_CHALLENGES,
+  pulse: DEMO_PULSE_SURVEYS,
   monthlyTimeline: [
     { month: "Jan", value: 8200 },
     { month: "Feb", value: 11400 },
@@ -526,9 +520,11 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <p className="text-sm text-muted-foreground -mt-4 mb-6">Time-bound goals your organisation is working towards together. Members see progress on their home page and can rally around the target.</p>
           <div className="space-y-3">
             {DEMO.challenges.map((c) => {
-              const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
+              const pct = Math.min(100, Math.max(0, Math.round(c.progressPercent)));
               const targetLabel = c.goalType === "social_value" ? formatCurrency(c.target) : `${c.target} hrs`;
-              const progressLabel = c.goalType === "social_value" ? formatCurrency(c.progress) : `${c.progress} hrs`;
+              const progressLabel = c.goalType === "social_value" ? formatCurrency(c.progressTotal) : `${Math.round(c.progressTotal)} hrs`;
+              const endDate = new Date(c.endDate);
+              const endsLabel = `${c.hasEnded ? "Ended" : "Ends"} ${endDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
               return (
                 <div key={c.id} className="rounded-xl border border-border p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -536,8 +532,8 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
                       <div className="flex items-center gap-2 flex-wrap">
                         <Flag className="w-4 h-4 text-primary shrink-0" />
                         <p className="text-sm font-semibold text-foreground truncate">{c.name}</p>
-                        <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.status === "ended" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
-                          {c.status === "ended" ? "Ended" : "Active"}
+                        <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                          {c.hasEnded ? "Ended" : "Active"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
@@ -548,7 +544,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
                     <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    <span className="font-semibold text-foreground">{progressLabel}</span> of {targetLabel} · {c.participants} members participating · {c.endsLabel}
+                    <span className="font-semibold text-foreground">{progressLabel}</span> of {targetLabel} · {c.participantCount} members participating · {endsLabel}
                   </p>
                 </div>
               );
@@ -562,34 +558,38 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <SectionTitle>Pulse check</SectionTitle>
           <p className="text-sm text-muted-foreground -mt-4 mb-6">30-second prompts that help you measure how members are feeling and how meaningful their work is. Anonymous by default.</p>
           <div className="space-y-3">
-            {DEMO.pulse.map((p) => (
-              <div key={p.id} className="rounded-xl border border-border p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <ClipboardList className="w-4 h-4 text-primary shrink-0" />
-                      <p className="text-sm font-semibold text-foreground">{p.question}</p>
+            {DEMO.pulse.map((p) => {
+              const scheduleLabel = p.schedule === "monthly" ? "Monthly" : p.schedule === "quarterly" ? "Quarterly" : "One-off";
+              const lastWindow = p.trend.length > 0 ? p.trend[p.trend.length - 1].label : "—";
+              return (
+                <div key={p.id} className="rounded-xl border border-border p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <ClipboardList className="w-4 h-4 text-primary shrink-0" />
+                        <p className="text-sm font-semibold text-foreground">{p.question}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{scheduleLabel}</span>
+                        {p.anonymous && (
+                          <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Anonymous
+                          </span>
+                        )}
+                        <span className="text-[11px] text-muted-foreground">Latest window: {lastWindow}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{p.schedule}</span>
-                      {p.anonymous && (
-                        <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5" /> Anonymous
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">Latest window: {p.lastWindow}</span>
+                    <div className="text-right shrink-0">
+                      <p className="text-2xl font-display font-bold text-foreground leading-none">{p.totals.average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span></p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{p.totals.responses} responses</p>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-2xl font-display font-bold text-foreground leading-none">{p.average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span></p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{p.responses} responses</p>
+                  <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/60" style={{ width: `${(p.totals.average / 5) * 100}%` }} />
                   </div>
                 </div>
-                <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary/60" style={{ width: `${(p.average / 5) * 100}%` }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

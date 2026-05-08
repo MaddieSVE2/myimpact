@@ -60,8 +60,8 @@ export default function OrgPulse() {
 
       <OrgSubNav />
 
-      <OrgPulseSummaryCard />
-      <PulseSurveysSection />
+      <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
+      <PulseSurveysSection isDemoOrg={isDemoOrg} />
     </div>
   );
 }
