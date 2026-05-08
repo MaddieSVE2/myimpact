@@ -350,6 +350,12 @@ export default function Intro() {
     ? `/wizard/actions?challenge=${activeChallenges[0].id}`
     : `/challenges`;
 
+  // While auth is resolving — or, for a logged-in user, while we're still
+  // checking whether they belong to an org — render a neutral placeholder so
+  // we never flash the marketing hero or briefly show the wrong CTA set.
+  const heroResolving =
+    authLoading || (isLoggedIn && myOrgQuery.isLoading);
+
   const firstName = firstNameFrom(user?.displayName);
 
   // Pick up where you left off: surface the user's most recent activity card
@@ -421,7 +427,7 @@ export default function Intro() {
           Logged-in: personalised welcome + quick CTAs in the same vertical slot.
           While auth is still loading, render a neutral placeholder so we don't
           flash the marketing hero to a logged-in user. */}
-      {authLoading ? (
+      {heroResolving ? (
         <section className="mi-hero" aria-hidden="true" />
       ) : isLoggedIn ? (
         <section className="mi-hero" data-testid="welcome-home">
@@ -478,12 +484,12 @@ export default function Intro() {
               Pick up where you left off, or jump straight into something new.
             </p>
 
-            {(hasActivePulse || hasActiveChallenge) && (
+            {isOrgMember && (
               <div
                 data-testid="welcome-org-ctas"
                 style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 18 }}
               >
-                {hasActivePulse && (
+                {hasActivePulse ? (
                   <a
                     href="#org-prompts-section"
                     className="mi-btn-hero"
@@ -498,16 +504,26 @@ export default function Intro() {
                   >
                     Answer a Pulse →
                   </a>
-                )}
-                {hasActiveChallenge && (
-                  <Link
-                    href={challengeHref}
+                ) : (
+                  <button
+                    type="button"
                     className="mi-btn-hero"
-                    data-testid="welcome-cta-add-to-challenge"
+                    data-testid="welcome-cta-answer-pulse"
+                    title="No open Pulse right now — we'll let you know when one drops."
+                    aria-disabled="true"
+                    onClick={(e) => e.preventDefault()}
+                    style={{ opacity: 0.55, cursor: "not-allowed" }}
                   >
-                    Add to a Challenge →
-                  </Link>
+                    Answer a Pulse →
+                  </button>
                 )}
+                <Link
+                  href={hasActiveChallenge ? challengeHref : "/challenges"}
+                  className="mi-btn-hero"
+                  data-testid="welcome-cta-add-to-challenge"
+                >
+                  Add to a Challenge →
+                </Link>
               </div>
             )}
 
@@ -519,7 +535,7 @@ export default function Intro() {
                 personalCta.kind === "overdue" ? (
                   <a
                     href={personalCta.href}
-                    className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                    className={isOrgMember ? "mi-btn-ghost-hero" : "mi-btn-hero"}
                     data-testid={personalCta.testId}
                     onClick={personalCta.onClick}
                   >
@@ -528,7 +544,7 @@ export default function Intro() {
                 ) : (
                   <Link
                     href={personalCta.href}
-                    className={hasActivePulse || hasActiveChallenge ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                    className={isOrgMember ? "mi-btn-ghost-hero" : "mi-btn-hero"}
                     data-testid={personalCta.testId}
                   >
                     {personalCta.label}
@@ -537,7 +553,7 @@ export default function Intro() {
               )}
               <Link
                 href="/wizard/actions"
-                className={(hasActivePulse || hasActiveChallenge || personalCta) ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                className={(isOrgMember || personalCta) ? "mi-btn-ghost-hero" : "mi-btn-hero"}
                 data-testid="welcome-cta-calculate"
               >
                 Calculate my impact →
