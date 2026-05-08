@@ -773,9 +773,9 @@ export default function OrgSettings() {
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} />}
         {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} />}
-        {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} />}
-        {active === "developer" && <DeveloperApiSection />}
-        {active === "share"     && <ShareLinkManager />}
+        {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
+        {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}
+        {active === "share"     && <ShareLinkManager isDemoOrg={isDemoOrg} />}
         {active === "profile"   && <ProfileTab org={orgData.org} isDemoOrg={isDemoOrg} />}
       </motion.div>
     </div>

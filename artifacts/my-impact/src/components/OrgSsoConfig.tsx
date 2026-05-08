@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ShieldCheck, AlertCircle, Trash2, Lock, ExternalLink, Plus } from "lucide-react";
+import { DEMO_SSO_CONFIGS, DEMO_SSO_AVAILABLE_PROVIDERS } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -20,15 +21,99 @@ interface SsoConfigPayload {
   availableProviders: Array<"google" | "microsoft">;
 }
 
-function useSsoConfigs() {
+function useSsoConfigs(enabled = true) {
   return useQuery<SsoConfigPayload>({
     queryKey: ["org-sso-config"],
+    enabled,
     queryFn: async () => {
       const res = await fetch(`${BASE}/api/org/sso/config`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load SSO configs");
       return res.json();
     },
   });
+}
+
+function DemoSsoPanel() {
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18 }}
+      data-testid="section-sso-demo"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheck className="w-4 h-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">Single sign-on (SSO)</h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-2">
+        Let staff sign in with their existing Google Workspace or Microsoft Entra account. New users will be auto-joined to your organisation.
+      </p>
+      <p className="mt-2 mb-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-sso">
+        Demo data — actions disabled
+      </p>
+
+      <div className="space-y-3 mb-3">
+        {DEMO_SSO_CONFIGS.map((cfg) => (
+          <div key={cfg.id} className="rounded-lg border border-border bg-white p-4" data-testid={`demo-sso-row-${cfg.id}`}>
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-semibold text-foreground">{cfg.domain}</p>
+                  <StatusPill status={cfg.status} />
+                  {cfg.enforceSSO && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-blue-50 text-blue-700 border-blue-200">
+                      <Lock className="w-3 h-3" /> Required
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {cfg.provider === "google" ? "Google Workspace" : "Microsoft Entra"}
+                  {cfg.tenantId && <span className="font-mono"> · tenant {cfg.tenantId.slice(0, 8)}…</span>}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="Demo data — actions disabled"
+                className="text-xs text-muted-foreground inline-flex items-center gap-1 cursor-not-allowed opacity-60"
+              >
+                <Trash2 className="w-3 h-3" /> Remove
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled
+                title="Demo data — actions disabled"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground cursor-not-allowed opacity-60"
+              >
+                <ExternalLink className="w-3 h-3" /> Test sign-in
+              </button>
+              <label className="inline-flex items-center gap-2 ml-auto opacity-60">
+                <input type="checkbox" checked={cfg.enforceSSO} disabled readOnly />
+                <span className="text-xs text-foreground">Require SSO for this domain</span>
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        disabled
+        title="Demo data — actions disabled"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground cursor-not-allowed opacity-60"
+        data-testid="button-add-sso-demo"
+      >
+        <Plus className="w-3.5 h-3.5" /> Add SSO provider
+      </button>
+
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        Available providers in this demo: {DEMO_SSO_AVAILABLE_PROVIDERS.map(p => p === "google" ? "Google Workspace" : "Microsoft Entra").join(" · ")}.
+      </p>
+    </motion.div>
+  );
 }
 
 function StatusPill({ status }: { status: SsoConfig["status"] }) {
@@ -317,9 +402,13 @@ function ConfigRow({ cfg, providerAvailable, orgId }: { cfg: SsoConfig; provider
   );
 }
 
-export function OrgSsoConfigPanel({ orgId }: { orgId: string }) {
-  const { data, isLoading, isError } = useSsoConfigs();
+export function OrgSsoConfigPanel({ orgId, isDemoOrg = false }: { orgId: string; isDemoOrg?: boolean }) {
+  const { data, isLoading, isError } = useSsoConfigs(!isDemoOrg);
   const [adding, setAdding] = useState(false);
+
+  if (isDemoOrg) {
+    return <DemoSsoPanel />;
+  }
 
   return (
     <motion.div

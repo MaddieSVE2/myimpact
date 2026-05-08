@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Code2, Plus, Trash2, Webhook, ChevronDown, Check, Copy } from "lucide-react";
+import { DEMO_API_KEYS, DEMO_WEBHOOKS, DEMO_SUPPORTED_WEBHOOK_EVENTS } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -46,7 +47,118 @@ function CopyableCode({ value, label }: { value: string; label?: string }) {
   );
 }
 
-export function DeveloperApiSection() {
+export function DeveloperApiSection({ isDemoOrg = false }: { isDemoOrg?: boolean } = {}) {
+  if (isDemoOrg) return <DemoDeveloperApiSection />;
+  return <LiveDeveloperApiSection />;
+}
+
+function DemoDeveloperApiSection() {
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      data-testid="section-developer-demo"
+    >
+      <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Code2 className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Developer API & webhooks</h3>
+          </div>
+          <p className="text-xs text-muted-foreground max-w-xl">
+            Push attested hours from your HR/volunteering system, pull aggregated stats, or receive real-time events when members log hours.
+          </p>
+        </div>
+      </div>
+      <p className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-developer">
+        Demo data — actions disabled
+      </p>
+
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">API keys</h4>
+          <button
+            type="button"
+            disabled
+            title="Demo data — actions disabled"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60"
+          >
+            <Plus className="w-3 h-3" /> New key
+          </button>
+        </div>
+        <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+          {DEMO_API_KEYS.map(k => (
+            <li key={k.id} className="px-3 py-2.5 flex items-center justify-between gap-3 text-xs" data-testid={`demo-api-key-${k.id}`}>
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground truncate">{k.label}</p>
+                <p className="font-mono text-muted-foreground">{k.keyPrefix}…</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Scopes: {k.scopes.join(", ")} · Created {new Date(k.createdAt).toLocaleDateString("en-GB")}
+                  {k.lastUsedAt && ` · Last used ${new Date(k.lastUsedAt).toLocaleDateString("en-GB")}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="Demo data — actions disabled"
+                className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] text-muted-foreground cursor-not-allowed opacity-60"
+              >
+                <Trash2 className="w-3 h-3" /> Revoke
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Webhook className="w-3.5 h-3.5" /> Webhooks
+          </h4>
+          <button
+            type="button"
+            disabled
+            title="Demo data — actions disabled"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60"
+          >
+            <Plus className="w-3 h-3" /> Add webhook
+          </button>
+        </div>
+        <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+          {DEMO_WEBHOOKS.map(w => (
+            <li key={w.id} className="px-3 py-2.5 flex items-start justify-between gap-3 text-xs" data-testid={`demo-webhook-${w.id}`}>
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-foreground break-all">{w.url}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Events: {w.events.join(", ")}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {w.lastSuccessAt ? `Last delivered ${new Date(w.lastSuccessAt).toLocaleString("en-GB")}` : "No deliveries yet"}
+                  {w.lastError && <span className="text-amber-700"> · last failure: {w.lastError}</span>}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="Demo data — actions disabled"
+                className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] text-muted-foreground cursor-not-allowed opacity-60"
+              >
+                <Trash2 className="w-3 h-3" /> Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Supported events: {DEMO_SUPPORTED_WEBHOOK_EVENTS.map(e => <code key={e} className="font-mono bg-muted/30 px-1 rounded mr-1">{e}</code>)}
+        </p>
+      </section>
+    </motion.div>
+  );
+}
+
+function LiveDeveloperApiSection() {
   const queryClient = useQueryClient();
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyLabel, setNewKeyLabel] = useState("");

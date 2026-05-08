@@ -463,6 +463,172 @@ export function generateInviteCode(): string {
   return `${part()}-${part()}`;
 }
 
+// ---------------------------------------------------------------------------
+// SSO configs (demo org only) — shape mirrors `SsoConfig` from
+// `OrgSsoConfig.tsx` so the panel can swap to demo data with no rework.
+// ---------------------------------------------------------------------------
+export interface DemoSsoConfig {
+  id: string;
+  provider: "google" | "microsoft";
+  domain: string;
+  tenantId: string | null;
+  enforceSSO: boolean;
+  status: "pending" | "verified" | "error";
+  lastTestAt: string | null;
+}
+export const DEMO_SSO_AVAILABLE_PROVIDERS: Array<"google" | "microsoft"> = ["google", "microsoft"];
+export const DEMO_SSO_CONFIGS: DemoSsoConfig[] = [
+  {
+    id: "demo-sso-001",
+    provider: "google",
+    domain: "riverside-youth-trust.org.uk",
+    tenantId: null,
+    enforceSSO: true,
+    status: "verified",
+    lastTestAt: "2026-04-22T09:30:00.000Z",
+  },
+  {
+    id: "demo-sso-002",
+    provider: "microsoft",
+    domain: "riverside-board.org.uk",
+    tenantId: "00000000-1111-2222-3333-444455556666",
+    enforceSSO: false,
+    status: "pending",
+    lastTestAt: null,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Developer API & webhooks (demo org only)
+// ---------------------------------------------------------------------------
+export interface DemoApiKey {
+  id: string;
+  label: string;
+  keyPrefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+export const DEMO_API_KEYS: DemoApiKey[] = [
+  {
+    id: "demo-key-001",
+    label: "Workday hours sync",
+    keyPrefix: "mi_orgk_riv_w0rk",
+    scopes: ["hours.write", "members.read"],
+    lastUsedAt: "2026-05-06T14:12:00.000Z",
+    revokedAt: null,
+    createdAt: "2025-11-04T10:00:00.000Z",
+  },
+  {
+    id: "demo-key-002",
+    label: "Board reporting dashboard",
+    keyPrefix: "mi_orgk_riv_b0rd",
+    scopes: ["stats.read"],
+    lastUsedAt: "2026-05-01T08:45:00.000Z",
+    revokedAt: null,
+    createdAt: "2026-01-18T09:00:00.000Z",
+  },
+];
+
+export interface DemoWebhook {
+  id: string;
+  url: string;
+  events: string[];
+  enabled: boolean;
+  deadAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  secretPrefix: string;
+}
+export const DEMO_WEBHOOKS: DemoWebhook[] = [
+  {
+    id: "demo-wh-001",
+    url: "https://hooks.riverside-youth-trust.org.uk/myimpact",
+    events: ["member.joined", "hours.attested", "milestone.earned"],
+    enabled: true,
+    deadAt: null,
+    lastSuccessAt: "2026-05-07T07:14:00.000Z",
+    lastFailureAt: null,
+    lastError: null,
+    createdAt: "2025-12-02T09:00:00.000Z",
+    secretPrefix: "whs_riv_a1b2",
+  },
+  {
+    id: "demo-wh-002",
+    url: "https://make.com/hooks/riverside-impact-feed",
+    events: ["hours.logged"],
+    enabled: true,
+    deadAt: null,
+    lastSuccessAt: "2026-05-05T19:02:00.000Z",
+    lastFailureAt: "2026-04-30T03:00:00.000Z",
+    lastError: "504 Gateway Timeout (retried)",
+    createdAt: "2026-02-09T11:30:00.000Z",
+    secretPrefix: "whs_riv_c3d4",
+  },
+];
+export const DEMO_SUPPORTED_WEBHOOK_EVENTS = [
+  "member.joined", "hours.logged", "hours.attested", "hours.verified", "milestone.earned",
+];
+
+// ---------------------------------------------------------------------------
+// Share links (demo org only)
+// ---------------------------------------------------------------------------
+export interface DemoShareLink {
+  id: string;
+  slug: string;
+  scope: "all" | "summary" | "timeline" | "categories" | "regions";
+  funderLabel: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  viewCount: number;
+  createdAt: string;
+}
+export const DEMO_SHARE_LINKS: DemoShareLink[] = [
+  {
+    id: "demo-sl-001",
+    slug: "demo-nlcf-snapshot",
+    scope: "all",
+    funderLabel: "National Lottery Community Fund",
+    expiresAt: "2026-09-30T23:59:59.000Z",
+    revokedAt: null,
+    viewCount: 23,
+    createdAt: "2026-03-12T10:00:00.000Z",
+  },
+  {
+    id: "demo-sl-002",
+    slug: "demo-board-q1",
+    scope: "summary",
+    funderLabel: "Trustee board · Q1 review",
+    expiresAt: null,
+    revokedAt: null,
+    viewCount: 11,
+    createdAt: "2026-04-04T09:00:00.000Z",
+  },
+  {
+    id: "demo-sl-003",
+    slug: "demo-mersey-partner",
+    scope: "categories",
+    funderLabel: "Mersey Catchment Partnership",
+    expiresAt: "2026-06-30T23:59:59.000Z",
+    revokedAt: null,
+    viewCount: 6,
+    createdAt: "2026-04-22T15:00:00.000Z",
+  },
+  {
+    id: "demo-sl-004",
+    slug: "demo-pilot-funder",
+    scope: "timeline",
+    funderLabel: "Pilot funder (2024 round)",
+    expiresAt: null,
+    revokedAt: "2026-02-01T09:00:00.000Z",
+    viewCount: 41,
+    createdAt: "2024-11-10T10:00:00.000Z",
+  },
+];
+
 // Mock member-removal/anonymisation state, kept in localStorage so the demo
 // reflects the manager's actions across navigation.
 const REMOVED_KEY = (orgId: string) => `org-removed-members:${orgId}`;
