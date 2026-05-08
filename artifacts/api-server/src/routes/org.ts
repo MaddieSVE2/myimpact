@@ -2100,6 +2100,13 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
       return;
     }
 
+    const rawReason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (rawReason.length > 500) {
+      res.status(400).json({ error: "Reason must be 500 characters or fewer." });
+      return;
+    }
+    const reason = rawReason.length > 0 ? rawReason : null;
+
     const record = await db.query.impactRecordsTable.findFirst({
       where: eq(impactRecordsTable.id, recordId),
     });
@@ -2136,6 +2143,7 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
       totalHours: record.totalHours,
       totalValue: Number(record.totalValue),
       submittedAt: (record.submittedToOrgAt ?? record.createdAt).toISOString(),
+      ...(actorRole === "manager" && reason ? { reason } : {}),
     });
 
     trackServerEvent({

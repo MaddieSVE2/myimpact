@@ -243,13 +243,17 @@ function MemberSubmissionsPanel() {
   const [showOnlyWithDetail, setShowOnlyWithDetail] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState("");
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
   const withdrawMutation = useMutation({
-    mutationFn: async (recordId: number) => {
-      const res = await fetch(`${BASE}/api/org/member-submissions/${recordId}`, {
+    mutationFn: async (vars: { recordId: number; reason: string }) => {
+      const trimmed = vars.reason.trim();
+      const res = await fetch(`${BASE}/api/org/member-submissions/${vars.recordId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trimmed.length > 0 ? { reason: trimmed } : {}),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -259,6 +263,7 @@ function MemberSubmissionsPanel() {
     },
     onSuccess: () => {
       setConfirmingId(null);
+      setWithdrawReason("");
       setWithdrawError(null);
       queryClient.invalidateQueries({ queryKey: ["org-member-submissions"] });
       queryClient.invalidateQueries({ queryKey: ["org-stats"] });
@@ -352,7 +357,7 @@ function MemberSubmissionsPanel() {
             const isOpen = expanded.has(s.recordId);
             const canWithdraw = s.source === "member-submitted";
             const isConfirming = confirmingId === s.recordId;
-            const isWithdrawing = withdrawMutation.isPending && withdrawMutation.variables === s.recordId;
+            const isWithdrawing = withdrawMutation.isPending && withdrawMutation.variables?.recordId === s.recordId;
             return (
               <li key={s.recordId} className="px-3 py-2.5" data-testid={`member-submission-${s.recordId}`}>
                 <button
@@ -396,32 +401,49 @@ function MemberSubmissionsPanel() {
                   </ul>
                 )}
                 {canWithdraw && (
-                  <div className="mt-2 ml-3 flex items-center justify-end gap-2">
+                  <div className="mt-2 ml-3 flex flex-col items-end gap-2">
                     {isConfirming ? (
                       <>
-                        <span className="text-[11px] text-muted-foreground">Remove this submission and re-balance org totals?</span>
-                        <button
-                          type="button"
-                          onClick={() => withdrawMutation.mutate(s.recordId)}
-                          disabled={isWithdrawing}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600 text-white text-[11px] font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
-                          data-testid={`confirm-withdraw-${s.recordId}`}
-                        >
-                          {isWithdrawing ? "Withdrawing…" : "Yes, withdraw"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setConfirmingId(null); setWithdrawError(null); }}
-                          disabled={isWithdrawing}
-                          className="text-[11px] px-2 py-1 rounded-md border border-border hover:bg-muted/30"
-                        >
-                          Cancel
-                        </button>
+                        <span className="text-[11px] text-muted-foreground self-start">Remove this submission and re-balance org totals?</span>
+                        <label className="w-full text-[11px] text-muted-foreground flex flex-col gap-1">
+                          <span>
+                            Reason for the audit log <span className="text-muted-foreground/70">(optional)</span>
+                          </span>
+                          <input
+                            type="text"
+                            value={withdrawReason}
+                            onChange={e => setWithdrawReason(e.target.value)}
+                            maxLength={500}
+                            placeholder="e.g. Duplicate entry, fraud check, member requested removal"
+                            disabled={isWithdrawing}
+                            className="w-full text-[12px] px-2 py-1 rounded-md border border-border bg-white text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            data-testid={`withdraw-reason-${s.recordId}`}
+                          />
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => withdrawMutation.mutate({ recordId: s.recordId, reason: withdrawReason })}
+                            disabled={isWithdrawing}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600 text-white text-[11px] font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
+                            data-testid={`confirm-withdraw-${s.recordId}`}
+                          >
+                            {isWithdrawing ? "Withdrawing…" : "Yes, withdraw"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setConfirmingId(null); setWithdrawReason(""); setWithdrawError(null); }}
+                            disabled={isWithdrawing}
+                            className="text-[11px] px-2 py-1 rounded-md border border-border hover:bg-muted/30"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => { setConfirmingId(s.recordId); setWithdrawError(null); }}
+                        onClick={() => { setConfirmingId(s.recordId); setWithdrawReason(""); setWithdrawError(null); }}
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700"
                         data-testid={`withdraw-submission-${s.recordId}`}
                       >
