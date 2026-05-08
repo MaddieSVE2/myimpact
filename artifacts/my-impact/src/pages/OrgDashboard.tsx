@@ -175,7 +175,7 @@ export default function OrgDashboard() {
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <StatCard icon={TrendingUp} label="Total social value" value={aggregates.totalSocialValue} sub={`£${aggregates.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
         <StatCard icon={Users} label="Active members" value={aggregates.activeMembers} sub={`of ${aggregates.totalMembers} total`} />
-        <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} tone="accent" />
+        <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} />
         <StatCard icon={BadgeCheck} label="Avg per member" value={aggregates.averagePerMember} sub="across all members" />
       </motion.div>
 
