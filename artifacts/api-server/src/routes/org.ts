@@ -14,6 +14,7 @@ import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";
 import { featureCap } from "../lib/featureFlags.js";
 import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
+import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
 
 const router: IRouter = Router();
 
@@ -233,7 +234,162 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  res.json({ org: { id: org.id, name: org.name, type: org.type, role: membership.role, aiSidekickEnabled: org.aiSidekickEnabled } });
+  // The org demo account is intentionally never branded — demos start from the
+  // neutral My Impact look. Skip branding fields for the demo org.
+  const isDemo = org.id === "demo-org-0000000000000";
+  let logoUrl: string | null = null;
+  if (!isDemo && org.logoKey) {
+    try {
+      logoUrl = await getDownloadURL(org.logoKey);
+    } catch {
+      logoUrl = null;
+    }
+  }
+
+  res.json({
+    org: {
+      id: org.id,
+      name: org.name,
+      type: org.type,
+      role: membership.role,
+      aiSidekickEnabled: org.aiSidekickEnabled,
+      branding: {
+        logoUrl,
+        logoKey: isDemo ? null : org.logoKey ?? null,
+        brandPrimary: isDemo ? null : org.brandPrimary ?? null,
+        brandAccent: isDemo ? null : org.brandAccent ?? null,
+      },
+    },
+  });
+});
+
+// ── Branding (logo + colours) ─────────────────────────────────────────────────
+const ALLOWED_LOGO_TYPES = new Set([
+  "image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml",
+]);
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
+
+function isHexColour(v: unknown): v is string {
+  return typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v);
+}
+
+// Step 1 of the logo upload flow: manager requests a presigned PUT URL.
+router.post("/my/branding/logo-upload-url", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can change branding." }); return; }
+  if (membership.orgId === "demo-org-0000000000000") { res.status(400).json({ error: "The demo organisation cannot be branded." }); return; }
+
+  const body = req.body as Record<string, unknown>;
+  const mimeType = typeof body.mimeType === "string" ? body.mimeType.toLowerCase() : "";
+  const byteSize = typeof body.byteSize === "number" ? body.byteSize : NaN;
+  if (!ALLOWED_LOGO_TYPES.has(mimeType)) {
+    res.status(415).json({ error: "Unsupported logo type. Use PNG, JPG, WebP or SVG." });
+    return;
+  }
+  if (!Number.isFinite(byteSize) || byteSize <= 0) {
+    res.status(400).json({ error: "Invalid file size." });
+    return;
+  }
+  if (byteSize > MAX_LOGO_BYTES) {
+    res.status(413).json({ error: `Logo too large. Maximum size is ${Math.round(MAX_LOGO_BYTES / (1024 * 1024))} MB.` });
+    return;
+  }
+
+  const logoKey = generateOrgLogoKey(membership.orgId);
+  try {
+    const uploadUrl = await getUploadURL(logoKey, mimeType, MAX_LOGO_BYTES);
+    res.json({ uploadUrl, logoKey });
+  } catch (err) {
+    console.error("Failed to mint logo upload URL:", err);
+    res.status(500).json({ error: "Failed to prepare upload." });
+  }
+});
+
+// Step 2 / general updater. Manager-only PATCH that updates any combination of
+// logoKey, brandPrimary, brandAccent. Pass null for any field to clear it.
+router.patch("/my/branding", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can change branding." }); return; }
+  if (membership.orgId === "demo-org-0000000000000") { res.status(400).json({ error: "The demo organisation cannot be branded." }); return; }
+
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, membership.orgId) });
+  if (!org) { res.status(404).json({ error: "Organisation not found." }); return; }
+
+  const body = req.body as Record<string, unknown>;
+  const updates: { logoKey?: string | null; brandPrimary?: string | null; brandAccent?: string | null } = {};
+  let oldLogoKeyToDelete: string | null = null;
+
+  if ("logoKey" in body) {
+    const v = body.logoKey;
+    if (v === null) {
+      updates.logoKey = null;
+      if (org.logoKey) oldLogoKeyToDelete = org.logoKey;
+    } else if (typeof v === "string" && v.startsWith(`org-logos/${membership.orgId.replace(/[^a-zA-Z0-9_-]/g, "_")}/`)) {
+      // Verify the object actually exists and is an allowed image type/size.
+      const meta = await getObjectMetadata(v);
+      if (!meta) { res.status(400).json({ error: "Uploaded logo not found. Please upload again." }); return; }
+      if (!ALLOWED_LOGO_TYPES.has(meta.contentType)) {
+        await deleteAttachment(v).catch(() => {});
+        res.status(415).json({ error: "Uploaded file is not a supported image type." });
+        return;
+      }
+      if (meta.size > MAX_LOGO_BYTES) {
+        await deleteAttachment(v).catch(() => {});
+        res.status(413).json({ error: "Logo too large." });
+        return;
+      }
+      updates.logoKey = v;
+      if (org.logoKey && org.logoKey !== v) oldLogoKeyToDelete = org.logoKey;
+    } else {
+      res.status(400).json({ error: "Invalid logoKey." });
+      return;
+    }
+  }
+
+  if ("brandPrimary" in body) {
+    const v = body.brandPrimary;
+    if (v === null) updates.brandPrimary = null;
+    else if (isHexColour(v)) updates.brandPrimary = v.toUpperCase();
+    else { res.status(400).json({ error: "brandPrimary must be a 6-digit hex colour like #0EA5E9." }); return; }
+  }
+  if ("brandAccent" in body) {
+    const v = body.brandAccent;
+    if (v === null) updates.brandAccent = null;
+    else if (isHexColour(v)) updates.brandAccent = v.toUpperCase();
+    else { res.status(400).json({ error: "brandAccent must be a 6-digit hex colour like #B5BE2E." }); return; }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No branding fields supplied." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(organisationsTable)
+    .set(updates)
+    .where(eq(organisationsTable.id, membership.orgId))
+    .returning();
+
+  if (oldLogoKeyToDelete) {
+    await deleteAttachment(oldLogoKeyToDelete).catch(() => {});
+  }
+
+  let logoUrl: string | null = null;
+  if (updated?.logoKey) {
+    try { logoUrl = await getDownloadURL(updated.logoKey); } catch { logoUrl = null; }
+  }
+  res.json({
+    branding: {
+      logoUrl,
+      logoKey: updated?.logoKey ?? null,
+      brandPrimary: updated?.brandPrimary ?? null,
+      brandAccent: updated?.brandAccent ?? null,
+    },
+  });
 });
 
 // Manager-only: update org-level settings (currently just the AI Sidekick toggle).
@@ -452,6 +608,21 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
 
     const verifiedTotals = await getVerifiedTotalsForOrg(org.id, from, to);
 
+    // Pull the org's branding into the PDF — but never for the demo org so the
+    // demo always renders in My Impact's neutral colours.
+    const isDemo = org.id === "demo-org-0000000000000";
+    let logoDataUrl: string | null = null;
+    if (!isDemo && org.logoKey) {
+      try {
+        const obj = await readObjectBuffer(org.logoKey);
+        if (obj) {
+          logoDataUrl = `data:${obj.contentType};base64,${obj.buffer.toString("base64")}`;
+        }
+      } catch (err) {
+        console.warn("Failed to load org logo for PDF:", err);
+      }
+    }
+
     const doc = buildOrgDocument({
       orgName: org.name,
       orgType: org.type,
@@ -466,6 +637,11 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
       valueByCategory,
       sdgBreakdowns,
+      branding: isDemo ? undefined : {
+        logoDataUrl,
+        brandPrimary: org.brandPrimary ?? null,
+        brandAccent: org.brandAccent ?? null,
+      },
     });
 
     const buffer = await renderToBuffer(doc);

@@ -89,6 +89,38 @@ export function generateAttachmentKey(userId: string): string {
   return `attachments/${safeUserId}/${randomUUID()}`;
 }
 
+/**
+ * Build a per-org storage key for an uploaded brand logo.
+ * Layout: <PRIVATE_OBJECT_DIR>/org-logos/<orgId>/<uuid>
+ * Uses a UUID suffix so each upload is a fresh object — old keys can be
+ * deleted explicitly when replaced.
+ */
+export function generateOrgLogoKey(orgId: string): string {
+  const safeOrgId = orgId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `org-logos/${safeOrgId}/${randomUUID()}`;
+}
+
+/**
+ * Read the bytes of a stored object into memory. Used when we need to embed
+ * the object inline (e.g. an org logo into a server-rendered PDF).
+ * Returns null if the object does not exist.
+ */
+export async function readObjectBuffer(storageKey: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const file = resolveFile(storageKey);
+  try {
+    const [exists] = await file.exists();
+    if (!exists) return null;
+    const [metadata] = await file.getMetadata();
+    const [buffer] = await file.download();
+    return {
+      buffer,
+      contentType: (metadata.contentType as string) || "application/octet-stream",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function resolveFile(storageKey: string): File {
   const dir = getPrivateObjectDir();
   const fullPath = `${dir.replace(/\/$/, "")}/${storageKey}`;

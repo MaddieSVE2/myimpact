@@ -37,8 +37,8 @@ export function ImpactTimeline({ data, isLoading }: ImpactTimelineProps) {
         <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="impactGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#F06127" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#F06127" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -62,11 +62,11 @@ export function ImpactTimeline({ data, isLoading }: ImpactTimelineProps) {
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#F06127"
+            stroke="hsl(var(--primary))"
             strokeWidth={2}
             fill="url(#impactGradient)"
             dot={false}
-            activeDot={{ r: 4, fill: "#F06127" }}
+            activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
             isAnimationActive={true}
             animationDuration={1000}
             animationEasing="ease-out"

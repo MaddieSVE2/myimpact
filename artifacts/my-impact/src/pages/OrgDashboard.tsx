@@ -25,7 +25,37 @@ import {
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string } | null }
+interface OrgBranding {
+  logoUrl: string | null;
+  logoKey: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
+}
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; branding?: OrgBranding } | null }
+
+// Convert "#RRGGBB" → "H S% L%" string ready to drop into the Tailwind HSL CSS
+// variables (e.g. `--primary: 14 79% 57%;`). Returns null for invalid hex.
+function hexToHslVar(hex: string | null | undefined): string | null {
+  if (!hex) return null;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
 
 function useMyOrg() {
   return useQuery<MyOrgResponse>({
@@ -67,13 +97,17 @@ function downloadCsv(rows: Array<Record<string, string | number>>, filename: str
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-function StatCard({ icon: Icon, label, value, sub, highlight }: {
+function StatCard({ icon: Icon, label, value, sub, highlight, tone }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: number; sub?: string; highlight?: boolean;
+  // "accent" tone uses the org's secondary brand colour (left border + icon),
+  // giving the dashboard a real two-colour palette rather than primary-only.
+  tone?: "accent";
 }) {
+  const accentBorder = tone === "accent" && !highlight ? "border-l-4 border-l-accent" : "";
   return (
-    <div className={`rounded-xl p-5 border ${highlight ? "bg-primary text-white border-primary" : "bg-white border-border"}`}>
+    <div className={`rounded-xl p-5 border ${highlight ? "bg-primary text-white border-primary" : "bg-white border-border"} ${accentBorder}`}>
       <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${highlight ? "text-white/70" : "text-primary"}`} />
+        <Icon className={`w-4 h-4 ${highlight ? "text-white/70" : tone === "accent" ? "text-accent" : "text-primary"}`} />
         <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
       </div>
       <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>
@@ -703,16 +737,41 @@ export default function OrgDashboard() {
 
   const inviteCode = isDemoOrg ? getOrgInviteCode(DEMO_ORG_ID, DEMO_INVITE_CODE) : null;
 
+  // Apply org branding via Tailwind's HSL CSS variables on a wrapper div.
+  // Demo org is intentionally never branded.
+  const branding = isDemoOrg ? null : orgData.org.branding ?? null;
+  const brandStyle: React.CSSProperties = {};
+  const primaryHsl = hexToHslVar(branding?.brandPrimary ?? null);
+  const accentHsl  = hexToHslVar(branding?.brandAccent  ?? null);
+  if (primaryHsl) {
+    (brandStyle as Record<string, string>)["--primary"] = primaryHsl;
+    (brandStyle as Record<string, string>)["--ring"]    = primaryHsl;
+  }
+  if (accentHsl) {
+    (brandStyle as Record<string, string>)["--accent"] = accentHsl;
+  }
+  const orgLogoUrl = branding?.logoUrl ?? null;
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 py-8" style={brandStyle} data-testid="org-dashboard-root">
       <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Building2 className="w-4 h-4 text-primary" />
-            <h1 className="text-2xl font-display font-semibold text-foreground">{orgData.org.name}</h1>
-            {isDemoOrg && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Demo data</span>}
+        <div className="flex items-start gap-3">
+          {orgLogoUrl && (
+            <img
+              src={orgLogoUrl}
+              alt={`${orgData.org.name} logo`}
+              className="w-12 h-12 rounded-md object-contain bg-white border border-border p-1"
+              data-testid="org-header-logo"
+            />
+          )}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              {!orgLogoUrl && <Building2 className="w-4 h-4 text-primary" />}
+              <h1 className="text-2xl font-display font-semibold text-foreground">{orgData.org.name}</h1>
+              {isDemoOrg && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Demo data</span>}
+            </div>
+            <p className="text-sm text-muted-foreground">Aggregated impact and a drill-down feed of every activity logged by your members.</p>
           </div>
-          <p className="text-sm text-muted-foreground">Aggregated impact and a drill-down feed of every activity logged by your members.</p>
         </div>
       </div>
 
@@ -748,7 +807,7 @@ export default function OrgDashboard() {
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <StatCard icon={TrendingUp} label="Total social value" value={aggregates.totalSocialValue} sub={`£${aggregates.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
         <StatCard icon={Users} label="Active members" value={aggregates.activeMembers} sub={`of ${aggregates.totalMembers} total`} />
-        <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} />
+        <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} tone="accent" />
         <StatCard icon={BadgeCheck} label="Avg per member" value={aggregates.averagePerMember} sub="across all members" />
       </motion.div>
 

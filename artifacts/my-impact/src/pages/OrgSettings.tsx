@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, ArrowLeft, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2 } from "lucide-react";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, ArrowLeft, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette } from "lucide-react";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
@@ -15,7 +15,13 @@ import {
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean } | null }
+interface OrgBranding {
+  logoUrl: string | null;
+  logoKey: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
+}
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; branding?: OrgBranding } | null }
 
 function useMyOrg() {
   return useQuery<MyOrgResponse>({
@@ -397,9 +403,11 @@ function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
   );
 }
 
-function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string }; isDemoOrg: boolean }) {
+function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string; branding?: OrgBranding }; isDemoOrg: boolean }) {
   return (
-    <div className="bg-white border border-border rounded-xl p-5 space-y-3 text-sm">
+    <div className="space-y-4">
+      {!isDemoOrg && <BrandingSection branding={org.branding ?? null} />}
+      <div className="bg-white border border-border rounded-xl p-5 space-y-3 text-sm">
       <h3 className="text-sm font-semibold mb-2">Organisation profile</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -422,6 +430,280 @@ function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type:
       <p className="text-xs text-muted-foreground pt-2 border-t border-border">
         To change these details, contact us at <a className="text-primary underline" href="mailto:hello@myimpact.uk">hello@myimpact.uk</a>.
       </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Branding section ────────────────────────────────────────────────────────
+const DEFAULT_PRIMARY = "#E8633A";
+const DEFAULT_ACCENT  = "#B5BE2E";
+const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+// Compute relative luminance (per WCAG) from an "#RRGGBB" hex string.
+function luminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+// Contrast ratio between two hex colours; values above 4.5 are WCAG AA for body text.
+function contrastRatio(a: string, b: string): number {
+  const la = luminance(a), lb = luminance(b);
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function BrandingSection({ branding }: { branding: OrgBranding | null }) {
+  const qc = useQueryClient();
+  const [primary, setPrimary] = useState<string>(branding?.brandPrimary || DEFAULT_PRIMARY);
+  const [accent,  setAccent]  = useState<string>(branding?.brandAccent  || DEFAULT_ACCENT);
+  const [logoUrl, setLogoUrl] = useState<string | null>(branding?.logoUrl ?? null);
+  const [logoKey, setLogoKey] = useState<string | null>(branding?.logoKey ?? null);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [toast, setToast]     = useState<string | null>(null);
+
+  // White-text contrast warning — managers picking very pale brand colours
+  // would render unreadable buttons in the org dashboard.
+  const primaryContrast = useMemo(() => contrastRatio(primary, "#FFFFFF"), [primary]);
+  const showContrastWarning = primaryContrast < 4.5;
+
+  function flash(msg: string) { setToast(msg); window.setTimeout(() => setToast(null), 2200); }
+
+  async function patchBranding(payload: Partial<{ logoKey: string | null; brandPrimary: string | null; brandAccent: string | null }>) {
+    const res = await fetch(`${BASE}/api/org/my/branding`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error((j as { error?: string }).error || "Could not save branding");
+    }
+    const j = await res.json() as { branding: OrgBranding };
+    setLogoUrl(j.branding.logoUrl);
+    setLogoKey(j.branding.logoKey);
+    setPrimary(j.branding.brandPrimary || DEFAULT_PRIMARY);
+    setAccent(j.branding.brandAccent  || DEFAULT_ACCENT);
+    qc.invalidateQueries({ queryKey: ["my-org"] });
+    qc.invalidateQueries({ queryKey: ["org-dashboard"] });
+  }
+
+  async function handleLogoFile(file: File) {
+    setError(null);
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) { setError("Please upload a PNG, JPG, WebP or SVG image."); return; }
+    if (file.size > MAX_LOGO_BYTES) { setError("Logo must be 2 MB or smaller."); return; }
+    setBusy(true);
+    try {
+      const signRes = await fetch(`${BASE}/api/org/my/branding/logo-upload-url`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mimeType: file.type, byteSize: file.size }),
+      });
+      if (!signRes.ok) {
+        const j = await signRes.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || "Could not start upload");
+      }
+      const { uploadUrl, logoKey: newKey } = await signRes.json() as { uploadUrl: string; logoKey: string };
+      const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!putRes.ok) throw new Error("Upload failed. Please try again.");
+      await patchBranding({ logoKey: newKey });
+      flash("Logo uploaded.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not upload logo.");
+    } finally { setBusy(false); }
+  }
+
+  async function removeLogo() {
+    if (!logoKey) return;
+    setBusy(true); setError(null);
+    try { await patchBranding({ logoKey: null }); flash("Logo removed."); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not remove logo."); }
+    finally { setBusy(false); }
+  }
+
+  async function saveColours() {
+    setBusy(true); setError(null);
+    try { await patchBranding({ brandPrimary: primary, brandAccent: accent }); flash("Colours saved."); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not save colours."); }
+    finally { setBusy(false); }
+  }
+
+  async function resetAll() {
+    if (!window.confirm("Reset your organisation's branding to the My Impact defaults?")) return;
+    setBusy(true); setError(null);
+    try {
+      await patchBranding({ logoKey: null, brandPrimary: null, brandAccent: null });
+      setPrimary(DEFAULT_PRIMARY); setAccent(DEFAULT_ACCENT);
+      flash("Branding reset.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not reset branding."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 text-sm">
+      <div className="flex items-center gap-2 mb-1">
+        <Palette className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">Branding</h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Your logo and colours appear on the org dashboard, header and exported PDF report.
+      </p>
+
+      {/* Live preview tile — shows what the dashboard header will look like
+          with the manager's currently-edited (unsaved) logo + colours. */}
+      <BrandingPreview logoUrl={logoUrl} primary={primary} accent={accent} />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+        {/* Logo */}
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Logo</p>
+          <div className="flex items-center gap-3">
+            <div className="w-24 h-24 rounded-lg border border-border bg-muted/20 flex items-center justify-center overflow-hidden">
+              {logoUrl
+                ? <img src={logoUrl} alt="Org logo" className="max-w-full max-h-full object-contain" />
+                : <Building2 className="w-8 h-8 text-muted-foreground" />}
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border hover:bg-muted/30 cursor-pointer">
+                <Upload className="w-3.5 h-3.5" /> {logoUrl ? "Replace logo" : "Upload logo"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  disabled={busy}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void handleLogoFile(f); e.target.value = ""; }}
+                  data-testid="input-logo-file"
+                />
+              </label>
+              {logoUrl && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-muted/30"
+                  onClick={removeLogo}
+                  disabled={busy}
+                  data-testid="button-remove-logo"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+              )}
+              <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP or SVG · max 2 MB</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Colours */}
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Brand colours</p>
+          <div className="space-y-3">
+            <ColourField label="Primary" value={primary} onChange={setPrimary} testId="primary" />
+            <ColourField label="Accent"  value={accent}  onChange={setAccent}  testId="accent" />
+            {showContrastWarning && (
+              <div className="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>Your primary colour has low contrast against white text. Buttons and badges may be hard to read.</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={saveColours}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:opacity-90 disabled:opacity-50"
+              data-testid="button-save-colours"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Save colours
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-border">
+        <p className="text-[11px] text-muted-foreground">
+          Reset returns your organisation to the default My Impact branding.
+        </p>
+        <button
+          type="button"
+          onClick={resetAll}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-muted/30 disabled:opacity-50"
+          data-testid="button-reset-branding"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Reset to defaults
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-red-600 mt-3" data-testid="branding-error">{error}</p>}
+      {toast && <p className="text-xs text-emerald-700 mt-3" data-testid="branding-toast">{toast}</p>}
+    </div>
+  );
+}
+
+function BrandingPreview({ logoUrl, primary, accent }: { logoUrl: string | null; primary: string; accent: string }) {
+  const valid = (h: string) => /^#[0-9A-Fa-f]{6}$/.test(h);
+  const p = valid(primary) ? primary : DEFAULT_PRIMARY;
+  const a = valid(accent)  ? accent  : DEFAULT_ACCENT;
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3" data-testid="branding-preview">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Live preview</p>
+      <div className="rounded-lg border border-border bg-white p-4">
+        <div className="flex items-center gap-3 mb-3 pb-3 border-b" style={{ borderColor: p }}>
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="w-10 h-10 rounded object-contain bg-white border border-border p-0.5" />
+          ) : (
+            <div className="w-10 h-10 rounded flex items-center justify-center" style={{ backgroundColor: p, color: "#fff" }}>
+              <Building2 className="w-5 h-5" />
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-display font-semibold text-foreground">Your organisation</p>
+            <p className="text-[11px] text-muted-foreground">Header preview</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" className="px-3 py-1.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: p }}>
+            Primary action
+          </button>
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold border" style={{ color: a, borderColor: a }}>
+            Accent badge
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColourField({ label, value, onChange, testId }: { label: string; value: string; onChange: (v: string) => void; testId: string }) {
+  function setHex(v: string) {
+    const h = v.startsWith("#") ? v : `#${v}`;
+    onChange(h.toUpperCase());
+  }
+  const isValid = /^#[0-9A-Fa-f]{6}$/.test(value);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground w-16">{label}</span>
+      <input
+        type="color"
+        value={isValid ? value : "#000000"}
+        onChange={e => setHex(e.target.value)}
+        className="w-10 h-9 rounded border border-border cursor-pointer"
+        data-testid={`color-${testId}`}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={e => setHex(e.target.value)}
+        maxLength={7}
+        className="font-mono text-xs px-2 py-1.5 rounded border border-border w-24 uppercase"
+        data-testid={`hex-${testId}`}
+      />
+      {!isValid && <span className="text-[10px] text-red-600">Invalid hex</span>}
     </div>
   );
 }

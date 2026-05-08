@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   Font,
+  Image,
 } from "@react-pdf/renderer";
 
 Font.register({
@@ -294,6 +295,16 @@ export interface OrgSdgBreakdown {
   value: number;
 }
 
+export interface OrgPdfBranding {
+  // data: URL (e.g. "data:image/png;base64,...") for the org's uploaded logo,
+  // or null when the org has not uploaded a logo. We embed as a data URL so
+  // @react-pdf/renderer can render it without an extra HTTP fetch.
+  logoDataUrl: string | null;
+  // Hex strings (e.g. "#0EA5E9") or null to fall back to the My Impact orange.
+  brandPrimary: string | null;
+  brandAccent: string | null;
+}
+
 export interface OrgPdfData {
   orgName: string;
   orgType: string;
@@ -308,23 +319,30 @@ export interface OrgPdfData {
   averageValuePerPerson: number;
   valueByCategory: Array<{ category: string; value: number }>;
   sdgBreakdowns: OrgSdgBreakdown[];
+  branding?: OrgPdfBranding;
 }
 
 function CoverPage({ data }: { data: OrgPdfData }) {
+  const primary = data.branding?.brandPrimary || ORANGE;
+  const logo = data.branding?.logoDataUrl || null;
   return (
     <Page size="A4" style={styles.coverPage}>
       <View style={styles.coverInner}>
         <View>
-          <View style={styles.logoRow}>
-            <Text style={styles.logoMy}>My</Text>
-            <Text style={styles.logoImpact}>Impact</Text>
-          </View>
+          {logo ? (
+            <Image src={logo} style={{ maxWidth: 140, maxHeight: 60, marginBottom: 8 }} />
+          ) : (
+            <View style={styles.logoRow}>
+              <Text style={{ ...styles.logoMy, color: primary }}>My</Text>
+              <Text style={styles.logoImpact}>Impact</Text>
+            </View>
+          )}
           <Text style={styles.coverTagline}>ORGANISATION IMPACT REPORT</Text>
         </View>
 
         <View style={styles.coverHero}>
           <Text style={styles.coverLabel}>TOTAL SOCIAL VALUE</Text>
-          <Text style={styles.coverValue}>{formatCurrency(data.totalSocialValue)}</Text>
+          <Text style={{ ...styles.coverValue, color: primary }}>{formatCurrency(data.totalSocialValue)}</Text>
           <Text style={styles.coverOrgName}>{data.orgName}</Text>
           <Text style={styles.coverPeriod}>{data.period}</Text>
           <Text style={styles.coverOrgType}>{data.orgType}</Text>
@@ -341,7 +359,28 @@ function CoverPage({ data }: { data: OrgPdfData }) {
   );
 }
 
+function PageHeader({ data, title }: { data: OrgPdfData; title: string }) {
+  const primary = data.branding?.brandPrimary || ORANGE;
+  const logo = data.branding?.logoDataUrl || null;
+  // Section headers carry the org's primary colour on both the title and the
+  // bottom rule so the brand reads on every page (not just metric values).
+  return (
+    <View style={{ ...styles.pageHeader, borderBottomColor: primary, borderBottomWidth: 2 }}>
+      <Text style={{ ...styles.pageHeaderTitle, color: primary }}>{title}</Text>
+      {logo ? (
+        <Image src={logo} style={{ maxWidth: 90, maxHeight: 36 }} />
+      ) : (
+        <View style={styles.pageHeaderLogo}>
+          <Text style={{ ...styles.pageHeaderLogoMy, color: primary }}>My</Text>
+          <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function StatsPage({ data }: { data: OrgPdfData }) {
+  const primary = data.branding?.brandPrimary || ORANGE;
   const metrics = [
     {
       label: "TOTAL SOCIAL VALUE",
@@ -378,19 +417,13 @@ function StatsPage({ data }: { data: OrgPdfData }) {
   return (
     <Page size="A4" style={styles.page}>
       <View style={styles.pageInner}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageHeaderTitle}>Headline Stats</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
-          </View>
-        </View>
+        <PageHeader data={data} title="Headline Stats" />
 
         <View style={styles.metricGrid}>
           {metrics.map(m => (
             <View key={m.label} style={styles.metricCard}>
               <Text style={styles.metricLabel}>{m.label}</Text>
-              <Text style={styles.metricValue}>{m.value}</Text>
+              <Text style={{ ...styles.metricValue, color: primary }}>{m.value}</Text>
               <Text style={styles.metricSubtitle}>{m.subtitle}</Text>
             </View>
           ))}
@@ -412,17 +445,12 @@ function StatsPage({ data }: { data: OrgPdfData }) {
 
 function CategoryPage({ data }: { data: OrgPdfData }) {
   const sorted = [...data.valueByCategory].sort((a, b) => b.value - a.value);
+  const primary = data.branding?.brandPrimary || ORANGE;
 
   return (
     <Page size="A4" style={styles.page}>
       <View style={styles.pageInner}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageHeaderTitle}>Social Value by Category</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
-          </View>
-        </View>
+        <PageHeader data={data} title="Social Value by Category" />
 
         <Text style={styles.sectionLabel}>Breakdown of social value by activity category</Text>
 
@@ -441,14 +469,14 @@ function CategoryPage({ data }: { data: OrgPdfData }) {
                     <View
                       style={{
                         height: 4,
-                        backgroundColor: ORANGE,
+                        backgroundColor: primary,
                         borderRadius: 2,
                         width: `${Math.min(pct, 100)}%`,
                       }}
                     />
                   </View>
                 </View>
-                <Text style={styles.categoryValue}>{formatCurrency(cat.value)}</Text>
+                <Text style={{ ...styles.categoryValue, color: primary }}>{formatCurrency(cat.value)}</Text>
                 <Text style={styles.categoryPct}>{pct}%</Text>
               </View>
             );
@@ -463,17 +491,12 @@ function CategoryPage({ data }: { data: OrgPdfData }) {
 
 function SdgPage({ data }: { data: OrgPdfData }) {
   const sorted = [...data.sdgBreakdowns].sort((a, b) => b.value - a.value);
+  const primary = data.branding?.brandPrimary || ORANGE;
 
   return (
     <Page size="A4" style={styles.page}>
       <View style={styles.pageInner}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageHeaderTitle}>UN SDG Alignment</Text>
-          <View style={styles.pageHeaderLogo}>
-            <Text style={styles.pageHeaderLogoMy}>My</Text>
-            <Text style={styles.pageHeaderLogoImpact}>Impact</Text>
-          </View>
-        </View>
+        <PageHeader data={data} title="UN SDG Alignment" />
 
         <Text style={styles.sectionLabel}>Sustainable Development Goals supported by members</Text>
 
@@ -517,7 +540,7 @@ function SdgPage({ data }: { data: OrgPdfData }) {
                     />
                   </View>
                 </View>
-                <Text style={styles.categoryValue}>{formatCurrency(s.value)}</Text>
+                <Text style={{ ...styles.categoryValue, color: primary }}>{formatCurrency(s.value)}</Text>
                 <Text style={styles.categoryPct}>{pct}%</Text>
               </View>
             );

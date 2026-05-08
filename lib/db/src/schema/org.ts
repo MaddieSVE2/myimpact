@@ -10,6 +10,13 @@ export const organisationsTable = pgTable("organisations", {
   // Org-level toggle controlling whether members of this org see / can use
   // the in-app AI Sidekick. Managed from /org/settings → AI features.
   aiSidekickEnabled: boolean("ai_sidekick_enabled").notNull().default(true),
+  // Org branding — all optional. logoKey is an object-storage key (relative to
+  // PRIVATE_OBJECT_DIR) for an uploaded logo image. brandPrimary / brandAccent
+  // are 6-digit hex strings (e.g. "#0EA5E9"). Unset = use default My Impact
+  // styling. Managed from /org/settings → Org profile → Branding.
+  logoKey: text("logo_key"),
+  brandPrimary: text("brand_primary"),
+  brandAccent: text("brand_accent"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

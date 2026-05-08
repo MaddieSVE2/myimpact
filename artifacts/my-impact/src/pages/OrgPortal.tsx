@@ -17,11 +17,41 @@ import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+interface OrgBranding {
+  logoUrl: string | null;
+  logoKey: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
+}
 interface OrgInfo {
   id: string;
   name: string;
   type: string;
   role: string;
+  branding?: OrgBranding;
+}
+
+// Convert "#RRGGBB" → "H S% L%" Tailwind HSL CSS-variable string.
+function hexToHslVar(hex: string | null | undefined): string | null {
+  if (!hex) return null;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
 interface OrgStats {
@@ -1438,19 +1468,45 @@ export default function OrgPortal() {
     );
   }
 
+  // Apply org branding via Tailwind HSL CSS variables on the page wrapper.
+  // The portal is shown to *every* member of the org (manager + non-manager),
+  // so applying branding here means all org users see the firm's colours and
+  // logo, not just managers. Demo org is intentionally never branded.
+  const isDemoOrgUser = orgData?.org?.id === DEMO_ORG_ID;
+  const branding = !isDemoOrgUser ? orgData?.org?.branding ?? null : null;
+  const brandStyle: React.CSSProperties = {};
+  const primaryHsl = hexToHslVar(branding?.brandPrimary ?? null);
+  const accentHsl  = hexToHslVar(branding?.brandAccent  ?? null);
+  if (primaryHsl) {
+    (brandStyle as Record<string, string>)["--primary"] = primaryHsl;
+    (brandStyle as Record<string, string>)["--ring"]    = primaryHsl;
+  }
+  if (accentHsl) (brandStyle as Record<string, string>)["--accent"] = accentHsl;
+  const orgLogoUrl = branding?.logoUrl ?? null;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-10" style={brandStyle} data-testid="org-portal-root">
       <div className="flex items-start justify-between mb-8 flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Building2 className="w-4 h-4 text-primary" />
-            <h1 className="text-2xl font-display font-semibold text-foreground">
-              {inOrg ? orgData!.org!.name : "Organisation portal"}
-            </h1>
+        <div className="flex items-start gap-3">
+          {orgLogoUrl && (
+            <img
+              src={orgLogoUrl}
+              alt={`${orgData!.org!.name} logo`}
+              className="w-12 h-12 rounded-md object-contain bg-white border border-border p-1"
+              data-testid="org-header-logo"
+            />
+          )}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              {!orgLogoUrl && <Building2 className="w-4 h-4 text-primary" />}
+              <h1 className="text-2xl font-display font-semibold text-foreground">
+                {inOrg ? orgData!.org!.name : "Organisation portal"}
+              </h1>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {inOrg ? "Anonymous aggregate impact across your members." : "Connect to your organisation or register a new one."}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {inOrg ? "Anonymous aggregate impact across your members." : "Connect to your organisation or register a new one."}
-          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {inOrg && (
@@ -1616,7 +1672,7 @@ export default function OrgPortal() {
                     <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(1)}k`} />
                     <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#F06127" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
