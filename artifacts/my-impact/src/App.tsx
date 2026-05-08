@@ -65,6 +65,7 @@ import Challenges from "@/pages/Challenges";
 import ChallengeDetail from "@/pages/ChallengeDetail";
 import ChallengeJoin from "@/pages/ChallengeJoin";
 import QuickLogPhoto from "@/pages/QuickLogPhoto";
+import QuickLogActivity from "@/pages/QuickLogActivity";
 
 const queryClient = new QueryClient();
 
@@ -298,6 +299,7 @@ function AppRouter() {
             <Route path="/quick-log">
               {() => <PrivateRoute component={QuickLogPhoto} />}
             </Route>
+            <Route path="/log" component={QuickLogActivity} />
             <Route path="/badges">
               {() => <Redirect to="/milestones" />}
             </Route>

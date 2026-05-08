@@ -552,8 +552,15 @@ export default function Intro() {
                 )
               )}
               <Link
-                href="/wizard/actions"
+                href="/log?from=%2F"
                 className={(isOrgMember || personalCta) ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                data-testid="welcome-cta-quick-log"
+              >
+                Log an activity →
+              </Link>
+              <Link
+                href="/wizard/actions"
+                className="mi-btn-ghost-hero"
                 data-testid="welcome-cta-calculate"
               >
                 Calculate my impact →

@@ -259,7 +259,10 @@ export function Navbar() {
     : [
         ...(inOrg
           ? []
-          : [{ href: "/wizard/actions", label: t("navbar.calculate"), icon: PlusCircle }]),
+          : [
+              { href: "/log", label: "Log activity", icon: PlusCircle },
+              { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
+            ]),
         { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
         { href: "/history", label: t("navbar.history"), icon: History },
         ...(gamificationEnabled
@@ -308,10 +311,13 @@ export function Navbar() {
             <div className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => {
                 const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
+                const href = item.href === "/log"
+                  ? `/log?from=${encodeURIComponent(location || "/")}`
+                  : item.href;
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={href}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
                       isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/8"
@@ -552,10 +558,13 @@ export function Navbar() {
             )}
             {isLoggedIn && navItems.map((item) => {
               const isActive = location.startsWith(item.href) && (item.href !== "/" || location === "/");
+              const href = item.href === "/log"
+                ? `/log?from=${encodeURIComponent(location || "/")}`
+                : item.href;
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium transition-colors min-h-[44px]",
