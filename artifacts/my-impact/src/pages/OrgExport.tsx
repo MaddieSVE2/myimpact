@@ -12,6 +12,7 @@ import {
 import {
   useMyOrg, memberLabel, downloadCsv, activityExportRows, sdgExportRows, buildOrgPdf,
 } from "@/lib/org-export";
+import { PdfPager } from "@/components/PdfPager";
 
 export default function OrgExport() {
   const { data: orgData, isLoading, isError } = useMyOrg();
@@ -266,7 +267,7 @@ export default function OrgExport() {
             </div>
           )}
         </div>
-        <div className="relative w-full bg-muted/20 border border-border rounded-md overflow-hidden" style={{ height: 520 }}>
+        <div className="relative w-full" style={{ minHeight: 520 }}>
           {previewError ? (
             <div className="absolute inset-0 flex items-center justify-center text-xs text-red-600">
               {previewError}
@@ -276,13 +277,7 @@ export default function OrgExport() {
               No activities in this range — adjust the filters above to see a preview.
             </div>
           ) : previewUrl ? (
-            <iframe
-              key={previewUrl}
-              src={previewUrl}
-              title="Impact PDF preview"
-              className="w-full h-full"
-              data-testid="export-preview-iframe"
-            />
+            <PdfPager src={previewUrl} height={500} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
