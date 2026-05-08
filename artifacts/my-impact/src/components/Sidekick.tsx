@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { useWizard } from "@/lib/wizard-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useAuth } from "@/lib/auth-context";
@@ -360,8 +361,36 @@ export function Sidekick() {
   const { open, setOpen } = useSidekick();
   const [tab, setTab] = useState<SidekickTab>("chat");
   const [messages, setMessages] = useState<Message[]>([]);
+  const { toast } = useToast();
+  // Tiered AI quota meter (anonymous: 10 q/day + 200k tokens/month;
+  // signed-in: 50 q/day + 1.5M tokens/month). Refetched after every send
+  // so the header counter stays in sync with the server.
+  const quotaQuery = useQuery<{
+    quota: {
+      questionsLeft: number;
+      tokensLeft: number;
+      dailyLimit: number;
+      monthlyTokenLimit: number;
+      questionsUsedToday: number;
+      tokensUsedThisMonth: number;
+      isAuthenticated: boolean;
+    };
+  }>({
+    queryKey: ["sidekick-quota"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/sidekick/quota`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load quota");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  // Brief client-side cooldown applied after a 429 from the chat route,
+  // so the user can't immediately re-fire the same request and get the
+  // same toast back-to-back. Cleared by a setTimeout below.
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const inputDisabled = streaming || Date.now() < cooldownUntil;
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -566,8 +595,33 @@ export function Sidekick() {
         });
 
         if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          throw new Error(errText || `Request failed (${res.status})`);
+          // Surface server-provided quota / burst messages via toast so
+          // the user understands why their message was rejected. The
+          // assistant placeholder is rolled back so the UI doesn't show
+          // an empty bubble next to the failure.
+          let serverMessage = "";
+          try {
+            const data = await res.clone().json();
+            serverMessage = (data?.message as string) || (data?.error as string) || "";
+          } catch {
+            serverMessage = await res.text().catch(() => "");
+          }
+          if (res.status === 429) {
+            toast({
+              title: "AI usage limit reached",
+              description: serverMessage || "Please try again shortly.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, assistantIndex));
+            // Briefly disable the composer so the user can't immediately
+            // re-fire the same request. 5 s is long enough to break the
+            // burst loop without feeling broken.
+            setCooldownUntil(Date.now() + 5000);
+            setTimeout(() => setCooldownUntil(0), 5100);
+            quotaQuery.refetch().catch(() => {});
+            return;
+          }
+          throw new Error(serverMessage || `Request failed (${res.status})`);
         }
 
         const reader = res.body?.getReader();
@@ -664,9 +718,10 @@ export function Sidekick() {
       } finally {
         setStreaming(false);
         abortRef.current = null;
+        quotaQuery.refetch().catch(() => {});
       }
     },
-    [messages, streaming, result, interests, situations, isOrgManager, isOnOrgPage, locale]
+    [messages, streaming, result, interests, situations, isOrgManager, isOnOrgPage, locale, toast, quotaQuery]
   );
 
   const fireTemplate = useCallback(
@@ -989,7 +1044,8 @@ export function Sidekick() {
   const chatBody = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0 min-h-[60px]">
+      <div className="flex flex-col px-5 py-4 border-b border-border shrink-0 gap-2">
+       <div className="flex items-center justify-between min-h-[36px]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#FFF0E8" }}>
             <Sparkles className="w-4 h-4" style={{ color: "#F06127" }} />
@@ -1039,6 +1095,34 @@ export function Sidekick() {
             <ChevronRight className="w-4 h-4 hidden md:block" />
           </button>
         </div>
+       </div>
+        {quotaQuery.data?.quota && (
+          <div
+            className="text-[11px] text-muted-foreground flex items-center justify-between gap-2"
+            data-testid="sidekick-quota-meter"
+          >
+            <span>
+              Questions today:{" "}
+              <span className="font-medium text-foreground">
+                {quotaQuery.data.quota.questionsUsedToday} / {quotaQuery.data.quota.dailyLimit}
+              </span>
+              <span className="hidden sm:inline">
+                {" · "}
+                Monthly AI usage:{" "}
+                <span className="font-medium text-foreground">
+                  {Math.round(quotaQuery.data.quota.tokensUsedThisMonth / 1000).toLocaleString("en-GB")}k
+                  {" / "}
+                  {Math.round(quotaQuery.data.quota.monthlyTokenLimit / 1000).toLocaleString("en-GB")}k tokens
+                </span>
+              </span>
+            </span>
+            {!quotaQuery.data.quota.isAuthenticated && (
+              <span className="text-[10px] text-[#F06127] font-medium whitespace-nowrap">
+                Sign in for higher limits
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {tabsBar}
@@ -1188,8 +1272,14 @@ export function Sidekick() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={voiceState === "recording" ? "Listening…" : "Ask Sidekick anything…"}
-                disabled={streaming || voiceState === "recording" || voiceState === "transcribing"}
+                placeholder={
+                  voiceState === "recording"
+                    ? "Listening…"
+                    : Date.now() < cooldownUntil
+                    ? "Just a moment…"
+                    : "Ask Sidekick anything…"
+                }
+                disabled={inputDisabled || voiceState === "recording" || voiceState === "transcribing"}
                 className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
                 style={{ fontFamily: "inherit" }}
                 onInput={(e) => {
@@ -1229,7 +1319,7 @@ export function Sidekick() {
               )}
               <button
                 onClick={handleSubmit}
-                disabled={!input.trim() || streaming || voiceState !== "idle"}
+                disabled={!input.trim() || inputDisabled || voiceState !== "idle"}
                 className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
                 style={{ backgroundColor: "#F06127" }}
                 aria-label="Send message"

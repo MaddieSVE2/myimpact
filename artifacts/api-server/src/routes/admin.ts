@@ -11,18 +11,14 @@ import {
   estimateTranscribeCostPence,
   estimateTtsCostPence,
 } from "../lib/voiceUsage.js";
+import { getMonthlyUsageReport } from "../lib/aiUsage.js";
+import { isAdminEmail } from "../lib/adminEmails.js";
 
 const router: IRouter = Router();
 
-const ADMIN_EMAILS = [
-  "hello@myimpact.uk",
-  "maddie@socialvalueengine.com",
-  "ivan.annibal@roseregeneration.co.uk",
-];
-
-function isAdmin(email: string): boolean {
-  return ADMIN_EMAILS.includes(email.toLowerCase());
-}
+// Admin allowlist lives in `lib/adminEmails.ts` and is shared with the
+// AI spend-alert recipients. See that module for env-var configuration.
+const isAdmin = isAdminEmail;
 
 router.post("/track", authenticate, async (req: AuthenticatedRequest, res) => {
   const { page } = req.body;
@@ -263,6 +259,21 @@ router.post("/org-requests/:id/reject", authenticate, async (req: AuthenticatedR
     .where(eq(orgRegistrationsTable.id, id));
 
   res.json({ ok: true });
+});
+
+/**
+ * Admin-only Sidekick AI usage report for the current UTC month. Returns
+ * one row per `user_key` (signed-in users plus anonymous ip:/sess: keys)
+ * with question count, tool calls, token totals and an estimated USD
+ * cost based on the configured per-1K prices. Sorted descending by cost.
+ */
+router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const report = await getMonthlyUsageReport();
+  res.json(report);
 });
 
 export default router;

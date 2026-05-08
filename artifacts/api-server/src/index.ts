@@ -10,6 +10,7 @@ async function bootstrap(): Promise<void> {
   const { default: app } = await import("./app.js");
   const { startWebhookDispatcher } = await import("./lib/webhookDispatcher.js");
   const { startAttachmentGCJob } = await import("./lib/attachmentGC.js");
+  const { startAiSpendAlertJob } = await import("./lib/aiSpendAlert.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -44,6 +45,7 @@ async function bootstrap(): Promise<void> {
     console.log(`Server listening on port ${port}`);
     startWebhookDispatcher();
     startAttachmentGCJob();
+    startAiSpendAlertJob();
   });
 }
 

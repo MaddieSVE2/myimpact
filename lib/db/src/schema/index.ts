@@ -9,6 +9,7 @@ export * from "./challenges";
 export * from "./analytics";
 export * from "./voice-usage";
 export * from "./text-ai-usage";
+export * from "./ai-usage";
 export * from "./push";
 export * from "./attachment-pending-reservations";
 export * from "./audit-log";

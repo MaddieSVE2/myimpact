@@ -6,10 +6,11 @@ import {
   textToSpeech,
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
-import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { db, organisationsTable, orgMembersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Response } from "express";
+import { z } from "zod";
 import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
@@ -22,7 +23,15 @@ import {
   probeAudioDurationSeconds,
   recordTtsUsage,
 } from "../lib/voiceUsage.js";
-import { textAiQuota } from "../lib/textAiUsage.js";
+import {
+  aiPerIpLimiter,
+  aiPerUserLimiter,
+  applyInflightToQuota,
+  getRemainingQuota,
+  getUserKey,
+  incrementUsage,
+  sidekickQuotaGate,
+} from "../lib/aiUsage.js";
 
 const router = Router();
 
@@ -56,12 +65,8 @@ async function requireOrgAiEnabled(req: AuthenticatedRequest, res: Response, nex
   }
 }
 
-const sidekickRateLimit = createRateLimiter({
-  windowMs: 60 * 1000,
-  max: 20,
-  message: "Too many requests to Sidekick. Please slow down.",
-});
-
+// Note: the legacy `sidekickRateLimit` was removed when the chat route
+// adopted the tiered burst → quota → budget controls in `lib/aiUsage.ts`.
 const sidekickVoiceRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
   max: 30,
@@ -228,6 +233,24 @@ const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_COMPLETION_TOKENS = 1024;
 
+/**
+ * Advertised cap on agent / tool-call iterations per Sidekick turn — used
+ * in the system prompt so the model knows the budget. The current chat
+ * path is single-shot (no tool calls); when a tool loop is added it must
+ * also enforce this limit and truncate per-tool results before re-feed.
+ */
+const MAX_TOOL_ITERATIONS = 10;
+/** Strict size cap on the latest user message (validated with zod). */
+const MAX_USER_MESSAGE_CHARS = 600;
+
+/**
+ * Zod schema validating the latest user message content. Mounted as a
+ * defence-in-depth check on the chat route in addition to the looser
+ * per-message MAX_MESSAGE_CHARS cap that protects historic transcript
+ * entries.
+ */
+const latestUserMessageSchema = z.string().min(1).max(MAX_USER_MESSAGE_CHARS);
+
 // How often to send a lightweight SSE comment line while we wait for the
 // model's first token. This stops the Replit proxy and intermediate networks
 // from killing the connection during a long "thinking" phase.
@@ -264,7 +287,33 @@ const LOCATION_SIGNPOSTING_INSTRUCTION = `LOCATION QUERY DETECTED: The user is a
 3. Ask one short clarifying question — what cause area interests them, or how much time they have — so they can narrow their search.
 Keep the whole reply short (a few sentences). Do not invent specific organisation names, addresses, or contact details for their area.`;
 
-router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textAiQuota, async (req, res) => {
+/**
+ * Per-caller quota meter for the Sidekick chat header. Anonymous-friendly,
+ * so it sits BEFORE `authenticate`. The endpoint never reveals usage for
+ * any caller other than the one making the request.
+ */
+router.get("/quota", async (req, res) => {
+  try {
+    attachUserIfPresent(req, res, () => {});
+    const userKey = getUserKey(req);
+    const quota = await getRemainingQuota(userKey);
+    res.json({
+      quota: applyInflightToQuota(quota, userKey, /* excludeSelf */ false),
+    });
+  } catch (err) {
+    console.error("[sidekick] quota error:", err);
+    res.status(503).json({ error: "Quota check temporarily unavailable" });
+  }
+});
+
+router.post(
+  "/chat",
+  attachUserIfPresent,
+  requireOrgAiEnabled,
+  aiPerIpLimiter,
+  aiPerUserLimiter,
+  sidekickQuotaGate,
+  async (req, res) => {
   try {
     const { messages, context } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -297,8 +346,27 @@ router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textA
       }
     }
 
+    // Stricter cap on the *latest* user message via zod: legitimate
+    // questions fit comfortably in 600 chars and the small budget makes
+    // prompt-bomb abuse much less effective. Older transcript entries
+    // keep the looser MAX_MESSAGE_CHARS so existing conversation history
+    // isn't truncated.
+    const latestUser = [...messages].reverse().find((m) => m.role === "user");
+    if (latestUser) {
+      const parsed = latestUserMessageSchema.safeParse(latestUser.content);
+      if (!parsed.success) {
+        res.status(400).json({
+          message: `Your message must be between 1 and ${MAX_USER_MESSAGE_CHARS} characters.`,
+        });
+        return;
+      }
+    }
+
     const systemMessages: { role: "system"; content: string }[] = [
       { role: "system", content: SYSTEM_PROMPT },
+      // Note: keep this string byte-stable across turns so OpenAI's
+      // automatic prompt caching can apply.
+      { role: "system", content: `You can call up to ${MAX_TOOL_ITERATIONS} tools per turn.` },
     ];
 
     if (isWelsh) {
@@ -391,6 +459,10 @@ router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textA
       max_completion_tokens: MAX_COMPLETION_TOKENS,
       messages: chatMessages,
       stream: true as const,
+      // Ask the API to emit a final chunk with `usage` populated so we can
+      // record the actual prompt + completion token counts (rather than
+      // estimating). Required for accurate budget alerting.
+      stream_options: { include_usage: true },
     };
     try {
       stream = (await openai.chat.completions.create({
@@ -426,11 +498,14 @@ router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textA
       }
     });
 
+    let usageInputTokens = 0;
+    let usageOutputTokens = 0;
     try {
       for await (const chunk of stream as AsyncIterable<{
         choices: { delta?: { content?: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number; input_tokens?: number; output_tokens?: number };
       }>) {
-        const delta = chunk.choices[0]?.delta?.content;
+        const delta = chunk.choices?.[0]?.delta?.content;
         if (delta) {
           if (!firstTokenSeen) {
             firstTokenSeen = true;
@@ -438,6 +513,13 @@ router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textA
             clearTimeout(firstTokenTimer);
           }
           res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+        }
+        // Final chunk carries usage when stream_options.include_usage=true.
+        if (chunk.usage) {
+          usageInputTokens =
+            chunk.usage.input_tokens ?? chunk.usage.prompt_tokens ?? usageInputTokens;
+          usageOutputTokens =
+            chunk.usage.output_tokens ?? chunk.usage.completion_tokens ?? usageOutputTokens;
         }
       }
     } catch (streamErr) {
@@ -468,6 +550,26 @@ router.post("/chat", authenticate, requireOrgAiEnabled, sidekickRateLimit, textA
 
     res.write("data: [DONE]\n\n");
     res.end();
+
+    // Record the actual usage AFTER the response has flushed so accounting
+    // never blocks the user. The in-flight reservation is released by the
+    // res.on("close"/"finish") hooks in sidekickQuotaGate. We deliberately
+    // log only the user key, model, token counts and (future) tool-call
+    // counts — never the prompt or any tool-input contents.
+    const userKey = (res.locals.aiUserKey as string) ?? getUserKey(req);
+    incrementUsage(userKey, "gpt-5-mini", {
+      countDelta: 1,
+      toolCalls: 0,
+      inputTokens: usageInputTokens,
+      outputTokens: usageOutputTokens,
+    })
+      .then(() => {
+        console.log(
+          `[ai-usage] sidekick user_key=${userKey} model=gpt-5-mini ` +
+            `input_tokens=${usageInputTokens} output_tokens=${usageOutputTokens} tool_calls=0`
+        );
+      })
+      .catch((err) => console.error("[ai-usage] increment failed:", err));
   } catch (err) {
     console.error("Sidekick chat error:", err);
     if (!res.headersSent) {

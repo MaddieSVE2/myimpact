@@ -64,5 +64,39 @@ Sentry is wired into both the frontend (`my-impact`) and backend (`api-server`).
 *   **Email Service:** Resend (via Replit Connector)
 *   **Calendar Integration:** Google Calendar (via Replit Connector), Microsoft Outlook (via Replit Connector)
 *   **AI Integration:** OpenAI (via Replit AI Integrations)
+
+## Sidekick AI usage controls
+
+The Sidekick chat route (`/api/sidekick/chat`) and meter endpoint
+(`/api/sidekick/quota`) are gated by tiered burst → quota → budget
+controls (see `artifacts/api-server/src/lib/aiUsage.ts` and
+`lib/aiSpendAlert.ts`). All limits are env-var configurable; defaults
+are in `aiUsage.ts`.
+
+Per-caller limits (anonymous callers tracked by IP / session cookie):
+- `AI_DAILY_LIMIT_ANON` (default `10`) — questions/day for anonymous
+- `AI_DAILY_LIMIT_USER` (default `50`) — questions/day for signed-in
+- `AI_MONTHLY_TOKEN_LIMIT_ANON` (default `200000`)
+- `AI_MONTHLY_TOKEN_LIMIT_USER` (default `1500000`)
+- `AI_INFLIGHT_AVG_TOKENS` (default `8000`) — reservation size used to
+  close the parallel-burst race window
+- `AI_BURST_PER_IP_PER_MIN` (default `10`)
+- `AI_BURST_PER_USER_PER_MIN` (default `30`)
+
+Spend alerting (daily cron, 24h cooldown persisted in
+`ai_alert_state`):
+- `AI_BUDGET_ALERT_USD` (default `50`) — month-to-date estimate that
+  triggers the alert email
+- `AI_GPT5_MINI_INPUT_PRICE_PER_1K` (default `0.00025`)
+- `AI_GPT5_MINI_OUTPUT_PRICE_PER_1K` (default `0.002`)
+- `ADMIN_EMAILS` — comma-separated list of admin email recipients;
+  merged on top of the hard-coded admin allowlist in
+  `routes/admin.ts` (used by both budget alerts and the
+  `GET /api/admin/ai-usage` report)
+
+Token usage is captured from OpenAI's `stream_options.include_usage`
+final chunk and persisted in the `ai_usage` table grouped by
+`(user_key, date, model)`. No prompt or tool-input contents are ever
+logged.
 *   **Social Value Data:** Social Value Engine proxy library
 *   **Web Push:** `web-push` library with VAPID keys (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`)
