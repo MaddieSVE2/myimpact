@@ -15,8 +15,19 @@ interface SelectedLine {
   activityId: string;
   quantity: number;
   hoursPerYear: number;
+  hoursManual: boolean;
   title: string;
   detail: string;
+}
+
+interface SessionCalc {
+  hrsPerSession: number;
+  sessionsPerWeek: number;
+  weeksPerYear: number;
+}
+
+function defaultHoursForQuantity(qty: number): number {
+  return Math.max(1, Math.round((qty || 0) * 2));
 }
 
 type Step = "select" | "details" | "review" | "done";
@@ -50,6 +61,8 @@ export default function OrgMemberSubmit() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [lines, setLines] = useState<Record<string, SelectedLine>>({});
+  const [sessionCalcs, setSessionCalcs] = useState<Record<string, SessionCalc>>({});
+  const [openCalcs, setOpenCalcs] = useState<Record<string, boolean>>({});
   const [periodLabel, setPeriodLabel] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -120,10 +133,12 @@ export default function OrgMemberSubmit() {
       if (next[act.id]) {
         delete next[act.id];
       } else {
+        const isHourly = act.unit === "hour";
         next[act.id] = {
           activityId: act.id,
-          quantity: act.unit === "hour" ? 0 : act.defaultQuantity,
-          hoursPerYear: act.unit === "hour" ? act.defaultQuantity : 0,
+          quantity: isHourly ? 0 : act.defaultQuantity,
+          hoursPerYear: isHourly ? act.defaultQuantity : defaultHoursForQuantity(act.defaultQuantity),
+          hoursManual: false,
           title: "",
           detail: "",
         };
@@ -133,7 +148,31 @@ export default function OrgMemberSubmit() {
   }
 
   function updateLine(id: string, patch: Partial<SelectedLine>) {
-    setLines(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+    setLines(prev => {
+      const cur = prev[id];
+      if (!cur) return prev;
+      const merged: SelectedLine = { ...cur, ...patch };
+      const def = activitiesById.get(id);
+      const isHourly = def?.unit === "hour";
+      if (!isHourly && patch.quantity !== undefined && patch.hoursPerYear === undefined && !merged.hoursManual) {
+        merged.hoursPerYear = defaultHoursForQuantity(merged.quantity);
+      }
+      return { ...prev, [id]: merged };
+    });
+  }
+
+  function updateSessionCalc(id: string, patch: Partial<SessionCalc>) {
+    setSessionCalcs(prev => {
+      const cur = prev[id] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
+      const next = { ...cur, ...patch };
+      const total = Math.max(1, Math.round(next.hrsPerSession * next.sessionsPerWeek * next.weeksPerYear));
+      setLines(ls => {
+        const line = ls[id];
+        if (!line) return ls;
+        return { ...ls, [id]: { ...line, hoursPerYear: total, hoursManual: true } };
+      });
+      return { ...prev, [id]: next };
+    });
   }
 
   function removeLine(id: string) {
@@ -452,6 +491,25 @@ export default function OrgMemberSubmit() {
                       />
                     </div>
                   )}
+                  {!isHourly && (
+                    <div>
+                      <label className="block text-[11px] font-medium text-foreground mb-1">
+                        Hours per year
+                        {!line.hoursManual && (
+                          <span className="text-muted-foreground font-normal"> (auto)</span>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={line.hoursPerYear || ""}
+                        onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0, hoursManual: true })}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                        data-testid={`member-submit-hours-${line.activityId}`}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[11px] font-medium text-foreground mb-1">Title <span className="text-muted-foreground">(optional)</span></label>
                     <input
@@ -465,6 +523,57 @@ export default function OrgMemberSubmit() {
                     />
                   </div>
                 </div>
+
+                {!isHourly && (() => {
+                  const calc = sessionCalcs[line.activityId] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
+                  const isOpen = !!openCalcs[line.activityId];
+                  return (
+                    <div className="mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setOpenCalcs(o => ({ ...o, [line.activityId]: !o[line.activityId] }))}
+                        className="text-[11px] font-medium text-primary hover:underline"
+                        data-testid={`member-submit-calc-toggle-${line.activityId}`}
+                      >
+                        {isOpen ? "Hide session calculator" : "Use session calculator (weekly shifts)"}
+                      </button>
+                      {isOpen && (
+                        <div className="mt-2 bg-muted/30 border border-border rounded-md p-3 space-y-2" data-testid={`member-submit-calc-${line.activityId}`}>
+                          <p className="text-xs font-medium text-muted-foreground">Estimate annual hours from a regular shift</p>
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <input
+                              type="number" min="0.5" step="0.5"
+                              value={calc.hrsPerSession}
+                              onChange={e => updateSessionCalc(line.activityId, { hrsPerSession: Number(e.target.value) || 0 })}
+                              className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              data-testid={`member-submit-calc-hrs-${line.activityId}`}
+                            />
+                            <span className="text-muted-foreground text-xs">hrs/session ×</span>
+                            <input
+                              type="number" min="1"
+                              value={calc.sessionsPerWeek}
+                              onChange={e => updateSessionCalc(line.activityId, { sessionsPerWeek: Number(e.target.value) || 0 })}
+                              className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              data-testid={`member-submit-calc-sessions-${line.activityId}`}
+                            />
+                            <span className="text-muted-foreground text-xs">/week ×</span>
+                            <input
+                              type="number" min="1" max="52"
+                              value={calc.weeksPerYear}
+                              onChange={e => updateSessionCalc(line.activityId, { weeksPerYear: Number(e.target.value) || 0 })}
+                              className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                              data-testid={`member-submit-calc-weeks-${line.activityId}`}
+                            />
+                            <span className="text-muted-foreground text-xs">weeks =</span>
+                            <span className="font-bold text-foreground text-sm">
+                              {Math.max(1, Math.round(calc.hrsPerSession * calc.sessionsPerWeek * calc.weeksPerYear))} hrs/yr
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="block text-[11px] font-medium text-foreground mb-1">Detail <span className="text-muted-foreground">(optional)</span></label>
@@ -568,7 +677,7 @@ export default function OrgMemberSubmit() {
                           {def.category}
                           {def.unit === "hour"
                             ? ` · ${l.hoursPerYear} hrs/yr`
-                            : ` · ${l.quantity} ${def.unitLabel}`}
+                            : ` · ${l.quantity} ${def.unitLabel} · ${l.hoursPerYear} hrs/yr`}
                           {l.detail && ` · ${l.detail.length > 60 ? l.detail.slice(0, 60) + "…" : l.detail}`}
                         </p>
                       </div>
@@ -656,6 +765,8 @@ export default function OrgMemberSubmit() {
               type="button"
               onClick={() => {
                 setLines({});
+                setSessionCalcs({});
+                setOpenCalcs({});
                 setPeriodLabel("");
                 setCreatedRecordId(null);
                 setWithdrawn(false);
