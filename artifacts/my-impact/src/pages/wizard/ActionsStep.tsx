@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History } from "lucide-react";
+import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
@@ -38,6 +39,62 @@ async function lookupPostcode(raw: string) {
 }
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function useChallengeIdFromQuery(): string | null {
+  return useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("challenge");
+    return id && id.trim() ? id : null;
+  }, []);
+}
+
+const CHALLENGE_CONTEXT_KEY = "wizard:challenge-context";
+
+function ChallengeContextBanner() {
+  const challengeId = useChallengeIdFromQuery();
+  // Persist for the duration of the wizard so Results can redirect back home
+  // and refresh the prompts after save. If the user enters the wizard without
+  // a challenge query param, defensively clear any stale context from an
+  // abandoned earlier flow so an unrelated save does not trigger a
+  // challenge-mode redirect.
+  useEffect(() => {
+    try {
+      if (challengeId) {
+        window.sessionStorage.setItem(CHALLENGE_CONTEXT_KEY, challengeId);
+      } else {
+        window.sessionStorage.removeItem(CHALLENGE_CONTEXT_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [challengeId]);
+  const { data } = useQuery<{ challenge?: { id: string; name: string } }>({
+    queryKey: ["challenge-banner", challengeId],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/challenges/${challengeId}`, { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    enabled: !!challengeId,
+    retry: false,
+  });
+  if (!challengeId || !data?.challenge) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200"
+      data-testid="challenge-context-banner"
+    >
+      <Trophy className="w-4 h-4 text-primary shrink-0" />
+      <span className="text-sm text-foreground">
+        Logging this will count toward <strong>{data.challenge.name}</strong>.
+      </span>
+    </motion.div>
+  );
+}
 
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
@@ -193,6 +250,8 @@ export default function ActionsStep() {
           </button>
         </motion.div>
       )}
+
+      <ChallengeContextBanner />
 
       {!hasDraft && profileLoaded && (
         <motion.div

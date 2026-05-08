@@ -8,6 +8,7 @@ import Attachments from "@/components/Attachments";
 import { TagEditor } from "@/components/TagEditor";
 import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
+import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 
 interface JournalEntry {
   id: string;
@@ -548,6 +549,8 @@ export default function Journal() {
           </p>
         </div>
       )}
+
+      <OrgPromptsSection variant="compact" />
 
       <AnimatePresence>
         {isAdding && (

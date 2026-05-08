@@ -15,6 +15,23 @@ import Attachments from "@/components/Attachments";
 import { useSaveImpact, useCreateRecurringTemplate, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+
+const CHALLENGE_CONTEXT_KEY = "wizard:challenge-context";
+
+function readChallengeContext(): string | null {
+  try {
+    return window.sessionStorage.getItem(CHALLENGE_CONTEXT_KEY);
+  } catch {
+    return null;
+  }
+}
+function clearChallengeContext() {
+  try {
+    window.sessionStorage.removeItem(CHALLENGE_CONTEXT_KEY);
+  } catch {
+    // ignore
+  }
+}
 import { Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -1050,6 +1067,19 @@ export default function Results() {
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
       setShowSaveDialog(false);
       toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
+
+      // If the user came from an org-challenge "Contribute" prompt, refresh
+      // the prompts and return them to the home screen so they can see the
+      // updated progress immediately.
+      const challengeContext = readChallengeContext();
+      if (challengeContext) {
+        clearChallengeContext();
+        queryClient.invalidateQueries({ queryKey: ["org-prompts"] });
+        queryClient.invalidateQueries({ queryKey: ["challenges-mine"] });
+        queryClient.invalidateQueries({ queryKey: ["challenge", challengeContext] });
+        setLocation("/");
+        return;
+      }
 
       // Offer to make this a recurring activity. Default the label to the
       // period (or first activity name if no period was chosen).

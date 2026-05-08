@@ -9,7 +9,7 @@ import RecapBanner from "@/components/RecapBanner";
 import CalendarHomeWidget from "@/components/CalendarHomeWidget";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
-import { PulseSurveyCard } from "@/components/PulseSurveyCard";
+import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 import { useListRecurringTemplates } from "@workspace/api-client-react";
 
@@ -359,11 +359,16 @@ export default function Intro() {
 
       </section>
 
+      {/* ── FOR YOUR ORGANISATION (member-only prompts) ──
+          OrgPromptsSection renders nothing (no DOM, no wrapper) for
+          non-members, managers, and members with no open prompts, so
+          there is no layout impact for those users. */}
+      {isLoggedIn && <OrgPromptsSection variant="full" />}
+
       {/* ── QUICK LOG (logged-in users with active recurring templates only) ── */}
       {hasQuickLogContent && (
         <section style={{ background: "white", padding: "32px 5% 0" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <PulseSurveyCard />
             <QuickLog showManageLink />
           </div>
         </section>
