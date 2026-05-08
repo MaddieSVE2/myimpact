@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
@@ -15,6 +15,7 @@ import { trackServerEvent } from "../lib/analytics.js";
 import { featureCap } from "../lib/featureFlags.js";
 import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
 import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
+import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 
 const router: IRouter = Router();
 
@@ -1743,5 +1744,295 @@ export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: D
     verifiedRecordCount: rows.length,
   };
 }
+
+// ─── POST /api/org/member-submit ──────────────────────────────────────────
+// A logged-in org member submits a list of standard Activities (no Actions,
+// Contributions, or custom activities) directly to their organisation. The
+// resulting impact record is auto-accepted into org totals: tagged with
+// source='member-submitted', linked to the org via submittedToOrgId, and an
+// approved record_verifications row is created so it counts in verified
+// totals immediately. Org managers see these in the Member submissions panel
+// with a badge.
+interface MemberSubmitActivity {
+  activityId?: unknown;
+  quantity?: unknown;
+  hoursPerYear?: unknown;
+  title?: unknown;
+  detail?: unknown;
+}
+interface MemberSubmitBody {
+  name?: unknown;
+  periodLabel?: unknown;
+  activities?: unknown;
+}
+
+router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.status(403).json({ error: "You must be a member of an organisation to submit activities." });
+      return;
+    }
+
+    const body = (req.body ?? {}) as MemberSubmitBody & Record<string, unknown>;
+
+    // This flow is intentionally Activities-only. Reject payloads that try to
+    // sneak Actions, Contributions, donations, custom activities or any other
+    // wizard-style fields through this endpoint instead of silently dropping
+    // them — that protects org totals and makes misuse explicit to clients.
+    const FORBIDDEN_KEYS = [
+      "actions", "contributions", "donations", "donationsGBP",
+      "customActivities", "additionalVolunteerHours", "personalDevelopment",
+    ];
+    const offending = FORBIDDEN_KEYS.filter(k => Object.prototype.hasOwnProperty.call(body, k));
+    if (offending.length > 0) {
+      res.status(400).json({
+        error: `This flow only accepts standard Activities. Remove these fields: ${offending.join(", ")}.`,
+      });
+      return;
+    }
+
+    const name = typeof body.name === "string" && body.name.trim()
+      ? body.name.trim().slice(0, 120)
+      : "Activities submitted to organisation";
+    const periodLabel = typeof body.periodLabel === "string" && body.periodLabel.trim()
+      ? body.periodLabel.trim().slice(0, 80)
+      : null;
+
+    if (!Array.isArray(body.activities) || body.activities.length === 0) {
+      res.status(400).json({ error: "At least one activity is required." });
+      return;
+    }
+    if (body.activities.length > 100) {
+      res.status(400).json({ error: "You can submit at most 100 activities at once." });
+      return;
+    }
+
+    const cleaned: Array<{ activityId: string; quantity: number; hoursPerYear: number; title: string | null; detail: string | null }> = [];
+    for (const raw of body.activities as MemberSubmitActivity[]) {
+      const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
+      const def = ACTIVITIES.find(a => a.id === id);
+      if (!def) {
+        res.status(400).json({ error: `Unknown activity id '${id}'. Only standard activities are allowed.` });
+        return;
+      }
+      const quantityNum = Number(raw.quantity);
+      const hoursNum = Number(raw.hoursPerYear);
+      const safeQuantity = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
+      const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
+      // For unit=hour activities the SVE proxy is multiplied by hoursPerYear,
+      // so safeHours must be > 0; for unit-based activities safeQuantity must
+      // be > 0. Reject empty rows so we never insert a zero-value record.
+      if (def.unit === "hour" ? safeHours <= 0 : safeQuantity <= 0) {
+        res.status(400).json({ error: `Activity '${def.name}' needs a positive quantity or hours value.` });
+        return;
+      }
+      if (safeHours > 24 * 365 || safeQuantity > 100_000) {
+        res.status(400).json({ error: `Activity '${def.name}' has an unreasonably large value.` });
+        return;
+      }
+      const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
+      const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
+      cleaned.push({ activityId: id, quantity: safeQuantity, hoursPerYear: safeHours, title, detail });
+    }
+
+    const calc = calculateImpact(
+      cleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
+      0,
+      0,
+      [],
+    );
+
+    const now = new Date();
+    const memberLines = cleaned.map(c => ({
+      activityId: c.activityId,
+      quantity: c.quantity,
+      hoursPerYear: c.hoursPerYear,
+      title: c.title,
+      detail: c.detail,
+    }));
+
+    const resultJson = {
+      ...calc,
+      source: "member-submitted",
+      submittedToOrgId: membership.orgId,
+      submittedToOrgAt: now.toISOString(),
+      memberLines,
+    };
+
+    const activitiesJson = cleaned.map(c => ({
+      activityId: c.activityId,
+      quantity: c.quantity,
+      hoursPerYear: c.hoursPerYear,
+      title: c.title,
+      detail: c.detail,
+    }));
+
+    const [inserted] = await db.insert(impactRecordsTable).values({
+      userId,
+      name,
+      periodLabel,
+      totalValue: String(calc.totalValue),
+      impactValue: String(calc.impactValue),
+      contributionValue: String(calc.contributionValue),
+      donationsValue: "0",
+      personalDevelopmentValue: String(calc.personalDevelopmentValue),
+      totalHours: Math.round(calc.totalHours),
+      activitiesJson,
+      resultJson,
+      source: "member-submitted",
+      submittedToOrgId: membership.orgId,
+      submittedToOrgAt: now,
+    }).returning();
+
+    // Auto-accept: insert an approved verification row attributed to the
+    // submitting member so it flows into verified-total dashboards.
+    await db.insert(recordVerificationsTable).values({
+      recordId: inserted.id,
+      orgId: membership.orgId,
+      status: "approved",
+      verifiedBy: userId,
+      decidedAt: now,
+      reason: "member-submitted",
+    });
+
+    await writeAuditLog(membership.orgId, userId, "member.submit", "impact_record", String(inserted.id), {
+      activityCount: cleaned.length,
+      totalHours: calc.totalHours,
+      totalValue: calc.totalValue,
+    });
+
+    await enqueueOrgEvent({
+      orgId: membership.orgId,
+      eventType: "hours.logged",
+      payload: {
+        recordId: String(inserted.id),
+        member: { ref: userId, email: req.user!.email },
+        source: "member-submitted",
+        activityCount: cleaned.length,
+        hours: calc.totalHours,
+        socialValueGBP: calc.totalValue,
+        occurredAt: now.toISOString(),
+        attested: true,
+      },
+    });
+
+    trackServerEvent({
+      eventName: "org_member_submit_completed",
+      userId,
+      surface: "org",
+      props: { orgId: membership.orgId, activityCount: cleaned.length, totalHours: calc.totalHours },
+    });
+
+    res.status(201).json({
+      ok: true,
+      record: {
+        id: inserted.id,
+        totalValue: calc.totalValue,
+        totalHours: calc.totalHours,
+        activityCount: cleaned.length,
+        submittedToOrgId: membership.orgId,
+        submittedToOrgAt: now.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error("Member-submit error:", err);
+    res.status(500).json({ error: "Failed to submit activities to your organisation." });
+  }
+});
+
+// ─── GET /api/org/member-submissions ──────────────────────────────────────
+// Manager-only list of records submitted by org members through the dedicated
+// flow (source='member-submitted'). Used by the Org portal's "Member
+// submissions" panel — they don't appear in the pending verifications queue
+// because they're auto-accepted.
+router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+
+    const sourceParamRaw = typeof req.query.source === "string" ? req.query.source : "member-submitted";
+    const sourceParam: "member-submitted" | "org-attested" | "all" =
+      sourceParamRaw === "org-attested" || sourceParamRaw === "all"
+        ? sourceParamRaw
+        : "member-submitted";
+
+    // member-submitted: records this org received via /member-submit.
+    // org-attested:    records attested via this org's API key. The
+    //                  /api/v1/org/hours route doesn't set submitted_to_org_id,
+    //                  so we resolve org ownership through the API key id.
+    // all:             union of the two.
+    const orgApiKeyIds = await db
+      .select({ id: orgApiKeysTable.id })
+      .from(orgApiKeysTable)
+      .where(eq(orgApiKeysTable.orgId, orgId));
+    const apiKeyIdList = orgApiKeyIds.map(k => k.id);
+
+    const memberCond = and(
+      eq(impactRecordsTable.submittedToOrgId, orgId),
+      eq(impactRecordsTable.source, "member-submitted"),
+    )!;
+    const attestedCond = apiKeyIdList.length > 0
+      ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
+      : sql`FALSE`;
+    const whereExpr =
+      sourceParam === "member-submitted" ? memberCond
+      : sourceParam === "org-attested" ? attestedCond
+      : sql`(${memberCond}) OR (${attestedCond})`;
+
+    const records = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(whereExpr)
+      .orderBy(desc(impactRecordsTable.submittedToOrgAt));
+
+    const userIds = Array.from(new Set(records.map(r => r.userId)));
+    const users = userIds.length > 0
+      ? await db.select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : [];
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const items = records.map(r => {
+      const u = userMap.get(r.userId);
+      const lines = Array.isArray(r.activitiesJson) ? (r.activitiesJson as Array<{ activityId?: string; title?: string | null; detail?: string | null; hoursPerYear?: number; quantity?: number }>) : [];
+      const rowSource: "member-submitted" | "org-attested" =
+        r.source === "member-submitted" ? "member-submitted" : "org-attested";
+      return {
+        recordId: r.id,
+        memberName: u?.displayName ?? u?.email ?? "Member",
+        memberEmail: u?.email ?? null,
+        name: r.name,
+        period: r.periodLabel,
+        totalHours: r.totalHours,
+        totalValue: Number(r.totalValue),
+        submittedAt: (r.submittedToOrgAt ?? r.attestedAt ?? r.createdAt).toISOString(),
+        source: rowSource,
+        activityCount: lines.length,
+        lines: lines.map(l => {
+          const def = ACTIVITIES.find(a => a.id === l.activityId);
+          return {
+            activityName: def?.name ?? l.activityId ?? "Activity",
+            category: def?.category ?? null,
+            title: l.title ?? null,
+            detail: l.detail ?? null,
+            hoursPerYear: l.hoursPerYear ?? 0,
+            quantity: l.quantity ?? 0,
+          };
+        }),
+      };
+    });
+
+    res.json({ submissions: items });
+  } catch (err) {
+    console.error("List member submissions error:", err);
+    res.status(500).json({ error: "Failed to load member submissions" });
+  }
+});
 
 export default router;

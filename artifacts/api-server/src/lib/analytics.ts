@@ -15,6 +15,8 @@ export const ANALYTICS_EVENTS = [
   "share_click",
   "public_profile_view",
   "org_invite_accepted",
+  "org_member_submit_started",
+  "org_member_submit_completed",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

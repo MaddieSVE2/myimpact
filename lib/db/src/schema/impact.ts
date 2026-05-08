@@ -54,6 +54,11 @@ export const impactRecordsTable = pgTable("impact_records", {
   // and are flagged in the UI as "attested by <org>".
   attestedByApiKeyId: text("attested_by_api_key_id"),
   attestedAt: timestamp("attested_at"),
+  // Member-submitted records: when a logged-in org member submits activities
+  // through the dedicated "Submit to organisation" flow, these capture which
+  // org received the submission and when. Records also have source='member-submitted'.
+  submittedToOrgId: text("submitted_to_org_id"),
+  submittedToOrgAt: timestamp("submitted_to_org_at"),
   source: text("source").notNull().default("user"),
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow().notNull(),

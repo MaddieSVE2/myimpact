@@ -198,6 +198,183 @@ function usePendingVerifications(enabled: boolean) {
   });
 }
 
+interface MemberSubmissionLine {
+  activityName: string;
+  category: string | null;
+  title: string | null;
+  detail: string | null;
+  hoursPerYear: number;
+  quantity: number;
+}
+
+type SubmissionSource = "member-submitted" | "org-attested";
+type SourceFilter = "all" | SubmissionSource;
+
+interface MemberSubmission {
+  recordId: number;
+  memberName: string;
+  memberEmail: string | null;
+  name: string;
+  period: string | null;
+  totalHours: number;
+  totalValue: number;
+  submittedAt: string;
+  source: SubmissionSource;
+  activityCount: number;
+  lines: MemberSubmissionLine[];
+}
+
+function useMemberSubmissions(enabled: boolean, source: SourceFilter) {
+  return useQuery<{ submissions: MemberSubmission[] }>({
+    queryKey: ["org-member-submissions", source],
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/member-submissions?source=${source}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load member submissions");
+      return res.json();
+    },
+  });
+}
+
+function MemberSubmissionsPanel() {
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("member-submitted");
+  const { data, isLoading, isError } = useMemberSubmissions(true, sourceFilter);
+  const [showOnlyWithDetail, setShowOnlyWithDetail] = useState(false);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const subs = data?.submissions ?? [];
+  const filtered = showOnlyWithDetail
+    ? subs.filter(s => s.lines.some(l => (l.title && l.title.length) || (l.detail && l.detail.length)))
+    : subs;
+
+  const SOURCE_TABS: Array<{ key: SourceFilter; label: string }> = [
+    { key: "member-submitted", label: "Member-submitted" },
+    { key: "org-attested", label: "Org-attested" },
+    { key: "all", label: "All" },
+  ];
+
+  function toggleExpand(id: number) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      data-testid="member-submissions-panel"
+    >
+      <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <BadgeCheck className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Verified records</h3>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+              Auto-accepted
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Records counted toward your organisation's verified totals. Filter by source to see what members sent versus what your org attested via API.
+          </p>
+          <div className="flex flex-wrap gap-1.5" data-testid="member-submissions-source-tabs">
+            {SOURCE_TABS.map(t => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setSourceFilter(t.key)}
+                className={`text-[11px] px-2 py-1 rounded-full border ${sourceFilter === t.key ? "bg-primary text-white border-primary" : "border-border text-foreground hover:bg-muted/30"}`}
+                data-testid={`source-tab-${t.key}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={showOnlyWithDetail}
+            onChange={e => setShowOnlyWithDetail(e.target.checked)}
+            className="w-3.5 h-3.5"
+            data-testid="filter-submissions-with-detail"
+          />
+          Only with title or detail
+        </label>
+      </div>
+
+      {isLoading ? (
+        <div className="py-10 flex justify-center">
+          <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : isError ? (
+        <p className="text-xs text-red-600">Could not load member submissions. Please refresh.</p>
+      ) : filtered.length === 0 ? (
+        <div className="py-8 text-center">
+          <BadgeCheck className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-sm font-medium text-foreground">No member submissions yet</p>
+          <p className="text-xs text-muted-foreground">
+            Your members can submit activities to your organisation from their organisation page.
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+          {filtered.map(s => {
+            const isOpen = expanded.has(s.recordId);
+            return (
+              <li key={s.recordId} className="px-3 py-2.5" data-testid={`member-submission-${s.recordId}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(s.recordId)}
+                  className="w-full flex items-center gap-3 text-left"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium text-foreground truncate">{s.memberName}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${s.source === "member-submitted" ? "bg-primary/10 text-primary" : "bg-emerald-100 text-emerald-700"}`}>
+                        {s.source === "member-submitted" ? "Member-submitted" : "Org-attested"}
+                      </span>
+                      {s.period && (
+                        <span className="text-[11px] text-muted-foreground">· {s.period}</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"} · {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">{s.totalHours} hrs</span>
+                  <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">{formatCurrency(s.totalValue)}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isOpen && (
+                  <ul className="mt-2 ml-3 pl-3 border-l-2 border-primary/20 space-y-1.5">
+                    {s.lines.map((l, idx) => (
+                      <li key={idx} className="text-xs">
+                        <p className="text-foreground">
+                          <span className="font-medium">{l.title || l.activityName}</span>
+                          {l.title && <span className="text-muted-foreground"> · {l.activityName}</span>}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {l.category && <span>{l.category} · </span>}
+                          {l.hoursPerYear > 0 ? `${l.hoursPerYear} hrs/yr` : `${l.quantity} units`}
+                        </p>
+                        {l.detail && <p className="text-[11px] text-muted-foreground italic mt-0.5">"{l.detail}"</p>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </motion.div>
+  );
+}
+
 function VerificationQueue({ orgName }: { orgName: string }) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = usePendingVerifications(true);
@@ -1524,19 +1701,49 @@ export default function OrgPortal() {
       {!inOrg ? (
         <JoinOrgPanel />
       ) : !isManager ? (
-        <motion.div
-          className="bg-white border border-border rounded-xl p-8 text-center"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <ShieldCheck className="w-10 h-10 text-primary/40 mx-auto mb-4" />
-          <p className="text-base font-display font-semibold text-foreground mb-1">
-            You're a member of {orgData!.org!.name}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Organisation analytics, reports, and the join link are only available to your organisation manager. Contact them if you need access.
-          </p>
-        </motion.div>
+        <div className="space-y-4">
+          <motion.div
+            className="bg-white border border-border rounded-xl p-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            data-testid="member-submit-cta"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                <BadgeCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-display font-semibold text-foreground mb-1">
+                  Submit activities to {orgData!.org!.name}
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Log the activities you've completed for your organisation. They'll be added straight to your organisation's totals.
+                </p>
+                <Link
+                  href="/org/submit"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  data-testid="link-org-submit"
+                >
+                  Start a submission
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="bg-white border border-border rounded-xl p-6 text-center"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <ShieldCheck className="w-10 h-10 text-primary/40 mx-auto mb-4" />
+            <p className="text-sm font-semibold text-foreground mb-1">
+              You're a member of {orgData!.org!.name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Organisation analytics, reports, and the join link are only available to your organisation manager. Contact them if you need access.
+            </p>
+          </motion.div>
+        </div>
       ) : statsLoading ? (
         <div className="py-16 flex justify-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -1637,6 +1844,8 @@ export default function OrgPortal() {
           </motion.div>
 
           <VerificationQueue orgName={orgData!.org!.name} />
+
+          <MemberSubmissionsPanel />
 
           <BillingSection />
 

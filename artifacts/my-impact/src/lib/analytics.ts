@@ -20,6 +20,8 @@ export const ANALYTICS_EVENTS = {
   SHARE_CLICK: "share_click",
   PUBLIC_PROFILE_VIEW: "public_profile_view",
   ORG_INVITE_ACCEPTED: "org_invite_accepted",
+  ORG_MEMBER_SUBMIT_STARTED: "org_member_submit_started",
+  ORG_MEMBER_SUBMIT_COMPLETED: "org_member_submit_completed",
 } as const;
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
