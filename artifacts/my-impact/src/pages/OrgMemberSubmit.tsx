@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -20,6 +20,16 @@ interface SelectedLine {
 }
 
 type Step = "select" | "details" | "review" | "done";
+
+interface MySubmission {
+  recordId: number;
+  name: string;
+  period: string | null;
+  totalHours: number;
+  totalValue: number;
+  submittedAt: string;
+  activityCount: number;
+}
 
 function formatGBP(n: number): string {
   return `£${Math.round(n).toLocaleString("en-GB")}`;
@@ -44,10 +54,29 @@ export default function OrgMemberSubmit() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
+  const [mySubs, setMySubs] = useState<MySubmission[] | null>(null);
+  const [mySubsError, setMySubsError] = useState<string | null>(null);
 
   useEffect(() => {
     track(ANALYTICS_EVENTS.ORG_MEMBER_SUBMIT_STARTED);
   }, []);
+
+  const loadMySubs = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/api/org/my-submissions`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load your submissions");
+      const data = await res.json();
+      setMySubs(Array.isArray(data?.submissions) ? data.submissions : []);
+      setMySubsError(null);
+    } catch (err) {
+      setMySubsError((err as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || !orgData?.org) return;
+    loadMySubs();
+  }, [user, orgData?.org, loadMySubs]);
 
   const activities = activitiesData?.activities ?? [];
   const categories = activitiesData?.categories ?? [];
@@ -137,6 +166,7 @@ export default function OrgMemberSubmit() {
       if (!res.ok) throw new Error(data?.error ?? "Submission failed.");
       setCreatedRecordId(data?.record?.id ?? null);
       setStep("done");
+      loadMySubs();
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {
@@ -202,6 +232,48 @@ export default function OrgMemberSubmit() {
         <ArrowRight className="w-3 h-3" />
         <span className={step === "review" || step === "done" ? "font-semibold text-foreground" : ""}>3. Review &amp; submit</span>
       </div>
+
+      {step === "select" && mySubs && mySubs.length > 0 && (
+        <div className="bg-white border border-border rounded-xl p-4 mb-4" data-testid="my-submissions-recent">
+          <div className="flex items-center gap-2 mb-3">
+            <History className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Your recent submissions to {orgName}</h3>
+            <span className="text-[10px] font-medium text-muted-foreground">({mySubs.length})</span>
+          </div>
+          <ul className="divide-y divide-border max-h-60 overflow-y-auto">
+            {mySubs.slice(0, 10).map(s => (
+              <li
+                key={s.recordId}
+                className="py-2 flex items-center justify-between gap-3 text-sm"
+                data-testid={`my-submission-${s.recordId}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground truncate">
+                    {s.period || s.name}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    {" · "}
+                    {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"}
+                    {" · "}
+                    {Math.round(s.totalHours).toLocaleString("en-GB")} hrs
+                  </p>
+                </div>
+                <p className="text-xs font-semibold tabular-nums shrink-0">{formatGBP(s.totalValue)}</p>
+              </li>
+            ))}
+          </ul>
+          {mySubs.length > 10 && (
+            <p className="mt-2 text-[11px] text-muted-foreground">Showing your 10 most recent submissions.</p>
+          )}
+        </div>
+      )}
+
+      {step === "select" && mySubsError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 mb-4 text-xs text-red-700" data-testid="my-submissions-error">
+          Couldn't load your past submissions. {mySubsError}
+        </div>
+      )}
 
       {step === "select" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

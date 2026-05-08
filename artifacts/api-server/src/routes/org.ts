@@ -2035,4 +2035,52 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
   }
 });
 
+// ─── GET /api/org/my-submissions ──────────────────────────────────────────
+// Member-scoped: returns the current user's own member-submitted records to
+// their organisation. Used by /org/submit so members can see what they've
+// already sent and avoid duplicates.
+router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.json({ submissions: [] });
+      return;
+    }
+
+    const records = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(and(
+        eq(impactRecordsTable.userId, userId),
+        eq(impactRecordsTable.submittedToOrgId, membership.orgId),
+        eq(impactRecordsTable.source, "member-submitted"),
+      )!)
+      .orderBy(desc(impactRecordsTable.submittedToOrgAt));
+
+    const items = records.map(r => {
+      const lines = Array.isArray(r.activitiesJson)
+        ? (r.activitiesJson as Array<{ activityId?: string }>)
+        : [];
+      return {
+        recordId: r.id,
+        name: r.name,
+        period: r.periodLabel,
+        totalHours: r.totalHours,
+        totalValue: Number(r.totalValue),
+        submittedAt: (r.submittedToOrgAt ?? r.createdAt).toISOString(),
+        activityCount: lines.length,
+      };
+    });
+
+    res.json({ submissions: items });
+  } catch (err) {
+    console.error("List my submissions error:", err);
+    res.status(500).json({ error: "Failed to load your submissions" });
+  }
+});
+
 export default router;
