@@ -13,6 +13,7 @@ import { SocialSharingProvider } from "@/lib/social-sharing-context";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { LocaleProvider } from "@/i18n";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { QuickLogFab } from "@/components/QuickLogFab";
 import { YearRolloverModal } from "@/components/YearRolloverModal";
 import { ServiceWorkerUpdatePrompt } from "@/components/ServiceWorkerUpdatePrompt";
 import { PrivateRoute } from "@/components/PrivateRoute";
@@ -359,6 +360,7 @@ function AppRouter() {
       {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
       <Sidekick />
       <FeedbackWidget />
+      <QuickLogFab />
       <YearRolloverModal />
     </div>
   );
