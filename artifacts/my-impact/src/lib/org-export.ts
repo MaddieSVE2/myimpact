@@ -194,7 +194,11 @@ export async function buildOrgPdf(
   // a Promise to support best-effort logo embedding, but legacy non-awaiting
   // callers still work (the PDF saves once the promise settles).
   branding?: OrgBranding | null,
-): Promise<void> {
+  // When `"blob"`, the function returns the rendered PDF as a Blob instead
+  // of triggering a download. Defaults to `"save"` to preserve the existing
+  // behaviour for the Download PDF button.
+  output: "save" | "blob" = "save",
+): Promise<Blob | void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -557,5 +561,8 @@ export async function buildOrgPdf(
     doc.text(right, pageW - margin - doc.getTextWidth(right), fy);
   }
 
+  if (output === "blob") {
+    return doc.output("blob");
+  }
   doc.save(`${orgName.replace(/\s+/g, "-").toLowerCase()}-impact-report.pdf`);
 }

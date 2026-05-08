@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Download, FileSpreadsheet, FileText, EyeOff, AlertCircle, CheckCircle2,
@@ -94,24 +94,106 @@ export default function OrgExport() {
     if (sdgs.length === 0) return;
     downloadCsv(sdgExportRows(sdgs), `${slug}-sdg-breakdown.csv`);
   }
-  function handlePdf() {
-    if (filtered.length === 0) return;
-    if (!orgData?.org) return;
+  const pdfArgs = useMemo(() => {
+    if (!orgData?.org) return null;
     const rowsForPdf = filtered.map(a => ({ activity: a, member: memberLabel(a.memberId, anonymise) }));
     const highlights = [...rowsForPdf]
       .sort((a, b) => b.activity.socialValueGBP - a.activity.socialValueGBP)
       .slice(0, 5);
-    buildOrgPdf(
+    return {
       orgName,
       rowsForPdf,
-      { value: aggregates.totalSocialValue, hours: aggregates.totalHours, activities: aggregates.totalActivities },
+      totals: {
+        value: aggregates.totalSocialValue,
+        hours: aggregates.totalHours,
+        activities: aggregates.totalActivities,
+      },
       trend,
-      rangeSummary(),
+      rangeSummary: rangeSummary(),
       highlights,
       sdgs,
-      orgData.org.branding ?? null,
+      branding: orgData.org.branding ?? null,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to]);
+
+  function handlePdf() {
+    if (!pdfArgs || filtered.length === 0) return;
+    buildOrgPdf(
+      pdfArgs.orgName,
+      pdfArgs.rowsForPdf,
+      pdfArgs.totals,
+      pdfArgs.trend,
+      pdfArgs.rangeSummary,
+      pdfArgs.highlights,
+      pdfArgs.sdgs,
+      pdfArgs.branding,
     );
   }
+
+  // ----- Live preview --------------------------------------------------------
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewSeq = useRef(0);
+
+  useEffect(() => {
+    if (!pdfArgs) return;
+    if (filtered.length === 0) {
+      setPreviewUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      setPreviewError(null);
+      setPreviewLoading(false);
+      return;
+    }
+    const mySeq = ++previewSeq.current;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    const handle = window.setTimeout(async () => {
+      try {
+        const blob = await buildOrgPdf(
+          pdfArgs.orgName,
+          pdfArgs.rowsForPdf,
+          pdfArgs.totals,
+          pdfArgs.trend,
+          pdfArgs.rangeSummary,
+          pdfArgs.highlights,
+          pdfArgs.sdgs,
+          pdfArgs.branding,
+          "blob",
+        );
+        if (mySeq !== previewSeq.current) return;
+        if (!(blob instanceof Blob)) {
+          setPreviewError("Could not build preview");
+          setPreviewLoading(false);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return url;
+        });
+        setPreviewLoading(false);
+      } catch {
+        if (mySeq !== previewSeq.current) return;
+        setPreviewError("Could not build preview");
+        setPreviewLoading(false);
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [pdfArgs, filtered.length]);
+
+  const previewUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-export-root">
@@ -163,6 +245,50 @@ export default function OrgExport() {
           {filtered.length} {filtered.length === 1 ? "activity" : "activities"} included
           {anonymise ? " · names will be replaced with Member 001, 002, …" : " · names and emails will be included"}
         </p>
+      </div>
+
+      {/* Live preview */}
+      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="export-preview-card">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Live preview</h3>
+            <p className="text-[11px] text-muted-foreground">
+              Updates automatically when you change the date range, anonymisation or branding.
+            </p>
+          </div>
+          {previewLoading && (
+            <div
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              data-testid="export-preview-loading"
+            >
+              <div className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" />
+              Updating…
+            </div>
+          )}
+        </div>
+        <div className="relative w-full bg-muted/20 border border-border rounded-md overflow-hidden" style={{ height: 520 }}>
+          {previewError ? (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-red-600">
+              {previewError}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+              No activities in this range — adjust the filters above to see a preview.
+            </div>
+          ) : previewUrl ? (
+            <iframe
+              key={previewUrl}
+              src={previewUrl}
+              title="Impact PDF preview"
+              className="w-full h-full"
+              data-testid="export-preview-iframe"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Download cards */}
