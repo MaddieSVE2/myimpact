@@ -4,9 +4,9 @@
 
 export const DEMO_ORG_ID = "demo-org-0000000000000";
 export const DEMO_INVITE_CODE = "DEMO-0000";
-export const DEMO_ORG_NAME = "Riverside Youth Trust";
-export const DEMO_ORG_TYPE = "charity";
-export const DEMO_ORG_CONTACT_EMAIL = "manager@riverside-youth-trust.org.uk";
+export const DEMO_ORG_NAME = "Demo Organisation";
+export const DEMO_ORG_TYPE = "corporate";
+export const DEMO_ORG_CONTACT_EMAIL = "organisation@organisation.org";
 
 export type ActivityCategory =
   | "Environment"

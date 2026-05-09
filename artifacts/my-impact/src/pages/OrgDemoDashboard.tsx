@@ -13,7 +13,7 @@ import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeli
 import { DEMO_CHALLENGES, DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
 
 const DEMO = {
-  org: { name: "Riverside Youth Trust", type: "Charity", location: "North West, England" },
+  org: { name: "Demo Organisation", type: "Corporate", location: "North West, England" },
   headline: {
     totalSocialValue: 184320,
     members: 47,
@@ -245,10 +245,10 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Riverside Youth Trust, the estimated organisational investment (covering volunteer finding, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per volunteer</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
+                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Demo Organisation, the estimated organisational investment (covering volunteer finding, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per volunteer</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Riverside Youth Trust invested in its volunteers, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
+                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Demo Organisation invested in its volunteers, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
