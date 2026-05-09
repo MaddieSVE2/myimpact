@@ -23,6 +23,7 @@ import { X, LogIn, Building2 } from "lucide-react";
 
 // Layout & Pages
 import { Navbar } from "@/components/layout/Navbar";
+import { OrgMemberSubNav } from "@/components/layout/OrgMemberSubNav";
 import { Sidekick } from "@/components/Sidekick";
 import Intro from "@/pages/Intro";
 import ActionsStep from "@/pages/wizard/ActionsStep";
@@ -249,6 +250,7 @@ function AppRouter() {
       {/* ── Main content column ── */}
       <div className="flex flex-col flex-grow min-w-0">
         <Navbar />
+        <OrgMemberSubNav />
         <GuestBanner />
         <main className="flex-grow">
           <ErrorBoundary>

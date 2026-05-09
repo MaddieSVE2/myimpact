@@ -242,16 +242,7 @@ export function Navbar() {
   // Only the demo-org manager has the new dashboard/settings pages today.
   const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
 
-  // Org members (non-manager) get a focused top nav surfacing the four key
-  // jobs: see your impact, share with your employer, take part in
-  // challenges, and answer pulses. Calculate, History and Journal stay
-  // reachable from the account dropdown. Demo-org managers get the org
-  // dashboard nav. Real-org managers and personal users keep the personal
-  // nav for now.
   const isOrgMemberOnly = inOrg && !isOrgManager;
-  const orgShortName = orgData?.org?.name
-    ? (orgData.org.name.length > 14 ? `${orgData.org.name.slice(0, 12)}…` : orgData.org.name)
-    : "my employer";
   const navItems = isDemoOrgManager
     ? [
         { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
@@ -261,28 +252,21 @@ export function Navbar() {
         { href: "/org/export",     label: "Export",     icon: Download },
         { href: "/org/settings",   label: "Settings",   icon: Settings },
       ]
-    : isOrgMemberOnly
-      ? [
-          { href: "/results",      label: t("navbar.myImpact"),                    icon: Sparkles },
-          { href: "/org/submit",   label: `Share with ${orgShortName}`,            icon: Building2 },
-          { href: "/challenges",   label: "Challenges",                            icon: Trophy },
-          { href: "/#org-prompts-section", label: "Pulse",                         icon: ClipboardList },
-        ]
-      : [
-          ...(inOrg
-            ? []
-            : [
-                { href: "/log", label: "Log activity", icon: PlusCircle },
-                { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
-              ]),
-          { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
-          { href: "/history", label: t("navbar.history"), icon: History },
-          ...(gamificationEnabled
-            ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
-            : []),
-          { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
-          { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
-        ];
+    : [
+        ...(isOrgManager
+          ? []
+          : [
+              { href: "/log", label: "Log activity", icon: PlusCircle },
+              { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
+            ]),
+        { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
+        { href: "/history", label: t("navbar.history"), icon: History },
+        ...(gamificationEnabled
+          ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
+          : []),
+        { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
+        { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
+      ];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -389,42 +373,6 @@ export function Navbar() {
                         )}
                       </div>
                       <div className="py-1">
-                        {/* Personal pages we surface in the dropdown for org
-                            members, since their top nav focuses on the org
-                            jobs (Share / Challenges / Pulse). Calculate, History
-                            and Journal still need to be one click away. */}
-                        {isOrgMemberOnly && (
-                          <>
-                            <Link
-                              href="/wizard/actions"
-                              onClick={() => setUserMenuOpen(false)}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
-                              data-testid="link-calculate-dropdown"
-                            >
-                              <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              Calculate my impact
-                            </Link>
-                            <Link
-                              href="/history"
-                              onClick={() => setUserMenuOpen(false)}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
-                              data-testid="link-history-dropdown"
-                            >
-                              <History className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              {t("navbar.history")}
-                            </Link>
-                            <Link
-                              href="/journal"
-                              onClick={() => setUserMenuOpen(false)}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
-                              data-testid="link-journal-dropdown"
-                            >
-                              <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              {t("navbar.journal")}
-                            </Link>
-                            <div className="my-1 border-t border-border" />
-                          </>
-                        )}
                         {/* Account */}
                         <Link
                           href="/profile"
@@ -641,27 +589,39 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Mobile parity: org members get History and Journal in the
-                mobile dropdown too, since the main nav row replaces them. */}
+            {/* Org member mobile section — Pulse, Challenges, Share with org */}
             {isLoggedIn && isOrgMemberOnly && (
               <>
+                <div className="my-1 border-t border-white/10" />
+                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+                  {orgData?.org?.name ?? "My Organisation"}
+                </p>
                 <Link
-                  href="/history"
+                  href="/#org-prompts-section"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-                  data-testid="link-history-mobile"
+                  data-testid="member-subnav-pulse-mobile"
                 >
-                  <History className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {t("navbar.history")}
+                  <ClipboardList className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  Pulse
                 </Link>
                 <Link
-                  href="/journal"
+                  href="/challenges"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-                  data-testid="link-journal-mobile"
+                  data-testid="member-subnav-challenges-mobile"
                 >
-                  <BookOpen className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {t("navbar.journal")}
+                  <Trophy className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  Challenges
+                </Link>
+                <Link
+                  href="/org/submit"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+                  data-testid="member-subnav-share-mobile"
+                >
+                  <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  Share with {orgData?.org?.name ?? "my employer"}
                 </Link>
               </>
             )}
