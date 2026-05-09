@@ -137,16 +137,28 @@ const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
     const jd       = String(1 + (k % 27)).padStart(2, "0");
     const cat      = _SC[k % _SC.length]!;
     const cat2     = _SC[(k + 3) % _SC.length]!;
+    const cat3     = _SC[(k + 6) % _SC.length]!;
+    const cat4     = _SC[(k + 1) % _SC.length]!;
     const am       = _SAM[k % _SAM.length]!;
     const ad       = String(3 + (k % 25)).padStart(2, "0");
     const am2      = _S26M[k % _S26M.length]!;
     const ad2      = String(4 + (k % 24)).padStart(2, "0");
+    const am3      = _SAM[(k + 5) % _SAM.length]!;
+    const ad3      = String(6 + (k % 22)).padStart(2, "0");
+    const am4      = _S26M[(k + 2) % _S26M.length]!;
+    const ad4      = String(5 + (k % 22)).padStart(2, "0");
     const hours    = 3 + (k % 6);
-    const hours2   = 2 + (k % 5);
-    const value    = 180 + (k % 8) * 60;
-    const value2   = 150 + (k % 7) * 50;
+    const hours2   = 3 + (k % 5);
+    const hours3   = 3 + (k % 4);
+    const hours4   = 2 + (k % 4);
+    const value    = 700 + (k % 8) * 150;
+    const value2   = 700 + (k % 7) * 130;
+    const value3   = 450 + (k % 6) * 100;
+    const value4   = 400 + (k % 5) * 100;
     const actName  = _SA[k % _SA.length]!;
     const actName2 = _SA[(k + 5) % _SA.length]!;
+    const actName3 = _SA[(k + 3) % _SA.length]!;
+    const actName4 = _SA[(k + 7) % _SA.length]!;
     return {
       member: {
         id,
@@ -166,6 +178,16 @@ const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
           id, `${am2}-${ad2}`, cat2, actName2,
           `Contributed ${hours2}h to the ${cat2.toLowerCase()} programme this period.`,
           hours2, value2, true,
+        ] as unknown as RawActivity,
+        [
+          id, `${am3}-${ad3}`, cat3, actName3,
+          `Supported the ${cat3.toLowerCase()} programme with ${hours3}h of hands-on volunteering.`,
+          hours3, value3, true,
+        ] as unknown as RawActivity,
+        [
+          id, `${am4}-${ad4}`, cat4, actName4,
+          `Delivered ${hours4}h of community impact through the ${cat4.toLowerCase()} initiative.`,
+          hours4, value4, true,
         ] as unknown as RawActivity,
       ],
     };
