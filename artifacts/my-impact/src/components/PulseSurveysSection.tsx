@@ -420,6 +420,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
     );
   }
   const max = Math.max(1, ...data.distribution.map(d => d.count));
+  const CHART_MAX_PX = 72;
   return (
     <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${surveyId}`}>
       {data.totals.responses === 0 ? (
@@ -449,14 +450,21 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
 
           <div>
             <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Score distribution</p>
-            <div className="space-y-1.5">
+            <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
               {data.distribution.map(d => (
-                <div key={d.rating} className="flex items-center gap-2 text-xs">
-                  <span className="w-3 text-muted-foreground">{d.rating}</span>
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-primary/60" style={{ width: `${(d.count / max) * 100}%` }} />
-                  </div>
-                  <span className="w-6 text-right text-muted-foreground">{d.count}</span>
+                <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                  <span className="text-[10px] text-muted-foreground font-medium">{d.count}</span>
+                  <div
+                    className="w-full rounded-t-sm bg-primary/60"
+                    style={{ height: `${(d.count / max) * CHART_MAX_PX}px`, minHeight: d.count > 0 ? '4px' : '0px' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-start gap-2 mt-1">
+              {data.distribution.map(d => (
+                <div key={d.rating} className="flex-1 flex justify-center">
+                  <span className="text-[10px] text-muted-foreground">{d.rating}</span>
                 </div>
               ))}
             </div>
@@ -465,14 +473,22 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
           {data.trend.length > 1 && (
             <div>
               <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Trend</p>
-              <div className="space-y-1">
+              <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
                 {data.trend.map(t => (
-                  <div key={t.windowKey} className="flex items-center gap-2 text-xs">
-                    <span className="w-20 text-muted-foreground truncate">{t.label}</span>
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-primary/60" style={{ width: `${(t.average / 5) * 100}%` }} />
-                    </div>
-                    <span className="w-12 text-right text-foreground font-medium">{t.average.toFixed(1)} <span className="text-muted-foreground">({t.count})</span></span>
+                  <div key={t.windowKey} className="flex-1 flex flex-col items-center justify-end h-full gap-0.5">
+                    <span className="text-[10px] text-foreground font-medium">{t.average.toFixed(1)}</span>
+                    <span className="text-[9px] text-muted-foreground">({t.count})</span>
+                    <div
+                      className="w-full rounded-t-sm bg-primary/60"
+                      style={{ height: `${(t.average / 5) * CHART_MAX_PX}px`, minHeight: t.average > 0 ? '4px' : '0px' }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-start gap-2 mt-1">
+                {data.trend.map(t => (
+                  <div key={t.windowKey} className="flex-1 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
                   </div>
                 ))}
               </div>
