@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Trophy, Plus, Users, Calendar, Target, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -393,8 +392,6 @@ export default function Challenges() {
           </button>
         )}
       </div>
-
-      <OrgPromptsSection variant="compact" />
 
       {showCreate && (
         <div className="mb-6">

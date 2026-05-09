@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import { QuickLog } from "@/components/QuickLog";
-import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import StreakChip from "@/components/StreakChip";
 import { TagEditor } from "@/components/TagEditor";
 import { SearchTagFilter } from "@/components/SearchTagFilter";
@@ -574,8 +573,6 @@ export default function History() {
           </button>
         )}
       </div>
-
-      <OrgPromptsSection variant="compact" />
 
       <QuickLog showManageLink />
 

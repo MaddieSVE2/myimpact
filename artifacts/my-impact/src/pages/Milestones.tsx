@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
-import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -192,8 +191,6 @@ export default function Milestones() {
           {t("milestones.subtitle")}
         </p>
       </div>
-
-      <OrgPromptsSection variant="compact" />
 
       {isLoading ? (
         <div className="py-12 flex justify-center">
