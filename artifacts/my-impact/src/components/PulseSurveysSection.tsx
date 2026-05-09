@@ -32,6 +32,26 @@ interface SurveyListItem {
   anonymous: boolean;
   createdAt: string;
   archivedAt: string | null;
+  latestAverage: number | null;
+}
+
+function ScoreIndicator({ average }: { average: number | null }) {
+  if (average === null) return null;
+  const color =
+    average <= 2
+      ? "bg-red-500"
+      : average < 3.5
+        ? "bg-amber-400"
+        : "bg-emerald-500";
+  const label =
+    average <= 2 ? "Low score" : average < 3.5 ? "Mid score" : "Good score";
+  return (
+    <span
+      className={`inline-block w-2 h-2 rounded-full shrink-0 ${color}`}
+      title={`Latest average: ${average.toFixed(1)} / 5 — ${label}`}
+      aria-label={label}
+    />
+  );
 }
 
 interface TemplateOption {
@@ -368,6 +388,7 @@ function SurveyRow({
           data-testid={`button-toggle-survey-${survey.id}`}
         >
           <div className="flex items-center gap-2 flex-wrap">
+            <ScoreIndicator average={survey.latestAverage} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
             <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${isArchived ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
               {isArchived ? "Archived" : SCHEDULE_LABELS[survey.schedule]}
@@ -614,6 +635,7 @@ function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; op
           data-testid={`button-toggle-survey-${survey.id}`}
         >
           <div className="flex items-center gap-2 flex-wrap">
+            <ScoreIndicator average={survey.trend.length > 0 ? survey.trend[survey.trend.length - 1].average : survey.totals.responses > 0 ? survey.totals.average : null} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
             <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               {SCHEDULE_LABELS[survey.schedule]}

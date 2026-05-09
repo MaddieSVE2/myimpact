@@ -7,7 +7,7 @@ import {
   orgSurveyOptOutsTable,
   organisationsTable,
 } from "@workspace/db";
-import { and, eq, isNull, desc, asc } from "drizzle-orm";
+import { and, eq, isNull, desc, asc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 
@@ -111,6 +111,32 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
     orderBy: (t) => [desc(t.createdAt)],
   });
 
+  // Compute latest-window average for each survey in a single query
+  let latestAverageMap: Record<string, number | null> = {};
+  if (surveys.length > 0) {
+    const surveyIds = surveys.map(s => s.id);
+    const allResponses = await db.query.orgSurveyResponsesTable.findMany({
+      where: inArray(orgSurveyResponsesTable.surveyId, surveyIds),
+    });
+    // Group by surveyId → windowKey → ratings
+    const grouped: Record<string, Record<string, number[]>> = {};
+    for (const r of allResponses) {
+      if (!grouped[r.surveyId]) grouped[r.surveyId] = {};
+      if (!grouped[r.surveyId][r.windowKey]) grouped[r.surveyId][r.windowKey] = [];
+      grouped[r.surveyId][r.windowKey].push(r.rating);
+    }
+    for (const s of surveys) {
+      const windows = grouped[s.id];
+      if (!windows || Object.keys(windows).length === 0) {
+        latestAverageMap[s.id] = null;
+        continue;
+      }
+      const latestKey = Object.keys(windows).sort().at(-1)!;
+      const ratings = windows[latestKey];
+      latestAverageMap[s.id] = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 100) / 100;
+    }
+  }
+
   res.json({
     surveys: surveys.map(s => ({
       id: s.id,
@@ -120,6 +146,7 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
       anonymous: s.anonymous,
       createdAt: s.createdAt.toISOString(),
       archivedAt: s.archivedAt ? s.archivedAt.toISOString() : null,
+      latestAverage: latestAverageMap[s.id] ?? null,
     })),
   });
 });
