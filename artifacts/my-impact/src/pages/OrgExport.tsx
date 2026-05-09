@@ -10,12 +10,14 @@ import {
 } from "@/lib/org-demo-mock";
 import {
   useMyOrg, memberLabel, downloadCsv, activityExportRows, sdgExportRows, buildOrgPdf,
-  buildOrgPdfBlobAsync,
+  buildOrgPdfBlobAsync, DEFAULT_SROI_COST_PER_VOLUNTEER,
 } from "@/lib/org-export";
 import { PdfPager } from "@/components/PdfPager";
+import { useLocale } from "@/i18n/context";
 
 export default function OrgExport() {
   const { data: orgData, isLoading, isError } = useMyOrg();
+  const { locale, t } = useLocale();
   const [, setLocation] = useLocation();
 
   const [anonymise, setAnonymise] = useState(true);
@@ -87,13 +89,34 @@ export default function OrgExport() {
     return bits.join(" · ");
   }
 
+  const sroiCostPerVolunteer =
+    orgData.org.sroiCostPerVolunteer ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
+  const totalMembers = aggregates.totalMembers;
+  const totalInvestment = totalMembers * sroiCostPerVolunteer;
+  const sroiRatio = totalInvestment > 0 ? aggregates.totalSocialValue / totalInvestment : 0;
+  // Shared assumption note printed at the top of every CSV so funders see
+  // the same per-volunteer cost the dashboard and PDF use. Localised so
+  // Welsh exports stay consistent with the Welsh dashboard explainer.
+  const csvAssumptions = [
+    t("orgDashboard.sroiCsvAssumptionCost", {
+      costPerVolunteer: `£${sroiCostPerVolunteer.toLocaleString("en-GB")}`,
+    }),
+    t("orgDashboard.sroiCsvAssumptionTotal", {
+      totalInvestment: `£${totalInvestment.toLocaleString("en-GB")}`,
+      members: totalMembers.toLocaleString("en-GB"),
+    }),
+    t("orgDashboard.sroiCsvAssumptionRatio", {
+      ratio: `£${sroiRatio.toFixed(2)}`,
+    }),
+  ];
+
   function handleCsvActivity() {
     if (filtered.length === 0) return;
-    downloadCsv(activityExportRows(filtered, anonymise), `${slug}-activity.csv`);
+    downloadCsv(activityExportRows(filtered, anonymise), `${slug}-activity.csv`, csvAssumptions);
   }
   function handleCsvSdg() {
     if (sdgs.length === 0) return;
-    downloadCsv(sdgExportRows(sdgs), `${slug}-sdg-breakdown.csv`);
+    downloadCsv(sdgExportRows(sdgs), `${slug}-sdg-breakdown.csv`, csvAssumptions);
   }
   const pdfArgs = useMemo(() => {
     if (!orgData?.org) return null;
@@ -114,9 +137,11 @@ export default function OrgExport() {
       highlights,
       sdgs,
       branding: orgData.org.branding ?? null,
+      sroi: { costPerVolunteer: sroiCostPerVolunteer, totalMembers },
+      locale,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to]);
+  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to, sroiCostPerVolunteer, totalMembers, locale]);
 
   function handlePdf() {
     if (!pdfArgs || filtered.length === 0) return;
@@ -129,6 +154,9 @@ export default function OrgExport() {
       pdfArgs.highlights,
       pdfArgs.sdgs,
       pdfArgs.branding,
+      "save",
+      pdfArgs.sroi,
+      pdfArgs.locale,
     );
   }
 
@@ -163,6 +191,8 @@ export default function OrgExport() {
           highlights: pdfArgs.highlights,
           sdgs: pdfArgs.sdgs,
           branding: pdfArgs.branding,
+          sroi: pdfArgs.sroi,
+          locale: pdfArgs.locale,
         });
         if (mySeq !== previewSeq.current) return;
         if (!(blob instanceof Blob)) {

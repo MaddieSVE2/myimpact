@@ -86,13 +86,21 @@ export function escapeCsv(v: string | number): string {
   return s;
 }
 
-export function downloadCsv(rows: Array<Record<string, string | number>>, filename: string) {
+export function downloadCsv(
+  rows: Array<Record<string, string | number>>,
+  filename: string,
+  // Optional comment lines (e.g. SROI assumptions) prepended above the header
+  // row. Each entry is emitted as `# <text>` so spreadsheet apps still parse
+  // the data, while funders reading the raw file see the assumption used.
+  assumptions: string[] = [],
+) {
   if (rows.length === 0) return;
   const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.join(","),
-    ...rows.map(r => headers.map(h => escapeCsv(r[h] ?? "")).join(",")),
-  ].join("\n");
+  const lines: string[] = [];
+  for (const a of assumptions) lines.push(`# ${a.replace(/\r?\n/g, " ")}`);
+  lines.push(headers.join(","));
+  for (const r of rows) lines.push(headers.map(h => escapeCsv(r[h] ?? "")).join(","));
+  const csv = lines.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -192,11 +200,13 @@ export async function buildOrgPdf(
   // of triggering a download. Defaults to `"save"` to preserve the existing
   // behaviour for the Download PDF button.
   output: "save" | "blob" = "save",
+  sroi?: RenderOrgPdfArgs["sroi"],
+  locale?: RenderOrgPdfArgs["locale"],
 ): Promise<Blob | void> {
   const preloadedLogo = branding?.logoUrl ? await loadLogoAsDataUrl(branding.logoUrl) : null;
   const doc = renderOrgPdf({
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
-    branding: branding ?? null, preloadedLogo,
+    branding: branding ?? null, preloadedLogo, sroi: sroi ?? null, locale,
   });
   if (output === "blob") {
     return doc.output("blob");

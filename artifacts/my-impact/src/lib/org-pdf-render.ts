@@ -4,6 +4,8 @@ import {
   SDG_BY_CATEGORY,
   type DemoActivity, type SdgBreakdownPoint, computeMonthlyTrend,
 } from "@/lib/org-demo-mock";
+import { makeT } from "@/i18n/t";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 
 export interface OrgBranding {
   logoUrl: string | null;
@@ -29,6 +31,17 @@ export interface RenderOrgPdfArgs {
   sdgs: SdgBreakdownPoint[];
   branding?: OrgBranding | null;
   preloadedLogo?: PreloadedLogo | null;
+  // SROI assumptions used to keep the PDF in sync with the on-screen
+  // explainer. `costPerVolunteer` is the org-configured per-volunteer cost
+  // (falling back to the platform default upstream); `totalMembers` is used
+  // to compute total investment.
+  sroi?: {
+    costPerVolunteer: number;
+    totalMembers: number;
+  } | null;
+  // Active app locale; defaults to English. Used to keep the SROI section
+  // copy aligned with the dashboard explainer in EN/CY.
+  locale?: Locale;
 }
 
 type RGB = [number, number, number];
@@ -55,8 +68,9 @@ function mixRgb(a: RGB, b: RGB, t: number): RGB {
 export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
   const {
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
-    branding, preloadedLogo,
+    branding, preloadedLogo, sroi, locale,
   } = args;
+  const t = makeT(locale ?? DEFAULT_LOCALE);
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -321,6 +335,71 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     });
   }
   y += 12;
+
+  // ===== SROI ASSUMPTIONS ===================================================
+  // Mirrors the dashboard SROI explainer so the on-screen and exported
+  // numbers tell the same story to funders.
+  if (sroi && sroi.totalMembers > 0) {
+    y = ensureSpace(y, 130);
+    y = drawSectionHeading(y, t("orgDashboard.sroiTitle"));
+    const totalInvestment = sroi.totalMembers * sroi.costPerVolunteer;
+    const ratio = totalInvestment > 0 ? totals.value / totalInvestment : 0;
+
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+    const body = t("orgDashboard.sroiBody", {
+      costPerVolunteer: `£${sroi.costPerVolunteer.toLocaleString("en-GB")}`,
+      members: sroi.totalMembers.toLocaleString("en-GB"),
+      totalInvestment: `£${totalInvestment.toLocaleString("en-GB")}`,
+      socialValue: `£${totals.value.toLocaleString("en-GB")}`,
+      ratio: `£${ratio.toFixed(2)}`,
+    });
+    const bodyLines = doc.splitTextToSize(body, contentW) as string[];
+    doc.text(bodyLines, margin, y);
+    y += bodyLines.length * 11 + 10;
+
+    const sroiCardGap = 12;
+    const sroiCardW = (contentW - sroiCardGap * 3) / 4;
+    const sroiCardH = 64;
+    y = ensureSpace(y, sroiCardH + 8);
+    const sroiCards = [
+      {
+        label: t("orgDashboard.sroiOrgInvestmentLabel").toUpperCase(),
+        value: `£${sroi.costPerVolunteer.toLocaleString("en-GB")}`,
+        sub: t("orgDashboard.sroiOrgInvestmentSub"),
+      },
+      {
+        label: t("orgDashboard.sroiTotalInvestmentLabel").toUpperCase(),
+        value: `£${totalInvestment.toLocaleString("en-GB")}`,
+        sub: t("orgDashboard.sroiTotalInvestmentSub"),
+      },
+      {
+        label: t("orgDashboard.sroiSocialValueLabel").toUpperCase(),
+        value: `£${totals.value.toLocaleString("en-GB")}`,
+        sub: t("orgDashboard.sroiSocialValueSub"),
+      },
+      {
+        label: t("orgDashboard.sroiRatioLabel").toUpperCase(),
+        value: `£${ratio.toFixed(2)}`,
+        sub: t("orgDashboard.sroiRatioSub"),
+        emphasised: true,
+      },
+    ];
+    sroiCards.forEach((c, i) => {
+      const x = margin + i * (sroiCardW + sroiCardGap);
+      setFill(c.emphasised ? brand : SURFACE);
+      doc.roundedRect(x, y, sroiCardW, sroiCardH, 6, 6, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+      setText(c.emphasised ? WHITE : MUTED);
+      doc.text(c.label, x + 12, y + 16);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+      setText(c.emphasised ? WHITE : INK);
+      doc.text(c.value, x + 12, y + 38);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      setText(c.emphasised ? WHITE : MUTED);
+      doc.text(c.sub, x + 12, y + 54);
+    });
+    y += sroiCardH + 18;
+  }
 
   // ===== ACTIVITY TABLE =====================================================
   y = ensureSpace(y, 110);
