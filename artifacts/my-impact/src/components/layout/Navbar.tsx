@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
-  Sparkles, History, Lightbulb, PlusCircle, BookOpen, Award,
+  Sparkles, History, Lightbulb, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
   MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
   Users as UsersIcon, Flag, ClipboardList, Download,
@@ -255,11 +255,6 @@ export function Navbar() {
     : [
         { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
         { href: "/history", label: t("navbar.history"), icon: History },
-        ...(isOrgManager
-          ? []
-          : [
-              { href: "/log", label: "Quick Log", icon: PlusCircle },
-            ]),
         ...(gamificationEnabled
           ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
           : []),
