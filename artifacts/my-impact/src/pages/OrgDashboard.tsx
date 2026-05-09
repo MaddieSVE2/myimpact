@@ -18,9 +18,7 @@ import {
   getRemovedMemberIds, getOrgInviteCode, SDG_BY_CATEGORY,
   type SdgBreakdownPoint, type ActivityCategory,
 } from "@/lib/org-demo-mock";
-import { useMyOrg, hexToHslVar } from "@/lib/org-export";
-
-const SROI_COST_PER_VOLUNTEER = 475;
+import { useMyOrg, hexToHslVar, DEFAULT_SROI_COST_PER_VOLUNTEER } from "@/lib/org-export";
 
 function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: number; sub?: string; highlight?: boolean;
@@ -67,7 +65,8 @@ export default function OrgDashboard() {
   const trend = useMemo(() => computeMonthlyTrend(allActivities), [allActivities]);
   const sdgBreakdowns = useMemo(() => computeSdgBreakdown(allActivities), [allActivities]);
   const categoryBreakdown = useMemo(() => computeCategoryBreakdown(allActivities), [allActivities]);
-  const totalInvestment = aggregates.totalMembers * SROI_COST_PER_VOLUNTEER;
+  const sroiCostPerVolunteer = orgData?.org?.sroiCostPerVolunteer ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
+  const totalInvestment = aggregates.totalMembers * sroiCostPerVolunteer;
   const sroiRatio = totalInvestment > 0 ? aggregates.totalSocialValue / totalInvestment : 0;
   const timelineData = useMemo<MonthlyDataPoint[]>(
     () => trend.map(p => ({ month: p.label.split(" ")[0], value: p.value })),
@@ -212,7 +211,7 @@ export default function OrgDashboard() {
         <div className="grid md:grid-cols-2 gap-4 items-center">
           <p className="text-xs text-muted-foreground leading-relaxed">
             {t("orgDashboard.sroiBody", {
-              costPerVolunteer: `£${SROI_COST_PER_VOLUNTEER}`,
+              costPerVolunteer: `£${sroiCostPerVolunteer.toLocaleString("en-GB")}`,
               members: aggregates.totalMembers,
               totalInvestment: `£${totalInvestment.toLocaleString("en-GB")}`,
               socialValue: `£${aggregates.totalSocialValue.toLocaleString("en-GB")}`,
@@ -222,7 +221,7 @@ export default function OrgDashboard() {
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiOrgInvestmentLabel")}</p>
-              <p className="text-xl font-display font-bold text-foreground">£{SROI_COST_PER_VOLUNTEER}</p>
+              <p className="text-xl font-display font-bold text-foreground" data-testid="text-sroi-cost-per-volunteer">£{sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
               <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiOrgInvestmentSub")}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">

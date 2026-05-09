@@ -252,6 +252,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       type: org.type,
       role: membership.role,
       aiSidekickEnabled: org.aiSidekickEnabled,
+      sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
       branding: {
         logoUrl,
         logoKey: org.logoKey ?? null,
@@ -405,10 +406,25 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     return;
   }
 
-  const { aiSidekickEnabled } = req.body ?? {};
-  const updates: { aiSidekickEnabled?: boolean } = {};
+  const { aiSidekickEnabled, sroiCostPerVolunteer } = req.body ?? {};
+  const updates: { aiSidekickEnabled?: boolean; sroiCostPerVolunteer?: number | null } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
+  }
+  if ("sroiCostPerVolunteer" in (req.body ?? {})) {
+    if (sroiCostPerVolunteer === null) {
+      updates.sroiCostPerVolunteer = null;
+    } else if (
+      typeof sroiCostPerVolunteer === "number" &&
+      Number.isInteger(sroiCostPerVolunteer) &&
+      sroiCostPerVolunteer >= 0 &&
+      sroiCostPerVolunteer <= 1_000_000
+    ) {
+      updates.sroiCostPerVolunteer = sroiCostPerVolunteer;
+    } else {
+      res.status(400).json({ error: "sroiCostPerVolunteer must be a whole number between 0 and 1,000,000, or null to reset." });
+      return;
+    }
   }
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid settings provided." });
@@ -433,6 +449,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       type: updated.type,
       role: membership.role,
       aiSidekickEnabled: updated.aiSidekickEnabled,
+      sroiCostPerVolunteer: updated.sroiCostPerVolunteer ?? null,
     },
   });
 });

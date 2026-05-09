@@ -21,7 +21,9 @@ interface OrgBranding {
   brandPrimary: string | null;
   brandAccent: string | null;
 }
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; branding?: OrgBranding } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; sroiCostPerVolunteer: number | null; branding?: OrgBranding } | null }
+
+const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
 function useMyOrg() {
   return useQuery<MyOrgResponse>({
@@ -403,10 +405,11 @@ function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
   );
 }
 
-function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string; branding?: OrgBranding }; isDemoOrg: boolean }) {
+function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string; sroiCostPerVolunteer: number | null; branding?: OrgBranding }; isDemoOrg: boolean }) {
   return (
     <div className="space-y-4">
       <BrandingSection branding={org.branding ?? null} />
+      <SroiAssumptionsSection initialCost={org.sroiCostPerVolunteer} />
 
       <div className="bg-white border border-border rounded-xl p-5 space-y-3 text-sm">
       <h3 className="text-sm font-semibold mb-2">Organisation profile</h3>
@@ -680,6 +683,125 @@ function BrandingPreview({ logoUrl, primary, accent }: { logoUrl: string | null;
   );
 }
 
+function SroiAssumptionsSection({ initialCost }: { initialCost: number | null }) {
+  const qc = useQueryClient();
+  const [value, setValue] = useState<string>(initialCost == null ? "" : String(initialCost));
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValue(initialCost == null ? "" : String(initialCost));
+  }, [initialCost]);
+
+  const usingDefault = initialCost == null;
+  const effectiveCost = initialCost ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
+
+  const mutation = useMutation<{ org: { sroiCostPerVolunteer: number | null } }, Error, number | null>({
+    mutationFn: async (next) => {
+      const res = await fetch(`${BASE}/api/org/my/settings`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sroiCostPerVolunteer: next }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to save");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSavedAt(Date.now());
+      setError(null);
+      setValue(data.org.sroiCostPerVolunteer == null ? "" : String(data.org.sroiCostPerVolunteer));
+      qc.invalidateQueries({ queryKey: ["my-org"] });
+      qc.invalidateQueries({ queryKey: ["org-dashboard"] });
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  function save() {
+    setError(null);
+    const trimmed = value.trim();
+    if (trimmed === "") {
+      mutation.mutate(null);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isInteger(n) || n < 0 || n > 1_000_000) {
+      setError("Enter a whole number between 0 and 1,000,000, or leave blank to use the default.");
+      return;
+    }
+    mutation.mutate(n);
+  }
+
+  function reset() {
+    setError(null);
+    mutation.mutate(null);
+  }
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 space-y-3" data-testid="section-sroi-assumptions">
+      <div>
+        <h3 className="text-sm font-semibold mb-1">SROI assumptions</h3>
+        <p className="text-xs text-muted-foreground max-w-prose">
+          Used in the dashboard SROI explainer. Set the average cost (recruitment, onboarding, support and admin) your organisation invests <strong>per volunteer</strong> per reporting period. Leave blank to use the My Impact default of £{DEFAULT_SROI_COST_PER_VOLUNTEER}.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs font-semibold text-foreground" htmlFor="sroi-cost-per-volunteer">
+          Cost per volunteer
+        </label>
+        <div className="inline-flex items-center rounded-md border border-border focus-within:border-primary overflow-hidden">
+          <span className="px-2 py-1.5 text-xs text-muted-foreground bg-muted/40">£</span>
+          <input
+            id="sroi-cost-per-volunteer"
+            type="number"
+            min={0}
+            max={1_000_000}
+            step={1}
+            inputMode="numeric"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={String(DEFAULT_SROI_COST_PER_VOLUNTEER)}
+            className="w-28 px-2 py-1.5 text-xs focus:outline-none"
+            data-testid="input-sroi-cost-per-volunteer"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={mutation.isPending}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          data-testid="button-save-sroi-cost"
+        >
+          {mutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
+        </button>
+        {!usingDefault && (
+          <button
+            type="button"
+            onClick={reset}
+            disabled={mutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 disabled:opacity-60 transition-colors"
+            data-testid="button-reset-sroi-cost"
+          >
+            <RefreshCw className="w-3 h-3" /> Use default
+          </button>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Currently using <strong>£{effectiveCost.toLocaleString("en-GB")}</strong> per volunteer{usingDefault ? " (default)" : ""}.
+      </p>
+      {error && <p className="text-[11px] text-red-600">{error}</p>}
+      {!error && !mutation.isPending && savedAt && (
+        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+          <Check className="w-3 h-3 text-green-600" /> Saved
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ColourField({ label, value, onChange, testId }: { label: string; value: string; onChange: (v: string) => void; testId: string }) {
   function setHex(v: string) {
     const h = v.startsWith("#") ? v : `#${v}`;
@@ -776,7 +898,7 @@ export default function OrgSettings() {
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
         {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}
         {active === "share"     && <ShareLinkManager isDemoOrg={isDemoOrg} />}
-        {active === "profile"   && <ProfileTab org={orgData.org} isDemoOrg={isDemoOrg} />}
+        {active === "profile"   && <ProfileTab org={{ ...orgData.org, sroiCostPerVolunteer: orgData.org.sroiCostPerVolunteer ?? null }} isDemoOrg={isDemoOrg} />}
       </motion.div>
     </div>
   );

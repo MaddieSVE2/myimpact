@@ -15,8 +15,12 @@ export type { OrgBranding, PreloadedLogo, RenderOrgPdfArgs } from "@/lib/org-pdf
 export const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface MyOrgResponse {
-  org: { id: string; name: string; type: string; role: string; branding?: OrgBranding } | null;
+  org: { id: string; name: string; type: string; role: string; aiSidekickEnabled?: boolean; sroiCostPerVolunteer?: number | null; branding?: OrgBranding } | null;
 }
+
+// Default SROI cost-per-volunteer used in the dashboard explainer when an
+// organisation hasn't set its own per-volunteer cost in /org/settings.
+export const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
 export function useMyOrg() {
   return useQuery<MyOrgResponse>({

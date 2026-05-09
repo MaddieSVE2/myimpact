@@ -17,6 +17,10 @@ export const organisationsTable = pgTable("organisations", {
   logoKey: text("logo_key"),
   brandPrimary: text("brand_primary"),
   brandAccent: text("brand_accent"),
+  // Per-org SROI cost-per-volunteer (whole pounds) used in the dashboard SROI
+  // explainer. NULL means "use the application default" (£475). Managed from
+  // /org/settings → Org profile → SROI assumptions.
+  sroiCostPerVolunteer: integer("sroi_cost_per_volunteer"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
