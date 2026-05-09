@@ -10,6 +10,7 @@ import CalendarHomeWidget from "@/components/CalendarHomeWidget";
 import { useAuth } from "@/lib/auth-context";
 import { QuickLog } from "@/components/QuickLog";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
+import { ManagerHome } from "@/components/ManagerHome";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 import { useListRecurringTemplates } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
@@ -330,6 +331,7 @@ export default function Intro() {
 
   const orgRole = myOrgQuery.data?.org?.role;
   const isOrgMember = !!myOrgQuery.data?.org && orgRole !== "manager";
+  const isOrgManager = !!myOrgQuery.data?.org && orgRole === "manager";
 
   const orgPromptsQuery = useQuery<PromptsResponseLite>({
     queryKey: ["org-prompts"],
@@ -433,7 +435,7 @@ export default function Intro() {
       {isLoggedIn ? <CalendarHomeWidget /> : null}
 
       {/* ── ANNUAL RECAP DISCOVERY ── */}
-      {showRecapBanner && (
+      {showRecapBanner && !isOrgManager && (
         <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
           <div style={{ maxWidth: 980, margin: "0 auto" }}>
             <RecapBanner variant="hero" />
@@ -448,6 +450,12 @@ export default function Intro() {
           flash the marketing hero to a logged-in user. */}
       {heroResolving ? (
         <section className="mi-hero" aria-hidden="true" />
+      ) : isLoggedIn && isOrgManager && myOrgQuery.data?.org ? (
+        <ManagerHome
+          orgId={myOrgQuery.data.org.id}
+          orgName={myOrgQuery.data.org.name}
+          firstName={firstName}
+        />
       ) : isLoggedIn ? (
         <section className="mi-hero" data-testid="welcome-home">
           <div style={{
@@ -794,8 +802,9 @@ export default function Intro() {
         </div>
       )}
 
-      {/* ── QUICK LOG (logged-in users with active recurring templates only) ── */}
-      {hasQuickLogContent && (
+      {/* ── QUICK LOG (logged-in users with active recurring templates only,
+          hidden for org managers since their home is org-focused) ── */}
+      {hasQuickLogContent && !isOrgManager && (
         <section id="quick-log-section" style={{ background: "white", padding: "32px 5% 0", scrollMarginTop: 80 }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <QuickLog showManageLink />
