@@ -423,11 +423,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
   const CHART_MAX_PX = 72;
   return (
     <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${surveyId}`}>
-      {data.totals.responses === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-3">No responses yet. Share the home page link with your members.</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-lg border border-border p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <TrendingUp className="w-3 h-3 text-primary" />
@@ -450,38 +446,44 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
 
           <div>
             <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Score distribution</p>
-            <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
-              {data.distribution.map(d => (
-                <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
-                  <span className="text-[10px] text-muted-foreground font-medium">{d.count}</span>
-                  <div
-                    className={`w-full rounded-t-sm ${d.rating <= 2 ? 'bg-red-400 dark:bg-red-500' : d.rating === 3 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
-                    style={{ height: `${(d.count / max) * CHART_MAX_PX}px`, minHeight: d.count > 0 ? '4px' : '0px' }}
-                  />
+            {data.totals.responses === 0 ? (
+              <p className="text-sm italic text-muted-foreground">No responses yet</p>
+            ) : (
+              <>
+                <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
+                  {data.distribution.map(d => (
+                    <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                      <span className="text-[10px] text-muted-foreground font-medium">{d.count}</span>
+                      <div
+                        className={`w-full rounded-t-sm ${d.rating <= 2 ? 'bg-red-400 dark:bg-red-500' : d.rating === 3 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
+                        style={{ height: `${(d.count / max) * CHART_MAX_PX}px`, minHeight: d.count > 0 ? '4px' : '0px' }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="flex items-start gap-2 mt-1">
-              {data.distribution.map(d => (
-                <div key={d.rating} className="flex-1 flex justify-center">
-                  <span className="text-[10px] text-muted-foreground">{d.rating}</span>
+                <div className="flex items-start gap-2 mt-1">
+                  {data.distribution.map(d => (
+                    <div key={d.rating} className="flex-1 flex justify-center">
+                      <span className="text-[10px] text-muted-foreground">{d.rating}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
-                <span className="text-[10px] text-muted-foreground">1–2 Low</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
-                <span className="text-[10px] text-muted-foreground">3 Mid</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                <span className="text-[10px] text-muted-foreground">4–5 High</span>
-              </span>
-            </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
+                    <span className="text-[10px] text-muted-foreground">1–2 Low</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
+                    <span className="text-[10px] text-muted-foreground">3 Mid</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                    <span className="text-[10px] text-muted-foreground">4–5 High</span>
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {data.trend.length > 1 && (
@@ -547,8 +549,6 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
               </ul>
             )}
           </div>
-        </>
-      )}
     </div>
   );
 }
