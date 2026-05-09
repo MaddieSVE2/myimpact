@@ -732,9 +732,52 @@ function ResultsPanel({
   );
 }
 
+const DEMO_TEMPLATE_OPTIONS: Array<{ key: Template; label: string; question: string }> = [
+  { key: "meaningfulness", label: "Meaningfulness", question: "How meaningful does your volunteering feel right now?" },
+  { key: "wellbeing",      label: "Wellbeing",       question: "How would you rate your overall wellbeing this month?" },
+  { key: "custom",         label: "Custom question", question: "" },
+];
+
 function DemoPulseSurveysSection() {
   const [openId, setOpenId] = useState<string | null>(null);
-  const surveys = DEMO_PULSE_SURVEYS;
+  const [surveys, setSurveys] = useState<DemoPulseSurvey[]>(DEMO_PULSE_SURVEYS);
+  const [creating, setCreating] = useState(false);
+  const [template, setTemplate] = useState<Template>("meaningfulness");
+  const [question, setQuestion] = useState(DEMO_TEMPLATE_OPTIONS[0].question);
+  const [schedule, setSchedule] = useState<Schedule>("monthly");
+  const [anonymous, setAnonymous] = useState(true);
+  const [successId, setSuccessId] = useState<string | null>(null);
+
+  function handleTemplateChange(next: Template) {
+    setTemplate(next);
+    const opt = DEMO_TEMPLATE_OPTIONS.find(o => o.key === next);
+    setQuestion(opt?.question ?? "");
+  }
+
+  function handleCreate() {
+    const newSurvey: DemoPulseSurvey = {
+      id: `demo-survey-${Date.now()}`,
+      template,
+      question: question.trim() || (DEMO_TEMPLATE_OPTIONS.find(o => o.key === template)?.question ?? question.trim()),
+      schedule,
+      anonymous,
+      createdAt: new Date().toISOString(),
+      archivedAt: null,
+      totals: { responses: 0, average: 0 },
+      distribution: [1, 2, 3, 4, 5].map(rating => ({ rating, count: 0 })),
+      trend: [],
+      comments: [],
+    };
+    setSurveys(prev => [newSurvey, ...prev]);
+    setSuccessId(newSurvey.id);
+    setCreating(false);
+    setTemplate("meaningfulness");
+    setQuestion(DEMO_TEMPLATE_OPTIONS[0].question);
+    setSchedule("monthly");
+    setAnonymous(true);
+    setTimeout(() => setSuccessId(null), 3000);
+  }
+
   return (
     <motion.div
       className="bg-white border border-border rounded-xl p-5 mb-6"
@@ -753,20 +796,108 @@ function DemoPulseSurveysSection() {
             30-second prompts that help you measure how your members are feeling and how meaningful their work is. Anonymous by default.
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          title="Demo data, actions disabled"
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/40 text-white text-xs font-semibold cursor-not-allowed"
-          data-testid="button-new-pulse-survey"
-        >
-          <Plus className="w-3.5 h-3.5" /> New survey
-        </button>
+        {!creating && (
+          <button
+            type="button"
+            onClick={() => { setCreating(true); handleTemplateChange("meaningfulness"); }}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            data-testid="button-new-pulse-survey"
+          >
+            <Plus className="w-3.5 h-3.5" /> New survey
+          </button>
+        )}
       </div>
 
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-pulse">
-        Demo data, actions disabled
-      </p>
+      {successId && (
+        <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-survey-success">
+          Survey launched successfully.
+        </p>
+      )}
+
+      {creating && (
+        <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Template</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {DEMO_TEMPLATE_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => handleTemplateChange(opt.key)}
+                  className={`text-left px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                    template === opt.key
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border bg-white text-foreground hover:bg-muted/30"
+                  }`}
+                  data-testid={`pulse-template-${opt.key}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">
+              Question {template !== "custom" && <span className="text-muted-foreground font-normal">(edit if you like)</span>}
+            </label>
+            <input
+              type="text"
+              value={question}
+              onChange={e => setQuestion(e.target.value.slice(0, 200))}
+              placeholder={template === "custom" ? "e.g. How connected do you feel to your community?" : ""}
+              maxLength={200}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              data-testid="input-pulse-question"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">How often</label>
+              <select
+                value={schedule}
+                onChange={e => setSchedule(e.target.value as Schedule)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary"
+                data-testid="select-pulse-schedule"
+              >
+                <option value="one_off">One-off (each member responds once)</option>
+                <option value="monthly">Monthly (one response per month)</option>
+                <option value="quarterly">Quarterly (one response per quarter)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 sm:pt-6">
+              <input
+                id="demo-pulse-anon"
+                type="checkbox"
+                checked={anonymous}
+                onChange={e => setAnonymous(e.target.checked)}
+                className="rounded border-border w-4 h-4 text-primary focus:ring-primary"
+                data-testid="checkbox-pulse-anonymous"
+              />
+              <label htmlFor="demo-pulse-anon" className="text-xs text-foreground inline-flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Anonymous responses
+              </label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={template === "custom" && !question.trim()}
+              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              data-testid="button-create-pulse-survey"
+            >
+              Launch survey
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 space-y-2">
         {surveys.map(s => (
@@ -775,6 +906,7 @@ function DemoPulseSurveysSection() {
             survey={s}
             open={openId === s.id}
             onToggle={() => setOpenId(openId === s.id ? null : s.id)}
+            highlight={s.id === successId}
           />
         ))}
       </div>
@@ -782,10 +914,10 @@ function DemoPulseSurveysSection() {
   );
 }
 
-function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void }) {
+function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void; highlight?: boolean }) {
   const sentimentBadge = getSentimentBadge(survey.distribution, survey.totals.responses);
   return (
-    <div className="rounded-lg border border-border bg-white" data-testid={`survey-row-${survey.id}`}>
+    <div className={`rounded-lg border bg-white ${highlight ? "border-emerald-300 bg-emerald-50/40" : "border-border"}`} data-testid={`survey-row-${survey.id}`}>
       <div className="flex items-start justify-between gap-3 p-3">
         <button
           type="button"
@@ -821,7 +953,6 @@ function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; op
           <button
             type="button"
             disabled
-            title="Demo data, actions disabled"
             className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
             data-testid={`button-archive-survey-${survey.id}`}
           >

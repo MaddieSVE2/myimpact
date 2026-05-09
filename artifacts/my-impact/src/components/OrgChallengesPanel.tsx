@@ -278,7 +278,49 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
 
 function DemoOrgChallengesPanel() {
   const t = useT();
-  const challenges = DEMO_CHALLENGES;
+  const [challenges, setChallenges] = useState(DEMO_CHALLENGES as ApiChallenge[]);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [goalType, setGoalType] = useState<"social_value" | "hours">("social_value");
+  const [target, setTarget] = useState<string>("1000");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [successId, setSuccessId] = useState<string | null>(null);
+
+  function handleCreate() {
+    const newChallenge: ApiChallenge = {
+      id: `demo-new-${Date.now()}`,
+      name: name.trim(),
+      description: description.trim() || null,
+      goalType,
+      target: Number(target),
+      startDate: new Date(startDate).toISOString(),
+      endDate: new Date(endDate).toISOString(),
+      ownerId: null,
+      orgId: DEMO_ORG_ID,
+      scope: "org",
+      inviteCode: "",
+      hasEnded: false,
+      hasStarted: true,
+      participantCount: 0,
+      isOwner: true,
+      progressTotal: 0,
+      progressPercent: 0,
+      isActive: true,
+    };
+    setChallenges(prev => [newChallenge, ...prev]);
+    setSuccessId(newChallenge.id);
+    setCreating(false);
+    setName("");
+    setDescription("");
+    setTarget("1000");
+    setTimeout(() => setSuccessId(null), 3000);
+  }
+
   return (
     <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
       <div className="flex items-start justify-between gap-3 mb-1">
@@ -289,28 +331,106 @@ function DemoOrgChallengesPanel() {
           </div>
           <p className="text-xs text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
         </div>
-        <button
-          type="button"
-          disabled
-          title="Demo data, actions disabled"
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/40 text-white text-xs font-semibold cursor-not-allowed"
-          data-testid="button-new-org-challenge"
-        >
-          <Plus className="w-3.5 h-3.5" /> {t("orgDashboard.challengesNew")}
-        </button>
+        {!creating && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            data-testid="button-new-org-challenge"
+          >
+            <Plus className="w-3.5 h-3.5" /> {t("orgDashboard.challengesNew")}
+          </button>
+        )}
       </div>
 
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-challenges">
-        Demo data, actions disabled
-      </p>
+      {successId && (
+        <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-challenge-success">
+          Challenge created successfully.
+        </p>
+      )}
 
-      <div className="mt-3 space-y-2" data-testid="list-org-challenges">
+      {creating && (
+        <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
+            <input
+              type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              data-testid="input-challenge-name"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
+            <textarea
+              value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              data-testid="input-challenge-description"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
+              <select
+                value={goalType} onChange={e => setGoalType(e.target.value as "social_value" | "hours")}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary"
+                data-testid="select-challenge-goal-type"
+              >
+                <option value="social_value">{t("orgDashboard.challengesGoalSocialValue")}</option>
+                <option value="hours">{t("orgDashboard.challengesGoalHours")}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
+              <input
+                type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-target"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
+              <input
+                type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-start"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
+              <input
+                type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                data-testid="input-challenge-end"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button" onClick={() => setCreating(false)}
+              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={!name.trim() || Number(target) <= 0}
+              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              data-testid="button-create-challenge"
+            >
+              {t("orgDashboard.challengesCreate")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2" data-testid="list-org-challenges">
         {challenges.map(c => {
           const pct = Math.min(100, Math.max(0, Math.round(c.progressPercent)));
           const targetLabel = c.goalType === "social_value" ? `£${c.target.toLocaleString("en-GB")}` : `${c.target} ${t("orgDashboard.challengesHoursUnit")}`;
           const progressLabel = c.goalType === "social_value" ? `£${Math.round(c.progressTotal).toLocaleString("en-GB")}` : `${Math.round(c.progressTotal)} ${t("orgDashboard.challengesHoursUnit")}`;
           return (
-            <div key={c.id} className="rounded-lg border border-border p-3" data-testid={`org-challenge-${c.id}`}>
+            <div key={c.id} className={`rounded-lg border p-3 ${c.id === successId ? "border-emerald-300 bg-emerald-50/40" : "border-border"}`} data-testid={`org-challenge-${c.id}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -327,7 +447,6 @@ function DemoOrgChallengesPanel() {
                     <button
                       type="button"
                       disabled
-                      title="Demo data, actions disabled"
                       className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
                       data-testid={`button-end-challenge-${c.id}`}
                     >
