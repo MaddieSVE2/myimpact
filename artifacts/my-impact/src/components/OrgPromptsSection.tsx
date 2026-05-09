@@ -229,7 +229,7 @@ function ChallengePromptFull({ c, onSnooze }: {
 
   return (
     <div
-      className="bg-background border border-border rounded-2xl shadow-sm p-5"
+      className="bg-white border border-border rounded-2xl shadow-sm p-5"
       data-testid="org-prompt-challenge"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -474,7 +474,7 @@ export function OrgPromptsSection({ variant = "full" }: OrgPromptsSectionProps) 
   return (
     <section
       data-testid="org-prompts-full"
-      style={{ background: "white", padding: "16px 5% 0" }}
+      style={{ padding: "16px 5% 0" }}
       className="mb-[100px] pb-[16px] bg-[#f6f4ee]">
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="flex items-center gap-2 mb-3">
