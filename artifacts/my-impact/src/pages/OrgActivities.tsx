@@ -117,138 +117,138 @@ export default function OrgActivities() {
 
   return (
     <>
-    <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-activities-root">
-      <div className="flex items-start justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl font-display font-semibold text-foreground">Activity feed</h1>
-        </div>
-        <OrgPeriodNavigator
-          periodOffset={periodOffset}
-          setPeriodOffset={setPeriodOffset}
-          label={periodBounds.label}
-          isCurrentPeriod={isCurrentPeriod}
-        />
-      </div>
-      <p className="text-sm text-muted-foreground mb-5">
-        The detailed log of every member action, with names visible by default. Use Anonymise to remove identifying information before sharing.
-      </p>
-
-
-      <div className="bg-white border border-border rounded-xl p-5 mb-6">
-        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-activities-root">
+        <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Filters</h3>
-            <span className="text-xs text-muted-foreground">({filtered.length} {filtered.length === 1 ? "result" : "results"})</span>
+            <Users className="w-5 h-5 text-primary" />
+            <h1 className="text-2xl font-display font-semibold text-foreground">Activity feed</h1>
           </div>
-          <label className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={anonymise}
-              onChange={e => setAnonymise(e.target.checked)}
-              className="rounded border-border"
-              data-testid="checkbox-anonymise"
-            />
-            <EyeOff className="w-3 h-3" /> Anonymise members
-          </label>
+          <OrgPeriodNavigator
+            periodOffset={periodOffset}
+            setPeriodOffset={setPeriodOffset}
+            label={periodBounds.label}
+            isCurrentPeriod={isCurrentPeriod}
+          />
         </div>
+        <p className="text-sm text-muted-foreground mb-5">
+          The detailed log of every member action, with names visible by default. Use Anonymise to remove identifying information before sharing.
+        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
-          <div className="lg:col-span-2 relative">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="search"
-              value={query}
-              onChange={e => { setQuery(e.target.value); setPage(1); }}
-              placeholder="Search description, activity, member…"
-              className="w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-xs focus:outline-none focus:border-primary"
-              data-testid="input-search"
-            />
-          </div>
-          <select value={category} onChange={e => { setCategory(parseCategory(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-category">
-            <option value="all">All categories</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-member">
-            <option value="all">All members</option>
-            {DEMO_MEMBERS.filter(m => !removedIds.has(m.id)).map(m => (
-              <option key={m.id} value={m.id}>{anonymise ? memberLabel(m.id, true).name : m.name}</option>
-            ))}
-          </select>
-          <div className="flex gap-1">
-            <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="From" />
-            <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="To" />
-          </div>
-        </div>
 
-        {filtered.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8">No activities match these filters.</p>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Date</th>
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Member</th>
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Category</th>
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Activity</th>
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Hours</th>
-                    <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map(a => {
-                    const m = memberLabel(a.memberId, anonymise);
-                    return (
-                      <tr key={a.id} className="border-b border-border/60 align-top hover:bg-muted/20" data-testid={`row-activity-${a.id}`}>
-                        <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                        <td className="py-2 pr-3">
-                          <p className="font-medium text-foreground">{m.name}</p>
-                          {!anonymise && m.email && <p className="text-[10px] text-muted-foreground">{m.email}</p>}
-                        </td>
-                        <td className="py-2 pr-3"><span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{a.category}</span></td>
-                        <td className="py-2 pr-3 max-w-md">
-                          <p className="font-medium text-foreground">{a.activity}</p>
-                          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
-                        </td>
-                        <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
-                        <td className="py-2 pr-3 text-right whitespace-nowrap">
-                          <span className="font-semibold text-foreground">£{a.socialValueGBP}</span>
-                          {a.verified && <BadgeCheck className="inline-block w-3 h-3 text-green-600 ml-1" aria-label="Verified" />}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <div className="bg-white border border-border rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Filters</h3>
+              <span className="text-xs text-muted-foreground">({filtered.length} {filtered.length === 1 ? "result" : "results"})</span>
             </div>
+            <label className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={anonymise}
+                onChange={e => setAnonymise(e.target.checked)}
+                className="rounded border-border"
+                data-testid="checkbox-anonymise"
+              />
+              <EyeOff className="w-3 h-3" /> Anonymise members
+            </label>
+          </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 text-xs">
-                <p className="text-muted-foreground">Page {safePage} of {totalPages}</p>
-                <div className="flex gap-1">
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border disabled:opacity-40">
-                    <ChevronLeft className="w-3 h-3" /> Prev
-                  </button>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border disabled:opacity-40">
-                    Next <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+            <div className="lg:col-span-2 relative">
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="search"
+                value={query}
+                onChange={e => { setQuery(e.target.value); setPage(1); }}
+                placeholder="Search description, activity, member…"
+                className="w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-xs focus:outline-none focus:border-primary"
+                data-testid="input-search"
+              />
+            </div>
+            <select value={category} onChange={e => { setCategory(parseCategory(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-category">
+              <option value="all">All categories</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-member">
+              <option value="all">All members</option>
+              {DEMO_MEMBERS.filter(m => !removedIds.has(m.id)).map(m => (
+                <option key={m.id} value={m.id}>{anonymise ? memberLabel(m.id, true).name : m.name}</option>
+              ))}
+            </select>
+            <div className="flex gap-1">
+              <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="From" />
+              <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="To" />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">No activities match these filters.</p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Date</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Member</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Category</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Activity</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Hours</th>
+                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Social Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map(a => {
+                      const m = memberLabel(a.memberId, anonymise);
+                      return (
+                        <tr key={a.id} className="border-b border-border/60 align-top hover:bg-muted/20" data-testid={`row-activity-${a.id}`}>
+                          <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                          <td className="py-2 pr-3">
+                            <p className="font-medium text-foreground">{m.name}</p>
+                            {!anonymise && m.email && <p className="text-[10px] text-muted-foreground">{m.email}</p>}
+                          </td>
+                          <td className="py-2 pr-3"><span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{a.category}</span></td>
+                          <td className="py-2 pr-3 max-w-md">
+                            <p className="font-medium text-foreground">{a.activity}</p>
+                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
+                          </td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">
+                            <span className="font-semibold text-foreground">£{a.socialValueGBP}</span>
+                            {a.verified && <BadgeCheck className="inline-block w-3 h-3 text-green-600 ml-1" aria-label="Verified" />}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      <p className="text-xs text-muted-foreground">
-        Need to share this with funders or your board? Head to{" "}
-        <Link href="/org/export" className="text-primary underline">Export</Link>{" "}
-        to download a polished PDF or CSV (with optional anonymisation).
-      </p>
-    </div>
-    <Footer />
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 text-xs">
+                  <p className="text-muted-foreground">Page {safePage} of {totalPages}</p>
+                  <div className="flex gap-1">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border disabled:opacity-40">
+                      <ChevronLeft className="w-3 h-3" /> Prev
+                    </button>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border disabled:opacity-40">
+                      Next <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Need to share this with funders or your board? Head to{" "}
+          <Link href="/org/export" className="text-primary underline">Export</Link>{" "}
+          to download a polished PDF or CSV (with optional anonymisation).
+        </p>
+      </div>
+      <Footer />
     </>
   );
 }
