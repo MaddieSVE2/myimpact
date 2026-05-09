@@ -72,6 +72,7 @@ export default function OrgMemberSubmit() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawn, setWithdrawn] = useState(false);
+  const [detailsAttempted, setDetailsAttempted] = useState(false);
 
   useEffect(() => {
     track(ANALYTICS_EVENTS.ORG_MEMBER_SUBMIT_STARTED);
@@ -141,6 +142,8 @@ export default function OrgMemberSubmit() {
     }
     return { value, hours };
   }, [orderedSelected, activitiesById]);
+
+  const somethingElseMissingTitle = SOMETHING_ELSE_ID in lines && !lines[SOMETHING_ELSE_ID]?.title?.trim();
 
   function toggleSelect(activityId: string) {
     setLines(prev => {
@@ -525,13 +528,14 @@ export default function OrgMemberSubmit() {
                 {/* Description — above hours */}
                 <div className="mb-2">
                   <label className="block text-[11px] font-medium text-foreground mb-1">
-                    What did you do? <span className="text-muted-foreground">(optional)</span>
+                    What did you do?{!isSomethingElse && <span className="text-muted-foreground"> (optional)</span>}
                   </label>
                   <textarea
                     value={isSomethingElse ? line.title : line.detail}
                     onChange={e => {
                       if (isSomethingElse) {
                         updateLine(line.activityId, { title: e.target.value });
+                        if (e.target.value.trim()) setDetailsAttempted(false);
                       } else {
                         updateLine(line.activityId, { detail: e.target.value });
                       }
@@ -539,10 +543,16 @@ export default function OrgMemberSubmit() {
                     maxLength={500}
                     rows={2}
                     placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-y"
+                    className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none resize-y ${isSomethingElse && detailsAttempted && !line.title.trim() ? "border-red-400 focus:border-red-400" : "border-border focus:border-primary"}`}
                     data-testid={`member-submit-detail-${line.activityId}`}
                   />
-                  <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
+                  {isSomethingElse && detailsAttempted && !line.title.trim() ? (
+                    <p className="mt-1 text-[11px] text-red-600 flex items-center gap-1" data-testid="member-submit-something-else-error">
+                      <AlertCircle className="w-3 h-3 shrink-0" /> Please describe what you did
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
+                  )}
                 </div>
 
                 {/* Quantity for non-hourly activities */}
@@ -608,8 +618,14 @@ export default function OrgMemberSubmit() {
             </button>
             <button
               type="button"
-              onClick={() => setStep("review")}
-              disabled={orderedSelected.length === 0 || hoursWarnings.some(w => w.reason === "zero")}
+              onClick={() => {
+                if (somethingElseMissingTitle) {
+                  setDetailsAttempted(true);
+                  return;
+                }
+                setStep("review");
+              }}
+              disabled={orderedSelected.length === 0 || hoursWarnings.some(w => w.reason === "zero") || (detailsAttempted && somethingElseMissingTitle)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               data-testid="member-submit-next-review"
             >

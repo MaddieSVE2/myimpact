@@ -312,6 +312,26 @@ describe("POST /api/org/member-submit", () => {
     expect(res.body.error).toMatch(/donationsGBP/);
     expect(state.inserts).toHaveLength(0);
   });
+
+  it("rejects a 'something_else' activity with no title with 400", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    const app = makeApp();
+
+    const resNoTitle = await request(app).post("/api/org/member-submit").send({
+      activities: [{ activityId: "something_else", hoursPerYear: 2 }],
+    });
+    expect(resNoTitle.status).toBe(400);
+    expect(resNoTitle.body.error).toMatch(/description/i);
+    expect(state.inserts).toHaveLength(0);
+
+    const resEmptyTitle = await request(app).post("/api/org/member-submit").send({
+      activities: [{ activityId: "something_else", hoursPerYear: 2, title: "   " }],
+    });
+    expect(resEmptyTitle.status).toBe(400);
+    expect(resEmptyTitle.body.error).toMatch(/description/i);
+    expect(state.inserts).toHaveLength(0);
+  });
 });
 
 describe("GET /api/org/member-submissions", () => {

@@ -2027,6 +2027,10 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
           return;
         }
         const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
+        if (!title) {
+          res.status(400).json({ error: "A 'Something else' activity must include a description of what you did." });
+          return;
+        }
         const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
         cleaned.push({ activityId: "something_else", quantity: 0, hoursPerYear: safeHours, title, detail, isSomethingElse: true });
         continue;
