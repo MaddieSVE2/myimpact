@@ -253,6 +253,12 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       role: membership.role,
       aiSidekickEnabled: org.aiSidekickEnabled,
       sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
+      sroiCostBreakdown: {
+        recruitment: org.sroiCostRecruitment ?? null,
+        onboarding: org.sroiCostOnboarding ?? null,
+        support: org.sroiCostSupport ?? null,
+        admin: org.sroiCostAdmin ?? null,
+      },
       branding: {
         logoUrl,
         logoKey: org.logoKey ?? null,
@@ -406,21 +412,120 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     return;
   }
 
-  const { aiSidekickEnabled, sroiCostPerVolunteer } = req.body ?? {};
-  const updates: { aiSidekickEnabled?: boolean; sroiCostPerVolunteer?: number | null } = {};
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { aiSidekickEnabled, sroiCostPerVolunteer, sroiCostBreakdown } = body as {
+    aiSidekickEnabled?: unknown;
+    sroiCostPerVolunteer?: unknown;
+    sroiCostBreakdown?: unknown;
+  };
+  const updates: {
+    aiSidekickEnabled?: boolean;
+    sroiCostPerVolunteer?: number | null;
+    sroiCostRecruitment?: number | null;
+    sroiCostOnboarding?: number | null;
+    sroiCostSupport?: number | null;
+    sroiCostAdmin?: number | null;
+  } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
   }
-  if ("sroiCostPerVolunteer" in (req.body ?? {})) {
+
+  // Validate a single sub-amount: must be null or an integer between 0 and 1,000,000.
+  function validateSubAmount(name: string, v: unknown): number | null | "invalid" {
+    if (v === null) return null;
+    if (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 1_000_000) return v;
+    void name;
+    return "invalid";
+  }
+
+  // The breakdown takes precedence over a bare sroiCostPerVolunteer: when
+  // present we store each sub-amount and derive the total. When the
+  // breakdown is provided as `null`, all four sub-columns are cleared.
+  if ("sroiCostBreakdown" in body) {
+    if (sroiCostBreakdown === null) {
+      updates.sroiCostRecruitment = null;
+      updates.sroiCostOnboarding = null;
+      updates.sroiCostSupport = null;
+      updates.sroiCostAdmin = null;
+      // Caller may still pass sroiCostPerVolunteer alongside; otherwise clear
+      // the total so the dashboard falls back to the default.
+      if (!("sroiCostPerVolunteer" in body)) updates.sroiCostPerVolunteer = null;
+    } else if (
+      typeof sroiCostBreakdown === "object" &&
+      !Array.isArray(sroiCostBreakdown)
+    ) {
+      const b = sroiCostBreakdown as Record<string, unknown>;
+      const fields: Array<["recruitment" | "onboarding" | "support" | "admin", "sroiCostRecruitment" | "sroiCostOnboarding" | "sroiCostSupport" | "sroiCostAdmin"]> = [
+        ["recruitment", "sroiCostRecruitment"],
+        ["onboarding", "sroiCostOnboarding"],
+        ["support", "sroiCostSupport"],
+        ["admin", "sroiCostAdmin"],
+      ];
+      const parsed: Record<string, number | null> = {};
+      for (const [bodyKey, colKey] of fields) {
+        if (!(bodyKey in b)) {
+          // Treat omitted sub-amounts as null so saving partial breakdowns is possible.
+          (updates as Record<string, number | null>)[colKey] = null;
+          parsed[bodyKey] = null;
+          continue;
+        }
+        const v = validateSubAmount(bodyKey, b[bodyKey]);
+        if (v === "invalid") {
+          res.status(400).json({ error: `sroiCostBreakdown.${bodyKey} must be a whole number between 0 and 1,000,000, or null.` });
+          return;
+        }
+        (updates as Record<string, number | null>)[colKey] = v;
+        parsed[bodyKey] = v;
+      }
+      // Derive the total from non-null sub-amounts. If everything is null,
+      // also clear sroiCostPerVolunteer so the dashboard falls back to the
+      // application default.
+      const subs = Object.values(parsed).filter((v): v is number => typeof v === "number");
+      if (subs.length === 0) {
+        if (!("sroiCostPerVolunteer" in body)) updates.sroiCostPerVolunteer = null;
+      } else {
+        const total = subs.reduce((acc, n) => acc + n, 0);
+        // Keep the derived total within the same upper bound enforced for the
+        // single-figure path so dashboard formatting and downstream consumers
+        // never see absurd values.
+        if (total > 1_000_000) {
+          res.status(400).json({ error: "Sum of sroiCostBreakdown sub-amounts must not exceed 1,000,000." });
+          return;
+        }
+        updates.sroiCostPerVolunteer = total;
+      }
+    } else {
+      res.status(400).json({ error: "sroiCostBreakdown must be an object or null." });
+      return;
+    }
+  }
+
+  if ("sroiCostPerVolunteer" in body) {
     if (sroiCostPerVolunteer === null) {
       updates.sroiCostPerVolunteer = null;
+      // Clearing the headline figure also clears any stored breakdown so the
+      // two never get out of sync.
+      if (!("sroiCostBreakdown" in body)) {
+        updates.sroiCostRecruitment = null;
+        updates.sroiCostOnboarding = null;
+        updates.sroiCostSupport = null;
+        updates.sroiCostAdmin = null;
+      }
     } else if (
       typeof sroiCostPerVolunteer === "number" &&
       Number.isInteger(sroiCostPerVolunteer) &&
       sroiCostPerVolunteer >= 0 &&
       sroiCostPerVolunteer <= 1_000_000
     ) {
-      updates.sroiCostPerVolunteer = sroiCostPerVolunteer;
+      // Only honour a bare per-volunteer figure when the caller did NOT also
+      // provide a breakdown (the breakdown is the source of truth in that case).
+      if (!("sroiCostBreakdown" in body)) {
+        updates.sroiCostPerVolunteer = sroiCostPerVolunteer;
+        updates.sroiCostRecruitment = null;
+        updates.sroiCostOnboarding = null;
+        updates.sroiCostSupport = null;
+        updates.sroiCostAdmin = null;
+      }
     } else {
       res.status(400).json({ error: "sroiCostPerVolunteer must be a whole number between 0 and 1,000,000, or null to reset." });
       return;
@@ -450,6 +555,12 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       role: membership.role,
       aiSidekickEnabled: updated.aiSidekickEnabled,
       sroiCostPerVolunteer: updated.sroiCostPerVolunteer ?? null,
+      sroiCostBreakdown: {
+        recruitment: updated.sroiCostRecruitment ?? null,
+        onboarding: updated.sroiCostOnboarding ?? null,
+        support: updated.sroiCostSupport ?? null,
+        admin: updated.sroiCostAdmin ?? null,
+      },
     },
   });
 });

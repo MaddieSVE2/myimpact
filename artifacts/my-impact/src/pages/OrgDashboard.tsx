@@ -67,6 +67,15 @@ export default function OrgDashboard() {
   const sdgBreakdowns = useMemo(() => computeSdgBreakdown(allActivities), [allActivities]);
   const categoryBreakdown = useMemo(() => computeCategoryBreakdown(allActivities), [allActivities]);
   const sroiCostPerVolunteer = orgData?.org?.sroiCostPerVolunteer ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
+  const sroiBreakdown = orgData?.org?.sroiCostBreakdown ?? null;
+  const sroiBreakdownLines = sroiBreakdown
+    ? ([
+        { key: "recruitment", label: "Recruitment", value: sroiBreakdown.recruitment },
+        { key: "onboarding",  label: "Onboarding",  value: sroiBreakdown.onboarding },
+        { key: "support",     label: "Support",     value: sroiBreakdown.support },
+        { key: "admin",       label: "Admin",       value: sroiBreakdown.admin },
+      ] as const).filter(l => typeof l.value === "number")
+    : [];
   const totalInvestment = aggregates.totalMembers * sroiCostPerVolunteer;
   const sroiRatio = totalInvestment > 0 ? aggregates.totalSocialValue / totalInvestment : 0;
   const timelineData = useMemo<MonthlyDataPoint[]>(
@@ -220,10 +229,28 @@ export default function OrgDashboard() {
             })}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div
+              className="bg-muted/30 rounded-lg p-3 text-center group relative"
+              title={sroiBreakdownLines.length > 0
+                ? sroiBreakdownLines.map(l => `${l.label}: £${(l.value as number).toLocaleString("en-GB")}`).join(" · ")
+                : undefined}
+              data-testid="card-sroi-cost-per-volunteer"
+            >
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiOrgInvestmentLabel")}</p>
               <p className="text-xl font-display font-bold text-foreground" data-testid="text-sroi-cost-per-volunteer">£{sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
               <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiOrgInvestmentSub")}</p>
+              {sroiBreakdownLines.length > 0 && (
+                <table className="w-full mt-2 text-[10px]" data-testid="table-sroi-breakdown">
+                  <tbody>
+                    {sroiBreakdownLines.map(l => (
+                      <tr key={l.key}>
+                        <td className="py-0.5 pr-1 text-left text-muted-foreground">{l.label}</td>
+                        <td className="py-0.5 text-right font-semibold text-foreground" data-testid={`sroi-breakdown-${l.key}`}>£{(l.value as number).toLocaleString("en-GB")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiTotalInvestmentLabel")}</p>

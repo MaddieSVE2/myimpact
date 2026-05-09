@@ -20,7 +20,19 @@ export const organisationsTable = pgTable("organisations", {
   // Per-org SROI cost-per-volunteer (whole pounds) used in the dashboard SROI
   // explainer. NULL means "use the application default" (£475). Managed from
   // /org/settings → Org profile → SROI assumptions.
+  // When the manager enters sub-amounts (recruitment / onboarding / support /
+  // admin), this field is the derived total (sum of non-null sub-amounts) so
+  // the dashboard always reads a single number.
   sroiCostPerVolunteer: integer("sroi_cost_per_volunteer"),
+  // Optional per-line-item breakdown of the per-volunteer cost. Power-user
+  // managers (e.g. larger charities) split the total so it's auditable and
+  // they can justify it to funders. Each is in whole pounds and may be NULL
+  // independently. When all four are NULL there is no breakdown and the
+  // single sroiCostPerVolunteer figure (or default) is used as-is.
+  sroiCostRecruitment: integer("sroi_cost_recruitment"),
+  sroiCostOnboarding: integer("sroi_cost_onboarding"),
+  sroiCostSupport: integer("sroi_cost_support"),
+  sroiCostAdmin: integer("sroi_cost_admin"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
