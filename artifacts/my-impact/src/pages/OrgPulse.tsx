@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ClipboardList, AlertCircle } from "lucide-react";
-import { OrgSubNav } from "@/components/layout/OrgSubNav";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
@@ -58,7 +57,6 @@ export default function OrgPulse() {
         Run short, anonymous check-ins with your members and see how they're feeling over time.
       </p>
 
-      <OrgSubNav />
 
       <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
       <PulseSurveysSection isDemoOrg={isDemoOrg} />

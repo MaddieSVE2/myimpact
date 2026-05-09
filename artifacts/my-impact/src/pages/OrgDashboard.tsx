@@ -1,28 +1,30 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   Building2, TrendingUp, Users, Clock, BadgeCheck, Download, FileText, FileSpreadsheet,
-  Globe2, Layers, AlertCircle, EyeOff,
+  Globe2, Layers, AlertCircle, EyeOff, BarChart2, ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid,
+  Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
-import { OrgSubNav } from "@/components/layout/OrgSubNav";
+import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { useT } from "@/i18n";
 import {
   DEMO_ORG_ID, DEMO_INVITE_CODE, DEMO_ACTIVITIES,
   computeDemoAggregates, computeMonthlyTrend, computeSdgBreakdown, computeCategoryBreakdown,
   getRemovedMemberIds, getOrgInviteCode, SDG_BY_CATEGORY,
-  type SdgBreakdownPoint,
+  type SdgBreakdownPoint, type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import { useMyOrg, hexToHslVar } from "@/lib/org-export";
 
-function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix }: {
+const SROI_COST_PER_VOLUNTEER = 475;
+
+function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: number; sub?: string; highlight?: boolean;
-  tone?: "accent"; prefix?: string;
+  tone?: "accent"; prefix?: string; decimals?: number;
 }) {
   const accentBorder = tone === "accent" && !highlight ? "border-l-4 border-l-accent" : "";
   return (
@@ -32,7 +34,7 @@ function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix }: {
         <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
       </div>
       <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>
-        {prefix}<AnimatedNumber value={value} formatter={v => v.toLocaleString("en-GB")} />
+        {prefix}<AnimatedNumber value={value} decimals={decimals ?? 0} formatter={decimals ? undefined : v => v.toLocaleString("en-GB")} />
       </p>
       {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
     </div>
@@ -65,6 +67,26 @@ export default function OrgDashboard() {
   const trend = useMemo(() => computeMonthlyTrend(allActivities), [allActivities]);
   const sdgBreakdowns = useMemo(() => computeSdgBreakdown(allActivities), [allActivities]);
   const categoryBreakdown = useMemo(() => computeCategoryBreakdown(allActivities), [allActivities]);
+  const totalInvestment = aggregates.totalMembers * SROI_COST_PER_VOLUNTEER;
+  const sroiRatio = totalInvestment > 0 ? aggregates.totalSocialValue / totalInvestment : 0;
+  const timelineData = useMemo<MonthlyDataPoint[]>(
+    () => trend.map(p => ({ month: p.label.split(" ")[0], value: p.value })),
+    [trend],
+  );
+  const activitiesByCategory = useMemo(() => {
+    const map = new Map<ActivityCategory, typeof allActivities>();
+    for (const a of allActivities) {
+      if (!map.has(a.category)) map.set(a.category, []);
+      map.get(a.category)!.push(a);
+    }
+    return map;
+  }, [allActivities]);
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const toggleCat = (c: string) => setExpandedCats(prev => {
+    const n = new Set(prev);
+    if (n.has(c)) n.delete(c); else n.add(c);
+    return n;
+  });
 
   if (isLoading) {
     return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
@@ -163,8 +185,6 @@ export default function OrgDashboard() {
         </div>
       </div>
 
-      <OrgSubNav />
-
       {isDemoOrg && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-6 text-xs text-amber-900">
           You're viewing the demo organisation with mock data. Invite code <span className="font-mono font-semibold">{inviteCode}</span>.
@@ -172,37 +192,69 @@ export default function OrgDashboard() {
       )}
 
       {/* Aggregated stats */}
-      <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <StatCard icon={TrendingUp} label="Total social value" value={aggregates.totalSocialValue} prefix="£" sub={`£${aggregates.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
+        <StatCard icon={BarChart2} label={t("orgDashboard.sroiCardLabel")} value={sroiRatio} prefix="£" decimals={2} sub={t("orgDashboard.sroiCardSub")} />
         <StatCard icon={Users} label="Active members" value={aggregates.activeMembers} sub={`of ${aggregates.totalMembers} total`} />
         <StatCard icon={Clock} label="Hours logged" value={Math.round(aggregates.totalHours)} sub={`${aggregates.totalActivities} activities`} />
-        <StatCard icon={BadgeCheck} label="Avg per member" value={aggregates.averagePerMember} sub="across all members" />
+      </motion.div>
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <StatCard icon={BadgeCheck} label="Avg per member" value={aggregates.averagePerMember} prefix="£" sub={t("orgDashboard.avgPerMemberSub")} />
+        <StatCard icon={Clock} label={t("orgDashboard.avgHoursPerMember")} value={aggregates.totalMembers ? Math.round(aggregates.totalHours / aggregates.totalMembers) : 0} sub={t("orgDashboard.avgHoursPerMemberSub")} />
       </motion.div>
 
-      {/* Trend over recent months */}
-      <div className="bg-white border border-border rounded-xl p-5 mb-6">
+      {/* SROI explainer */}
+      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-sroi-explainer">
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart2 className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">{t("orgDashboard.sroiTitle")}</h3>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4 items-center">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t("orgDashboard.sroiBody", {
+              costPerVolunteer: `£${SROI_COST_PER_VOLUNTEER}`,
+              members: aggregates.totalMembers,
+              totalInvestment: `£${totalInvestment.toLocaleString("en-GB")}`,
+              socialValue: `£${aggregates.totalSocialValue.toLocaleString("en-GB")}`,
+              ratio: `£${sroiRatio.toFixed(2)}`,
+            })}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-muted/30 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiOrgInvestmentLabel")}</p>
+              <p className="text-xl font-display font-bold text-foreground">£{SROI_COST_PER_VOLUNTEER}</p>
+              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiOrgInvestmentSub")}</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiTotalInvestmentLabel")}</p>
+              <p className="text-xl font-display font-bold text-foreground">£{totalInvestment.toLocaleString("en-GB")}</p>
+              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiTotalInvestmentSub")}</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiSocialValueLabel")}</p>
+              <p className="text-xl font-display font-bold text-foreground">£{aggregates.totalSocialValue.toLocaleString("en-GB")}</p>
+              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiSocialValueSub")}</p>
+            </div>
+            <div className="bg-primary/10 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-primary uppercase tracking-wide font-semibold mb-0.5">{t("orgDashboard.sroiRatioLabel")}</p>
+              <p className="text-xl font-display font-bold text-primary">£{sroiRatio.toFixed(2)}</p>
+              <p className="text-[10px] text-primary/70">{t("orgDashboard.sroiRatioSub")}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Trend over the year — line/area chart matches the public charity-example dashboard */}
+      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-monthly-trend">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold">Social value by month</h3>
-          <span className="text-xs text-muted-foreground">(£ generated each month)</span>
+          <h3 className="text-sm font-semibold">{t("orgDashboard.monthlyTrendTitle")}</h3>
+          <span className="text-xs text-muted-foreground">{t("orgDashboard.monthlyTrendSubtitle")}</span>
         </div>
-        {trend.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-6 text-center">No activity yet.</p>
+        {timelineData.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-6 text-center">{t("orgDashboard.monthlyTrendEmpty")}</p>
         ) : (
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `£${v}`} />
-                <RechartsTooltip
-                  formatter={(v: number) => [`£${v.toLocaleString("en-GB")}`, "Social value"]}
-                  labelFormatter={(l) => String(l)}
-                />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ImpactTimeline data={timelineData} />
         )}
       </div>
 
@@ -284,11 +336,34 @@ export default function OrgDashboard() {
             {categoryBreakdown.map((c, idx) => {
               const max = Math.max(1, ...categoryBreakdown.map(x => x.value));
               const sdg = SDG_BY_CATEGORY[c.category];
+              // Aggregate raw rows (one per member-instance) by activity name so
+              // each row in the panel shows distinct participants, total hours
+              // and total value for that named activity within the category.
+              const grouped = new Map<string, { name: string; participants: Set<string>; hours: number; value: number }>();
+              for (const a of (activitiesByCategory.get(c.category) ?? [])) {
+                const g = grouped.get(a.activity) ?? { name: a.activity, participants: new Set<string>(), hours: 0, value: 0 };
+                g.participants.add(a.memberId);
+                g.hours += a.hours;
+                g.value += a.socialValueGBP;
+                grouped.set(a.activity, g);
+              }
+              const items = Array.from(grouped.values()).sort((a, b) => b.value - a.value);
+              const expanded = expandedCats.has(c.category);
+              const visible = expanded ? items : items.slice(0, 3);
               return (
-                <div key={c.category} className="py-2 px-3 rounded-lg hover:bg-muted/20 transition-colors" data-testid={`category-rank-${c.category}`}>
+                <div
+                  key={c.category}
+                  className="py-2 px-3 rounded-lg border border-transparent hover:bg-muted/20 hover:border-primary/30 hover:shadow-sm transition-all"
+                  data-testid={`category-rank-${c.category}`}
+                >
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="shrink-0 text-[10px] font-bold text-muted-foreground w-4 text-right">{idx + 1}.</span>
+                      <span
+                        className="shrink-0 inline-flex items-center justify-center text-[10px] font-bold text-white rounded px-1.5 py-0.5"
+                        style={{ backgroundColor: sdg?.color ?? "hsl(var(--primary))" }}
+                        title={sdg ? `SDG ${sdg.number} · ${sdg.label}` : undefined}
+                      >SDG {sdg?.number}</span>
                       <p className="text-sm font-semibold text-foreground truncate">{c.category}</p>
                       {idx === 0 && (
                         <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
@@ -304,6 +379,30 @@ export default function OrgDashboard() {
                   <p className="text-[11px] text-muted-foreground">
                     <span className="font-semibold text-foreground">{c.members}</span> {t("orgDashboard.categoriesMembers")} · <span className="font-semibold text-foreground">{c.activities}</span> {t("orgDashboard.categoriesActivities")} · <span className="font-semibold text-foreground">{Math.round(c.hours)}</span> {t("orgDashboard.categoriesHours")}
                   </p>
+                  {items.length > 0 && (
+                    <ul className="mt-2 divide-y divide-border/60 border border-border/60 rounded-md bg-muted/10">
+                      {visible.map(g => (
+                        <li key={g.name} className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px]">
+                          <span className="font-medium text-foreground truncate">{g.name}</span>
+                          <span className="shrink-0 text-muted-foreground">
+                            {g.participants.size}p · {g.hours}h · <span className="font-semibold text-foreground">£{g.value.toLocaleString("en-GB")}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {items.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleCat(c.category)}
+                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                      data-testid={`category-toggle-${c.category}`}
+                    >
+                      {expanded
+                        ? <>{t("orgDashboard.categoriesShowLess")} <ChevronUp className="w-3 h-3" /></>
+                        : <>{t("orgDashboard.categoriesShowMore", { count: items.length })} <ChevronDown className="w-3 h-3" /></>}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -313,20 +412,20 @@ export default function OrgDashboard() {
 
       {/* Cross-links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <Link href="/org/activities" className="bg-white border border-border rounded-xl p-4 hover:border-primary/50 transition-colors" data-testid="card-link-activities">
+        <Link href="/org/activities" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-activities">
           <Users className="w-4 h-4 text-primary mb-1.5" />
-          <p className="text-sm font-semibold text-foreground">Activity feed</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Drill into every action with member names.</p>
+          <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkActivitiesTitle")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkActivitiesSub")}</p>
         </Link>
-        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/50 transition-colors" data-testid="card-link-export-pdf">
+        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-pdf">
           <FileText className="w-4 h-4 text-primary mb-1.5" />
-          <p className="text-sm font-semibold text-foreground">Funder-ready PDF</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Polished impact report you can email out.</p>
+          <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkPdfTitle")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkPdfSub")}</p>
         </Link>
-        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/50 transition-colors" data-testid="card-link-export-csv">
+        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-csv">
           <FileSpreadsheet className="w-4 h-4 text-primary mb-1.5" />
-          <p className="text-sm font-semibold text-foreground">CSV download</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Raw activity rows for your own analysis.</p>
+          <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkCsvTitle")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkCsvSub")}</p>
         </Link>
       </div>
     </div>

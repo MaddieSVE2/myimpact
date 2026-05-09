@@ -8,7 +8,17 @@ export const DEMO_ORG_NAME = "Riverside Youth Trust";
 export const DEMO_ORG_TYPE = "charity";
 export const DEMO_ORG_CONTACT_EMAIL = "manager@riverside-youth-trust.org.uk";
 
-export type ActivityCategory = "Environment" | "Community" | "Health" | "Education";
+export type ActivityCategory =
+  | "Environment"
+  | "Community"
+  | "Health"
+  | "Education"
+  | "Sport & Active"
+  | "Fundraising"
+  | "Mentoring"
+  | "Arts & Culture"
+  | "Animal Welfare"
+  | "Emergency Response";
 
 export interface DemoMember {
   id: string;
@@ -44,43 +54,149 @@ export const DEMO_MEMBERS: DemoMember[] = [
   { id: "m-demo", name: "Demo User",       email: "demo@demo.org",                                role: "member",  joinedAt: "2025-07-01", region: "Yorkshire and The Humber" },
 ];
 
-export const DEMO_ACTIVITIES: DemoActivity[] = [
-  { id: "a-001", memberId: "m-002", occurredAt: "2025-09-04", category: "Environment", activity: "River clean-up",          description: "Spent the morning with 12 volunteers clearing plastic and litter from a 1.2km stretch of the Mersey footpath.", hours: 4,  socialValueGBP: 84,  verified: true },
-  { id: "a-002", memberId: "m-003", occurredAt: "2025-09-08", category: "Community",   activity: "Food bank shift",         description: "Sorted donations and packed family parcels at the Leeds community food bank during their busiest evening.",     hours: 3,  socialValueGBP: 63,  verified: true },
-  { id: "a-003", memberId: "m-004", occurredAt: "2025-09-12", category: "Education",   activity: "Reading mentor",          description: "One-to-one reading session with a year 4 pupil at St Mary's primary school.",                                  hours: 1.5,socialValueGBP: 42,  verified: true },
-  { id: "a-004", memberId: "m-005", occurredAt: "2025-09-15", category: "Health",      activity: "Park run volunteering",   description: "Marshalled the 5K junior park run in Hyde Park, supporting around 80 young runners.",                          hours: 2,  socialValueGBP: 38,  verified: false },
-  { id: "a-005", memberId: "m-006", occurredAt: "2025-09-18", category: "Community",   activity: "Befriending visit",       description: "Visited an isolated older neighbour for tea and a chat as part of the Age UK befriending scheme.",             hours: 2,  socialValueGBP: 46,  verified: true },
-  { id: "a-006", memberId: "m-002", occurredAt: "2025-09-22", category: "Environment", activity: "Tree planting",           description: "Helped plant 30 native saplings on a degraded verge near the canal towpath.",                                  hours: 5,  socialValueGBP: 110, verified: true },
-  { id: "a-007", memberId: "m-007", occurredAt: "2025-09-25", category: "Education",   activity: "Homework club",           description: "Supported four secondary students with maths and science homework at the youth centre.",                       hours: 2,  socialValueGBP: 56,  verified: true },
-  { id: "a-008", memberId: "m-008", occurredAt: "2025-09-28", category: "Health",      activity: "Mental health walk",      description: "Co-led a group walking session for adults managing low mood, focusing on conversation and pace.",              hours: 2.5,socialValueGBP: 53,  verified: true },
-  { id: "a-009", memberId: "m-009", occurredAt: "2025-10-02", category: "Community",   activity: "Community fridge stock",   description: "Restocked the community fridge with rescued supermarket donations and rotated short-dated items.",            hours: 3,  socialValueGBP: 60,  verified: true },
-  { id: "a-010", memberId: "m-demo",occurredAt: "2025-10-05", category: "Environment", activity: "Beach litter pick",       description: "Joined a Surfers Against Sewage clean of Filey beach — collected 14kg of plastic, rope and fishing line.",     hours: 4,  socialValueGBP: 88,  verified: false },
-  { id: "a-011", memberId: "m-003", occurredAt: "2025-10-08", category: "Health",      activity: "Hospital radio shift",    description: "Hosted the lunchtime show on Leeds Hospital Radio, taking song requests from three wards.",                    hours: 3,  socialValueGBP: 57,  verified: true },
-  { id: "a-012", memberId: "m-004", occurredAt: "2025-10-11", category: "Education",   activity: "STEM workshop assistant", description: "Helped run a hands-on robotics workshop for 22 girls aged 10-12 at Birmingham science centre.",                hours: 4,  socialValueGBP: 112, verified: true },
-  { id: "a-013", memberId: "m-005", occurredAt: "2025-10-14", category: "Community",   activity: "Festival stewarding",     description: "Stewarded the entrance gate at the local Diwali festival, welcoming around 600 attendees.",                    hours: 6,  socialValueGBP: 138, verified: true },
-  { id: "a-014", memberId: "m-006", occurredAt: "2025-10-17", category: "Environment", activity: "Wildflower meadow",       description: "Sowed wildflower seed mix across two verges to support pollinators next spring.",                              hours: 3,  socialValueGBP: 66,  verified: true },
-  { id: "a-015", memberId: "m-007", occurredAt: "2025-10-20", category: "Health",      activity: "Care home visits",        description: "Spent the afternoon doing manicures and conversation with residents at Oakleigh care home.",                   hours: 2.5,socialValueGBP: 53,  verified: true },
-  { id: "a-016", memberId: "m-008", occurredAt: "2025-10-23", category: "Education",   activity: "Adult literacy tutor",    description: "Tutored two adults working towards their Functional Skills English level 1.",                                   hours: 2,  socialValueGBP: 56,  verified: true },
-  { id: "a-017", memberId: "m-009", occurredAt: "2025-10-26", category: "Community",   activity: "Repair café volunteer",   description: "Fixed a broken toaster and re-glued a wooden chair at the monthly Repair Café.",                                hours: 3,  socialValueGBP: 60,  verified: false },
-  { id: "a-018", memberId: "m-002", occurredAt: "2025-10-29", category: "Health",      activity: "First aid cover",         description: "Provided first aid cover at a youth football tournament — treated a couple of grazes, no major incidents.",   hours: 5,  socialValueGBP: 95,  verified: true },
-  { id: "a-019", memberId: "m-003", occurredAt: "2025-11-01", category: "Environment", activity: "Litter pick training",    description: "Led a 1-hour induction for 8 new litter-pick volunteers on safety, equipment and reporting.",                  hours: 1.5,socialValueGBP: 42,  verified: true },
-  { id: "a-020", memberId: "m-004", occurredAt: "2025-11-04", category: "Community",   activity: "Soup kitchen",            description: "Cooked and served around 70 hot meals at the city-centre soup kitchen on a cold Tuesday evening.",            hours: 4,  socialValueGBP: 80,  verified: true },
-  { id: "a-021", memberId: "m-005", occurredAt: "2025-11-07", category: "Education",   activity: "CV workshop",             description: "Reviewed CVs and ran mock interviews for six 17-year-olds preparing for apprenticeship applications.",         hours: 3,  socialValueGBP: 84,  verified: true },
-  { id: "a-022", memberId: "m-006", occurredAt: "2025-11-10", category: "Health",      activity: "Blood donor support",     description: "Welcomed donors and served refreshments at the NHS blood donation session.",                                   hours: 4,  socialValueGBP: 76,  verified: true },
-  { id: "a-023", memberId: "m-007", occurredAt: "2025-11-13", category: "Environment", activity: "Hedgerow planting",       description: "Helped plant 60 metres of native hedgerow on a community farm to boost biodiversity.",                          hours: 5,  socialValueGBP: 110, verified: false },
-  { id: "a-024", memberId: "m-008", occurredAt: "2025-11-16", category: "Community",   activity: "Citizens advice triage",   description: "Took initial enquiries at the Citizens Advice drop-in and signposted clients to the right caseworker.",        hours: 3,  socialValueGBP: 72,  verified: true },
-  { id: "a-025", memberId: "m-009", occurredAt: "2025-11-19", category: "Education",   activity: "Coding club",             description: "Helped 10 teenagers build their first Python game at the after-school coding club.",                            hours: 2,  socialValueGBP: 56,  verified: true },
-  { id: "a-026", memberId: "m-demo",occurredAt: "2025-11-22", category: "Health",      activity: "Mental health first aid", description: "Completed and shadowed a 1-hour Mental Health First Aid refresher for youth workers.",                          hours: 1,  socialValueGBP: 19,  verified: true },
-  { id: "a-027", memberId: "m-002", occurredAt: "2025-11-25", category: "Community",   activity: "Toy collection sort",     description: "Sorted donated toys for the Christmas appeal, age-grading and quality-checking each item.",                    hours: 4,  socialValueGBP: 80,  verified: true },
-  { id: "a-028", memberId: "m-003", occurredAt: "2025-11-28", category: "Environment", activity: "Recycling audit",         description: "Audited the youth centre's waste streams and proposed a new bin layout to cut contamination by ~25%.",         hours: 2,  socialValueGBP: 44,  verified: true },
-  { id: "a-029", memberId: "m-004", occurredAt: "2025-12-01", category: "Education",   activity: "School governor meeting", description: "Attended the term's full governors meeting at the local primary school as parent governor.",                  hours: 2.5,socialValueGBP: 70,  verified: true },
-  { id: "a-030", memberId: "m-005", occurredAt: "2025-12-04", category: "Health",      activity: "Bereavement support",     description: "Sat in on a peer-led bereavement support circle, helping with set-up and tea afterwards.",                     hours: 2,  socialValueGBP: 38,  verified: false },
-  { id: "a-031", memberId: "m-006", occurredAt: "2025-12-07", category: "Community",   activity: "Christmas dinner cook",   description: "Helped prepare and serve the Christmas community lunch for 120 older residents.",                              hours: 6,  socialValueGBP: 138, verified: true },
-  { id: "a-032", memberId: "m-007", occurredAt: "2025-12-10", category: "Environment", activity: "Park bench restoration",  description: "Sanded and re-varnished 4 weather-damaged park benches with a small volunteer crew.",                          hours: 4,  socialValueGBP: 88,  verified: true },
-  { id: "a-033", memberId: "m-008", occurredAt: "2025-12-13", category: "Education",   activity: "Refugee English class",   description: "Taught a beginner-level conversational English class to 6 newly arrived refugees.",                            hours: 2,  socialValueGBP: 56,  verified: true },
-  { id: "a-034", memberId: "m-009", occurredAt: "2025-12-16", category: "Health",      activity: "Winter wellbeing calls",  description: "Made check-in phone calls to 8 isolated older people on the warm-line rota during the cold snap.",              hours: 3,  socialValueGBP: 57,  verified: true },
-  { id: "a-035", memberId: "m-demo",occurredAt: "2025-12-19", category: "Community",   activity: "Toy distribution",        description: "Delivered Christmas gift parcels to 14 families nominated by the local school's family liaison team.",          hours: 4,  socialValueGBP: 92,  verified: true },
+// Raw activity rows used to build the demo dataset. Tuple form keeps the file
+// readable while we ship a credible year of impact (~95 entries spanning 12
+// months, 10 members and 10 categories).
+type RawActivity = readonly [
+  memberId: string,
+  occurredAt: string,
+  category: ActivityCategory,
+  activity: string,
+  description: string,
+  hours: number,
+  socialValueGBP: number,
+  verified: boolean,
 ];
+
+const RAW_ACTIVITIES: RawActivity[] = [
+  // January
+  ["m-001", "2025-01-09", "Community",          "New year volunteer briefing",  "Ran the kickoff briefing for the year's volunteer cohort.",                                3,   195, true],
+  ["m-002", "2025-01-12", "Environment",        "Canal towpath clean-up",        "Cleared 1.2km of the Mersey towpath with 12 volunteers — nine bin bags collected.",        4,   220, true],
+  ["m-003", "2025-01-18", "Sport & Active",     "Junior parkrun marshalling",    "Marshalled corner three of the Saturday junior 2K parkrun, supporting 80+ young runners.", 2,   140, true],
+  ["m-004", "2025-01-21", "Education",          "Year 4 reading mentor",         "Weekly one-to-one reading session at St Mary's Primary.",                                  1.5, 180, true],
+  ["m-005", "2025-01-25", "Community",          "Repair café host",              "Hosted the monthly repair café and fixed two small appliances brought in by neighbours.",  3,   165, true],
+  ["m-007", "2025-01-29", "Health",             "Care home visits",              "Spent the afternoon doing manicures and conversation at Oakleigh care home.",              2.5, 175, true],
+
+  // February
+  ["m-002", "2025-02-04", "Environment",        "Community tree planting",       "Planted 30 native saplings on a degraded verge by the canal.",                              5,   430, true],
+  ["m-006", "2025-02-08", "Animal Welfare",     "Dog shelter dog-walking",       "Walked four shelter dogs and helped with kennel cleaning at the local rescue.",            4,   220, true],
+  ["m-009", "2025-02-12", "Arts & Culture",     "Community choir lead",          "Led the weekly community choir rehearsal — 22 attendees.",                                  2,   180, true],
+  ["m-008", "2025-02-15", "Mentoring",          "Apprenticeship 1:1 mentor",     "One-to-one apprenticeship mentoring session covering CV and interview prep.",               1.5, 165, true],
+  ["m-003", "2025-02-19", "Sport & Active",     "Cycling buddy ride",            "Co-led a confidence-building cycling group ride for new riders around the local park.",     3,   195, true],
+  ["m-005", "2025-02-22", "Fundraising",        "Quiz night fundraiser",         "Hosted a quiz night that raised £540 for the youth centre's outreach programme.",           4,   540, true],
+  ["m-007", "2025-02-26", "Health",             "Hospital radio shift",          "Hosted the lunchtime hospital radio show, taking song requests from three wards.",          3,   200, true],
+  ["m-001", "2025-02-28", "Community",          "Trustee board meeting",         "Attended the quarterly trustee board with full reporting pack prep.",                       3,   240, true],
+
+  // March
+  ["m-004", "2025-03-04", "Education",          "STEM workshop assistant",       "Helped run a hands-on robotics workshop for 22 girls aged 10-12.",                          4,   480, true],
+  ["m-002", "2025-03-08", "Community",          "Soup kitchen evening",          "Cooked and served around 70 hot meals at the city-centre soup kitchen.",                    4,   380, true],
+  ["m-006", "2025-03-12", "Environment",        "Wildflower seeding",            "Sowed pollinator-friendly wildflower mix across two verges.",                              3,   210, true],
+  ["m-008", "2025-03-15", "Education",          "Refugee English class",         "Taught a beginner conversational English class to six newly arrived refugees.",            2,   240, true],
+  ["m-009", "2025-03-19", "Mentoring",          "Creative writing mentor",       "Mentored two young people on their short story submissions.",                              2,   220, true],
+  ["m-005", "2025-03-22", "Emergency Response", "First aid cover at gala",       "Provided first-aid cover at a youth football tournament — minor incidents only.",          5,   400, true],
+  ["m-003", "2025-03-26", "Health",             "Mental-health walk lead",       "Co-led a peer walking group for adults managing low mood.",                                2.5, 200, true],
+  ["m-007", "2025-03-29", "Sport & Active",     "Couch-to-5K coach",             "Led week five of Couch-to-5K, supporting 14 new runners.",                                  1.5, 140, true],
+
+  // April
+  ["m-007", "2025-04-13", "Fundraising",        "London Marathon run",           "Ran the London Marathon raising £3,240 for the youth trust.",                              5,  3240, true],
+  ["m-002", "2025-04-16", "Environment",        "Park bench restoration",        "Sanded and re-varnished four weather-damaged park benches with a small crew.",            4,   220, true],
+  ["m-004", "2025-04-19", "Mentoring",          "School governor meeting",       "Attended termly governors meeting at the local primary school.",                            2.5, 250, true],
+  ["m-006", "2025-04-22", "Animal Welfare",     "Hedgehog rescue volunteering",  "Cared for three injured hedgehogs at the local wildlife rescue.",                          3,   180, true],
+  ["m-008", "2025-04-26", "Education",          "Adult literacy tutor",          "Tutored two adults working towards Functional Skills English level 1.",                    2,   240, true],
+  ["m-009", "2025-04-29", "Arts & Culture",     "Open-mic host",                 "Hosted the monthly open-mic night supporting nine local performers.",                       3,   240, true],
+  ["m-demo","2025-04-05", "Environment",        "Beach litter pick",             "Joined a Surfers Against Sewage clean of Filey beach — 14kg of plastic collected.",        4,   220, true],
+
+  // May
+  ["m-005", "2025-05-03", "Community",          "Mayfest festival stewarding",   "Stewarded the entrance gate at Mayfest, welcoming around 600 attendees.",                  6,   480, true],
+  ["m-001", "2025-05-07", "Mentoring",          "New volunteer onboarding",      "Inducted four new volunteers across two evenings, including safeguarding training.",       4,   440, true],
+  ["m-003", "2025-05-11", "Sport & Active",     "Inclusive football coach",      "Coached a weekly inclusive 5-a-side football session for adults with disabilities.",       2,   180, true],
+  ["m-004", "2025-05-15", "Education",          "GCSE maths catch-up",           "Ran a small-group GCSE maths revision session for five Year 11s.",                          2,   260, true],
+  ["m-008", "2025-05-19", "Mentoring",          "Care leaver mentor",            "Monthly mentoring session with a young care leaver setting up their first tenancy.",       2,   240, true],
+  ["m-006", "2025-05-23", "Environment",        "Hedgerow planting day",         "Helped plant 60 metres of native hedgerow on a community farm.",                            5,   430, false],
+  ["m-009", "2025-05-26", "Arts & Culture",     "Community mural project",       "Worked on the community mural at the youth centre — second weekend of three.",             6,   420, true],
+  ["m-002", "2025-05-30", "Community",          "Befriending visit",             "Tea and a chat with an isolated older neighbour as part of the befriending scheme.",       2,   180, true],
+
+  // June
+  ["m-007", "2025-06-04", "Sport & Active",     "Cycle sportive — 80km",         "Completed an 80km charity sportive raising £1,420 for cycling-without-age.",               6,  1420, true],
+  ["m-005", "2025-06-08", "Emergency Response", "Flood response sandbagging",    "Helped the local resilience team fill and place 200+ sandbags during heavy rain.",         5,   420, true],
+  ["m-002", "2025-06-12", "Environment",        "Reservoir conservation day",    "Cleared invasive Himalayan balsam across 1.5km of reservoir bank.",                        6,   400, true],
+  ["m-006", "2025-06-15", "Animal Welfare",     "Rescue admin & socials",        "Updated the rescue's adoption records and ran social media for the week.",                  3,   180, false],
+  ["m-008", "2025-06-19", "Education",          "Coding club helper",            "Helped 10 teenagers build their first Python game at the after-school coding club.",       2,   260, true],
+  ["m-004", "2025-06-23", "Mentoring",          "University application coach",  "Reviewed personal statements with three Year 12 students.",                                 3,   330, true],
+  ["m-001", "2025-06-26", "Community",          "Community AGM",                 "Hosted the youth trust's community AGM and member Q&A.",                                   3,   240, true],
+  ["m-003", "2025-06-29", "Health",             "Blood donor session support",   "Welcomed donors and served refreshments at the NHS blood donation session.",               4,   280, true],
+
+  // July
+  ["m-009", "2025-07-03", "Arts & Culture",     "Summer festival drumming",      "Led a drumming workshop at the city summer festival — 35 participants.",                   3,   270, true],
+  ["m-005", "2025-07-07", "Community",          "Community garden harvest",      "Harvested produce and packed share boxes for 18 households.",                              4,   280, true],
+  ["m-002", "2025-07-11", "Environment",        "Pond restoration",              "Cleared silt and replanted oxygenators in the community wildlife pond.",                   5,   330, true],
+  ["m-007", "2025-07-15", "Sport & Active",     "Triathlon marshalling",         "Marshalled the swim-to-bike transition at the city triathlon.",                            5,   340, true],
+  ["m-008", "2025-07-19", "Education",          "Summer reading scheme",         "Hosted the library's summer reading scheme afternoon — 22 children attended.",             3,   330, true],
+  ["m-006", "2025-07-23", "Animal Welfare",     "Cat shelter socialisation",     "Spent the afternoon socialising shy cats at the rescue.",                                  3,   180, true],
+  ["m-004", "2025-07-27", "Mentoring",          "Refugee youth mentor",          "Weekly mentoring session with a teenage refugee starting Year 11.",                        2,   240, true],
+  ["m-demo","2025-07-30", "Sport & Active",     "Park run pacer",                "Paced the 30-minute group at the Saturday parkrun.",                                       1,    70, true],
+
+  // August
+  ["m-001", "2025-08-03", "Fundraising",        "Summer fete coordination",      "Coordinated the summer fete which raised £2,180 for the youth trust.",                     8,  2180, true],
+  ["m-003", "2025-08-07", "Health",             "Wellbeing walks lead",          "Led two wellbeing walks with the older adults' group.",                                    4,   320, true],
+  ["m-005", "2025-08-11", "Community",          "Holiday hunger lunch club",     "Cooked and served lunches to 35 children during the holiday hunger programme.",            5,   620, true],
+  ["m-002", "2025-08-15", "Environment",        "Bee hotel build day",           "Built and installed eight bee hotels across community sites.",                              4,   240, false],
+  ["m-009", "2025-08-19", "Arts & Culture",     "Heritage walk guide",           "Guided a heritage walk for 16 visitors through the old town.",                              2,   180, true],
+  ["m-008", "2025-08-23", "Mentoring",          "Apprentice peer-support",       "Hosted a peer-support session for six apprentices.",                                       2,   240, true],
+  ["m-007", "2025-08-27", "Sport & Active",     "Disability cycling lead",       "Led an adapted cycling session for nine adults with mobility needs.",                       3,   240, true],
+  ["m-demo","2025-08-30", "Community",          "Community fridge stock-up",     "Restocked the community fridge with rescued supermarket donations.",                        3,   180, true],
+
+  // September
+  ["m-004", "2025-09-03", "Education",          "Year 7 transition buddy",       "Buddied a new Year 7 cohort during their first transition week.",                          5,   500, true],
+  ["m-006", "2025-09-07", "Environment",        "School eco-club lead",          "Co-led the after-school eco-club's first session of term — 18 pupils.",                    2,   180, true],
+  ["m-005", "2025-09-11", "Emergency Response", "Search & rescue training",      "Attended monthly volunteer lowland search & rescue training.",                              4,   320, true],
+  ["m-002", "2025-09-15", "Environment",        "River clean-up day",            "Spent the morning clearing plastic from a 1.2km river footpath.",                          4,   240, true],
+  ["m-009", "2025-09-19", "Mentoring",          "Creative careers panel",        "Sat on a creative-careers panel for 30 sixth-form students.",                              2,   240, true],
+  ["m-001", "2025-09-23", "Mentoring",          "Volunteer 1:1 supervision",     "Held end-of-quarter 1:1s with eight regular volunteers.",                                   6,   720, true],
+  ["m-008", "2025-09-27", "Education",          "Homework club lead",            "Led the secondary-school homework club covering maths, English and science.",              2.5, 320, true],
+  ["m-003", "2025-09-30", "Health",             "Men's-health drop-in",          "Co-hosted the men's-health drop-in with the GP outreach team.",                            3,   220, true],
+
+  // October
+  ["m-007", "2025-10-04", "Fundraising",        "Sponsored half-marathon",       "Ran the autumn half-marathon, raising £980 for the food bank.",                            3,   980, true],
+  ["m-002", "2025-10-08", "Community",          "Citizens advice triage",        "Took initial enquiries at the Citizens Advice drop-in.",                                   3,   240, true],
+  ["m-006", "2025-10-12", "Animal Welfare",     "Dog re-homing fair",            "Volunteered at a dog re-homing fair — six successful adoptions on the day.",               5,   400, true],
+  ["m-009", "2025-10-16", "Arts & Culture",     "Youth theatre rehearsal",       "Helped run rehearsals for the youth theatre's autumn production.",                          3,   240, true],
+  ["m-004", "2025-10-20", "Education",          "Reading volunteer training",    "Trained six new reading volunteers on safeguarding and approach.",                          2,   240, true],
+  ["m-005", "2025-10-24", "Community",          "Diwali festival steward",       "Stewarded the local Diwali festival, welcoming around 600 attendees.",                     6,   480, true],
+  ["m-008", "2025-10-28", "Mentoring",          "Care-leaver mentoring",         "Monthly check-in with two care-leavers about housing and study.",                          2,   240, true],
+
+  // November
+  ["m-001", "2025-11-04", "Fundraising",        "Corporate partner pitch",       "Pitched the 2026 partnership programme to a regional employer — £4,000 confirmed.",        4,  4000, true],
+  ["m-002", "2025-11-08", "Environment",        "Allotment build day",           "Helped build raised beds for the new community allotment.",                                5,   330, true],
+  ["m-003", "2025-11-12", "Sport & Active",     "Walking-football session",      "Co-ran a walking-football session for over-60s.",                                          2,   160, true],
+  ["m-007", "2025-11-16", "Sport & Active",     "Junior cycling coach",          "Coached a junior cycling skills session — 12 participants.",                                2,   180, true],
+  ["m-005", "2025-11-20", "Emergency Response", "Storm response check-in",       "Checked on 14 vulnerable households during the storm warning.",                            5,   500, true],
+  ["m-009", "2025-11-24", "Arts & Culture",     "Carol service production",      "Helped stage the community carol service — sound, lighting and refreshments.",            4,   320, false],
+  ["m-008", "2025-11-28", "Education",          "Adult digital skills tutor",    "Tutored adults on basic digital skills at the library drop-in.",                            2,   240, true],
+
+  // December
+  ["m-006", "2025-12-02", "Animal Welfare",     "Winter feeding stations",       "Built and stocked winter feeding stations for urban wildlife.",                            3,   180, true],
+  ["m-004", "2025-12-06", "Education",          "Christmas reading session",     "Hosted a Christmas-themed reading event for 28 primary-school children.",                  3,   360, true],
+  ["m-002", "2025-12-10", "Community",          "Community Christmas dinner",    "Helped cook and serve the community Christmas lunch for 120 older residents.",            6,   600, true],
+  ["m-005", "2025-12-13", "Community",          "Toy distribution drive",        "Delivered Christmas gift parcels to 14 nominated families.",                                4,   320, true],
+  ["m-007", "2025-12-17", "Fundraising",        "Christmas raffle organiser",    "Organised the Christmas raffle which raised £760 for outreach.",                            5,   760, true],
+  ["m-001", "2025-12-20", "Community",          "Year-end thank-you event",      "Hosted a year-end thank-you event for 45 volunteers.",                                     5,   400, true],
+  ["m-009", "2025-12-22", "Arts & Culture",     "Children's panto matinee",      "Stage-managed the children's pantomime matinee — full house of 180.",                      5,   420, true],
+  ["m-008", "2025-12-27", "Mentoring",          "Winter check-in calls",         "Made winter check-in calls to eight isolated mentees.",                                    3,   330, true],
+  ["m-demo","2025-12-30", "Environment",        "Christmas-tree recycling",      "Helped run the community Christmas-tree recycling drop-off.",                              4,   220, true],
+];
+
+export const DEMO_ACTIVITIES: DemoActivity[] = RAW_ACTIVITIES.map((r, i) => ({
+  id: `a-${String(i + 1).padStart(3, "0")}`,
+  memberId: r[0],
+  occurredAt: r[1],
+  category: r[2],
+  activity: r[3],
+  description: r[4],
+  hours: r[5],
+  socialValueGBP: r[6],
+  verified: r[7],
+}));
 
 export function getDemoMember(id: string): DemoMember | undefined {
   return DEMO_MEMBERS.find(m => m.id === id);
@@ -90,11 +206,19 @@ export function getDemoMember(id: string): DemoMember | undefined {
 // Numbers, labels and colours follow the official SDG identity set.
 export interface SdgInfo { number: number; label: string; color: string }
 export const SDG_BY_CATEGORY: Record<ActivityCategory, SdgInfo> = {
-  Environment: { number: 13, label: "Climate Action",                    color: "#3F7E44" },
-  Community:   { number: 11, label: "Sustainable Cities & Communities",  color: "#FD9D24" },
-  Health:      { number: 3,  label: "Good Health & Wellbeing",           color: "#4C9F38" },
-  Education:   { number: 4,  label: "Quality Education",                 color: "#C5192D" },
+  Environment:          { number: 13, label: "Climate Action",                   color: "#3F7E44" },
+  Community:            { number: 11, label: "Sustainable Cities & Communities", color: "#FD9D24" },
+  Health:               { number: 3,  label: "Good Health & Wellbeing",          color: "#4C9F38" },
+  Education:            { number: 4,  label: "Quality Education",                color: "#C5192D" },
+  "Sport & Active":     { number: 3,  label: "Good Health & Wellbeing",          color: "#4C9F38" },
+  Fundraising:          { number: 1,  label: "No Poverty",                       color: "#E5243B" },
+  Mentoring:            { number: 10, label: "Reduced Inequalities",             color: "#DD1367" },
+  "Arts & Culture":     { number: 4,  label: "Quality Education",                color: "#C5192D" },
+  "Animal Welfare":     { number: 15, label: "Life on Land",                     color: "#56C02B" },
+  "Emergency Response": { number: 16, label: "Peace, Justice & Strong Institutions", color: "#00689D" },
 };
+
+export const ALL_CATEGORIES: ActivityCategory[] = Object.keys(SDG_BY_CATEGORY) as ActivityCategory[];
 
 export interface SdgBreakdownPoint extends SdgInfo {
   value: number;
@@ -140,8 +264,7 @@ export interface CategoryBreakdownPoint {
   members: number;
 }
 export function computeCategoryBreakdown(activities: DemoActivity[] = DEMO_ACTIVITIES): CategoryBreakdownPoint[] {
-  const cats: ActivityCategory[] = ["Environment", "Community", "Health", "Education"];
-  return cats.map(c => {
+  return ALL_CATEGORIES.map(c => {
     const items = activities.filter(a => a.category === c);
     return {
       category: c,
@@ -150,7 +273,9 @@ export function computeCategoryBreakdown(activities: DemoActivity[] = DEMO_ACTIV
       activities: items.length,
       members: new Set(items.map(a => a.memberId)).size,
     };
-  }).sort((a, b) => b.value - a.value);
+  })
+  .filter(c => c.activities > 0)
+  .sort((a, b) => b.value - a.value);
 }
 
 export interface DemoOrgAggregates {
@@ -170,8 +295,7 @@ export function computeDemoAggregates(activities: DemoActivity[] = DEMO_ACTIVITI
   const totalSocialValue = activities.reduce((s, a) => s + a.socialValueGBP, 0);
   const verifiedSocialValue = activities.filter(a => a.verified).reduce((s, a) => s + a.socialValueGBP, 0);
   const memberIds = new Set(activities.map(a => a.memberId));
-  const cats: ActivityCategory[] = ["Environment", "Community", "Health", "Education"];
-  const byCategory = cats.map(c => {
+  const byCategory = ALL_CATEGORIES.map(c => {
     const items = activities.filter(a => a.category === c);
     return {
       category: c,

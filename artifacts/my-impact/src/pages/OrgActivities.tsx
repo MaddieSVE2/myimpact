@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import {
   Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users,
 } from "lucide-react";
-import { OrgSubNav } from "@/components/layout/OrgSubNav";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_MEMBERS,
   getDemoMember, getRemovedMemberIds,
@@ -113,7 +112,6 @@ export default function OrgActivities() {
         The detailed log of every member action, with names visible by default. Use Anonymise to remove identifying information before sharing.
       </p>
 
-      <OrgSubNav />
 
       <div className="bg-white border border-border rounded-xl p-5 mb-6">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">

@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import {
   Download, FileSpreadsheet, FileText, EyeOff, AlertCircle, CheckCircle2,
 } from "lucide-react";
-import { OrgSubNav } from "@/components/layout/OrgSubNav";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES,
   computeDemoAggregates, computeMonthlyTrend, computeSdgBreakdown,
@@ -206,7 +205,6 @@ export default function OrgExport() {
         Download a polished impact report (PDF) or raw activity data (CSV) for your funders, board or comms team.
       </p>
 
-      <OrgSubNav />
 
       {/* Options */}
       <div className="bg-white border border-border rounded-xl p-5 mb-6">

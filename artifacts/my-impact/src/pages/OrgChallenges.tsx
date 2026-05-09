@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Flag, AlertCircle } from "lucide-react";
-import { OrgSubNav } from "@/components/layout/OrgSubNav";
 import { OrgChallengesPanel } from "@/components/OrgChallengesPanel";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { useMyOrg } from "@/lib/org-export";
@@ -57,7 +56,6 @@ export default function OrgChallenges() {
         Set goals for your members and track progress towards them together.
       </p>
 
-      <OrgSubNav />
 
       <OrgChallengesPanel orgId={orgData.org.id} />
     </div>
