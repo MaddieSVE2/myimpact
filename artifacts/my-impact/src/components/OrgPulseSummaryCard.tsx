@@ -4,6 +4,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
 import { BASE } from "@/lib/org-export";
 import { computeDemoPulseSummary, DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
+import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
 
 interface PulseSummarySurvey {
   id: string;
@@ -109,6 +110,7 @@ function LiveOrgPulseSummaryCard() {
       <div className="flex items-center gap-2 mb-3">
         <ClipboardList className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.pulseSummaryTitle")}</h3>
+        <ScoreIndicator average={showDonut ? avg : null} />
       </div>
       {!hasAny ? (
         <p className="text-xs text-muted-foreground">{t("orgDashboard.pulseSummaryNone")}</p>
@@ -228,6 +230,7 @@ function DemoOrgPulseSummaryCard() {
       <div className="flex items-center gap-2 mb-3">
         <ClipboardList className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.pulseSummaryTitle")}</h3>
+        <ScoreIndicator average={summary.responses > 0 ? summary.average : null} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[auto_auto_1fr] gap-4 items-center">
         {/* Donut ring */}
