@@ -283,6 +283,10 @@
 [data-theme="high-contrast"] .recharts-cartesian-grid line { stroke: #666666 !important; }
 
 @layer base {
+  html {
+    font-size: 125%;
+  }
+
   * {
     @apply border-border;
   }
