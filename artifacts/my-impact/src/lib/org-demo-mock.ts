@@ -125,21 +125,28 @@ const _SAM = [
   "2025-02","2025-03","2025-04","2025-05","2025-06",
   "2025-07","2025-08","2025-09","2025-10","2025-11","2025-12",
 ];
-const SYNTHETIC_COHORT: { member: DemoMember; activity: RawActivity }[] =
+const _S26M = ["2026-01","2026-02","2026-03","2026-04","2026-05"];
+const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
   Array.from({ length: 253 }, (_, k) => {
-    const n       = k + 33;
-    const id      = `m-${String(n).padStart(3, "0")}`;
-    const first   = _SF[k % _SF.length]!;
-    const last    = _SL[Math.floor(k / _SF.length) % _SL.length]!;
-    const region  = _SR[k % _SR.length]!;
-    const jm      = _SJM[k % _SJM.length]!;
-    const jd      = String(1 + (k % 27)).padStart(2, "0");
-    const cat     = _SC[k % _SC.length]!;
-    const am      = _SAM[k % _SAM.length]!;
-    const ad      = String(3 + (k % 25)).padStart(2, "0");
-    const hours   = 2 + (k % 5);
-    const value   = 150 + (k % 8) * 50;
-    const actName = _SA[k % _SA.length]!;
+    const n        = k + 33;
+    const id       = `m-${String(n).padStart(3, "0")}`;
+    const first    = _SF[k % _SF.length]!;
+    const last     = _SL[Math.floor(k / _SF.length) % _SL.length]!;
+    const region   = _SR[k % _SR.length]!;
+    const jm       = _SJM[k % _SJM.length]!;
+    const jd       = String(1 + (k % 27)).padStart(2, "0");
+    const cat      = _SC[k % _SC.length]!;
+    const cat2     = _SC[(k + 3) % _SC.length]!;
+    const am       = _SAM[k % _SAM.length]!;
+    const ad       = String(3 + (k % 25)).padStart(2, "0");
+    const am2      = _S26M[k % _S26M.length]!;
+    const ad2      = String(4 + (k % 24)).padStart(2, "0");
+    const hours    = 3 + (k % 6);
+    const hours2   = 2 + (k % 5);
+    const value    = 180 + (k % 8) * 60;
+    const value2   = 150 + (k % 7) * 50;
+    const actName  = _SA[k % _SA.length]!;
+    const actName2 = _SA[(k + 5) % _SA.length]!;
     return {
       member: {
         id,
@@ -149,11 +156,18 @@ const SYNTHETIC_COHORT: { member: DemoMember; activity: RawActivity }[] =
         joinedAt: `${jm}-${jd}`,
         region,
       },
-      activity: [
-        id, `${am}-${ad}`, cat, actName,
-        `Contributed ${hours}h to the ${cat.toLowerCase()} programme as part of the team.`,
-        hours, value, true,
-      ] as unknown as RawActivity,
+      activities: [
+        [
+          id, `${am}-${ad}`, cat, actName,
+          `Contributed ${hours}h to the ${cat.toLowerCase()} programme as part of the team.`,
+          hours, value, true,
+        ] as unknown as RawActivity,
+        [
+          id, `${am2}-${ad2}`, cat2, actName2,
+          `Contributed ${hours2}h to the ${cat2.toLowerCase()} programme this period.`,
+          hours2, value2, true,
+        ] as unknown as RawActivity,
+      ],
     };
   });
 
@@ -325,6 +339,30 @@ const RAW_ACTIVITIES: RawActivity[] = [
   ["m-032", "2025-10-04", "Education",          "School governor",               "Attended the autumn school governors' meeting and led the SEND sub-committee.",           3,   300, true],
   ["m-032", "2025-12-05", "Arts & Culture",     "Community Christmas concert",   "Organised and performed at the community Christmas concert. 200 attendees.",             4,   360, true],
 
+  // 2026 activities — m-011 to m-032
+  ["m-011", "2026-03-07", "Community",          "Foodbank volunteer",            "Sorted and packed food parcels at the local foodbank. Busiest Saturday of the year.",    3,   195, true],
+  ["m-012", "2026-01-17", "Sport & Active",     "Wheelchair rugby support",      "Supported the wheelchair rugby club with match-day logistics and score recording.",      4,   280, true],
+  ["m-013", "2026-02-14", "Education",          "ESOL teaching assistant",       "Assisted with an ESOL class for 16 adult learners working towards Entry Level 3.",       3,   300, true],
+  ["m-014", "2026-03-20", "Community",          "Drop-in centre support",        "Helped run the weekly drop-in centre for people experiencing homelessness.",             4,   360, true],
+  ["m-015", "2026-01-24", "Environment",        "Coastal path maintenance",      "Cleared gorse and litter from a half-kilometre stretch of the coastal path.",           4,   280, true],
+  ["m-016", "2026-02-28", "Health",             "Cancer support befriending",    "Telephone befriending sessions with two people undergoing cancer treatment.",            2,   180, true],
+  ["m-017", "2026-04-11", "Sport & Active",     "Junior cricket coaching",       "Coached a spring skills session for 18 children aged 8 to 12.",                         3,   210, true],
+  ["m-018", "2026-03-14", "Mentoring",          "Employability coaching",        "Two one-to-one employability coaching sessions with long-term job seekers.",             3,   260, true],
+  ["m-019", "2026-01-11", "Emergency Response", "Mountain rescue training",      "Monthly mountain rescue team training focused on winter navigation.",                    6,   480, true],
+  ["m-020", "2026-02-07", "Arts & Culture",     "Community photography project", "Led a photography session for 14 young people exploring their neighbourhood.",          4,   340, true],
+  ["m-021", "2026-03-28", "Mentoring",          "Enterprise mentoring",          "Mentored three young people on early-stage business planning and finance.",             3,   330, true],
+  ["m-022", "2026-04-18", "Health",             "Postnatal support group",       "Peer-support session for new parents at the children's centre. 14 attended.",           2,   180, true],
+  ["m-023", "2026-02-21", "Community",          "Night shelter volunteer",       "Served food and ran activities at the emergency night shelter.",                         5,   450, true],
+  ["m-024", "2026-03-07", "Mentoring",          "Back-to-work coaching",         "Coached four women returning to work on CV writing and interview technique.",            3,   330, true],
+  ["m-025", "2026-01-18", "Sport & Active",     "Open-water swim safety",        "Safety kayaked for the community open-water swimming group. 22 swimmers.",             4,   280, true],
+  ["m-026", "2026-02-14", "Education",          "English conversation club",     "Ran the weekly English conversation club for migrants and refugees. 10 attendees.",      2,   240, true],
+  ["m-027", "2026-04-04", "Environment",        "Moor restoration volunteer",    "Helped with spring blanket-bog restoration on a moorland conservation day.",            6,   420, true],
+  ["m-028", "2026-03-21", "Health",             "Hospice garden volunteer",      "Spring maintenance of the therapeutic garden at the local hospice.",                    3,   240, true],
+  ["m-029", "2026-01-25", "Mentoring",          "Care-experienced youth mentor", "Monthly mentoring session with a care-experienced teenager in independent living.",      2,   240, true],
+  ["m-030", "2026-02-28", "Arts & Culture",     "Youth dance workshop",          "Led a contemporary dance workshop for 20 teenagers at the local arts centre.",          3,   270, true],
+  ["m-031", "2026-04-12", "Community",          "Refugee welcome support",       "Helped organise welcome packs and orientation for newly arrived families.",              4,   360, true],
+  ["m-032", "2026-03-14", "Education",          "School governor",               "Spring term governors' meeting covering curriculum review and SEND provision.",          3,   300, true],
+
   // January 2026
   ["m-001", "2026-01-08", "Community",          "New year volunteer briefing",   "Ran the 2026 kickoff briefing for the volunteer cohort. 18 new starters.",                   3,   210, true],
   ["m-002", "2026-01-11", "Environment",        "Canal towpath clean-up",        "Winter clear of the Mersey towpath. Eight bin bags collected, 1km cleared.",                  4,   220, true],
@@ -369,7 +407,7 @@ const RAW_ACTIVITIES: RawActivity[] = [
 
 export const DEMO_ACTIVITIES: DemoActivity[] = [
   ...RAW_ACTIVITIES,
-  ...SYNTHETIC_COHORT.map(s => s.activity),
+  ...SYNTHETIC_COHORT.flatMap(s => s.activities),
 ].map((r, i) => ({
   id: `a-${String(i + 1).padStart(3, "0")}`,
   memberId: r[0],
