@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Cell,
+  PieChart, Pie,
 } from "recharts";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
@@ -88,6 +89,15 @@ const DEMO = {
     { month: "Nov", value: 186400 },
     { month: "Dec", value: 218650 },
   ] satisfies MonthlyDataPoint[],
+  sdgs: [
+    { number: 4, label: "Quality Education", color: "#C5192D", pct: 26, members: 142, activities: 312, value: 56849 },
+    { number: 8, label: "Decent Work & Growth", color: "#A21942", pct: 18, members: 98, activities: 204, value: 39357 },
+    { number: 10, label: "Reduced Inequalities", color: "#DD1367", pct: 14, members: 76, activities: 152, value: 30611 },
+    { number: 3, label: "Good Health", color: "#4C9F38", pct: 13, members: 71, activities: 143, value: 28425 },
+    { number: 5, label: "Gender Equality", color: "#FF3A21", pct: 11, members: 60, activities: 122, value: 24052 },
+    { number: 11, label: "Sustainable Cities", color: "#FD9D24", pct: 10, members: 55, activities: 110, value: 21865 },
+    { number: 17, label: "Partnerships", color: "#19486A", pct: 8, members: 44, activities: 88, value: 17492 },
+  ],
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -386,6 +396,54 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
               </div>
             ))}
           </div>
+        </div>
+
+        {/* SDG alignment */}
+        <div className="bg-white border border-border rounded-xl p-6">
+          <SectionLabel>Global goals</SectionLabel>
+          <SectionTitle>UN Sustainable Development Goals (SDGs)</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Where your students' activity lands across the global goals. SDG 4 Quality Education leads, reflecting the strong focus on peer tutoring, mentoring, and structured award programmes.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={DEMO.sdgs} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={56} outerRadius={96} paddingAngle={2} isAnimationActive>
+                    {DEMO.sdgs.map((s) => (
+                      <Cell key={s.number} fill={s.color} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(v: number, _n, payload) => {
+                      const p = (payload as unknown as { payload: { number: number; label: string; members: number; activities: number } }).payload;
+                      return [`${v}% · ${p.members} students · ${p.activities} activities`, `SDG ${p.number} ${p.label}`];
+                    }}
+                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ol className="space-y-2.5">
+              {DEMO.sdgs.map((s, idx) => (
+                <li key={s.number} className="flex items-center gap-3">
+                  <span className="shrink-0 w-7 h-7 rounded-md text-white text-xs font-bold inline-flex items-center justify-center" style={{ backgroundColor: s.color }}>{s.number}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-foreground truncate">{s.label}</p>
+                      <p className="text-xs font-bold text-foreground shrink-0">{s.pct}%</p>
+                    </div>
+                    <div className="h-1.5 mt-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${s.pct * 3}%`, backgroundColor: s.color }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {idx === 0 && <span className="font-semibold text-foreground">Leading goal · </span>}
+                      {formatCurrency(s.value)} · {s.members} students · {s.activities} activities
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-4">Goal alignment is calculated using the Social Value Engine methodology, which maps each activity to its primary UN Sustainable Development Goals (SDGs).</p>
         </div>
 
         {/* Insights */}
