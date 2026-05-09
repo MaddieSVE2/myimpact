@@ -433,7 +433,6 @@ export default function Intro() {
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
       {isLoggedIn ? <CalendarHomeWidget /> : null}
-
       {/* ── ANNUAL RECAP DISCOVERY ── */}
       {showRecapBanner && !isOrgManager && (
         <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
@@ -442,7 +441,6 @@ export default function Intro() {
           </div>
         </div>
       )}
-
       {/* ── HERO ──
           Logged-out: marketing pitch as before.
           Logged-in: personalised welcome + quick CTAs in the same vertical slot.
@@ -645,7 +643,6 @@ export default function Intro() {
 
       </section>
       )}
-
       {/* ── YOUR ORGANISATION: unified 4-job panel (members only) ──
           Mirrors the /org member view so the four key jobs are obvious
           on the home page too. Order matches /org: Share, Pulse,
@@ -791,7 +788,6 @@ export default function Intro() {
           </div>
         </section>
       )}
-
       {/* ── FOR YOUR ORGANISATION (member-only prompts) ──
           OrgPromptsSection renders nothing (no DOM, no wrapper) for
           non-members, managers, and members with no open prompts, so
@@ -801,7 +797,6 @@ export default function Intro() {
           <OrgPromptsSection variant="full" />
         </div>
       )}
-
       {/* ── QUICK LOG (logged-in users with active recurring templates only,
           hidden for org managers since their home is org-focused) ── */}
       {hasQuickLogContent && !isOrgManager && (
@@ -811,7 +806,6 @@ export default function Intro() {
           </div>
         </section>
       )}
-
       {!isLoggedIn && !authLoading && (
       <>
       {/* ── GDP STATEMENT ── */}
@@ -1048,7 +1042,7 @@ export default function Intro() {
       </>
       )}
       {/* ── FOOTER ── */}
-      <footer className="mi-footer" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
+      <footer className="mi-footer mt-[100px]" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <img
           src={`${import.meta.env.BASE_URL}images/myimpact.png`}
           alt="My Impact"
