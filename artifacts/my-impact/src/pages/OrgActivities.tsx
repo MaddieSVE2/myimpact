@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_MEMBERS,
-  getDemoMember, getRemovedMemberIds,
+  getDemoMember, getRemovedMemberIds, ALL_CATEGORIES,
   type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import { useMyOrg, memberLabel } from "@/lib/org-export";
@@ -14,10 +14,9 @@ import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 
 const PAGE_SIZE = 10;
-const CATEGORIES: ActivityCategory[] = ["Environment", "Community", "Health", "Education"];
 
 function parseCategory(v: string): "all" | ActivityCategory {
-  if (v === "Environment" || v === "Community" || v === "Health" || v === "Education") return v;
+  if ((ALL_CATEGORIES as string[]).includes(v)) return v as ActivityCategory;
   return "all";
 }
 
@@ -168,7 +167,7 @@ export default function OrgActivities() {
             </div>
             <select value={category} onChange={e => { setCategory(parseCategory(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-category">
               <option value="all">All categories</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-member">
               <option value="all">All members</option>
