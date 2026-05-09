@@ -12,23 +12,22 @@ import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
+const SOMETHING_ELSE_ID = "something_else";
+
 interface SelectedLine {
   activityId: string;
   quantity: number;
   hoursPerYear: number;
-  hoursManual: boolean;
   title: string;
   detail: string;
 }
 
-interface SessionCalc {
-  hrsPerSession: number;
-  sessionsPerWeek: number;
-  weeksPerYear: number;
-}
-
-function defaultHoursForQuantity(qty: number): number {
-  return Math.max(1, Math.round((qty || 0) * 2));
+function todayIso(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 type Step = "select" | "details" | "review" | "done";
@@ -62,9 +61,8 @@ export default function OrgMemberSubmit() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [lines, setLines] = useState<Record<string, SelectedLine>>({});
-  const [sessionCalcs, setSessionCalcs] = useState<Record<string, SessionCalc>>({});
-  const [openCalcs, setOpenCalcs] = useState<Record<string, boolean>>({});
-  const [periodLabel, setPeriodLabel] = useState("");
+  const [activityDate, setActivityDate] = useState<string>(todayIso);
+  const [saveToPersonal, setSaveToPersonal] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
@@ -120,12 +118,13 @@ export default function OrgMemberSubmit() {
     const out: { activityId: string; name: string; hoursPerYear: number; reason: "high" | "zero" }[] = [];
     for (const line of orderedSelected) {
       const def = activitiesById.get(line.activityId);
-      if (!def) continue;
-      const isHourly = def.unit === "hour";
+      const name = line.activityId === SOMETHING_ELSE_ID
+        ? (line.title || "Something else")
+        : (def?.name ?? line.activityId);
       if (line.hoursPerYear > 2000) {
-        out.push({ activityId: line.activityId, name: def.name, hoursPerYear: line.hoursPerYear, reason: "high" });
-      } else if (!isHourly && line.hoursPerYear === 0) {
-        out.push({ activityId: line.activityId, name: def.name, hoursPerYear: line.hoursPerYear, reason: "zero" });
+        out.push({ activityId: line.activityId, name, hoursPerYear: line.hoursPerYear, reason: "high" });
+      } else if (line.hoursPerYear === 0) {
+        out.push({ activityId: line.activityId, name, hoursPerYear: line.hoursPerYear, reason: "zero" });
       }
     }
     return out;
@@ -136,28 +135,38 @@ export default function OrgMemberSubmit() {
     let hours = 0;
     for (const line of orderedSelected) {
       const def = activitiesById.get(line.activityId);
-      if (!def) continue;
-      value += estimatedValue(def, line);
+      if (def) value += estimatedValue(def, line);
       hours += line.hoursPerYear;
     }
     return { value, hours };
   }, [orderedSelected, activitiesById]);
 
-  function toggleSelect(act: ActivityItem) {
+  function toggleSelect(activityId: string) {
     setLines(prev => {
       const next = { ...prev };
-      if (next[act.id]) {
-        delete next[act.id];
+      if (next[activityId]) {
+        delete next[activityId];
       } else {
-        const isHourly = act.unit === "hour";
-        next[act.id] = {
-          activityId: act.id,
-          quantity: isHourly ? 0 : act.defaultQuantity,
-          hoursPerYear: isHourly ? act.defaultQuantity : defaultHoursForQuantity(act.defaultQuantity),
-          hoursManual: false,
-          title: "",
-          detail: "",
-        };
+        if (activityId === SOMETHING_ELSE_ID) {
+          next[activityId] = {
+            activityId: SOMETHING_ELSE_ID,
+            quantity: 0,
+            hoursPerYear: 0,
+            title: "",
+            detail: "",
+          };
+        } else {
+          const act = activitiesById.get(activityId);
+          if (!act) return prev;
+          const isHourly = act.unit === "hour";
+          next[activityId] = {
+            activityId,
+            quantity: isHourly ? 0 : act.defaultQuantity,
+            hoursPerYear: isHourly ? act.defaultQuantity : 0,
+            title: "",
+            detail: "",
+          };
+        }
       }
       return next;
     });
@@ -167,27 +176,7 @@ export default function OrgMemberSubmit() {
     setLines(prev => {
       const cur = prev[id];
       if (!cur) return prev;
-      const merged: SelectedLine = { ...cur, ...patch };
-      const def = activitiesById.get(id);
-      const isHourly = def?.unit === "hour";
-      if (!isHourly && patch.quantity !== undefined && patch.hoursPerYear === undefined && !merged.hoursManual) {
-        merged.hoursPerYear = defaultHoursForQuantity(merged.quantity);
-      }
-      return { ...prev, [id]: merged };
-    });
-  }
-
-  function updateSessionCalc(id: string, patch: Partial<SessionCalc>) {
-    setSessionCalcs(prev => {
-      const cur = prev[id] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
-      const next = { ...cur, ...patch };
-      const total = Math.max(1, Math.round(next.hrsPerSession * next.sessionsPerWeek * next.weeksPerYear));
-      setLines(ls => {
-        const line = ls[id];
-        if (!line) return ls;
-        return { ...ls, [id]: { ...line, hoursPerYear: total, hoursManual: true } };
-      });
-      return { ...prev, [id]: next };
+      return { ...prev, [id]: { ...cur, ...patch } };
     });
   }
 
@@ -223,13 +212,15 @@ export default function OrgMemberSubmit() {
     setSubmitError(null);
     setSubmitting(true);
     try {
+      const dateLabel = new Date(activityDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       const res = await fetch(`${BASE}/api/org/member-submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          name: periodLabel.trim() || `Submitted ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
-          periodLabel: periodLabel.trim() || null,
+          name: `Activities on ${dateLabel}`,
+          activityDate,
+          saveToPersonal,
           activities: orderedSelected.map(l => ({
             activityId: l.activityId,
             quantity: l.quantity,
@@ -403,7 +394,7 @@ export default function OrgMemberSubmit() {
                     <li key={a.id}>
                       <button
                         type="button"
-                        onClick={() => toggleSelect(a)}
+                        onClick={() => toggleSelect(a.id)}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
                         data-testid={`member-submit-activity-${a.id}`}
                       >
@@ -422,6 +413,46 @@ export default function OrgMemberSubmit() {
                   <li className="px-4 py-8 text-center text-sm text-muted-foreground">No activities match your filter.</li>
                 )}
               </ul>
+
+              {/* Something else — always visible at the bottom */}
+              <div className="border-t border-border">
+                {(() => {
+                  const isSelected = !!lines[SOMETHING_ELSE_ID];
+                  const line = lines[SOMETHING_ELSE_ID];
+                  return (
+                    <div className={`${isSelected ? "bg-muted/10" : ""}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSelect(SOMETHING_ELSE_ID)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition-colors ${isSelected ? "bg-muted/5" : ""}`}
+                        data-testid="member-submit-activity-something-else"
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-primary border-primary" : "border-dashed border-border"}`}>
+                          {isSelected ? <Check className="w-3 h-3 text-white" /> : <Plus className="w-3 h-3 text-muted-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">Something else</p>
+                          <p className="text-[11px] text-muted-foreground">Describe your own activity</p>
+                        </div>
+                      </button>
+                      {isSelected && line && (
+                        <div className="px-4 pb-3">
+                          <input
+                            type="text"
+                            value={line.title}
+                            onChange={e => updateLine(SOMETHING_ELSE_ID, { title: e.target.value })}
+                            maxLength={120}
+                            placeholder="Describe what you did"
+                            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                            data-testid="member-submit-something-else-title"
+                            onClick={e => e.stopPropagation()}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           )}
 
@@ -446,29 +477,38 @@ export default function OrgMemberSubmit() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
           <div className="bg-white border border-border rounded-xl p-4">
             <label className="block text-xs font-medium text-foreground mb-1.5">
-              Period or label <span className="text-muted-foreground">(optional)</span>
+              Date of activity
             </label>
             <input
-              type="text"
-              value={periodLabel}
-              onChange={e => setPeriodLabel(e.target.value)}
-              placeholder="e.g. April 2026, Spring fundraiser"
-              maxLength={80}
+              type="date"
+              value={activityDate}
+              onChange={e => setActivityDate(e.target.value || todayIso())}
+              max={todayIso()}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-              data-testid="member-submit-period-label"
+              data-testid="member-submit-activity-date"
             />
           </div>
 
           {orderedSelected.map(line => {
             const def = activitiesById.get(line.activityId);
-            if (!def) return null;
-            const isHourly = def.unit === "hour";
+            const isSomethingElse = line.activityId === SOMETHING_ELSE_ID;
+            const isHourly = isSomethingElse ? true : (def?.unit === "hour");
+
             return (
               <div key={line.activityId} className="bg-white border border-border rounded-xl p-4" data-testid={`member-submit-line-${line.activityId}`}>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{def.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{def.category} · {def.unitLabel}</p>
+                    {isSomethingElse ? (
+                      <>
+                        <p className="text-sm font-semibold text-foreground">Something else</p>
+                        <p className="text-[11px] text-muted-foreground">Custom activity</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-foreground">{def?.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{def?.category} · {def?.unitLabel}</p>
+                      </>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -480,128 +520,56 @@ export default function OrgMemberSubmit() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  {isHourly ? (
-                    <div>
-                      <label className="block text-[11px] font-medium text-foreground mb-1">Hours per year</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={line.hoursPerYear || ""}
-                        onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                        data-testid={`member-submit-hours-${line.activityId}`}
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-[11px] font-medium text-foreground mb-1">{def.unitLabel || "Quantity"}</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={line.quantity || ""}
-                        onChange={e => updateLine(line.activityId, { quantity: Number(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                        data-testid={`member-submit-quantity-${line.activityId}`}
-                      />
-                    </div>
-                  )}
-                  {!isHourly && (
-                    <div>
-                      <label className="block text-[11px] font-medium text-foreground mb-1">
-                        Hours per year
-                        {!line.hoursManual && (
-                          <span className="text-muted-foreground font-normal"> (auto)</span>
-                        )}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={line.hoursPerYear || ""}
-                        onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0, hoursManual: true })}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                        data-testid={`member-submit-hours-${line.activityId}`}
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-[11px] font-medium text-foreground mb-1">Title <span className="text-muted-foreground">(optional)</span></label>
-                    <input
-                      type="text"
-                      value={line.title}
-                      onChange={e => updateLine(line.activityId, { title: e.target.value })}
-                      maxLength={120}
-                      placeholder="Short label"
-                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                      data-testid={`member-submit-title-${line.activityId}`}
-                    />
-                  </div>
-                </div>
-
-                {!isHourly && (() => {
-                  const calc = sessionCalcs[line.activityId] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
-                  const isOpen = !!openCalcs[line.activityId];
-                  return (
-                    <div className="mb-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpenCalcs(o => ({ ...o, [line.activityId]: !o[line.activityId] }))}
-                        className="text-[11px] font-medium text-primary hover:underline"
-                        data-testid={`member-submit-calc-toggle-${line.activityId}`}
-                      >
-                        {isOpen ? "Hide session calculator" : "Use session calculator (weekly shifts)"}
-                      </button>
-                      {isOpen && (
-                        <div className="mt-2 bg-muted/30 border border-border rounded-md p-3 space-y-2" data-testid={`member-submit-calc-${line.activityId}`}>
-                          <p className="text-xs font-medium text-muted-foreground">Estimate annual hours from a regular shift</p>
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <input
-                              type="number" min="0.5" step="0.5"
-                              value={calc.hrsPerSession}
-                              onChange={e => updateSessionCalc(line.activityId, { hrsPerSession: Number(e.target.value) || 0 })}
-                              className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                              data-testid={`member-submit-calc-hrs-${line.activityId}`}
-                            />
-                            <span className="text-muted-foreground text-xs">hrs/session ×</span>
-                            <input
-                              type="number" min="1"
-                              value={calc.sessionsPerWeek}
-                              onChange={e => updateSessionCalc(line.activityId, { sessionsPerWeek: Number(e.target.value) || 0 })}
-                              className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                              data-testid={`member-submit-calc-sessions-${line.activityId}`}
-                            />
-                            <span className="text-muted-foreground text-xs">/week ×</span>
-                            <input
-                              type="number" min="1" max="52"
-                              value={calc.weeksPerYear}
-                              onChange={e => updateSessionCalc(line.activityId, { weeksPerYear: Number(e.target.value) || 0 })}
-                              className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                              data-testid={`member-submit-calc-weeks-${line.activityId}`}
-                            />
-                            <span className="text-muted-foreground text-xs">weeks =</span>
-                            <span className="font-bold text-foreground text-sm">
-                              {Math.max(1, Math.round(calc.hrsPerSession * calc.sessionsPerWeek * calc.weeksPerYear))} hrs/yr
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                <div>
-                  <label className="block text-[11px] font-medium text-foreground mb-1">Detail <span className="text-muted-foreground">(optional)</span></label>
+                {/* Description — above hours */}
+                <div className="mb-2">
+                  <label className="block text-[11px] font-medium text-foreground mb-1">
+                    What did you do? <span className="text-muted-foreground">(optional)</span>
+                  </label>
                   <textarea
-                    value={line.detail}
-                    onChange={e => updateLine(line.activityId, { detail: e.target.value })}
+                    value={isSomethingElse ? line.title : line.detail}
+                    onChange={e => {
+                      if (isSomethingElse) {
+                        updateLine(line.activityId, { title: e.target.value });
+                      } else {
+                        updateLine(line.activityId, { detail: e.target.value });
+                      }
+                    }}
                     maxLength={500}
                     rows={2}
-                    placeholder="Anything your organisation should know"
+                    placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
                     className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-y"
                     data-testid={`member-submit-detail-${line.activityId}`}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
+                </div>
+
+                {/* Quantity for non-hourly activities */}
+                {!isHourly && def && (
+                  <div className="mb-2">
+                    <label className="block text-[11px] font-medium text-foreground mb-1">{def.unitLabel || "Quantity"}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={line.quantity || ""}
+                      onChange={e => updateLine(line.activityId, { quantity: Number(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                      data-testid={`member-submit-quantity-${line.activityId}`}
+                    />
+                  </div>
+                )}
+
+                {/* Hours spent */}
+                <div>
+                  <label className="block text-[11px] font-medium text-foreground mb-1">Hours spent</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={line.hoursPerYear || ""}
+                    onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                    data-testid={`member-submit-hours-${line.activityId}`}
                   />
                 </div>
               </div>
@@ -614,6 +582,20 @@ export default function OrgMemberSubmit() {
             </div>
           )}
 
+          {/* Save to personal checkbox */}
+          <div className="bg-white border border-border rounded-xl p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={saveToPersonal}
+                onChange={e => setSaveToPersonal(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-border text-primary cursor-pointer"
+                data-testid="member-submit-save-to-personal"
+              />
+              <span className="text-sm text-foreground">Also save this to my personal impact report</span>
+            </label>
+          </div>
+
           <div className="flex items-center justify-between pt-2">
             <button
               type="button"
@@ -625,7 +607,7 @@ export default function OrgMemberSubmit() {
             <button
               type="button"
               onClick={() => setStep("review")}
-              disabled={orderedSelected.length === 0}
+              disabled={orderedSelected.length === 0 || hoursWarnings.some(w => w.reason === "zero")}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               data-testid="member-submit-next-review"
             >
@@ -646,8 +628,8 @@ export default function OrgMemberSubmit() {
             <div className="space-y-2 mb-5">
               {[
                 { shared: true, label: `${orderedSelected.length} activit${orderedSelected.length === 1 ? "y" : "ies"} you've completed` },
-                { shared: true, label: "Hours and quantities you entered" },
-                { shared: true, label: "Optional titles and details" },
+                { shared: true, label: "Hours you entered" },
+                { shared: true, label: "Optional descriptions" },
                 { shared: true, label: `Estimated social value (~${formatGBP(totals.value)})` },
                 { shared: false, label: "Your personal journal entries" },
                 { shared: false, label: "Activities you log only for yourself" },
@@ -685,24 +667,38 @@ export default function OrgMemberSubmit() {
               <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
                 {orderedSelected.map(l => {
                   const def = activitiesById.get(l.activityId);
-                  if (!def) return null;
+                  const isSomethingElse = l.activityId === SOMETHING_ELSE_ID;
+                  const displayName = isSomethingElse ? (l.title || "Something else") : (def?.name ?? l.activityId);
+                  const displayDetail = isSomethingElse ? null : l.detail;
                   return (
                     <li key={l.activityId} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{l.title || def.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-foreground truncate">{displayName}</p>
+                          {isSomethingElse && (
+                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Custom</span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-muted-foreground truncate">
-                          {def.category}
-                          {def.unit === "hour"
-                            ? ` · ${l.hoursPerYear} hrs/yr`
-                            : ` · ${l.quantity} ${def.unitLabel} · ${l.hoursPerYear} hrs/yr`}
-                          {l.detail && ` · ${l.detail.length > 60 ? l.detail.slice(0, 60) + "…" : l.detail}`}
+                          {isSomethingElse
+                            ? `${l.hoursPerYear} hrs`
+                            : def?.unit === "hour"
+                              ? `${l.hoursPerYear} hrs`
+                              : `${l.quantity} ${def?.unitLabel} · ${l.hoursPerYear} hrs`}
+                          {displayDetail && ` · ${displayDetail.length > 60 ? displayDetail.slice(0, 60) + "…" : displayDetail}`}
                         </p>
                       </div>
-                      <p className="text-xs font-semibold tabular-nums">{formatGBP(estimatedValue(def, l))}</p>
+                      {def && <p className="text-xs font-semibold tabular-nums">{formatGBP(estimatedValue(def, l))}</p>}
                     </li>
                   );
                 })}
               </ul>
+              {saveToPersonal && (
+                <p className="mt-3 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-green-600 shrink-0" />
+                  This will also be saved to your personal impact report.
+                </p>
+              )}
             </div>
           </div>
 
@@ -722,14 +718,15 @@ export default function OrgMemberSubmit() {
                     <li key={w.activityId} data-testid={`member-submit-hours-warning-${w.activityId}`}>
                       <span className="font-medium">{w.name}</span>{" "}
                       {w.reason === "high"
-                        ? `(${w.hoursPerYear.toLocaleString("en-GB")} hrs/yr seems very high. A full-time job is around 2,000 hrs/yr.)`
-                        : "(0 hrs/yr looks like it might have been left blank.)"}
+                        ? `(${w.hoursPerYear.toLocaleString("en-GB")} hrs seems very high. A full-time job is around 2,000 hrs/yr.)`
+                        : "(0 hrs looks like it might have been left blank.)"}
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
           )}
+
           <div className="bg-white border border-border rounded-xl p-5 mb-4" data-testid="member-submit-manager-preview">
             <div className="flex items-center gap-2 mb-1">
               <Eye className="w-4 h-4 text-primary" />
@@ -747,7 +744,7 @@ export default function OrgMemberSubmit() {
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground truncate">{orgName} · Activity feed</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {periodLabel.trim() ? `Submission: ${periodLabel.trim()}` : "New submission from you"}
+                    {`Activity on ${new Date(activityDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
                     {" · "}
                     {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
@@ -768,7 +765,9 @@ export default function OrgMemberSubmit() {
                   <tbody>
                     {orderedSelected.map(l => {
                       const def = activitiesById.get(l.activityId);
-                      if (!def) return null;
+                      const isSomethingElse = l.activityId === SOMETHING_ELSE_ID;
+                      const displayName = isSomethingElse ? (l.title || "Something else") : (l.detail || def?.name || l.activityId);
+                      const category = isSomethingElse ? "Custom" : (def?.category ?? "");
                       return (
                         <tr key={l.activityId} className="border-b border-border/60 align-top" data-testid={`member-submit-preview-row-${l.activityId}`}>
                           <td className="py-2 pr-3">
@@ -778,19 +777,22 @@ export default function OrgMemberSubmit() {
                             )}
                           </td>
                           <td className="py-2 pr-3">
-                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{def.category}</span>
+                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{category}</span>
                           </td>
                           <td className="py-2 pr-3 max-w-md">
-                            <p className="font-medium text-foreground">{l.title || def.name}</p>
+                            <p className="font-medium text-foreground">{displayName}</p>
                             <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                              {def.unit === "hour"
-                                ? `${l.hoursPerYear} hrs/yr`
-                                : `${l.quantity} ${def.unitLabel}`}
-                              {l.detail && ` · ${l.detail.length > 80 ? l.detail.slice(0, 80) + "…" : l.detail}`}
+                              {isSomethingElse
+                                ? `${l.hoursPerYear} hrs`
+                                : def?.unit === "hour"
+                                  ? `${l.hoursPerYear} hrs`
+                                  : `${l.quantity} ${def?.unitLabel}`}
                             </p>
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{Math.round(l.hoursPerYear).toLocaleString("en-GB")}</td>
-                          <td className="py-2 pr-3 text-right whitespace-nowrap font-semibold text-foreground">{formatGBP(estimatedValue(def, l))}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap font-semibold text-foreground">
+                            {def ? formatGBP(estimatedValue(def, l)) : "—"}
+                          </td>
                         </tr>
                       );
                     })}
@@ -893,9 +895,8 @@ export default function OrgMemberSubmit() {
               type="button"
               onClick={() => {
                 setLines({});
-                setSessionCalcs({});
-                setOpenCalcs({});
-                setPeriodLabel("");
+                setActivityDate(todayIso());
+                setSaveToPersonal(false);
                 setCreatedRecordId(null);
                 setWithdrawn(false);
                 setWithdrawError(null);

@@ -1952,6 +1952,8 @@ interface MemberSubmitActivity {
 interface MemberSubmitBody {
   name?: unknown;
   periodLabel?: unknown;
+  activityDate?: unknown;
+  saveToPersonal?: unknown;
   activities?: unknown;
 }
 
@@ -1991,6 +1993,14 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       ? body.periodLabel.trim().slice(0, 80)
       : null;
 
+    // Parse activityDate (ISO date string, e.g. "2026-05-09")
+    const activityDateRaw = typeof body.activityDate === "string" ? body.activityDate.trim() : "";
+    const parsedActivityDate = activityDateRaw
+      ? (() => { const d = new Date(activityDateRaw); return isNaN(d.getTime()) ? new Date() : d; })()
+      : new Date();
+
+    const saveToPersonal = body.saveToPersonal === true;
+
     if (!Array.isArray(body.activities) || body.activities.length === 0) {
       res.status(400).json({ error: "At least one activity is required." });
       return;
@@ -2000,9 +2010,28 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       return;
     }
 
-    const cleaned: Array<{ activityId: string; quantity: number; hoursPerYear: number; title: string | null; detail: string | null }> = [];
+    const cleaned: Array<{ activityId: string; quantity: number; hoursPerYear: number; title: string | null; detail: string | null; isSomethingElse: boolean }> = [];
     for (const raw of body.activities as MemberSubmitActivity[]) {
       const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
+      const isSomethingElse = id === "something_else";
+
+      if (isSomethingElse) {
+        const hoursNum = Number(raw.hoursPerYear);
+        const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
+        if (safeHours <= 0) {
+          res.status(400).json({ error: "Custom activity ('Something else') needs a positive hours value." });
+          return;
+        }
+        if (safeHours > 24 * 365) {
+          res.status(400).json({ error: "Custom activity has an unreasonably large hours value." });
+          return;
+        }
+        const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
+        const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
+        cleaned.push({ activityId: "something_else", quantity: 0, hoursPerYear: safeHours, title, detail, isSomethingElse: true });
+        continue;
+      }
+
       const def = ACTIVITIES.find(a => a.id === id);
       if (!def) {
         res.status(400).json({ error: `Unknown activity id '${id}'. Only standard activities are allowed.` });
@@ -2025,13 +2054,22 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       }
       const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
       const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
-      cleaned.push({ activityId: id, quantity: safeQuantity, hoursPerYear: safeHours, title, detail });
+      cleaned.push({ activityId: id, quantity: safeQuantity, hoursPerYear: safeHours, title, detail, isSomethingElse: false });
     }
 
+    // Separate standard activities (have SVE proxy) from custom "something_else" ones
+    const standardCleaned = cleaned.filter(c => !c.isSomethingElse);
+    const somethingElseHours = cleaned
+      .filter(c => c.isSomethingElse)
+      .reduce((sum, c) => sum + c.hoursPerYear, 0);
+
+    // calculateImpact handles standard activities; something_else hours are
+    // passed as additionalVolunteerHours so they count for contribution value
+    // and personal development value but have no SVE proxy impact value.
     const calc = calculateImpact(
-      cleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
+      standardCleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
       0,
-      0,
+      somethingElseHours,
       [],
     );
 
@@ -2075,6 +2113,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       source: "member-submitted",
       submittedToOrgId: membership.orgId,
       submittedToOrgAt: now,
+      entryDate: parsedActivityDate,
     }).returning();
 
     // Auto-accept: insert an approved verification row attributed to the
@@ -2087,6 +2126,48 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       decidedAt: now,
       reason: "member-submitted",
     });
+
+    // When saveToPersonal is true, also create a personal impact record for
+    // the member so they can see this submission in their own impact report.
+    // This runs regardless of whether there are standard activities — a
+    // something_else-only submission is still valid for a personal record.
+    if (saveToPersonal) {
+      // Standard activities contribute SVE proxy impact value.
+      // something_else hours are passed as additionalVolunteerHours so they
+      // count for contribution value and personal development value even though
+      // they have no SVE proxy.
+      const personalCalc = calculateImpact(
+        standardCleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
+        0,
+        somethingElseHours,
+        [],
+      );
+      // Include all submitted activities (standard + something_else) in the
+      // personal record's activitiesJson so the full submission is preserved.
+      const personalActivitiesJson = cleaned.map(c => ({
+        activityId: c.activityId,
+        quantity: c.quantity,
+        hoursPerYear: c.hoursPerYear,
+        title: c.title,
+        detail: c.detail,
+      }));
+      const dateLabel = parsedActivityDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      await db.insert(impactRecordsTable).values({
+        userId,
+        name: `${name} (personal)`,
+        periodLabel: dateLabel,
+        totalValue: String(personalCalc.totalValue),
+        impactValue: String(personalCalc.impactValue),
+        contributionValue: String(personalCalc.contributionValue),
+        donationsValue: "0",
+        personalDevelopmentValue: String(personalCalc.personalDevelopmentValue),
+        totalHours: Math.round(personalCalc.totalHours),
+        activitiesJson: personalActivitiesJson,
+        resultJson: personalCalc,
+        source: "user",
+        entryDate: parsedActivityDate,
+      });
+    }
 
     await writeAuditLog(membership.orgId, userId, "member.submit", "impact_record", String(inserted.id), {
       activityCount: cleaned.length,

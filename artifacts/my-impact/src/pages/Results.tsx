@@ -13,7 +13,6 @@ import {
 import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
-import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
 import { useSaveImpact, useCreateRecurringTemplate, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1226,7 +1225,6 @@ export default function Results() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 pb-28">
-      <ShareWithOrgPrompt result={result} activities={input.activities} />
       <OrgPromptsSection variant="compact" />
       {/* Hero */}
       <motion.div
