@@ -15,48 +15,48 @@ import { DEMO_CHALLENGES, DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
 const DEMO = {
   org: { name: "Demo Organisation", type: "Corporate", location: "North West, England" },
   headline: {
-    totalSocialValue: 184320,
+    totalSocialValue: 73700,
     members: 47,
-    activeMembers: 32,
-    totalHours: 2340,
-    avgPerPerson: 5760,
-    avgHoursPerPerson: 73,
+    activeMembers: 28,
+    totalHours: 940,
+    avgPerPerson: 2632,
+    avgHoursPerPerson: 34,
   },
   valueByCategory: [
-    { category: "Volunteering", value: 87200, members: 38, activities: 162, hours: 2150, sdgColor: "#C5192D" },
-    { category: "Environment", value: 41600, members: 24, activities: 88, hours: 980, sdgColor: "#3F7E44" },
-    { category: "Personal Dev", value: 28900, members: 19, activities: 64, hours: 540, sdgColor: "#A21942" },
-    { category: "Community", value: 18400, members: 16, activities: 42, hours: 380, sdgColor: "#FD9D24" },
-    { category: "Donations", value: 8220, members: 11, activities: 24, hours: 60, sdgColor: "#E5243B" },
+    { category: "Volunteering", value: 34800, members: 30, activities: 65, hours: 860, sdgColor: "#C5192D" },
+    { category: "Environment", value: 16600, members: 18, activities: 35, hours: 390, sdgColor: "#3F7E44" },
+    { category: "Personal Dev", value: 11600, members: 15, activities: 26, hours: 220, sdgColor: "#A21942" },
+    { category: "Community", value: 7400, members: 13, activities: 17, hours: 150, sdgColor: "#FD9D24" },
+    { category: "Donations", value: 3300, members: 9, activities: 10, hours: 25, sdgColor: "#E5243B" },
   ],
   activities: [
-    { name: "Food bank volunteering", participants: 42, hours: 860, value: 42000 },
-    { name: "Youth mentoring", participants: 18, hours: 320, value: 31200 },
-    { name: "Community garden", participants: 28, hours: 650, value: 24800 },
-    { name: "Cycling & active travel", participants: 52, hours: 310, value: 22100 },
-    { name: "Charity fundraising", participants: 35, hours: 95, value: 20400 },
-    { name: "Recycling & composting", participants: 68, hours: 240, value: 14600 },
-    { name: "Community events", participants: 28, hours: 155, value: 10200 },
-    { name: "Litter picking", participants: 45, hours: 180, value: 8320 },
+    { name: "Food bank volunteering", participants: 35, hours: 340, value: 16800 },
+    { name: "Youth mentoring", participants: 14, hours: 130, value: 12500 },
+    { name: "Community garden", participants: 22, hours: 260, value: 9900 },
+    { name: "Cycling & active travel", participants: 40, hours: 125, value: 8800 },
+    { name: "Charity fundraising", participants: 28, hours: 40, value: 8200 },
+    { name: "Recycling & composting", participants: 55, hours: 95, value: 5800 },
+    { name: "Community events", participants: 22, hours: 60, value: 4100 },
+    { name: "Litter picking", participants: 36, hours: 72, value: 3300 },
   ],
   sdgs: [
-    { number: 4, label: "Quality Education", color: "#C5192D", pct: 18, members: 14, activities: 38, value: 33840 },
-    { number: 10, label: "Reduced Inequalities", color: "#DD1367", pct: 16, members: 12, activities: 32, value: 30080 },
-    { number: 3, label: "Good Health", color: "#4C9F38", pct: 14, members: 11, activities: 28, value: 26320 },
-    { number: 1, label: "No Poverty", color: "#E5243B", pct: 12, members: 9, activities: 24, value: 22560 },
-    { number: 13, label: "Climate Action", color: "#3F7E44", pct: 12, members: 10, activities: 26, value: 22560 },
-    { number: 11, label: "Sustainable Cities", color: "#FD9D24", pct: 11, members: 8, activities: 22, value: 20680 },
-    { number: 8, label: "Decent Work", color: "#A21942", pct: 9, members: 7, activities: 18, value: 16920 },
-    { number: 2, label: "Zero Hunger", color: "#DDA63A", pct: 8, members: 6, activities: 16, value: 15040 },
+    { number: 4, label: "Quality Education", color: "#C5192D", pct: 18, members: 11, activities: 15, value: 13500 },
+    { number: 10, label: "Reduced Inequalities", color: "#DD1367", pct: 16, members: 9, activities: 13, value: 12000 },
+    { number: 3, label: "Good Health", color: "#4C9F38", pct: 14, members: 9, activities: 11, value: 10500 },
+    { number: 1, label: "No Poverty", color: "#E5243B", pct: 12, members: 7, activities: 10, value: 9000 },
+    { number: 13, label: "Climate Action", color: "#3F7E44", pct: 12, members: 8, activities: 10, value: 9000 },
+    { number: 11, label: "Sustainable Cities", color: "#FD9D24", pct: 11, members: 7, activities: 9, value: 8300 },
+    { number: 8, label: "Decent Work", color: "#A21942", pct: 9, members: 6, activities: 7, value: 6800 },
+    { number: 2, label: "Zero Hunger", color: "#DDA63A", pct: 8, members: 5, activities: 6, value: 6000 },
   ],
   regions: [
-    { region: "North West", members: 12, hours: 620, value: 47800, sroi: 8.38, pct: 26 },
-    { region: "Yorkshire and The Humber", members: 9, hours: 440, value: 35700, sroi: 8.36, pct: 19 },
-    { region: "West Midlands", members: 8, hours: 398, value: 31300, sroi: 8.24, pct: 17 },
-    { region: "South East", members: 7, hours: 348, value: 27600, sroi: 8.30, pct: 15 },
-    { region: "London", members: 5, hours: 248, value: 20300, sroi: 8.55, pct: 11 },
-    { region: "South West", members: 3, hours: 148, value: 11500, sroi: 8.07, pct: 6 },
-    { region: "North East", members: 3, hours: 138, value: 10120, sroi: 7.10, pct: 6 },
+    { region: "North West", members: 12, hours: 248, value: 19200, sroi: 8.38, pct: 26 },
+    { region: "Yorkshire and The Humber", members: 9, hours: 176, value: 14300, sroi: 8.36, pct: 19 },
+    { region: "West Midlands", members: 8, hours: 160, value: 12500, sroi: 8.24, pct: 17 },
+    { region: "South East", members: 7, hours: 140, value: 11000, sroi: 8.30, pct: 15 },
+    { region: "London", members: 5, hours: 100, value: 8100, sroi: 8.55, pct: 11 },
+    { region: "South West", members: 3, hours: 60, value: 4600, sroi: 8.07, pct: 6 },
+    { region: "North East", members: 3, hours: 55, value: 4000, sroi: 7.10, pct: 6 },
   ] satisfies RegionData[],
   skills: [
     { skill: "Teamwork", pct: 72 },
@@ -68,9 +68,9 @@ const DEMO = {
   ],
   insights: [
     "68% of members recycle or compost regularly, the highest-participation activity across the group.",
-    "Youth mentoring produces the highest social value per hour at £97.50, making it the most impactful use of member time.",
-    "The top 10% of contributors generate 34% of total social value, typical for a youth charity of this size.",
-    "Member engagement has grown 38% since January, driven largely by the new community garden programme.",
+    "Youth mentoring produces the highest social value per hour at £96.15, making it the most impactful use of member time.",
+    "The top 10% of contributors generate 34% of total social value, typical for a corporate volunteering programme.",
+    "Member engagement is up 22% since January, driven largely by the new community garden programme launched in March.",
   ],
   volunteerProgression: {
     membersWithEmployabilitySkills: 34,
@@ -87,18 +87,11 @@ const DEMO = {
   challenges: DEMO_CHALLENGES,
   pulse: DEMO_PULSE_SURVEYS,
   monthlyTimeline: [
-    { month: "Jan", value: 8200 },
-    { month: "Feb", value: 11400 },
-    { month: "Mar", value: 14800 },
-    { month: "Apr", value: 18600 },
-    { month: "May", value: 23900 },
-    { month: "Jun", value: 29400 },
-    { month: "Jul", value: 38700 },
-    { month: "Aug", value: 47200 },
-    { month: "Sep", value: 62800 },
-    { month: "Oct", value: 98400 },
-    { month: "Nov", value: 142600 },
-    { month: "Dec", value: 184320 },
+    { month: "Jan", value: 7200 },
+    { month: "Feb", value: 16400 },
+    { month: "Mar", value: 31600 },
+    { month: "Apr", value: 51200 },
+    { month: "May", value: 73700 },
   ] satisfies MonthlyDataPoint[],
 };
 
@@ -202,7 +195,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           </div>
           <div className="text-right">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">Dashboard period</p>
-            <p className="text-sm font-semibold text-foreground">Jan – Dec 2026</p>
+            <p className="text-sm font-semibold text-foreground">Jan – May 2026</p>
           </div>
         </div>
 
@@ -234,8 +227,8 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
         {/* Impact over time */}
         <div className="bg-white border border-border rounded-xl p-6">
           <SectionLabel>Impact over time</SectionLabel>
-          <SectionTitle>Social value accumulation, Jan to Dec 2026</SectionTitle>
-          <p className="text-sm text-muted-foreground -mt-4 mb-6">Total social value generated by members across the year, shown month by month. Data is illustrative for this demo.</p>
+          <SectionTitle>Social value accumulation, Jan to May 2026</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">Total social value generated by members Jan–May 2026. Data is illustrative for this demo.</p>
           <ImpactTimeline data={DEMO.monthlyTimeline} />
         </div>
 
