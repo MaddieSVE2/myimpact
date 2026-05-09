@@ -381,7 +381,7 @@ function SurveyRow({
     : null;
   return (
     <div
-      className={`rounded-lg border ${isArchived ? "border-border bg-muted/20" : "border-border bg-white"}`}
+      className={`rounded-lg border transition-colors ${isArchived ? "border-border bg-muted/20 hover:bg-muted/40" : "border-border bg-white hover:bg-muted/30"}`}
       data-testid={`survey-row-${survey.id}`}
     >
       <div className="flex items-start justify-between gap-3 p-3">
@@ -931,7 +931,7 @@ function DemoPulseSurveysSection() {
 function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void; highlight?: boolean }) {
   const sentimentBadge = getSentimentBadge(survey.distribution, survey.totals.responses);
   return (
-    <div className={`rounded-lg border bg-white ${highlight ? "border-emerald-300 bg-emerald-50/40" : "border-border"}`} data-testid={`survey-row-${survey.id}`}>
+    <div className={`rounded-lg border transition-colors ${highlight ? "border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/60" : "border-border bg-white hover:bg-muted/30"}`} data-testid={`survey-row-${survey.id}`}>
       <div className="flex items-start justify-between gap-3 p-3">
         <button
           type="button"
