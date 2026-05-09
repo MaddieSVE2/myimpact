@@ -28,7 +28,7 @@ interface SroiCostBreakdown {
   support: number | null;
   admin: number | null;
 }
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding } | null }
 
 const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
@@ -329,21 +329,59 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
   );
 }
 
-function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
+function SettingToggleRow({
+  label,
+  description,
+  enabled,
+  onToggle,
+  isPending,
+  testId,
+}: {
+  label: string;
+  description: string;
+  enabled: boolean;
+  onToggle: (next: boolean) => void;
+  isPending: boolean;
+  testId: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold mb-0.5">{label}</p>
+        <p className="text-xs text-muted-foreground max-w-prose">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={isPending}
+        onClick={() => onToggle(!enabled)}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${enabled ? "bg-primary" : "bg-muted"}`}
+        data-testid={testId}
+      >
+        <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+      </button>
+    </div>
+  );
+}
+
+function AiFeaturesTab({ initialEnabled, initialLeaderboardEnabled }: { initialEnabled: boolean; initialLeaderboardEnabled: boolean }) {
   const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState<boolean>(initialEnabled);
+  const [leaderboardEnabled, setLeaderboardEnabled] = useState<boolean>(initialLeaderboardEnabled);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setEnabled(initialEnabled); }, [initialEnabled]);
+  useEffect(() => { setLeaderboardEnabled(initialLeaderboardEnabled); }, [initialLeaderboardEnabled]);
 
-  const mutation = useMutation<{ org: { aiSidekickEnabled: boolean } }, Error, boolean>({
-    mutationFn: async (next) => {
+  const mutation = useMutation<{ org: { aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean } }, Error, Record<string, boolean>>({
+    mutationFn: async (patch) => {
       const res = await fetch(`${BASE}/api/org/my/settings`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aiSidekickEnabled: next }),
+        body: JSON.stringify(patch),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -353,59 +391,73 @@ function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
     },
     onSuccess: (data) => {
       setEnabled(data.org.aiSidekickEnabled);
+      setLeaderboardEnabled(data.org.challengeLeaderboardEnabled);
       setSavedAt(Date.now());
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["my-org"] });
     },
     onError: (err) => {
       setEnabled(initialEnabled);
+      setLeaderboardEnabled(initialLeaderboardEnabled);
       setError(err.message);
     },
   });
 
-  function toggle(next: boolean) {
-    setEnabled(next); // optimistic
+  function toggleAi(next: boolean) {
+    setEnabled(next);
     setError(null);
-    mutation.mutate(next);
+    mutation.mutate({ aiSidekickEnabled: next });
+  }
+
+  function toggleLeaderboard(next: boolean) {
+    setLeaderboardEnabled(next);
+    setError(null);
+    mutation.mutate({ challengeLeaderboardEnabled: next });
   }
 
   return (
-    <div className="bg-white border border-border rounded-xl p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold mb-1">AI features</h3>
-          <p className="text-xs text-muted-foreground max-w-prose">
-            Controls whether your members see the in-app AI Sidekick, used for activity suggestions, summarising journal entries and answering questions about their impact. Turning it off hides the feature for everyone in your organisation.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          disabled={mutation.isPending}
-          onClick={() => toggle(!enabled)}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${enabled ? "bg-primary" : "bg-muted"}`}
-          data-testid="toggle-ai"
-        >
-          <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
-        </button>
-      </div>
-      <div className="mt-4 text-xs">
+    <div className="bg-white border border-border rounded-xl p-5 space-y-5">
+      <h3 className="text-sm font-semibold">AI features &amp; challenge settings</h3>
+
+      <SettingToggleRow
+        label="AI Sidekick"
+        description="Controls whether your members see the in-app AI Sidekick, used for activity suggestions, summarising journal entries and answering questions about their impact. Turning it off hides the feature for everyone in your organisation."
+        enabled={enabled}
+        onToggle={toggleAi}
+        isPending={mutation.isPending}
+        testId="toggle-ai"
+      />
+
+      <div className="border-t border-border" />
+
+      <SettingToggleRow
+        label="Show challenge leaderboards"
+        description="Controls whether the leaderboard is visible on all challenges belonging to your organisation. Turning it off hides the ranking table for all members. You can re-enable it at any time."
+        enabled={leaderboardEnabled}
+        onToggle={toggleLeaderboard}
+        isPending={mutation.isPending}
+        testId="toggle-leaderboard"
+      />
+
+      <div className="text-xs space-y-0.5">
         <p className={enabled ? "text-green-700" : "text-muted-foreground"}>
-          AI Sidekick is currently <strong>{enabled ? "enabled" : "disabled"}</strong> for everyone in this organisation.
+          AI Sidekick is <strong>{enabled ? "enabled" : "disabled"}</strong> for this organisation.
+        </p>
+        <p className={leaderboardEnabled ? "text-green-700" : "text-muted-foreground"}>
+          Challenge leaderboards are <strong>{leaderboardEnabled ? "visible" : "hidden"}</strong> for this organisation.
         </p>
         {mutation.isPending && (
-          <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
+          <p className="text-[11px] text-muted-foreground pt-1 inline-flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" /> Saving…
           </p>
         )}
         {!mutation.isPending && savedAt && !error && (
-          <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
+          <p className="text-[11px] text-muted-foreground pt-1 inline-flex items-center gap-1">
             <Check className="w-3 h-3 text-green-600" /> Saved
           </p>
         )}
         {error && (
-          <p className="text-[11px] text-red-600 mt-1">{error}</p>
+          <p className="text-[11px] text-red-600 pt-1">{error}</p>
         )}
       </div>
     </div>
@@ -985,7 +1037,7 @@ export default function OrgSettings() {
 
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} />}
-        {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} />}
+        {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} initialLeaderboardEnabled={orgData.org.challengeLeaderboardEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
         {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}
         {active === "share"     && <ShareLinkManager isDemoOrg={isDemoOrg} />}

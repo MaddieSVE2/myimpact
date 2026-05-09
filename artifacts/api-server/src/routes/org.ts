@@ -253,6 +253,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       type: org.type,
       role: membership.role,
       aiSidekickEnabled: org.aiSidekickEnabled,
+      challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
       sroiCostBreakdown: {
         recruitment: org.sroiCostRecruitment ?? null,
@@ -415,14 +416,16 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const { aiSidekickEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart } = body as {
+  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart } = body as {
     aiSidekickEnabled?: unknown;
+    challengeLeaderboardEnabled?: unknown;
     sroiCostPerVolunteer?: unknown;
     sroiCostBreakdown?: unknown;
     summaryYearStart?: unknown;
   };
   const updates: {
     aiSidekickEnabled?: boolean;
+    challengeLeaderboardEnabled?: boolean;
     sroiCostPerVolunteer?: number | null;
     sroiCostRecruitment?: number | null;
     sroiCostOnboarding?: number | null;
@@ -432,6 +435,9 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
+  }
+  if (typeof challengeLeaderboardEnabled === "boolean") {
+    updates.challengeLeaderboardEnabled = challengeLeaderboardEnabled;
   }
 
   if ("summaryYearStart" in body) {
@@ -567,6 +573,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       type: updated.type,
       role: membership.role,
       aiSidekickEnabled: updated.aiSidekickEnabled,
+      challengeLeaderboardEnabled: updated.challengeLeaderboardEnabled,
       sroiCostPerVolunteer: updated.sroiCostPerVolunteer ?? null,
       sroiCostBreakdown: {
         recruitment: updated.sroiCostRecruitment ?? null,

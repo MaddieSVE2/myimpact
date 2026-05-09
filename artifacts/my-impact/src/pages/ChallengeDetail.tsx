@@ -27,6 +27,7 @@ interface ChallengeFull {
   hasStarted: boolean;
   endSummarySentAt: string | null;
   orgName: string | null;
+  challengeLeaderboardEnabled: boolean;
 }
 
 interface LeaderboardEntry {
@@ -336,44 +337,46 @@ export default function ChallengeDetail() {
         </div>
       )}
 
-      {/* Leaderboard */}
-      <div className="bg-white border border-border rounded-2xl p-5 mb-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-4 h-4 text-primary" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-foreground">Leaderboard</h3>
-          <span className="text-xs text-muted-foreground ml-auto">refreshes every minute</span>
+      {/* Leaderboard — hidden when the org has disabled leaderboards */}
+      {challenge.challengeLeaderboardEnabled && (
+        <div className="bg-white border border-border rounded-2xl p-5 mb-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-4 h-4 text-primary" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-foreground">Leaderboard</h3>
+            <span className="text-xs text-muted-foreground ml-auto">refreshes every minute</span>
+          </div>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No participants yet.</p>
+          ) : (
+            <ol className="space-y-2">
+              {leaderboard.map(entry => (
+                <li
+                  key={entry.userId}
+                  className={`flex items-center gap-3 p-3 rounded-lg border ${
+                    entry.isMe ? "border-primary/40 bg-orange-50/50" : "border-border bg-white"
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    entry.rank === 1 ? "bg-yellow-100 text-yellow-700"
+                    : entry.rank === 2 ? "bg-slate-100 text-slate-600"
+                    : entry.rank === 3 ? "bg-amber-100 text-amber-700"
+                    : "bg-muted text-muted-foreground"
+                  }`}>
+                    {entry.rank}
+                  </div>
+                  <p className="text-sm font-medium text-foreground flex-1 truncate">{entry.displayName}</p>
+                  <p className="text-sm font-bold text-foreground">{formatGoal(challenge.goalType, entry.contribution)}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+          {myContribution && (
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Your contribution: <strong className="text-foreground">{formatGoal(challenge.goalType, myContribution.contribution)}</strong> · ranked #{myContribution.rank} of {leaderboard.length}
+            </p>
+          )}
         </div>
-        {leaderboard.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No participants yet.</p>
-        ) : (
-          <ol className="space-y-2">
-            {leaderboard.map(entry => (
-              <li
-                key={entry.userId}
-                className={`flex items-center gap-3 p-3 rounded-lg border ${
-                  entry.isMe ? "border-primary/40 bg-orange-50/50" : "border-border bg-white"
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  entry.rank === 1 ? "bg-yellow-100 text-yellow-700"
-                  : entry.rank === 2 ? "bg-slate-100 text-slate-600"
-                  : entry.rank === 3 ? "bg-amber-100 text-amber-700"
-                  : "bg-muted text-muted-foreground"
-                }`}>
-                  {entry.rank}
-                </div>
-                <p className="text-sm font-medium text-foreground flex-1 truncate">{entry.displayName}</p>
-                <p className="text-sm font-bold text-foreground">{formatGoal(challenge.goalType, entry.contribution)}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-        {myContribution && (
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            Your contribution: <strong className="text-foreground">{formatGoal(challenge.goalType, myContribution.contribution)}</strong> · ranked #{myContribution.rank} of {leaderboard.length}
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Owner / participant actions */}
       <div className="bg-white border border-border rounded-2xl p-5">

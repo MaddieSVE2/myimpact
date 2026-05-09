@@ -389,11 +389,13 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     const leaderboard = await attachUserDisplay(progress.leaderboard, userId);
 
     let orgName: string | null = null;
+    let challengeLeaderboardEnabled = true;
     if (challenge.orgId) {
       const org = await db.query.organisationsTable.findFirst({
         where: eq(organisationsTable.id, challenge.orgId),
       });
       orgName = org?.name ?? null;
+      challengeLeaderboardEnabled = org?.challengeLeaderboardEnabled ?? true;
     }
 
     const me = leaderboard.find((l) => l.isMe) ?? null;
@@ -402,6 +404,7 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
       challenge: {
         ...serializeChallenge(challenge),
         orgName,
+        challengeLeaderboardEnabled,
         participantCount: participantIds.length,
         isOwner: challenge.ownerId === userId,
         isParticipant,
