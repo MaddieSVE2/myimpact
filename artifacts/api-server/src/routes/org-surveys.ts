@@ -272,11 +272,12 @@ router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedReques
   const average = total > 0 ? sum / total : 0;
 
   // Trend by window: average per windowKey, sorted
-  const trendMap: Record<string, { sum: number; count: number }> = {};
+  const trendMap: Record<string, { sum: number; count: number; ratings: number[] }> = {};
   for (const r of responses) {
-    if (!trendMap[r.windowKey]) trendMap[r.windowKey] = { sum: 0, count: 0 };
+    if (!trendMap[r.windowKey]) trendMap[r.windowKey] = { sum: 0, count: 0, ratings: [] };
     trendMap[r.windowKey].sum += r.rating;
     trendMap[r.windowKey].count += 1;
+    trendMap[r.windowKey].ratings.push(r.rating);
   }
   const trend = Object.entries(trendMap)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -285,6 +286,10 @@ router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedReques
       label: describeWindow(survey.schedule as Schedule, key),
       average: Math.round((v.sum / v.count) * 100) / 100,
       count: v.count,
+      distribution: [1, 2, 3, 4, 5].map(rating => ({
+        rating,
+        count: v.ratings.filter(r => r === rating).length,
+      })),
     }));
 
   // Comments. If anonymous, suppress completely beyond the comment text and date.
@@ -300,6 +305,7 @@ router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedReques
     .map(r => ({
       id: r.id,
       comment: r.comment!.slice(0, 500),
+      windowKey: r.windowKey,
       windowLabel: describeWindow(survey.schedule as Schedule, r.windowKey),
       createdAt: r.createdAt.toISOString(),
     }))

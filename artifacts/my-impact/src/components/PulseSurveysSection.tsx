@@ -10,8 +10,6 @@ import {
   X,
   Lock,
   MessageSquare,
-  Users,
-  TrendingUp,
 } from "lucide-react";
 import {
   DEMO_PULSE_SURVEYS,
@@ -46,8 +44,8 @@ interface SurveyResults {
   survey: SurveyListItem;
   totals: { responses: number; average: number };
   distribution: Array<{ rating: number; count: number }>;
-  trend: Array<{ windowKey: string; label: string; average: number; count: number }>;
-  comments: Array<{ id: string; comment: string; windowLabel: string; createdAt: string }>;
+  trend: Array<{ windowKey: string; label: string; average: number; count: number; distribution: Array<{ rating: number; count: number }> }>;
+  comments: Array<{ id: string; comment: string; windowKey: string; windowLabel: string; createdAt: string }>;
   commentPrivacyThreshold: number;
 }
 
@@ -454,136 +452,282 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
       </div>
     );
   }
-  const max = Math.max(1, ...data.distribution.map(d => d.count));
-  const CHART_MAX_PX = 72;
   return (
-    <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${surveyId}`}>
-        <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg border border-border p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp className="w-3 h-3 text-primary" />
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Average</p>
-              </div>
-              <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-average-${surveyId}`}>
-                {data.totals.average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span>
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-border p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Users className="w-3 h-3 text-primary" />
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Responses</p>
-              </div>
-              <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-count-${surveyId}`}>
-                {data.totals.responses}
-              </p>
-            </div>
-          </div>
+    <ResultsPanel
+      surveyId={surveyId}
+      initialDistribution={data.distribution}
+      initialAverage={data.totals.average}
+      totalResponses={data.totals.responses}
+      trend={data.trend}
+      allComments={data.comments}
+      anonymous={data.survey.anonymous}
+      commentPrivacyThreshold={data.commentPrivacyThreshold}
+    />
+  );
+}
 
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Score distribution</p>
-            {data.totals.responses === 0 ? (
-              <p className="text-sm italic text-muted-foreground">No responses yet</p>
-            ) : (
-              <>
-                <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
-                  {data.distribution.map(d => (
-                    <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
-                      <span className="text-[10px] text-muted-foreground font-medium">{d.count}</span>
-                      <div
-                        className={`w-full rounded-t-sm ${d.rating <= 2 ? 'bg-red-400 dark:bg-red-500' : d.rating === 3 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
-                        style={{ height: `${(d.count / max) * CHART_MAX_PX}px`, minHeight: d.count > 0 ? '4px' : '0px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-start gap-2 mt-1">
-                  {data.distribution.map(d => (
-                    <div key={d.rating} className="flex-1 flex justify-center">
-                      <span className="text-[10px] text-muted-foreground">{d.rating}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
-                    <span className="text-[10px] text-muted-foreground">1–2 Low</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
-                    <span className="text-[10px] text-muted-foreground">3 Mid</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                    <span className="text-[10px] text-muted-foreground">4–5 High</span>
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
+function ResultsPanel({
+  surveyId,
+  initialDistribution,
+  initialAverage,
+  totalResponses,
+  trend,
+  allComments,
+  anonymous,
+  commentPrivacyThreshold,
+}: {
+  surveyId: string;
+  initialDistribution: Array<{ rating: number; count: number }>;
+  initialAverage: number;
+  totalResponses: number;
+  trend: Array<{ windowKey: string; label: string; average: number; count: number; distribution?: Array<{ rating: number; count: number }> }>;
+  allComments: Array<{ id: string; comment: string; windowKey?: string; windowLabel: string }>;
+  anonymous: boolean;
+  commentPrivacyThreshold: number;
+}) {
+  const hasWindowSwitching = trend.some(t => t.distribution !== undefined) && trend.length > 1;
+  const [windowKey, setWindowKey] = useState<string>("all");
 
-          {data.trend.length > 1 && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Trend</p>
-              <div className="flex items-end gap-2 h-24 border-b border-border pb-0">
-                {data.trend.map(t => (
-                  <div key={t.windowKey} className="flex-1 flex flex-col items-center justify-end h-full gap-0.5">
-                    <span className="text-[10px] text-foreground font-medium">{t.average.toFixed(1)}</span>
-                    <span className="text-[9px] text-muted-foreground">({t.count})</span>
+  const selectedWindow = hasWindowSwitching && windowKey !== "all"
+    ? trend.find(t => t.windowKey === windowKey) ?? null
+    : null;
+
+  const distribution = selectedWindow?.distribution ?? initialDistribution;
+  const average = selectedWindow?.average ?? initialAverage;
+  const responses = selectedWindow?.count ?? totalResponses;
+
+  const positive = distribution.filter(d => d.rating >= 4).reduce((s, d) => s + d.count, 0);
+  const neutral = distribution.filter(d => d.rating === 3).reduce((s, d) => s + d.count, 0);
+  const negative = distribution.filter(d => d.rating <= 2).reduce((s, d) => s + d.count, 0);
+  const positivePct = responses > 0 ? Math.round((positive / responses) * 100) : 0;
+  const neutralPct = responses > 0 ? Math.round((neutral / responses) * 100) : 0;
+  const negativePct = Math.max(0, 100 - positivePct - neutralPct);
+
+  const delta = !selectedWindow && trend.length >= 2
+    ? +(trend[trend.length - 1].average - trend[trend.length - 2].average).toFixed(1)
+    : null;
+
+  const scoreColor = average >= 4 ? "text-emerald-600" : average >= 3 ? "text-amber-600" : "text-red-600";
+  const scoreBg = average >= 4 ? "bg-emerald-50 border-emerald-100" : average >= 3 ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100";
+  const max = Math.max(1, ...distribution.map(d => d.count));
+  const CHART_H = 72;
+
+  const commentsBelowThreshold = anonymous && !!selectedWindow && selectedWindow.count < commentPrivacyThreshold;
+  const visibleComments = commentsBelowThreshold ? [] : allComments.filter(c => {
+    if (selectedWindow) return c.windowKey === selectedWindow.windowKey;
+    if (anonymous && c.windowKey) {
+      const w = trend.find(t => t.windowKey === c.windowKey);
+      return !!w && w.count >= commentPrivacyThreshold;
+    }
+    return true;
+  });
+
+  const distributionLabel = selectedWindow
+    ? `Score distribution · ${selectedWindow.label}`
+    : trend.length > 1 ? "Score distribution · All time" : "Score distribution";
+
+  return (
+    <div className="border-t border-border p-4 space-y-5 bg-muted/10" data-testid={`survey-results-${surveyId}`}>
+      {/* Window switcher */}
+      {hasWindowSwitching && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Response window</p>
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Response window">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={windowKey === "all"}
+              onClick={() => setWindowKey("all")}
+              className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${windowKey === "all" ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
+              data-testid={`survey-window-${surveyId}-all`}
+            >
+              All time
+            </button>
+            {trend.map(t => (
+              <button
+                key={t.windowKey}
+                type="button"
+                role="tab"
+                aria-selected={windowKey === t.windowKey}
+                onClick={() => setWindowKey(t.windowKey)}
+                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${windowKey === t.windowKey ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
+                data-testid={`survey-window-${surveyId}-${t.windowKey}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Score hero */}
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className={`rounded-xl border p-3.5 text-center ${scoreBg}`}>
+          <p className={`text-3xl font-display font-black leading-none ${scoreColor}`} data-testid={`survey-average-${surveyId}`}>
+            {responses > 0 ? average.toFixed(1) : "—"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">out of 5</p>
+        </div>
+        <div className="rounded-xl border border-border bg-white p-3.5 text-center">
+          <p className="text-3xl font-display font-black text-foreground leading-none" data-testid={`survey-count-${surveyId}`}>
+            {responses}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">responses</p>
+        </div>
+        <div className="rounded-xl border border-border bg-white p-3.5 text-center">
+          {delta !== null ? (
+            <>
+              <p className={`text-3xl font-display font-black leading-none ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-500" : "text-foreground"}`}>
+                {delta > 0 ? "+" : ""}{delta.toFixed(1)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">vs prev period</p>
+            </>
+          ) : (
+            <>
+              <p className={`text-3xl font-display font-black leading-none ${positivePct >= 60 ? "text-emerald-600" : positivePct < 40 ? "text-red-500" : "text-amber-600"}`}>
+                {responses > 0 ? `${positivePct}%` : "—"}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">positive (4–5)</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Sentiment bar */}
+      {responses > 0 && (
+        <div>
+          <div className="h-2 rounded-full overflow-hidden flex gap-px">
+            {positivePct > 0 && <div className="h-full bg-emerald-500" style={{ width: `${positivePct}%` }} />}
+            {neutralPct > 0 && <div className="h-full bg-amber-400" style={{ width: `${neutralPct}%` }} />}
+            {negativePct > 0 && <div className="h-full bg-red-400" style={{ width: `${negativePct}%` }} />}
+          </div>
+          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-[10px] text-muted-foreground">{positivePct}% positive (4–5)</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-[10px] text-muted-foreground">{neutralPct}% neutral (3)</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
+              <span className="text-[10px] text-muted-foreground">{negativePct}% low (1–2)</span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Distribution chart */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5" data-testid={`survey-distribution-label-${surveyId}`}>
+          {distributionLabel}
+        </p>
+        {responses === 0 ? (
+          <p className="text-sm italic text-muted-foreground">No responses yet.</p>
+        ) : (
+          <div data-testid={`survey-distribution-${surveyId}`}>
+            <div className="flex items-end gap-2 border-b border-border" style={{ height: `${CHART_H + 28}px` }}>
+              {distribution.map(d => {
+                const pct = responses > 0 ? Math.round((d.count / responses) * 100) : 0;
+                const barColor = d.rating <= 2 ? "bg-red-400" : d.rating === 3 ? "bg-amber-400" : "bg-emerald-500";
+                return (
+                  <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-0.5">
+                    {d.count > 0 ? (
+                      <>
+                        <span className="text-[10px] font-semibold text-foreground">{pct}%</span>
+                        <span className="text-[9px] text-muted-foreground">{d.count}</span>
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-muted-foreground">0</span>
+                    )}
                     <div
-                      className={`w-full rounded-t-sm ${t.average <= 2 ? 'bg-red-400 dark:bg-red-500' : t.average < 3.5 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
-                      style={{ height: `${(t.average / 5) * CHART_MAX_PX}px`, minHeight: t.average > 0 ? '4px' : '0px' }}
+                      className={`w-full rounded-t-md ${barColor}`}
+                      style={{ height: `${(d.count / max) * CHART_H}px`, minHeight: d.count > 0 ? "4px" : "0px" }}
                     />
                   </div>
-                ))}
-              </div>
-              <div className="flex items-start gap-2 mt-1">
-                {data.trend.map(t => (
-                  <div key={t.windowKey} className="flex-1 flex justify-center">
-                    <span className="text-[10px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
-                  <span className="text-[10px] text-muted-foreground">1–2 Low</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
-                  <span className="text-[10px] text-muted-foreground">3 Mid</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                  <span className="text-[10px] text-muted-foreground">4–5 High</span>
-                </span>
-              </div>
+                );
+              })}
             </div>
-          )}
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground inline-flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" /> Comments
-              </p>
-              {data.survey.anonymous && (
-                <span className="text-[10px] text-muted-foreground">
-                  Shown only after {data.commentPrivacyThreshold}+ responses per period
-                </span>
-              )}
+            <div className="flex items-start gap-2 mt-1">
+              {distribution.map(d => (
+                <div key={d.rating} className="flex-1 flex justify-center">
+                  <span className="text-[10px] text-muted-foreground">{d.rating}</span>
+                </div>
+              ))}
             </div>
-            {data.comments.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No comments to show yet.</p>
-            ) : (
-              <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {data.comments.map(c => (
-                  <li key={c.id} className="bg-white border border-border rounded-lg p-3 text-xs text-foreground">
-                    <p className="leading-relaxed">"{c.comment}"</p>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">{c.windowLabel}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
+        )}
+      </div>
+
+      {/* Trend chart */}
+      {trend.length > 1 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5">Trend over time</p>
+          <div className="flex items-end gap-2 border-b border-border" style={{ height: `${CHART_H + 20}px` }}>
+            {trend.map(t => {
+              const isSelected = selectedWindow?.windowKey === t.windowKey;
+              const barColor = t.average <= 2 ? "bg-red-400" : t.average < 3.5 ? "bg-amber-400" : "bg-emerald-500";
+              return (
+                <button
+                  key={t.windowKey}
+                  type="button"
+                  onClick={hasWindowSwitching ? () => setWindowKey(t.windowKey) : undefined}
+                  className={`flex-1 flex flex-col items-center justify-end h-full gap-0.5 group ${hasWindowSwitching ? "cursor-pointer" : "cursor-default"}`}
+                  data-testid={`survey-trend-${surveyId}-${t.windowKey}`}
+                  tabIndex={hasWindowSwitching ? 0 : -1}
+                >
+                  <span className="text-[10px] font-medium text-foreground">{t.average.toFixed(1)}</span>
+                  <span className="text-[9px] text-muted-foreground">({t.count})</span>
+                  <div
+                    className={`w-full rounded-t-md transition-opacity ${barColor} ${hasWindowSwitching && !isSelected ? "opacity-50 group-hover:opacity-80" : ""}`}
+                    style={{ height: `${(t.average / 5) * CHART_H}px`, minHeight: "4px" }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-start gap-2 mt-1">
+            {trend.map(t => (
+              <div key={t.windowKey} className="flex-1 flex justify-center">
+                <span className="text-[10px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
+              </div>
+            ))}
+          </div>
+          {hasWindowSwitching && (
+            <p className="text-[10px] text-muted-foreground/70 mt-1.5 italic">Click a bar to filter the distribution above.</p>
+          )}
+        </div>
+      )}
+
+      {/* Comments */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 inline-flex items-center gap-1">
+          <MessageSquare className="w-3 h-3" /> Member comments
+        </p>
+        {anonymous && (
+          <p className="text-[10px] text-muted-foreground mb-2">Shown only after {commentPrivacyThreshold}+ responses per period to protect anonymity.</p>
+        )}
+        {commentsBelowThreshold ? (
+          <p className="text-xs text-muted-foreground italic" data-testid={`survey-comments-hidden-${surveyId}`}>
+            Comments are hidden for this period to protect anonymity ({selectedWindow!.count}/{commentPrivacyThreshold} responses needed).
+          </p>
+        ) : visibleComments.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">No comments to show yet.</p>
+        ) : (
+          <ul className="space-y-2.5 max-h-72 overflow-y-auto pr-1" data-testid={`survey-comments-${surveyId}`}>
+            {visibleComments.map(c => (
+              <li key={c.id} className="flex gap-2.5">
+                <div className="w-0.5 shrink-0 self-stretch rounded-full bg-primary/25" />
+                <div className="py-0.5">
+                  <p className="text-xs text-foreground leading-relaxed">"{c.comment}"</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{c.windowLabel}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -699,171 +843,16 @@ function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; op
 }
 
 function DemoSurveyResultsView({ survey }: { survey: DemoPulseSurvey }) {
-  // "all" = aggregate across every window; otherwise a specific windowKey.
-  const [windowKey, setWindowKey] = useState<string>("all");
-
-  const selectedWindow = windowKey === "all" ? null : survey.trend.find(t => t.windowKey === windowKey) ?? null;
-  const distribution = selectedWindow ? selectedWindow.distribution : survey.distribution;
-  const average = selectedWindow ? selectedWindow.average : survey.totals.average;
-  const responses = selectedWindow ? selectedWindow.count : survey.totals.responses;
-  const max = Math.max(1, ...distribution.map(d => d.count));
-
-  // For anonymous surveys, only surface comments from windows that cleared
-  // the privacy threshold, both when a specific window is selected and when
-  // showing "All time", so adding a small future window can't accidentally
-  // expose low-volume comments.
-  const windowMeetsThreshold = (key: string) => {
-    if (!survey.anonymous) return true;
-    const w = survey.trend.find(t => t.windowKey === key);
-    return !!w && w.count >= DEMO_COMMENT_PRIVACY_THRESHOLD;
-  };
-  const visibleComments = selectedWindow
-    ? (windowMeetsThreshold(selectedWindow.windowKey)
-        ? survey.comments.filter(c => c.windowKey === selectedWindow.windowKey)
-        : [])
-    : survey.comments.filter(c => windowMeetsThreshold(c.windowKey));
-  const commentsBelowThreshold =
-    survey.anonymous && !!selectedWindow && selectedWindow.count < DEMO_COMMENT_PRIVACY_THRESHOLD;
-
-  const distributionLabel = selectedWindow
-    ? `Score distribution · ${selectedWindow.label}`
-    : "Score distribution · All time";
-
   return (
-    <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${survey.id}`}>
-      {survey.trend.length > 1 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Response window</p>
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Response window">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={windowKey === "all"}
-              onClick={() => setWindowKey("all")}
-              className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
-                windowKey === "all"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-white text-muted-foreground hover:bg-muted/30"
-              }`}
-              data-testid={`survey-window-${survey.id}-all`}
-            >
-              All time
-            </button>
-            {survey.trend.map(t => (
-              <button
-                key={t.windowKey}
-                type="button"
-                role="tab"
-                aria-selected={windowKey === t.windowKey}
-                onClick={() => setWindowKey(t.windowKey)}
-                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
-                  windowKey === t.windowKey
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-white text-muted-foreground hover:bg-muted/30"
-                }`}
-                data-testid={`survey-window-${survey.id}-${t.windowKey}`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-lg border border-border p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="w-3 h-3 text-primary" />
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Average</p>
-          </div>
-          <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-average-${survey.id}`}>
-            {average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span>
-          </p>
-        </div>
-        <div className="bg-white rounded-lg border border-border p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Users className="w-3 h-3 text-primary" />
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Responses</p>
-          </div>
-          <p className="text-lg font-display font-bold text-foreground" data-testid={`survey-count-${survey.id}`}>
-            {responses}
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2" data-testid={`survey-distribution-label-${survey.id}`}>
-          {distributionLabel}
-        </p>
-        <div className="space-y-1.5" data-testid={`survey-distribution-${survey.id}`}>
-          {distribution.map(d => (
-            <div key={d.rating} className="flex items-center gap-2 text-xs">
-              <span className="w-3 text-muted-foreground">{d.rating}</span>
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-primary/60" style={{ width: `${(d.count / max) * 100}%` }} />
-              </div>
-              <span className="w-6 text-right text-muted-foreground">{d.count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {survey.trend.length > 1 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Trend</p>
-          <div className="space-y-1">
-            {survey.trend.map(t => {
-              const isSelected = selectedWindow?.windowKey === t.windowKey;
-              return (
-                <button
-                  type="button"
-                  key={t.windowKey}
-                  onClick={() => setWindowKey(t.windowKey)}
-                  className={`w-full flex items-center gap-2 text-xs rounded px-1 py-0.5 transition-colors ${
-                    isSelected ? "bg-primary/5" : "hover:bg-muted/30"
-                  }`}
-                  data-testid={`survey-trend-${survey.id}-${t.windowKey}`}
-                >
-                  <span className={`w-20 truncate text-left ${isSelected ? "text-primary font-semibold" : "text-muted-foreground"}`}>{t.label}</span>
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${isSelected ? "bg-primary" : "bg-primary/60"}`} style={{ width: `${(t.average / 5) * 100}%` }} />
-                  </div>
-                  <span className="w-12 text-right text-foreground font-medium">{t.average.toFixed(1)} <span className="text-muted-foreground">({t.count})</span></span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground inline-flex items-center gap-1">
-            <MessageSquare className="w-3 h-3" /> Comments{selectedWindow ? ` · ${selectedWindow.label}` : ""}
-          </p>
-          {survey.anonymous && (
-            <span className="text-[10px] text-muted-foreground">
-              Shown only after {DEMO_COMMENT_PRIVACY_THRESHOLD}+ responses per period
-            </span>
-          )}
-        </div>
-        {commentsBelowThreshold ? (
-          <p className="text-xs text-muted-foreground italic" data-testid={`survey-comments-hidden-${survey.id}`}>
-            Comments are hidden for this period to protect anonymity ({selectedWindow!.count}/{DEMO_COMMENT_PRIVACY_THRESHOLD} responses).
-          </p>
-        ) : visibleComments.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No comments to show for this period.</p>
-        ) : (
-          <ul className="space-y-2 max-h-72 overflow-y-auto pr-1" data-testid={`survey-comments-${survey.id}`}>
-            {visibleComments.map(c => (
-              <li key={c.id} className="bg-white border border-border rounded-lg p-3 text-xs text-foreground">
-                <p className="leading-relaxed">"{c.comment}"</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5">{c.windowLabel}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    <ResultsPanel
+      surveyId={survey.id}
+      initialDistribution={survey.distribution}
+      initialAverage={survey.totals.average}
+      totalResponses={survey.totals.responses}
+      trend={survey.trend}
+      allComments={survey.comments}
+      anonymous={survey.anonymous}
+      commentPrivacyThreshold={DEMO_COMMENT_PRIVACY_THRESHOLD}
+    />
   );
 }
