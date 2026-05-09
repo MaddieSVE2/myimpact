@@ -827,8 +827,8 @@ export default function Intro() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, alignItems: "stretch" }}>
             {[
               { title: "Evidence outcomes", desc: "Credible social value data from the same methodology used by councils and housing associations.", comingSoon: false },
-              { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme.", comingSoon: true },
-              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Feeds directly into SVE for SROI analysis.", comingSoon: true },
+              { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme.", comingSoon: false },
+              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Feeds directly into SVE for SROI analysis.", comingSoon: false },
               { title: "Track in real time", desc: "See how your whole programme is progressing at a glance. No chasing spreadsheets, no waiting for reports.", comingSoon: false },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
