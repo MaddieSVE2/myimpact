@@ -23,7 +23,7 @@ export function Footer() {
         <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
       </div>
       <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-        Powered by Social Value Engine methodology · UK data centres
+        Powered by Social Value Engine methodology · Secure cloud hosting
       </p>
     </footer>
   );

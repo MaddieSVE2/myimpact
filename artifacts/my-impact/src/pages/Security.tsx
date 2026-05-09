@@ -58,7 +58,7 @@ const SECTIONS: Section[] = [
     qas: [
       {
         q: "Where is our data stored?",
-        a: <p>All personal data is stored and processed in <strong>UK data centres</strong>. We do not transfer your data outside the UK or European Economic Area for storage of primary records.</p>,
+        a: <p>All personal data is currently hosted on <strong>US-based cloud infrastructure</strong>. Transfers from the UK are covered by appropriate safeguards under UK GDPR. We are planning a migration to UK/EEA-based hosting in a future release.</p>,
       },
       {
         q: "Is data encrypted in transit and at rest?",
@@ -147,7 +147,7 @@ const SECTIONS: Section[] = [
     qas: [
       {
         q: "How often is data backed up?",
-        a: <p>The production database is backed up at least daily, with point-in-time recovery available for recent windows. Backups are encrypted and stored in the same UK/EEA region as the primary database.</p>,
+        a: <p>The production database is backed up at least daily, with point-in-time recovery available for recent windows. Backups are encrypted and stored in the same region as the primary database.</p>,
       },
       {
         q: "What is the recovery objective if something goes wrong?",
@@ -265,7 +265,7 @@ export default function Security() {
             This page summarises how My Impact protects organisation and member data, from where it's stored, to who can see it, to how we'd handle an incident. If you need a full DPA or our response to a security questionnaire, just <Link href="/contact" style={{ color: C.orange, fontWeight: 700, textDecoration: "none" }}>get in touch</Link>.
           </p>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 8 May 2026
+            Last updated: 9 May 2026
           </p>
         </div>
       </section>
