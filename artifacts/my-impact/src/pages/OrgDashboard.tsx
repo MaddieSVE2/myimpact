@@ -3,9 +3,9 @@ import { Link } from "wouter";
 import { Footer } from "@/components/layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Building2, TrendingUp, Users, Clock, BadgeCheck, Download, FileText, FileSpreadsheet,
+  Building2, TrendingUp, Users, Clock, BadgeCheck, FileText, FileSpreadsheet,
   Globe2, Layers, AlertCircle, EyeOff, BarChart2, ChevronDown, ChevronUp,
-  ChevronLeft, ChevronRight, Settings, Calendar, Check,
+  Settings, Calendar, Check,
 } from "lucide-react";
 import {
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -23,9 +23,11 @@ import {
 } from "@/lib/org-demo-mock";
 import { useMyOrg, hexToHslVar, DEFAULT_SROI_COST_PER_VOLUNTEER, BASE } from "@/lib/org-export";
 import {
-  getPeriodBounds, detectPeriodType, activityInPeriod,
+  detectPeriodType, activityInPeriod,
   SUMMARY_PERIOD_PRESETS, type SummaryPeriodType,
 } from "@/lib/summaryPeriod";
+import { useOrgPeriod } from "@/hooks/useOrgPeriod";
+import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
@@ -71,7 +73,6 @@ export default function OrgDashboard() {
     }
     return "01-01";
   });
-  const [periodOffset, setPeriodOffset] = useState(0);
   const [showPeriodSettings, setShowPeriodSettings] = useState(false);
   const [customMonth, setCustomMonth] = useState(() => {
     const parts = summaryYearStart.split("-");
@@ -94,15 +95,8 @@ export default function OrgDashboard() {
     }
   }, [orgData?.org?.summaryYearStart, isDemoOrg]);
 
-  // ── Period bounds ──
-  // For the demo org we anchor the reference date to May 2026 so that
-  // offset=0 maps to the Jan–Dec 2026 period and offset=-1 maps to 2025.
-  const DEMO_REFERENCE_DATE = new Date("2026-05-09T12:00:00Z");
-  const periodBounds = useMemo(
-    () => getPeriodBounds(summaryYearStart, periodOffset, isDemoOrg ? DEMO_REFERENCE_DATE : undefined),
-    [summaryYearStart, periodOffset, isDemoOrg],
-  );
-  const isCurrentPeriod = periodOffset >= 0;
+  // ── Period bounds (shared via sessionStorage so selection persists across pages) ──
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod } = useOrgPeriod(summaryYearStart, isDemoOrg);
 
   // ── Period type derived from summaryYearStart ──
   const periodType = detectPeriodType(summaryYearStart);
@@ -342,56 +336,16 @@ export default function OrgDashboard() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/org/export"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
-            data-testid="button-open-export"
-          >
-            <Download className="w-3.5 h-3.5" /> Export
-          </Link>
-        </div>
+        <OrgPeriodNavigator
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          label={periodBounds.label}
+          isCurrentPeriod={isCurrentPeriod}
+        />
       </div>
 
-      {/* Period navigation row */}
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        {/* Year navigator: prev / period label / next */}
-        <div className="flex items-center gap-1" data-testid="period-navigator">
-          <button
-            type="button"
-            onClick={() => setPeriodOffset(o => o - 1)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            aria-label="Previous period"
-            data-testid="period-prev"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm font-medium text-foreground px-1 min-w-[11rem] text-center" data-testid="period-label">
-            {periodBounds.label}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPeriodOffset(o => o + 1)}
-            disabled={isCurrentPeriod}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Next period"
-            data-testid="period-next"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          {periodOffset !== 0 && (
-            <button
-              type="button"
-              onClick={() => setPeriodOffset(0)}
-              className="ml-1 text-[11px] font-semibold text-primary hover:underline"
-              data-testid="period-reset"
-            >
-              Current
-            </button>
-          )}
-        </div>
-
-        {/* Summary period settings toggle */}
+      {/* Period settings toggle row */}
+      <div className="flex items-center mb-3">
         <button
           type="button"
           onClick={() => setShowPeriodSettings(s => !s)}

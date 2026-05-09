@@ -4,6 +4,8 @@ import { Footer } from "@/components/layout/Footer";
 import {
   Download, FileSpreadsheet, FileText, EyeOff, AlertCircle, CheckCircle2,
 } from "lucide-react";
+import { useOrgPeriod } from "@/hooks/useOrgPeriod";
+import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES,
   computeDemoAggregates, computeMonthlyTrend, computeSdgBreakdown,
@@ -27,6 +29,14 @@ export default function OrgExport() {
 
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
+  const summaryYearStart = orgData?.org?.summaryYearStart ?? "01-01";
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod, periodFrom, periodTo } = useOrgPeriod(summaryYearStart, isDemoOrg);
+
+  useEffect(() => {
+    setFrom(periodFrom);
+    setTo(periodTo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodFrom, periodTo]);
 
   useEffect(() => {
     if (orgData?.org && isManager && !isDemoOrg) {
@@ -257,9 +267,17 @@ export default function OrgExport() {
   return (
     <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-export-root">
-      <div className="flex items-center gap-2 mb-1">
-        <Download className="w-5 h-5 text-primary" />
-        <h1 className="text-2xl font-display font-semibold text-foreground">Export</h1>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="flex items-center gap-2">
+          <Download className="w-5 h-5 text-primary" />
+          <h1 className="text-2xl font-display font-semibold text-foreground">Export</h1>
+        </div>
+        <OrgPeriodNavigator
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          label={periodBounds.label}
+          isCurrentPeriod={isCurrentPeriod}
+        />
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Download a polished impact report (PDF) or raw activity data (CSV) for your funders, board or comms team.

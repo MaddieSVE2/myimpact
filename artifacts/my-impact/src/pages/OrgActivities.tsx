@@ -10,6 +10,8 @@ import {
   type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import { useMyOrg, memberLabel } from "@/lib/org-export";
+import { useOrgPeriod } from "@/hooks/useOrgPeriod";
+import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 
 const PAGE_SIZE = 10;
 const CATEGORIES: ActivityCategory[] = ["Environment", "Community", "Health", "Education"];
@@ -25,14 +27,24 @@ export default function OrgActivities() {
 
   const [category, setCategory] = useState<"all" | ActivityCategory>("all");
   const [memberId, setMemberId] = useState<"all" | string>("all");
-  const [from, setFrom] = useState<string>("");
-  const [to, setTo] = useState<string>("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [anonymise, setAnonymise] = useState(false);
 
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
+  const summaryYearStart = orgData?.org?.summaryYearStart ?? "01-01";
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod, periodFrom, periodTo } = useOrgPeriod(summaryYearStart, isDemoOrg);
+
+  const [from, setFrom] = useState<string>(() => periodFrom);
+  const [to, setTo] = useState<string>(() => periodTo);
+
+  useEffect(() => {
+    setFrom(periodFrom);
+    setTo(periodTo);
+    setPage(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodFrom, periodTo]);
 
   useEffect(() => {
     if (orgData?.org && isManager && !isDemoOrg) {
@@ -106,9 +118,17 @@ export default function OrgActivities() {
   return (
     <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-activities-root">
-      <div className="flex items-center gap-2 mb-1">
-        <Users className="w-5 h-5 text-primary" />
-        <h1 className="text-2xl font-display font-semibold text-foreground">Activity feed</h1>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary" />
+          <h1 className="text-2xl font-display font-semibold text-foreground">Activity feed</h1>
+        </div>
+        <OrgPeriodNavigator
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          label={periodBounds.label}
+          isCurrentPeriod={isCurrentPeriod}
+        />
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         The detailed log of every member action, with names visible by default. Use Anonymise to remove identifying information before sharing.

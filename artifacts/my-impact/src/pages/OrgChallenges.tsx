@@ -5,6 +5,8 @@ import { Footer } from "@/components/layout/Footer";
 import { OrgChallengesPanel } from "@/components/OrgChallengesPanel";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { useMyOrg } from "@/lib/org-export";
+import { useOrgPeriod } from "@/hooks/useOrgPeriod";
+import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 
 export default function OrgChallenges() {
   const { data: orgData, isLoading, isError } = useMyOrg();
@@ -12,6 +14,8 @@ export default function OrgChallenges() {
 
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
+  const summaryYearStart = orgData?.org?.summaryYearStart ?? "01-01";
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod } = useOrgPeriod(summaryYearStart, isDemoOrg);
 
   useEffect(() => {
     if (orgData?.org && isManager && !isDemoOrg) {
@@ -50,9 +54,17 @@ export default function OrgChallenges() {
   return (
     <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-challenges-root">
-      <div className="flex items-center gap-2 mb-1">
-        <Flag className="w-5 h-5 text-primary" />
-        <h1 className="text-2xl font-display font-semibold text-foreground">Challenges</h1>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="flex items-center gap-2">
+          <Flag className="w-5 h-5 text-primary" />
+          <h1 className="text-2xl font-display font-semibold text-foreground">Challenges</h1>
+        </div>
+        <OrgPeriodNavigator
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          label={periodBounds.label}
+          isCurrentPeriod={isCurrentPeriod}
+        />
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Set goals for your members and track progress towards them together.
