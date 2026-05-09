@@ -229,7 +229,7 @@ function ChallengePromptFull({ c, onSnooze }: {
 
   return (
     <div
-      className="bg-white border border-border rounded-2xl shadow-sm p-5"
+      className="bg-background border border-border rounded-2xl shadow-sm p-5"
       data-testid="org-prompt-challenge"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
