@@ -42,39 +42,37 @@ export function OrgMemberSubNav() {
 
   return (
     <div
-      className="hidden lg:block sticky top-20 z-40 w-full border-b border-white/10"
+      className="block sticky top-20 z-40 w-full border-b border-white/10"
       style={{ background: ORG_SUBNAV_BG }}
       role="navigation"
       aria-label={`${orgName} navigation`}
     >
-      <div className="max-w-7xl mx-auto px-4 h-10 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 h-10 flex items-center overflow-x-auto scrollbar-none gap-1">
         <span
-          className="text-xs font-semibold text-white/50 uppercase tracking-wider shrink-0 mr-4"
+          className="hidden lg:inline text-xs font-semibold text-white/50 uppercase tracking-wider shrink-0 mr-3"
           aria-label={`Organisation: ${orgName}`}
         >
           {orgName}
         </span>
-        <div className="flex items-center gap-1">
-          {items.map((item) => {
-            const isActive = item.active;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-testid={item.testId}
-                className={
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap " +
-                  (isActive
-                    ? "text-white bg-white/15"
-                    : "text-white/60 hover:text-white hover:bg-white/10")
-                }
-              >
-                <item.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
+        {items.map((item) => {
+          const isActive = item.active;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={item.testId}
+              className={
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 " +
+                (isActive
+                  ? "text-white bg-white/15"
+                  : "text-white/60 hover:text-white hover:bg-white/10")
+              }
+            >
+              <item.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
