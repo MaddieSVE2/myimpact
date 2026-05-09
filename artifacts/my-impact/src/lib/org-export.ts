@@ -30,6 +30,7 @@ export interface MyOrgResponse {
     aiSidekickEnabled?: boolean;
     sroiCostPerVolunteer?: number | null;
     sroiCostBreakdown?: SroiCostBreakdown;
+    summaryYearStart?: string;
     branding?: OrgBranding;
   } | null;
 }

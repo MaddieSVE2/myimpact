@@ -23,6 +23,7 @@ import {
   deleteAttachmentsForRecord,
   deleteAllAttachmentsForUser,
 } from "../lib/attachmentCleanup.js";
+import { getPeriodBounds } from "../lib/summaryPeriod.js";
 
 const router: IRouter = Router();
 
@@ -704,8 +705,8 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
   let records: typeof impactRecordsTable.$inferSelect[] = [];
   if (memberIds.length > 0) {
     const baseCondition = inArray(impactRecordsTable.userId, memberIds);
-    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
-    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+    const fromCondition = from ? gte(impactRecordsTable.entryDate, from) : undefined;
+    const toCondition = to ? lt(impactRecordsTable.entryDate, to) : undefined;
     records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
   }
 
@@ -758,20 +759,28 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
+    // Resolve period bounds: prefer explicit from/to, otherwise use
+    // the org's saved summaryYearStart + periodOffset query param.
+    let from: Date | undefined;
+    let to: Date | undefined;
     const fromParam = req.query.from;
     const toParam = req.query.to;
     const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
     const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
-    if (fromRaw && isNaN(fromRaw.getTime())) {
-      res.status(400).json({ error: "Invalid 'from' date" });
-      return;
+    if (fromRaw && !isNaN(fromRaw.getTime()) && toRaw && !isNaN(toRaw.getTime())) {
+      from = fromRaw;
+      to = toRaw;
+    } else {
+      const periodOffsetParam = req.query.periodOffset;
+      const periodOffset = typeof periodOffsetParam === "string" ? parseInt(periodOffsetParam, 10) : 0;
+      const org = await db.query.organisationsTable.findFirst({
+        where: eq(organisationsTable.id, membership.orgId),
+        columns: { summaryYearStart: true },
+      });
+      const bounds = getPeriodBounds(org?.summaryYearStart ?? "01-01", isNaN(periodOffset) ? 0 : periodOffset);
+      from = bounds.start;
+      to = bounds.end;
     }
-    if (toRaw && isNaN(toRaw.getTime())) {
-      res.status(400).json({ error: "Invalid 'to' date" });
-      return;
-    }
-    const from = fromRaw;
-    const to = toRaw ? (() => { const d = new Date(toRaw); d.setHours(23, 59, 59, 999); return d; })() : undefined;
 
     const [stats, verified] = await Promise.all([
       computeOrgStats(membership.orgId, from, to),

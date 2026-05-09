@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable } from "@workspace/db";
-import { eq, and, inArray, gte, lte, asc, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -17,6 +17,7 @@ import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoPro
 import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
+import { getPeriodBounds } from "../lib/summaryPeriod.js";
 
 const router: IRouter = Router();
 
@@ -259,6 +260,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
         support: org.sroiCostSupport ?? null,
         admin: org.sroiCostAdmin ?? null,
       },
+      summaryYearStart: org.summaryYearStart ?? "01-01",
       branding: {
         logoUrl,
         logoKey: org.logoKey ?? null,
@@ -413,10 +415,11 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const { aiSidekickEnabled, sroiCostPerVolunteer, sroiCostBreakdown } = body as {
+  const { aiSidekickEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart } = body as {
     aiSidekickEnabled?: unknown;
     sroiCostPerVolunteer?: unknown;
     sroiCostBreakdown?: unknown;
+    summaryYearStart?: unknown;
   };
   const updates: {
     aiSidekickEnabled?: boolean;
@@ -425,9 +428,19 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     sroiCostOnboarding?: number | null;
     sroiCostSupport?: number | null;
     sroiCostAdmin?: number | null;
+    summaryYearStart?: string;
   } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
+  }
+
+  if ("summaryYearStart" in body) {
+    const { isValidSummaryYearStart } = await import("../lib/summaryPeriod.js");
+    if (!isValidSummaryYearStart(summaryYearStart)) {
+      res.status(400).json({ error: "summaryYearStart must be a valid MM-DD string (e.g. '01-01', '09-01', '04-01')." });
+      return;
+    }
+    updates.summaryYearStart = summaryYearStart;
   }
 
   // Validate a single sub-amount: must be null or an integer between 0 and 1,000,000.
@@ -561,6 +574,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
         support: updated.sroiCostSupport ?? null,
         admin: updated.sroiCostAdmin ?? null,
       },
+      summaryYearStart: updated.summaryYearStart ?? "01-01",
     },
   });
 });
@@ -813,41 +827,57 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
 
+    // Resolve period bounds: prefer explicit from/to, otherwise use
+    // the org's saved summaryYearStart + periodOffset query param.
+    let from: Date;
+    let to: Date;
     const fromParam = req.query.from;
     const toParam = req.query.to;
     const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
     const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
-    const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
-    const to = toRaw && !isNaN(toRaw.getTime()) ? endOfDay(toRaw) : undefined;
+    if (fromRaw && !isNaN(fromRaw.getTime()) && toRaw && !isNaN(toRaw.getTime())) {
+      from = fromRaw;
+      to = toRaw;
+    } else {
+      const periodOffsetParam = req.query.periodOffset;
+      const periodOffset = typeof periodOffsetParam === "string" ? parseInt(periodOffsetParam, 10) : 0;
+      const org = await db.query.organisationsTable.findFirst({
+        where: eq(organisationsTable.id, membership.orgId),
+        columns: { summaryYearStart: true },
+      });
+      const bounds = getPeriodBounds(org?.summaryYearStart ?? "01-01", isNaN(periodOffset) ? 0 : periodOffset);
+      from = bounds.start;
+      to = bounds.end;
+    }
 
     const baseCondition = inArray(impactRecordsTable.userId, memberIds);
-    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
-    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+    const fromCondition = gte(impactRecordsTable.entryDate, from);
+    const toCondition = lt(impactRecordsTable.entryDate, to);
 
     const records = await db.select({
-      createdAt: impactRecordsTable.createdAt,
+      entryDate: impactRecordsTable.entryDate,
       resultJson: impactRecordsTable.resultJson,
     }).from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
 
     const monthMap: Record<string, number> = {};
     for (const r of records) {
-      const date = new Date(r.createdAt);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const date = new Date(r.entryDate);
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
       const result = parseResultJsonOrg(r.resultJson);
       monthMap[key] = (monthMap[key] ?? 0) + result.totalValue;
     }
 
     const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    const periodFrom = from ?? (records.length > 0
-      ? new Date(Math.min(...records.map(r => new Date(r.createdAt).getTime())))
-      : new Date());
-    const periodTo = to ?? new Date();
+    const periodFrom = from;
+    // `to` is exclusive (start of next period). Subtract 1 ms so the
+    // label range lands on the last day of the actual period.
+    const periodToInclusive = new Date(to.getTime() - 1);
 
-    const startYear = periodFrom.getFullYear();
-    const startMonth = periodFrom.getMonth();
-    const endYear = periodTo.getFullYear();
-    const endMonth = periodTo.getMonth();
+    const startYear = periodFrom.getUTCFullYear();
+    const startMonth = periodFrom.getUTCMonth();
+    const endYear = periodToInclusive.getUTCFullYear();
+    const endMonth = periodToInclusive.getUTCMonth();
 
     const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
     const multiYear = startYear !== endYear || totalMonths > 12;
@@ -1072,16 +1102,32 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
 
+    // Resolve period bounds: prefer explicit from/to, otherwise use
+    // the org's saved summaryYearStart + periodOffset query param.
+    let from: Date | undefined;
+    let to: Date | undefined;
     const fromParam = req.query.from;
     const toParam = req.query.to;
     const fromRaw = typeof fromParam === "string" && fromParam ? new Date(fromParam) : undefined;
     const toRaw = typeof toParam === "string" && toParam ? new Date(toParam) : undefined;
-    const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
-    const to = toRaw && !isNaN(toRaw.getTime()) ? endOfDay(toRaw) : undefined;
+    if (fromRaw && !isNaN(fromRaw.getTime()) && toRaw && !isNaN(toRaw.getTime())) {
+      from = fromRaw;
+      to = toRaw;
+    } else {
+      const periodOffsetParam = req.query.periodOffset;
+      const periodOffset = typeof periodOffsetParam === "string" ? parseInt(periodOffsetParam, 10) : 0;
+      const org = await db.query.organisationsTable.findFirst({
+        where: eq(organisationsTable.id, membership.orgId),
+        columns: { summaryYearStart: true },
+      });
+      const bounds = getPeriodBounds(org?.summaryYearStart ?? "01-01", isNaN(periodOffset) ? 0 : periodOffset);
+      from = bounds.start;
+      to = bounds.end;
+    }
 
     const baseCondition = inArray(impactRecordsTable.userId, memberIds);
-    const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
-    const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
+    const fromCondition = from ? gte(impactRecordsTable.entryDate, from) : undefined;
+    const toCondition = to ? lt(impactRecordsTable.entryDate, to) : undefined;
 
     const records = await db.select({
       userId: impactRecordsTable.userId,
@@ -1856,8 +1902,8 @@ router.post("/verifications/bulk-approve", authenticate, async (req: Authenticat
 
 export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: Date): Promise<{ verifiedHours: number; verifiedSocialValue: number; verifiedRecordCount: number }> {
   const baseConditions = [eq(recordVerificationsTable.orgId, orgId), eq(recordVerificationsTable.status, "approved")];
-  if (from) baseConditions.push(gte(impactRecordsTable.createdAt, from));
-  if (to) baseConditions.push(lte(impactRecordsTable.createdAt, to));
+  if (from) baseConditions.push(gte(impactRecordsTable.entryDate, from));
+  if (to) baseConditions.push(lt(impactRecordsTable.entryDate, to));
 
   const rows = await db
     .select({

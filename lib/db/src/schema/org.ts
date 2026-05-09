@@ -33,6 +33,11 @@ export const organisationsTable = pgTable("organisations", {
   sroiCostOnboarding: integer("sroi_cost_onboarding"),
   sroiCostSupport: integer("sroi_cost_support"),
   sroiCostAdmin: integer("sroi_cost_admin"),
+  // Per-org summary period start stored as "MM-DD" (e.g. "09-01" for Sep 1).
+  // Determines the start of each annual reporting window. Defaults to "01-01"
+  // (calendar year). Admins can choose: calendar (01-01), academic (09-01),
+  // financial (04-01), or any custom month-day.
+  summaryYearStart: text("summary_year_start").notNull().default("01-01"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
