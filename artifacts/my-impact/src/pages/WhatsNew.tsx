@@ -1,4 +1,4 @@
-// What's New page — rolling changelog of user-visible features.
+// What's New page, rolling changelog of user-visible features.
 //
 // Convention: when shipping a user-visible feature, add a card to the
 // LATEST release at the top of RELEASES below. Older releases stay in
@@ -90,7 +90,7 @@ const RELEASES: Release[] = [
           {
             icon: <Mic className="w-5 h-5" />,
             title: "Talk to your Sidekick",
-            desc: "Tap the mic and have a real conversation with the Sidekick instead of typing — perfect when you're out and about or just want to think out loud.",
+            desc: "Tap the mic and have a real conversation with the Sidekick instead of typing, perfect when you're out and about or just want to think out loud.",
           },
         ],
       },
@@ -102,12 +102,12 @@ const RELEASES: Release[] = [
           {
             icon: <Share2 className="w-5 h-5" />,
             title: "Public profile sharing page",
-            desc: "Share a lightweight public version of your impact with anyone — perfect for a CV, application, or a quick link to a friend.",
+            desc: "Share a lightweight public version of your impact with anyone, perfect for a CV, application, or a quick link to a friend.",
           },
           {
             icon: <History className="w-5 h-5" />,
             title: "Reopen any past report",
-            desc: "Every report you've generated is now available from your History — open it again, share it, or download it whenever you need.",
+            desc: "Every report you've generated is now available from your History, open it again, share it, or download it whenever you need.",
           },
           {
             icon: <Award className="w-5 h-5" />,
@@ -127,7 +127,7 @@ const RELEASES: Release[] = [
           {
             icon: <Film className="w-5 h-5" />,
             title: "Your year in review video",
-            desc: "Generate a short, shareable highlights video of your year on My Impact — your hours, your milestones, and the difference you've made.",
+            desc: "Generate a short, shareable highlights video of your year on My Impact, your hours, your milestones, and the difference you've made.",
           },
         ],
       },
@@ -139,7 +139,7 @@ const RELEASES: Release[] = [
           {
             icon: <ShieldCheck className="w-5 h-5" />,
             title: "Organisation admin panel",
-            desc: "Manage members, roles and organisation settings from a single dedicated admin panel — no more digging through different screens.",
+            desc: "Manage members, roles and organisation settings from a single dedicated admin panel, no more digging through different screens.",
           },
           {
             icon: <Map className="w-5 h-5" />,
@@ -166,7 +166,7 @@ const RELEASES: Release[] = [
           {
             icon: <MessageSquare className="w-5 h-5" />,
             title: "In-app feedback mode",
-            desc: "Spotted something? Switch on feedback mode and flag any element of any page — no need to leave the app or remember where you saw it.",
+            desc: "Spotted something? Switch on feedback mode and flag any element of any page, no need to leave the app or remember where you saw it.",
           },
           {
             icon: <Globe className="w-5 h-5" />,
@@ -176,12 +176,12 @@ const RELEASES: Release[] = [
           {
             icon: <Lock className="w-5 h-5" />,
             title: "Choose what gets shared socially",
-            desc: "You're now in control of whether milestone unlocks turn into shareable social cards — opt in only when you want to celebrate.",
+            desc: "You're now in control of whether milestone unlocks turn into shareable social cards, opt in only when you want to celebrate.",
           },
           {
             icon: <Languages className="w-5 h-5" />,
             title: "Cymraeg / Welsh language",
-            desc: "Switch the whole app — including your monthly recap email and Sidekick replies — into Welsh from your account settings.",
+            desc: "Switch the whole app, including your monthly recap email and Sidekick replies, into Welsh from your account settings.",
           },
           {
             icon: <Wrench className="w-5 h-5" />,
@@ -196,7 +196,7 @@ const RELEASES: Release[] = [
     id: "march-2026",
     date: "March 2026",
     title: "What's new",
-    intro: "A look at everything we've been building to make My Impact more useful, more personal, and more powerful — for you and the organisations you're part of.",
+    intro: "A look at everything we've been building to make My Impact more useful, more personal, and more powerful, for you and the organisations you're part of.",
     groups: [
       {
         heading: "Your impact, your way",
@@ -233,7 +233,7 @@ const RELEASES: Release[] = [
           {
             icon: <BookMarked className="w-5 h-5" />,
             title: "Journal entries created for you",
-            desc: "After logging an activity, a journal card is automatically generated to help you reflect — you can edit or delete it anytime.",
+            desc: "After logging an activity, a journal card is automatically generated to help you reflect, you can edit or delete it anytime.",
           },
           {
             icon: <Pencil className="w-5 h-5" />,

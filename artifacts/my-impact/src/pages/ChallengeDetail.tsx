@@ -87,7 +87,7 @@ function CelebrationCard({ challenge, percent, total }: { challenge: ChallengeFu
         </h2>
         <p className="text-sm opacity-90 leading-relaxed">
           Together you reached <strong>{formatGoal(challenge.goalType, total)}</strong> of a{" "}
-          <strong>{formatGoal(challenge.goalType, challenge.target)}</strong> target — that's <strong>{percent}%</strong>.
+          <strong>{formatGoal(challenge.goalType, challenge.target)}</strong> target, that's <strong>{percent}%</strong>.
         </p>
       </div>
     </motion.div>

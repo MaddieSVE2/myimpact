@@ -69,15 +69,15 @@ const SECTIONS: Section[] = [
       <>
         <p>We collect the minimum data necessary to provide the My Impact service. This includes:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Account information</strong> — your email address and, optionally, a display name, when you create an account.</li>
-          <li><strong>Profile information</strong> — details you choose to share about your situation (e.g. student, carer, armed forces) to personalise your experience. This is always optional.</li>
-          <li><strong>Impact data</strong> — the activities, actions, and contributions you log, along with associated hours and dates.</li>
-          <li><strong>Journal entries &amp; attachments</strong> — any written reflections, photos or receipts you save against your impact records.</li>
-          <li><strong>Sidekick AI conversations</strong> — if you use the optional Sidekick assistant, the prompts you send (and any context you choose to include) are processed to generate replies. We don't use these conversations to train any model.</li>
-          <li><strong>Usage data</strong> — anonymised, aggregated analytics about how pages are used, to help us improve the service. We do not use advertising trackers.</li>
-          <li><strong>Organisation data</strong> — if you register an organisation, we collect your organisation's name, type, and contact email.</li>
+          <li><strong>Account information</strong>: your email address and, optionally, a display name, when you create an account.</li>
+          <li><strong>Profile information</strong>: details you choose to share about your situation (e.g. student, carer, armed forces) to personalise your experience. This is always optional.</li>
+          <li><strong>Impact data</strong>: the activities, actions, and contributions you log, along with associated hours and dates.</li>
+          <li><strong>Journal entries &amp; attachments</strong>: any written reflections, photos or receipts you save against your impact records.</li>
+          <li><strong>Sidekick AI conversations</strong>: if you use the optional Sidekick assistant, the prompts you send (and any context you choose to include) are processed to generate replies. We don't use these conversations to train any model.</li>
+          <li><strong>Usage data</strong>: anonymised, aggregated analytics about how pages are used, to help us improve the service. We do not use advertising trackers.</li>
+          <li><strong>Organisation data</strong>: if you register an organisation, we collect your organisation's name, type, and contact email.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>Some features (such as paid organisation plans) involve payments processed by Stripe — we never see or store your card details ourselves.</p>
+        <p style={{ marginTop: 12 }}>Some features (such as paid organisation plans) involve payments processed by Stripe, we never see or store your card details ourselves.</p>
       </>
     ),
   },
@@ -107,9 +107,9 @@ const SECTIONS: Section[] = [
       <>
         <p>We process your personal data under the following legal bases, as defined by the UK GDPR:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Contract</strong> — processing necessary to provide the service you have signed up for.</li>
-          <li><strong>Legitimate interests</strong> — improving and securing the service, where these interests are not overridden by your rights.</li>
-          <li><strong>Consent</strong> — for any optional data or communications where we ask for your explicit agreement.</li>
+          <li><strong>Contract</strong>: processing necessary to provide the service you have signed up for.</li>
+          <li><strong>Legitimate interests</strong>: improving and securing the service, where these interests are not overridden by your rights.</li>
+          <li><strong>Consent</strong>: for any optional data or communications where we ask for your explicit agreement.</li>
         </ul>
       </>
     ),
@@ -124,7 +124,7 @@ const SECTIONS: Section[] = [
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>Encrypted connections (HTTPS/TLS) for all data in transit.</li>
           <li>Encrypted storage for data at rest.</li>
-          <li>Secure, hashed storage of passwords — we never store passwords in plain text.</li>
+          <li>Secure, hashed storage of passwords, we never store passwords in plain text.</li>
           <li>Access controls limiting who within our team can access personal data.</li>
         </ul>
         <p style={{ marginTop: 12 }}>We retain your data for as long as your account is active, or as necessary to provide the service. If you delete your account, we will delete your personal data within 30 days, except where we are required by law to retain it longer.</p>
@@ -138,20 +138,20 @@ const SECTIONS: Section[] = [
       <>
         <p>My Impact uses a small number of cookies that are strictly necessary for the service to function:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong><code>mi_session</code></strong> — keeps you logged in while you use the app. HTTP-only, secure, expires after 30 days or when you log out.</li>
-          <li><strong><code>mi_sso_state</code></strong> — set briefly during single sign-on with Google or Microsoft to protect against CSRF. Expires within minutes.</li>
+          <li><strong><code>mi_session</code></strong>: keeps you logged in while you use the app. HTTP-only, secure, expires after 30 days or when you log out.</li>
+          <li><strong><code>mi_sso_state</code></strong>: set briefly during single sign-on with Google or Microsoft to protect against CSRF. Expires within minutes.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>We also use your browser's <strong>localStorage</strong> on the device you're using — never sent to our servers — to remember a few preferences and drafts. The exact keys are:</p>
+        <p style={{ marginTop: 12 }}>We also use your browser's <strong>localStorage</strong> on the device you're using, never sent to our servers, to remember a few preferences and drafts. The exact keys are:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
-          <li><code>mi-theme</code> — your light/dark theme choice.</li>
-          <li><code>mi-social-sharing</code> — whether you've opted into social-share prompts.</li>
-          <li><code>mi-recap-viewed-&lt;year&gt;</code> — which annual recap you've already viewed.</li>
-          <li><code>mi-recap-show-money</code> — whether your recap shows monetary impact values.</li>
-          <li><code>mi-pulse-dismiss-&lt;id&gt;</code> — pulse cards you've dismissed.</li>
-          <li><code>wizard_draft_v1</code> — your in-progress wizard answers, so you don't lose them on reload.</li>
-          <li><code>myimpact_journal</code> — your in-progress journal autosave draft.</li>
-          <li><code>mi_local_history</code> — guest-mode impact history (cleared once you sign in).</li>
-          <li><code>mi_tracked_milestones_&lt;userId&gt;</code> — which milestones you've already acknowledged.</li>
+          <li><code>mi-theme</code>: your light/dark theme choice.</li>
+          <li><code>mi-social-sharing</code>: whether you've opted into social-share prompts.</li>
+          <li><code>mi-recap-viewed-&lt;year&gt;</code>: which annual recap you've already viewed.</li>
+          <li><code>mi-recap-show-money</code>: whether your recap shows monetary impact values.</li>
+          <li><code>mi-pulse-dismiss-&lt;id&gt;</code>: pulse cards you've dismissed.</li>
+          <li><code>wizard_draft_v1</code>: your in-progress wizard answers, so you don't lose them on reload.</li>
+          <li><code>myimpact_journal</code>: your in-progress journal autosave draft.</li>
+          <li><code>mi_local_history</code>: guest-mode impact history (cleared once you sign in).</li>
+          <li><code>mi_tracked_milestones_&lt;userId&gt;</code>: which milestones you've already acknowledged.</li>
         </ul>
         <p style={{ marginTop: 12 }}>You can clear any of these at any time via your browser's site-data controls; the app will simply rebuild them as needed.</p>
         <p style={{ marginTop: 12 }}>We do not use advertising cookies, social media tracking pixels, or third-party analytics cookies that follow you across the web. Our usage analytics are anonymised and processed in-house.</p>
@@ -166,12 +166,12 @@ const SECTIONS: Section[] = [
       <>
         <p>We use a small number of named, trusted processors to operate My Impact. Each is bound by a data processing agreement and only sees the minimum data required for their job:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Resend</strong> (email delivery, USA) — receives your email address and the body of transactional emails (magic links, account notifications, deletion confirmations) so they can be delivered. Transfer protected by the EU/UK–US Data Privacy Framework and standard contractual clauses.</li>
-          <li><strong>Stripe</strong> (payments, Ireland &amp; USA) — for paid organisation plans only, Stripe processes card details directly. We never see or store your card number. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>OpenAI</strong> (Sidekick AI assistant, USA) — when you use Sidekick, your prompt (and the recent context you've chosen to include, such as your latest activity totals) is sent to OpenAI to generate a reply. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>Sentry</strong> (error monitoring, USA) — receives anonymised error reports (stack traces, browser metadata, your internal user id) so we can fix bugs. Sensitive form values are scrubbed before sending. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>Managed cloud hosting provider</strong> (hosting + PostgreSQL, USA) — hosts the application server and our managed PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>Social Value Engine</strong> (methodology, United Kingdom) — we use their accredited SROI values to calculate impact scores. No personal data is shared with them.</li>
+          <li><strong>Resend</strong> (email delivery, USA), receives your email address and the body of transactional emails (magic links, account notifications, deletion confirmations) so they can be delivered. Transfer protected by the EU/UK–US Data Privacy Framework and standard contractual clauses.</li>
+          <li><strong>Stripe</strong> (payments, Ireland &amp; USA), for paid organisation plans only, Stripe processes card details directly. We never see or store your card number. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>OpenAI</strong> (Sidekick AI assistant, USA), when you use Sidekick, your prompt (and the recent context you've chosen to include, such as your latest activity totals) is sent to OpenAI to generate a reply. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Sentry</strong> (error monitoring, USA), receives anonymised error reports (stack traces, browser metadata, your internal user id) so we can fix bugs. Sensitive form values are scrubbed before sending. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Managed cloud hosting provider</strong> (hosting + PostgreSQL, USA), hosts the application server and our managed PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Social Value Engine</strong> (methodology, United Kingdom), we use their accredited SROI values to calculate impact scores. No personal data is shared with them.</li>
         </ul>
         <p style={{ marginTop: 12 }}>All third-party processors we work with are bound by data processing agreements and are required to handle your data in accordance with UK GDPR.</p>
       </>
@@ -184,15 +184,15 @@ const SECTIONS: Section[] = [
       <>
         <p>As a UK resident, you have the following rights regarding your personal data:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          <li><strong>Right to access</strong> — you can request a copy of the personal data we hold about you.</li>
-          <li><strong>Right to rectification</strong> — you can ask us to correct inaccurate or incomplete data.</li>
-          <li><strong>Right to erasure</strong> — you can ask us to delete your personal data ("right to be forgotten").</li>
-          <li><strong>Right to restriction</strong> — you can ask us to restrict how we process your data in certain circumstances.</li>
-          <li><strong>Right to portability</strong> — you can request your data in a structured, commonly used, machine-readable format.</li>
-          <li><strong>Right to object</strong> — you can object to processing based on legitimate interests.</li>
-          <li><strong>Rights related to automated decision-making</strong> — you have the right not to be subject to decisions made solely by automated means that have a significant effect on you.</li>
+          <li><strong>Right to access</strong>: you can request a copy of the personal data we hold about you.</li>
+          <li><strong>Right to rectification</strong>: you can ask us to correct inaccurate or incomplete data.</li>
+          <li><strong>Right to erasure</strong>: you can ask us to delete your personal data ("right to be forgotten").</li>
+          <li><strong>Right to restriction</strong>: you can ask us to restrict how we process your data in certain circumstances.</li>
+          <li><strong>Right to portability</strong>: you can request your data in a structured, commonly used, machine-readable format.</li>
+          <li><strong>Right to object</strong>: you can object to processing based on legitimate interests.</li>
+          <li><strong>Rights related to automated decision-making</strong>: you have the right not to be subject to decisions made solely by automated means that have a significant effect on you.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>You can exercise the most common rights yourself, immediately, from <Link href="/settings" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Settings</Link>: <strong>Download my data</strong> gives you a complete JSON export of everything we hold, and <strong>Delete my account</strong> permanently erases your data and sends you a confirmation email. For any other request please contact <a href="mailto:hello@myimpact.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.uk</a> — we will respond within 30 days.</p>
+        <p style={{ marginTop: 12 }}>You can exercise the most common rights yourself, immediately, from <Link href="/settings" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Settings</Link>: <strong>Download my data</strong> gives you a complete JSON export of everything we hold, and <strong>Delete my account</strong> permanently erases your data and sends you a confirmation email. For any other request please contact <a href="mailto:hello@myimpact.uk" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>hello@myimpact.uk</a>, we will respond within 30 days.</p>
         <p style={{ marginTop: 12 }}>If you are unhappy with how we handle your data, you have the right to lodge a complaint with the <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>Information Commissioner's Office (ICO)</a>.</p>
       </>
     ),

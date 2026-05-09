@@ -136,7 +136,7 @@ export default function OrgDashboard() {
   }
   const orgLogoUrl = branding?.logoUrl ?? null;
 
-  // Reporting period — first to last activity in dataset.
+  // Reporting period, first to last activity in dataset.
   const dates = allActivities.map(a => a.occurredAt).sort();
   const periodFrom = dates[0];
   const periodTo = dates[dates.length - 1];
@@ -170,7 +170,7 @@ export default function OrgDashboard() {
               Impact summary · {periodLabel}
             </p>
             <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 mt-1">
-              <EyeOff className="w-3 h-3" /> Anonymised — no member is named on this page. Member-level data lives in <Link href="/org/activities" className="underline">Activities</Link>.
+              <EyeOff className="w-3 h-3" /> Anonymised, no member is named on this page. Member-level data lives in <Link href="/org/activities" className="underline">Activities</Link>.
             </p>
           </div>
         </div>

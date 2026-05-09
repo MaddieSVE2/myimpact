@@ -96,7 +96,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center gap-4">
           <p className="text-lg font-semibold text-foreground">Something went wrong</p>
           <p className="text-sm text-muted-foreground max-w-sm">
-            We hit an unexpected error loading this page. Please try refreshing — your data is safe.
+            We hit an unexpected error loading this page. Please try refreshing. Your data is safe.
           </p>
           <div className="flex gap-2">
             <button
@@ -255,7 +255,7 @@ function AppRouter() {
           <Switch>
             <Route path="/" component={Intro} />
 
-            {/* Auth routes — no navbar chrome needed */}
+            {/* Auth routes, no navbar chrome needed */}
             <Route path="/login" component={Login} />
             <Route path="/auth/confirm" component={AuthConfirm} />
             <Route path="/about" component={About} />
@@ -266,7 +266,7 @@ function AppRouter() {
             <Route path="/security" component={Security} />
             <Route path="/pricing" component={Pricing} />
 
-            {/* Wizard routes — open to all */}
+            {/* Wizard routes, open to all */}
             <Route path="/wizard/actions" component={ActionsStep} />
             <Route path="/wizard/activities" component={ActivitiesStep} />
             <Route path="/wizard/contributions" component={ContributionsStep} />
@@ -349,7 +349,7 @@ function AppRouter() {
 
             <Route path="/feedback" component={Feedback} />
 
-            {/* Public profile — no login required */}
+            {/* Public profile, no login required */}
             <Route path="/profile/:slug" component={PublicProfile} />
 
             <Route component={NotFound} />

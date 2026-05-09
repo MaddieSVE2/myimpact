@@ -233,7 +233,7 @@ export default function CalendarSyncSection() {
       <div className="px-5 py-5 space-y-4">
         <p className="text-xs text-muted-foreground leading-relaxed">
           Connect Google Calendar or Outlook to see upcoming volunteering on your home page and get a
-          one-tap log prompt two hours after each event ends. We only read events — we'll never write
+          one-tap log prompt two hours after each event ends. We only read events, we'll never write
           back.
         </p>
 

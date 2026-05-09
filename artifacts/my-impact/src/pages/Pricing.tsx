@@ -201,7 +201,7 @@ export default function Pricing() {
           Simple pricing for measurable impact
         </h1>
         <p className="text-base text-muted-foreground leading-relaxed">
-          Free for individuals, predictable plans for teams. No per-seat surprises — pick the tier that matches the size of your community.
+          Free for individuals, predictable plans for teams. No per-seat surprises, pick the tier that matches the size of your community.
         </p>
       </div>
 
@@ -209,7 +209,7 @@ export default function Pricing() {
         <div className="max-w-2xl mx-auto mb-8 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-2">
           <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
-            Pricing is in pre-launch preview. The page is not yet linked publicly — you can show this to design partners but the upgrade flow is still being wired into Stripe.
+            Pricing is in pre-launch preview. The page is not yet linked publicly, you can show this to design partners but the upgrade flow is still being wired into Stripe.
           </span>
         </div>
       )}

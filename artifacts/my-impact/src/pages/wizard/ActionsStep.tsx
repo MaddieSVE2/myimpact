@@ -276,7 +276,7 @@ export default function ActionsStep() {
           {t("wizard.aboutYouDesc")}
         </p>
 
-        {/* Situation — only shown to logged-in users */}
+        {/* Situation, only shown to logged-in users */}
         {isLoggedIn && (
           <div className="mb-8">
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -404,7 +404,7 @@ export default function ActionsStep() {
           )}
         </div>
 
-        {/* Career break checkbox — hidden when situation picker covers it */}
+        {/* Career break checkbox, hidden when situation picker covers it */}
         {(!isLoggedIn || !situations.includes('career_break')) && (
           <div className="pt-4 border-t border-border">
             <label className="flex items-start gap-3 cursor-pointer select-none group">

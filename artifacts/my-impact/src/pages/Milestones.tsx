@@ -149,7 +149,7 @@ export default function Milestones() {
       try {
         localStorage.setItem(storageKey, JSON.stringify([...already]));
       } catch {
-        // Quota issues — non-fatal.
+        // Quota issues, non-fatal.
       }
     }
   }, [user?.id, earnedBadges]);

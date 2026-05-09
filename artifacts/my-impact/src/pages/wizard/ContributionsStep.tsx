@@ -85,7 +85,7 @@ export default function ContributionsStep() {
               When did this happen?
             </label>
             <p className="text-xs text-muted-foreground mb-3">
-              Pick the date this entry counts toward. Today by default — backdate it for past activity.
+              Pick the date this entry counts toward. Today by default, backdate it for past activity.
             </p>
             <input
               id="entry-date"

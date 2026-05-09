@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 
 // On the user's first visit on/after 1 January, the API tells us whether
 // they have habits worth carrying forward. The modal lists each ongoing
-// habit with a checkbox so the user can confirm, untick, or skip — and
+// habit with a checkbox so the user can confirm, untick, or skip, and
 // then the server bulk-creates one entry per calendar month for the new
 // year. Dismissing without confirming is sticky for the rest of the
 // browser session so we don't pester the user repeatedly.
@@ -60,7 +60,7 @@ export function YearRolloverModal() {
         setConfirmedIds(new Set(json.habits.map(h => h.templateId)));
         setOpen(true);
       } catch {
-        // best-effort — don't block app load on rollover prompt
+        // best-effort, don't block app load on rollover prompt
       }
     })();
     return () => { cancelled = true; };
@@ -97,10 +97,10 @@ export function YearRolloverModal() {
       if (json.entriesCreated > 0) {
         toast({
           title: `Welcome to ${json.year}!`,
-          description: `Carried ${confirmedIds.size} ${confirmedIds.size === 1 ? "habit" : "habits"} forward — ${json.entriesCreated} monthly entries added.`,
+          description: `Carried ${confirmedIds.size} ${confirmedIds.size === 1 ? "habit" : "habits"} forward, ${json.entriesCreated} monthly entries added.`,
         });
       } else {
-        toast({ title: `Welcome to ${json.year}!`, description: "Nothing carried over this year — log your first activity whenever you're ready." });
+        toast({ title: `Welcome to ${json.year}!`, description: "Nothing carried over this year, log your first activity whenever you're ready." });
       }
       dismiss();
     } catch {
@@ -147,7 +147,7 @@ export function YearRolloverModal() {
           </p>
         )}
         <p className="text-sm text-foreground mb-4">
-          Carry your ongoing habits into the new year? We'll add a monthly entry for each one — you can edit or remove them anytime.
+          Carry your ongoing habits into the new year? We'll add a monthly entry for each one, you can edit or remove them anytime.
         </p>
 
         {state.habits.length === 0 ? (

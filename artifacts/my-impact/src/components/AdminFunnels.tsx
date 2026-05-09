@@ -124,7 +124,7 @@ function RetentionCard({ retention }: { retention: RetentionCohort }) {
           <div key={c.label} className="rounded-lg border border-border bg-secondary/30 p-3">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{c.label}</div>
             <div className="text-2xl font-bold text-foreground mt-1">
-              {c.pct == null ? "—" : `${c.pct}%`}
+              {c.pct == null ? "n/a" : `${c.pct}%`}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">{c.count} users</div>
           </div>

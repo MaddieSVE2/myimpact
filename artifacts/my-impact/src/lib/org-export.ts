@@ -54,7 +54,7 @@ export function hexToHslVar(hex: string | null | undefined): string | null {
 export function memberLabel(memberId: string, anon: boolean): { name: string; email: string } {
   if (anon) {
     const idx = DEMO_MEMBERS.findIndex(m => m.id === memberId);
-    return { name: `Member ${String(idx + 1).padStart(3, "0")}`, email: "—" };
+    return { name: `Member ${String(idx + 1).padStart(3, "0")}`, email: "Not set" };
   }
   const m = getDemoMember(memberId);
   return { name: m?.name ?? memberId, email: m?.email ?? "" };

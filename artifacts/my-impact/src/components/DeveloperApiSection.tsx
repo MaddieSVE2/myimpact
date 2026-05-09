@@ -73,7 +73,7 @@ function DemoDeveloperApiSection() {
         </div>
       </div>
       <p className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-developer">
-        Demo data — actions disabled
+        Demo data, actions disabled
       </p>
 
       <section className="mb-6">
@@ -82,7 +82,7 @@ function DemoDeveloperApiSection() {
           <button
             type="button"
             disabled
-            title="Demo data — actions disabled"
+            title="Demo data, actions disabled"
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60"
           >
             <Plus className="w-3 h-3" /> New key
@@ -102,7 +102,7 @@ function DemoDeveloperApiSection() {
               <button
                 type="button"
                 disabled
-                title="Demo data — actions disabled"
+                title="Demo data, actions disabled"
                 className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] text-muted-foreground cursor-not-allowed opacity-60"
               >
                 <Trash2 className="w-3 h-3" /> Revoke
@@ -120,7 +120,7 @@ function DemoDeveloperApiSection() {
           <button
             type="button"
             disabled
-            title="Demo data — actions disabled"
+            title="Demo data, actions disabled"
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60"
           >
             <Plus className="w-3 h-3" /> Add webhook
@@ -142,7 +142,7 @@ function DemoDeveloperApiSection() {
               <button
                 type="button"
                 disabled
-                title="Demo data — actions disabled"
+                title="Demo data, actions disabled"
                 className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] text-muted-foreground cursor-not-allowed opacity-60"
               >
                 <Trash2 className="w-3 h-3" /> Delete
@@ -338,7 +338,7 @@ function LiveDeveloperApiSection() {
           <div className="border border-amber-300 bg-amber-50 rounded-lg p-3 mb-3">
             <p className="text-xs font-semibold text-amber-900 mb-1">Copy your new key now</p>
             <p className="text-xs text-amber-800 mb-2">
-              This is the only time you'll see <strong>{revealedKey.label}</strong>. Store it somewhere secret — you won't be able to retrieve it again.
+              This is the only time you'll see <strong>{revealedKey.label}</strong>. Store it somewhere secret, you won't be able to retrieve it again.
             </p>
             <CopyableCode value={revealedKey.rawKey} label="API key" />
             <div className="text-right mt-2">
@@ -347,7 +347,7 @@ function LiveDeveloperApiSection() {
                 onClick={() => setRevealedKey(null)}
                 className="text-xs font-medium text-amber-900 hover:underline"
               >
-                I've copied it — dismiss
+                I've copied it, dismiss
               </button>
             </div>
           </div>
@@ -463,7 +463,7 @@ function LiveDeveloperApiSection() {
                 onClick={() => setRevealedSecret(null)}
                 className="text-xs font-medium text-amber-900 hover:underline"
               >
-                I've copied it — dismiss
+                I've copied it, dismiss
               </button>
             </div>
           </div>
@@ -556,11 +556,11 @@ function LiveDeveloperApiSection() {
           <div>
             <p className="font-semibold mb-1">Webhook events</p>
             <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
-              <li><code className="font-mono">member.joined</code> — a user joined your org</li>
-              <li><code className="font-mono">hours.logged</code> — a member logged hours via the app</li>
-              <li><code className="font-mono">hours.attested</code> — hours pushed via your API key</li>
-              <li><code className="font-mono">hours.verified</code> — hours marked verified</li>
-              <li><code className="font-mono">milestone.earned</code> — member earned a milestone</li>
+              <li><code className="font-mono">member.joined</code>: a user joined your org</li>
+              <li><code className="font-mono">hours.logged</code>: a member logged hours via the app</li>
+              <li><code className="font-mono">hours.attested</code>: hours pushed via your API key</li>
+              <li><code className="font-mono">hours.verified</code>: hours marked verified</li>
+              <li><code className="font-mono">milestone.earned</code>: member earned a milestone</li>
             </ul>
           </div>
 

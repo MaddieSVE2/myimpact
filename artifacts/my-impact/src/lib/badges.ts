@@ -172,7 +172,7 @@ export function computeBadges(
       name: "All-Rounder",
       emoji: "🔄",
       colour: "#F06127",
-      description: "You're contributing across three or more areas — a true all-rounder.",
+      description: "You're contributing across three or more areas, a true all-rounder.",
       earned: categories.size >= 3,
     },
     {
@@ -188,7 +188,7 @@ export function computeBadges(
       name: "Champion",
       emoji: "🥇",
       colour: "#d97706",
-      description: "Over £5,000 in social value. You're in rare company — a true champion of positive change.",
+      description: "Over £5,000 in social value. You're in rare company, a true champion of positive change.",
       earned: total >= 5000,
     },
     {

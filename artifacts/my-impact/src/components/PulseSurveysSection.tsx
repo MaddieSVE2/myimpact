@@ -423,7 +423,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
   return (
     <div className="border-t border-border p-4 space-y-4 bg-muted/10" data-testid={`survey-results-${surveyId}`}>
       {data.totals.responses === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-3">No responses yet — share the home page link with your members.</p>
+        <p className="text-xs text-muted-foreground text-center py-3">No responses yet. Share the home page link with your members.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
@@ -533,7 +533,7 @@ function DemoPulseSurveysSection() {
         <button
           type="button"
           disabled
-          title="Demo data — actions disabled"
+          title="Demo data, actions disabled"
           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/40 text-white text-xs font-semibold cursor-not-allowed"
           data-testid="button-new-pulse-survey"
         >
@@ -542,7 +542,7 @@ function DemoPulseSurveysSection() {
       </div>
 
       <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-pulse">
-        Demo data — actions disabled
+        Demo data, actions disabled
       </p>
 
       <div className="mt-3 space-y-2">
@@ -588,7 +588,7 @@ function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; op
           <button
             type="button"
             disabled
-            title="Demo data — actions disabled"
+            title="Demo data, actions disabled"
             className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
             data-testid={`button-archive-survey-${survey.id}`}
           >
@@ -620,7 +620,7 @@ function DemoSurveyResultsView({ survey }: { survey: DemoPulseSurvey }) {
   const max = Math.max(1, ...distribution.map(d => d.count));
 
   // For anonymous surveys, only surface comments from windows that cleared
-  // the privacy threshold — both when a specific window is selected and when
+  // the privacy threshold, both when a specific window is selected and when
   // showing "All time", so adding a small future window can't accidentally
   // expose low-volume comments.
   const windowMeetsThreshold = (key: string) => {

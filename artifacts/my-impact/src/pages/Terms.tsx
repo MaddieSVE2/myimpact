@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
       <>
         <p>
           You must be 16 or over to create a My Impact account. You're responsible for keeping
-          your sign-in email secure — we use one-time magic links rather than passwords, so anyone
+          your sign-in email secure, we use one-time magic links rather than passwords, so anyone
           with access to your inbox can sign in.
         </p>
         <p style={{ marginTop: 12 }}>
@@ -131,7 +131,7 @@ const SECTIONS: Section[] = [
           and summarise your impact. When you send a Sidekick message, the relevant prompt and
           (where you've enabled it) recent context from your account are sent to the model
           provider so they can generate a reply. Replies are best-effort guidance, not professional
-          advice — please use your own judgement.
+          advice, please use your own judgement.
         </p>
         <p style={{ marginTop: 12 }}>
           You can turn voice replies on or off, and decline to use Sidekick entirely, from{" "}
@@ -147,8 +147,8 @@ const SECTIONS: Section[] = [
       <>
         <p>
           My Impact is under active development. Features may change, be added, or be removed
-          over time. We'll keep the core promise — that your data stays yours and you can take
-          it with you — even as the Service evolves.
+          over time. We'll keep the core promise, that your data stays yours and you can take
+          it with you, even as the Service evolves.
         </p>
         <p style={{ marginTop: 12 }}>
           If we make changes that significantly affect your rights, we'll let you know by email

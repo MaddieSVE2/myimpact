@@ -91,7 +91,7 @@ export const cy: Catalogue = {
     onboardingEmailsDesc: "Awgrymiadau croeso a chychwyn yn ystod eich mis cyntaf ar ôl cofrestru.",
     monthlyRecap: "Crynodeb effaith misol",
     monthlyRecapDesc:
-      "Crynodeb personol byr ar y 1af o bob mis — oriau, gwerth cymdeithasol, cerrig milltir, ac un uchafbwynt o'r dyddiadur. Dad-danysgrifiwch mewn un clic o'r e-bost neu yma.",
+      "Crynodeb personol byr ar y 1af o bob mis, gan gynnwys oriau, gwerth cymdeithasol, cerrig milltir, ac un uchafbwynt o'r dyddiadur. Dad-danysgrifiwch mewn un clic o'r e-bost neu yma.",
     monthlyRecapOnToast: "Crynodeb misol ymlaen",
     monthlyRecapOffToast: "Crynodeb misol i ffwrdd",
     monthlyRecapOnDesc: "Byddwn yn anfon crynodeb personol ar y 1af o bob mis.",
@@ -123,9 +123,9 @@ export const cy: Catalogue = {
     aboutYouDesc: "Helpwch ni i bersonoli'ch profiad. Dim ond ychydig o gwestiynau cyflym.",
     resumingLast: "Yn ailddechrau eich sesiwn ddiwethaf",
     startFresh: "Dechrau o'r newydd",
-    profilePrefilled: "Rydym wedi llenwi'ch manylion o'ch proffil — addaswch unrhyw beth isod.",
+    profilePrefilled: "Rydym wedi llenwi'ch manylion o'ch proffil. Addaswch unrhyw beth isod.",
     mySituation: "Fy sefyllfa…",
-    situationHelp: "Dewiswch bopeth sy'n berthnasol — rydym yn defnyddio hyn i bersonoli iaith a fframio'ch canlyniadau.",
+    situationHelp: "Dewiswch bopeth sy'n berthnasol. Rydym yn defnyddio hyn i bersonoli iaith a fframio'ch canlyniadau.",
     iLiveIn: "Rwy'n byw yn…",
     iLiveInHelp: "Rydym yn defnyddio hyn i argymell gweithgareddau cyfagos.",
     postcodePlaceholder: "e.e. Manceinion, M1, SW1A 2AA…",
@@ -161,7 +161,7 @@ export const cy: Catalogue = {
     signIn: "Mewngofnodi",
     signInDesc: "Byddwn yn anfon dolen hudol atoch trwy e-bost, dim angen cyfrinair.",
     orgSignIn: "Mewngofnodi i ddangosfwrdd eich sefydliad",
-    orgSignInDesc: "Mynediad i ddata effaith ac adroddiadau eich tîm. Byddwn yn anfon dolen hudol atoch — dim angen cyfrinair.",
+    orgSignInDesc: "Mynediad i ddata effaith ac adroddiadau eich tîm. Byddwn yn anfon dolen hudol atoch, dim angen cyfrinair.",
     emailAddress: "Cyfeiriad e-bost",
     emailPlaceholder: "chi@enghraifft.com",
     sendLink: "Anfon dolen mewngofnodi",
@@ -232,7 +232,7 @@ export const cy: Catalogue = {
   },
   journal: {
     title: "Dyddiadur effaith",
-    subtitle: "Myfyriwch ar yr hyn rydych wedi'i wneud — yn breifat neu i'w rannu.",
+    subtitle: "Myfyriwch ar yr hyn rydych wedi'i wneud, yn breifat neu i'w rannu.",
   },
   guestBanner: {
     browsing: "Rydych yn pori fel gwestai.",
@@ -241,7 +241,7 @@ export const cy: Catalogue = {
   },
   errors: {
     generic: "Aeth rhywbeth o'i le",
-    refresh: "Roedd gwall annisgwyl wrth lwytho'r dudalen hon. Rhowch gynnig ar adnewyddu — mae eich data'n ddiogel.",
+    refresh: "Roedd gwall annisgwyl wrth lwytho'r dudalen hon. Rhowch gynnig ar adnewyddu. Mae eich data'n ddiogel.",
     tryAgain: "Rhowch gynnig arall",
   },
   orgDashboard: {
@@ -255,7 +255,7 @@ export const cy: Catalogue = {
     pulseSummaryActive: "Arolygon gweithredol",
     pulseSummaryResponses: "Ymatebion",
     pulseSummaryAverage: "Sgôr cyfartalog",
-    pulseSummaryNone: "Dim gweithgaredd pyls eto — crëwch arolwg isod.",
+    pulseSummaryNone: "Dim gweithgaredd pyls eto. Crëwch arolwg isod.",
     pulseTrendLabel: "Tuedd",
     pulseTrendEmpty: "Dim data tueddiad eto.",
     monthlyTrendTitle: "Gwerth cymdeithasol fesul mis",

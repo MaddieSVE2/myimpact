@@ -16,7 +16,7 @@ export default function StreakChip({ streak, size = "sm", showLongest = false }:
         className={`inline-flex items-center gap-1.5 rounded-full border border-dashed border-border text-muted-foreground ${
           size === "md" ? "px-3 py-1.5 text-sm" : "px-2.5 py-1 text-xs"
         }`}
-        aria-label="No streak yet — log an activity to start one"
+        aria-label="No streak yet, log an activity to start one"
       >
         <Flame className={size === "md" ? "w-4 h-4" : "w-3.5 h-3.5"} aria-hidden="true" />
         Start your streak
@@ -30,7 +30,7 @@ export default function StreakChip({ streak, size = "sm", showLongest = false }:
   const fg = broken ? "#6B7280" : atRisk ? "#92400E" : "#9A3412";
 
   const label = broken
-    ? `Streak broken — best ${longest} weeks`
+    ? `Streak broken, best ${longest} weeks`
     : atRisk
       ? `${current}-week streak (log this week to keep it!)`
       : `${current}-week streak`;

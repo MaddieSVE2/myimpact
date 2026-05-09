@@ -612,7 +612,7 @@ export default function History() {
               {rejected.length > 0 && (
                 <p className={approved > 0 ? "mt-1 text-muted-foreground" : "font-medium"}>
                   {rejected.length} record{rejected.length === 1 ? "" : "s"} {rejected.length === 1 ? "was" : "were"} declined
-                  {rejected[0]?.reason ? ` — reason: "${rejected[0].reason}"` : ""}.
+                  {rejected[0]?.reason ? `, reason: "${rejected[0].reason}"` : ""}.
                 </p>
               )}
             </div>
@@ -702,7 +702,7 @@ export default function History() {
             let headline: ReactNode;
             if (!hasPriorData) {
               headline = (
-                <>No data yet for {priorYear} — keep logging and you'll have a comparison next year.</>
+                <>No data yet for {priorYear}, keep logging and you'll have a comparison next year.</>
               );
             } else if (noPriorPeriod) {
               headline = (
@@ -714,7 +714,7 @@ export default function History() {
             } else if (pct !== null) {
               headline = (
                 <>
-                  <strong>{formatCurrency(selectedTotal)}</strong>{isCurrentYear ? " so far" : ""} in {selectedYear} —{" "}
+                  <strong>{formatCurrency(selectedTotal)}</strong>{isCurrentYear ? " so far" : ""} in {selectedYear}:{" "}
                   <span className={ahead ? "text-green-700" : "text-amber-700"}>
                     {Math.abs(pct).toFixed(0)}% {ahead ? "ahead of" : "behind"}
                   </span>{" "}

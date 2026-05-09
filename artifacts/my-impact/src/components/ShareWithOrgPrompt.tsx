@@ -395,7 +395,7 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
               <span>
                 <strong className="text-foreground">Donations and journal entries are not shared.</strong>{" "}
-                Custom activities are excluded too — only standard activities go to your organisation.
+                Custom activities are excluded too, only standard activities go to your organisation.
               </span>
             </div>
             <div className="flex items-center justify-between">

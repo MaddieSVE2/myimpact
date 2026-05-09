@@ -264,7 +264,7 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
       doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(INK);
       doc.text(h.activity.activity, margin + 14, y + 18);
       doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
-      const meta = `${h.member.name}  ·  £${h.activity.socialValueGBP}  ·  ${h.activity.hours}h  ·  SDG ${sdg?.number ?? "—"}`;
+      const meta = `${h.member.name}  ·  £${h.activity.socialValueGBP}  ·  ${h.activity.hours}h  ·  SDG ${sdg?.number ?? "n/a"}`;
       doc.text(meta, margin + 14, y + 32);
       setText(MUTED);
       doc.text(desc, margin + 14, y + 46);
@@ -335,7 +335,7 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
         new Date(activity.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
         member.name,
         activity.category,
-        sdg ? `${sdg.number}` : "—",
+        sdg ? `${sdg.number}` : "n/a",
         `${activity.activity}\n${activity.description}`,
         activity.hours.toString(),
         `£${activity.socialValueGBP}`,

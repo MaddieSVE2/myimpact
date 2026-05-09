@@ -321,7 +321,7 @@ export default function Suggestions() {
                       </h3>
                       <p className="text-xs text-muted-foreground leading-relaxed">{sug.reason}</p>
 
-                      {/* "See what's near you" button — only if location captured */}
+                      {/* "See what's near you" button, only if location captured */}
                       {hasLocation && (
                         <button
                           onClick={() => handleToggleLocal(sug.activityId, sug.activityName)}

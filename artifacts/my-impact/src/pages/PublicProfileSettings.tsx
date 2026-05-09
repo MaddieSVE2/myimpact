@@ -468,9 +468,9 @@ export default function PublicProfileSettings() {
               <div className="flex items-start gap-2">
                 <Lock className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" aria-hidden="true" />
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-blue-800">Before you publish — please read</p>
+                  <p className="text-xs font-semibold text-blue-800">Before you publish, please read</p>
                   <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                    <li>Your public page will be visible to anyone with the link — no login required.</li>
+                    <li>Your public page will be visible to anyone with the link, no login required.</li>
                     <li>Only the sections you choose to share will appear. Nothing else is exposed.</li>
                     <li>You can turn off or update your public profile at any time.</li>
                     <li>Deleting your account removes your public profile immediately.</li>
@@ -520,7 +520,7 @@ export default function PublicProfileSettings() {
     );
   }
 
-  // Profile is enabled — show settings
+  // Profile is enabled, show settings
   const slugChanged = slugInput !== profile.slug;
   const slugStatusIcon = slugStatus === "checking" ? (
     <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
@@ -574,10 +574,10 @@ export default function PublicProfileSettings() {
         {/* Slug */}
         <div>
           <label htmlFor="profile-slug" className="block text-xs font-medium text-foreground mb-1">
-            Custom URL slug {profile.slugCustomised && <span className="text-muted-foreground font-normal">(already set — cannot be changed again)</span>}
+            Custom URL slug {profile.slugCustomised && <span className="text-muted-foreground font-normal">(already set, cannot be changed again)</span>}
           </label>
           {!profile.slugCustomised && (
-            <p className="text-xs text-muted-foreground mb-2">You can customise your slug once. Choose carefully — this cannot be changed again.</p>
+            <p className="text-xs text-muted-foreground mb-2">You can customise your slug once. Choose carefully, this cannot be changed again.</p>
           )}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground shrink-0">/profile/</span>
@@ -635,7 +635,7 @@ export default function PublicProfileSettings() {
             Personal message <span className="text-muted-foreground font-normal">(optional)</span>
           </label>
           <p className="text-xs text-muted-foreground mb-2">
-            A short note shown at the top of your public page — a personal statement, call for support, or motivational message.
+            A short note shown at the top of your public page, a personal statement, call for support, or motivational message.
           </p>
           <textarea
             id="custom-message"

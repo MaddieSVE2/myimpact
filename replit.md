@@ -6,6 +6,8 @@ The My Impact web application is a pnpm workspace monorepo designed to help user
 
 I prefer iterative development and welcome early feedback. Please use clear and concise language in your explanations. For significant changes or architectural decisions, please ask for approval before proceeding. Ensure all code is well-documented and follows best practices for maintainability and readability. Do not make changes to the `lib/api-spec/openapi.yaml` file.
 
+**Copy style:** No em dashes (`—`) in any user-facing copy (UI strings, locale catalogues, emails, modals, tooltips). Use commas, full stops, or parentheses instead. Em dashes are fine in code comments and internal docs. Member-facing copy should be plain English: state what is being submitted, when it goes, who sees it, and what value it has.
+
 # System Architecture
 
 The project is structured as a pnpm monorepo using TypeScript (v5.9). The backend is an Express 5 API server, utilizing PostgreSQL with Drizzle ORM for data persistence and Zod for validation. API client code is generated from an OpenAPI spec using Orval. The frontend is built with React, Vite, Tailwind CSS, framer-motion, and recharts, featuring a 3-step wizard UI.

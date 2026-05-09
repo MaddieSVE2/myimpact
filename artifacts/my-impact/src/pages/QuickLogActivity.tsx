@@ -132,7 +132,7 @@ export default function QuickLogActivity() {
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
       const fromParam = params.get("from");
-      // Only accept safe internal app routes — reject protocol-relative
+      // Only accept safe internal app routes, reject protocol-relative
       // (e.g. "//evil.com") and absolute URLs.
       if (
         fromParam &&
@@ -151,7 +151,7 @@ export default function QuickLogActivity() {
         }
       }
     } catch {
-      /* ignore — keep "/" fallback */
+      /* ignore, keep "/" fallback */
     }
   }, []);
 
@@ -179,7 +179,7 @@ export default function QuickLogActivity() {
     retry: false,
   });
 
-  // Profile gate — fetch once and decide whether the user can use the
+  // Profile gate, fetch once and decide whether the user can use the
   // quick logger or needs the full wizard.
   const profileQuery = useQuery<ProfileResponse>({
     queryKey: ["profile", "quick-log"],
@@ -192,7 +192,7 @@ export default function QuickLogActivity() {
     retry: false,
   });
 
-  // Auth gate — signed-out users go to the full wizard (per task spec),
+  // Auth gate, signed-out users go to the full wizard (per task spec),
   // not the login page, so guests can still log via the calculator flow.
   useEffect(() => {
     if (authLoading) return;
@@ -830,7 +830,7 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic mt-2">
-            No proxy match found — this activity will count towards your volunteer hours but not your social value total.
+            No proxy match found, this activity will count towards your volunteer hours but not your social value total.
           </p>
         )}
       </div>

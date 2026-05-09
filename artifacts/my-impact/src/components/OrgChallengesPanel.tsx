@@ -292,7 +292,7 @@ function DemoOrgChallengesPanel() {
         <button
           type="button"
           disabled
-          title="Demo data — actions disabled"
+          title="Demo data, actions disabled"
           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/40 text-white text-xs font-semibold cursor-not-allowed"
           data-testid="button-new-org-challenge"
         >
@@ -301,7 +301,7 @@ function DemoOrgChallengesPanel() {
       </div>
 
       <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-primary/80" data-testid="demo-data-hint-challenges">
-        Demo data — actions disabled
+        Demo data, actions disabled
       </p>
 
       <div className="mt-3 space-y-2" data-testid="list-org-challenges">
@@ -327,7 +327,7 @@ function DemoOrgChallengesPanel() {
                     <button
                       type="button"
                       disabled
-                      title="Demo data — actions disabled"
+                      title="Demo data, actions disabled"
                       className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
                       data-testid={`button-end-challenge-${c.id}`}
                     >

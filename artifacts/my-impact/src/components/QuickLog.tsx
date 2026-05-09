@@ -119,7 +119,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   const handleConfirm = async (template: RecurringTemplate) => {
     // Ticking a habit bulk-creates one impact entry per remaining month of
     // the current calendar year. The wizard pre-fill flow remains as a
-    // fallback path for users who want to amend before saving — but the
+    // fallback path for users who want to amend before saving, but the
     // primary action here is the bulk confirm, so we don't navigate away.
     try {
       const result = (await confirmMutation.mutateAsync({ id: template.id })) as { entriesCreated?: number };
@@ -132,7 +132,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
           description: `Added ${created} monthly ${created === 1 ? "entry" : "entries"} for the rest of ${new Date().getFullYear()}.`,
         });
       } else {
-        // Nothing new created — the user already has habit entries for the
+        // Nothing new created, the user already has habit entries for the
         // remaining months. Nudge them to the wizard if they want to adjust.
         const overlaid = buildOverlaidActivities(
           template.defaultActivities,

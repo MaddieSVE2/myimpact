@@ -63,7 +63,7 @@ import {
 } from "recharts";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
-// Metric tile — styled to match original My Impact design
+// Metric tile, styled to match original My Impact design
 function MetricTile({
   icon: Icon,
   iconColour,
@@ -193,7 +193,7 @@ function PersonalDevelopmentDetail({
   const [open, setOpen] = useState(false);
   const skills = deriveSkills(breakdowns);
 
-  const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr — NCVO Time Well Spent 2023
+  const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr, NCVO Time Well Spent 2023
 
   return (
     <motion.div
@@ -371,7 +371,7 @@ function ProxyMethodology({ breakdowns }: {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-muted-foreground leading-snug">{b.activityName}</p>
                   <p className="text-xs text-muted-foreground/70 mt-0.5 leading-snug italic">
-                    No proxy match found — this activity was not included in the social value calculation
+                    No proxy match found, this activity was not included in the social value calculation
                   </p>
                 </div>
               </div>
@@ -560,7 +560,7 @@ function generateDofEPortfolioText(results: DofESectionResult[]): string {
 
   const hasPartialNotes = populated.some(r => r.activities.some(a => a.note));
   const notesCaveat = hasPartialNotes
-    ? " Some activities are flagged as partially qualifying — please confirm these with your DofE assessor."
+    ? " Some activities are flagged as partially qualifying, please confirm these with your DofE assessor."
     : "";
 
   return `During this period I logged activities across the following DofE sections: ${allSectionsText}. This summary was generated using My Impact as a guide and does not constitute an official DofE record, which I maintain separately through the eDofE system.${notesCaveat}`;
@@ -696,7 +696,7 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
               Hours shown are your total logged hours for activities that map to each section.
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              This is a guide only — your official DofE record must be maintained separately in the eDofE system. Activity boundaries may differ from your award assessor's judgement.
+              This is a guide only, your official DofE record must be maintained separately in the eDofE system. Activity boundaries may differ from your award assessor's judgement.
             </p>
           </div>
 
@@ -770,7 +770,7 @@ function generateCVText(result: any, interests: string[] = [], careerBreak = fal
   }
 
   if (isJobSeeking) {
-    return `While job seeking, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}, generating an estimated ${valueFormatted} in social value based on Social Value Engine proxy metrics. This experience has developed transferable skills including ${skillText} — directly applicable to the roles I am pursuing.`;
+    return `While job seeking, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}, generating an estimated ${valueFormatted} in social value based on Social Value Engine proxy metrics. This experience has developed transferable skills including ${skillText}, directly applicable to the roles I am pursuing.`;
   }
 
   return `Over the past year, I have contributed ${hoursRounded} hours of unpaid time to activities including ${actText}. This work has generated an estimated ${valueFormatted} in social value, calculated using Social Value Engine proxy metrics based on peer-reviewed research and UK government data. Through this experience I have developed transferable skills including ${skillText}, which I bring to everything I do.`;
@@ -802,7 +802,7 @@ function getSituationCopy(situation: string | null): {
   if (situation === 'armed_forces') {
     return {
       headline: "Your service, measured.",
-      intro: "This is the verified social value of your commitment — in service and in civilian life. Use it to show employers and institutions what your experience is really worth.",
+      intro: "This is the verified social value of your commitment, in service and in civilian life. Use it to show employers and institutions what your experience is really worth.",
       skillsSubheading: "Skills from service you're developing",
     };
   }
@@ -816,7 +816,7 @@ function getSituationCopy(situation: string | null): {
   if (situation === 'career_break') {
     return {
       headline: "Your break was active contribution.",
-      intro: "This period wasn't time out — it was time invested. Here's the verified value of what you contributed, and the skills you built that employers recognise.",
+      intro: "This period wasn't time out, it was time invested. Here's the verified value of what you contributed, and the skills you built that employers recognise.",
       skillsSubheading: "Skills from your career break",
     };
   }
@@ -926,7 +926,7 @@ export default function Results() {
   const [customPeriod, setCustomPeriod] = useState("");
   const [statementCopied, setStatementCopied] = useState(false);
 
-  // Recurring template state — prompt opens after a successful save.
+  // Recurring template state, prompt opens after a successful save.
   const [showRecurringPrompt, setShowRecurringPrompt] = useState(false);
   const [recurringTemplateSaved, setRecurringTemplateSaved] = useState(false);
   const [tplLabel, setTplLabel] = useState("");
@@ -1498,10 +1498,10 @@ export default function Results() {
       {/* Persona-specific transferable skills */}
       <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
 
-      {/* Duke of Edinburgh panel — hidden for veterans */}
+      {/* Duke of Edinburgh panel, hidden for veterans */}
       {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
 
-      {/* Photo & receipt attachments — only after the record is saved */}
+      {/* Photo & receipt attachments, only after the record is saved */}
       {savedRecordId != null && (
         <motion.div
           className="mb-6 bg-white border border-border rounded-xl p-5"
@@ -1556,7 +1556,7 @@ export default function Results() {
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border" style={{ background: "white", boxShadow: "0 -4px 24px rgba(0,0,0,0.10)" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
 
-          {/* Save — primary action, always prominent */}
+          {/* Save, primary action, always prominent */}
           <button
             onClick={() => !saved && setShowSaveDialog(true)}
             disabled={saveMutation.isPending || saved}
@@ -1630,7 +1630,7 @@ export default function Results() {
             <BookOpen className="w-3.5 h-3.5" aria-hidden="true" /> Journal
           </Link>
 
-          {/* Ideas CTA — grows to fill remaining space */}
+          {/* Ideas CTA, grows to fill remaining space */}
           <Link
             href="/suggestions"
             className="flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
@@ -1715,7 +1715,7 @@ export default function Results() {
         </div>
       )}
 
-      {/* Conflict dialog — opens when /save returns 409 habit_entry_conflict.
+      {/* Conflict dialog, opens when /save returns 409 habit_entry_conflict.
           The user can either replace the existing habit-generated entry
           (the canonical "edit existing entry" flow), open it in history
           for a fuller edit, or explicitly opt-in to log an additional
@@ -1791,7 +1791,7 @@ export default function Results() {
         </div>
       )}
 
-      {/* Recurring template prompt — opens after a successful save */}
+      {/* Recurring template prompt, opens after a successful save */}
       {showRecurringPrompt && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"

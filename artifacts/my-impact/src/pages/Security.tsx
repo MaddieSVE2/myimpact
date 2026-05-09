@@ -62,7 +62,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: "Is data encrypted in transit and at rest?",
-        a: <p>Yes. All connections use HTTPS/TLS, and stored data — including database contents and file attachments — is encrypted at rest using industry-standard ciphers.</p>,
+        a: <p>Yes. All connections use HTTPS/TLS, and stored data, including database contents and file attachments, is encrypted at rest using industry-standard ciphers.</p>,
       },
       {
         q: "What kinds of data does My Impact hold about our organisation and members?",
@@ -121,11 +121,11 @@ const SECTIONS: Section[] = [
           <>
             <p>We use a small set of named, trusted processors, each bound by a data processing agreement:</p>
             <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-              <li><strong>Managed cloud hosting (USA)</strong> — application hosting and managed PostgreSQL database.</li>
-              <li><strong>Resend</strong> — transactional email delivery (magic links, notifications).</li>
-              <li><strong>Stripe</strong> — payment processing for paid plans (we never see card details).</li>
-              <li><strong>OpenAI</strong> — powers the optional Sidekick AI assistant via enterprise endpoints.</li>
-              <li><strong>Sentry</strong> — anonymised error monitoring with sensitive values scrubbed before sending.</li>
+              <li><strong>Managed cloud hosting (USA)</strong>: application hosting and managed PostgreSQL database.</li>
+              <li><strong>Resend</strong>: transactional email delivery (magic links, notifications).</li>
+              <li><strong>Stripe</strong>: payment processing for paid plans (we never see card details).</li>
+              <li><strong>OpenAI</strong>: powers the optional Sidekick AI assistant via enterprise endpoints.</li>
+              <li><strong>Sentry</strong>: anonymised error monitoring with sensitive values scrubbed before sending.</li>
             </ul>
             <p style={{ marginTop: 12 }}>The full list with locations and safeguards is on our <Link href="/privacy" style={{ color: C.orange, fontWeight: 600, textDecoration: "none" }}>Privacy Policy</Link>.</p>
           </>
@@ -262,7 +262,7 @@ export default function Security() {
             <span style={{ color: C.orange, fontStyle: "italic" }}>your data.</span>
           </h1>
           <p style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.7)", lineHeight: 1.7, maxWidth: 640 }}>
-            This page summarises how My Impact protects organisation and member data — from where it's stored, to who can see it, to how we'd handle an incident. If you need a full DPA or our response to a security questionnaire, just <Link href="/contact" style={{ color: C.orange, fontWeight: 700, textDecoration: "none" }}>get in touch</Link>.
+            This page summarises how My Impact protects organisation and member data, from where it's stored, to who can see it, to how we'd handle an incident. If you need a full DPA or our response to a security questionnaire, just <Link href="/contact" style={{ color: C.orange, fontWeight: 700, textDecoration: "none" }}>get in touch</Link>.
           </p>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
             Last updated: 8 May 2026
@@ -319,7 +319,7 @@ export default function Security() {
                 Ask us anything.
               </h2>
               <p style={{ fontSize: 16, color: "var(--brand-muted-text)", lineHeight: 1.7 }}>
-                Need our DPA, a completed security questionnaire, or a deeper conversation with our team? We're happy to help — most requests get a response within a couple of working days.
+                Need our DPA, a completed security questionnaire, or a deeper conversation with our team? We're happy to help, most requests get a response within a couple of working days.
               </p>
             </div>
             <div>

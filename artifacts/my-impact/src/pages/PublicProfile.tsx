@@ -240,7 +240,7 @@ export default function PublicProfile() {
           <Link href="/" className="text-primary hover:underline font-medium">
             My Impact
           </Link>
-          {" "}— measure and share your social impact
+          {" "}: measure and share your social impact
         </p>
       </div>
     </div>

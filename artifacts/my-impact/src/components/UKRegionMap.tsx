@@ -139,7 +139,7 @@ export function UKRegionMap({ regions }: UKRegionMapProps) {
 
           const label = document.createElement("div");
           label.style.cssText = "font-family:system-ui,sans-serif;padding:4px 8px;font-size:12px;color:#555";
-          label.textContent = `${featureName} — no data`;
+          label.textContent = `${featureName}, no data`;
 
           layer.bindPopup(label, { maxWidth: 220 });
           layer.addTo(map);
@@ -189,7 +189,7 @@ export function UKRegionMap({ regions }: UKRegionMapProps) {
       <div className="mt-2 flex items-start gap-1.5">
         <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Only broad regions are shown. No individual location data is stored — regions are derived from member-supplied postcodes and shown in aggregate only. Darker shading indicates higher member activity.
+          Only broad regions are shown. No individual location data is stored, regions are derived from member-supplied postcodes and shown in aggregate only. Darker shading indicates higher member activity.
         </p>
       </div>
     </div>

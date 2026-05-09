@@ -298,7 +298,7 @@ export default function OrgMemberSubmit() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-5 text-xs text-amber-900 flex items-start gap-2">
         <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <span>
-          Activities only — actions, donations, and custom activities aren't included in this org submission flow.
+          Activities only. Actions, donations, and custom activities aren't included in this org submission flow.
           Use the personal wizard if you'd like to log those for yourself.
         </span>
       </div>
@@ -638,7 +638,7 @@ export default function OrgMemberSubmit() {
           <div className="bg-white border border-border rounded-xl p-5 mb-4">
             <h3 className="text-sm font-semibold text-foreground mb-1">You're sharing this with {orgName}</h3>
             <p className="text-xs text-muted-foreground mb-4">
-              These activities will be added to your organisation's totals straight away — no manager approval needed.
+              These activities will be added to your organisation's totals straight away, no manager approval needed.
             </p>
 
             <div className="space-y-2 mb-5">
@@ -713,15 +713,15 @@ export default function OrgMemberSubmit() {
               <div>
                 <p className="font-semibold mb-1">Quick sanity check on your hours</p>
                 <p className="text-xs mb-2">
-                  These look unusual — you can still submit, but it's worth a glance to make sure they're right.
+                  These look unusual. You can still submit, but it's worth a glance to make sure they're right.
                 </p>
                 <ul className="text-xs space-y-0.5 list-disc pl-4">
                   {hoursWarnings.map(w => (
                     <li key={w.activityId} data-testid={`member-submit-hours-warning-${w.activityId}`}>
                       <span className="font-medium">{w.name}</span>{" "}
                       {w.reason === "high"
-                        ? `— ${w.hoursPerYear.toLocaleString("en-GB")} hrs/yr seems very high (more than a full-time job is ~2,000).`
-                        : "— 0 hrs/yr looks like it might have been left blank."}
+                        ? `(${w.hoursPerYear.toLocaleString("en-GB")} hrs/yr seems very high. A full-time job is around 2,000 hrs/yr.)`
+                        : "(0 hrs/yr looks like it might have been left blank.)"}
                     </li>
                   ))}
                 </ul>
@@ -811,7 +811,7 @@ export default function OrgMemberSubmit() {
             </div>
 
             <p className="text-[11px] text-muted-foreground mt-3">
-              This is a preview — your submission will roll into {orgName}'s totals and appear in their activity feed once you confirm below.
+              This is a preview. Your submission will be added to {orgName}'s totals and appear in their activity feed once you confirm below.
             </p>
           </div>
 

@@ -272,7 +272,7 @@ export default function OrgExport() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              No activities in this range — adjust the filters above to see a preview.
+              No activities in this range, adjust the filters above to see a preview.
             </div>
           ) : previewUrl ? (
             <PdfPager src={previewUrl} height={500} />

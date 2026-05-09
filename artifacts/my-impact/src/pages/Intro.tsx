@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
@@ -141,7 +141,7 @@ const TESTIMONIALS = [
   {
     name: "Marcus",
     age: "38, Catterick",
-    quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language — not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
+    quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language: not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
     value: "£11,240",
     what: "Forces leaver, 14 years' service",
   },
@@ -213,9 +213,9 @@ function TestimonialsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Overflow clip — cards slide individually, not as a group */}
+      {/* Overflow clip, cards slide individually, not as a group */}
       <div style={{ position: "relative", overflow: "hidden" }}>
-        {/* Phantom centre card — establishes container height, never seen */}
+        {/* Phantom centre card, establishes container height, never seen */}
         <div
           style={{
             visibility: "hidden",
@@ -350,8 +350,8 @@ export default function Intro() {
     ? `/wizard/actions?challenge=${activeChallenges[0].id}`
     : `/challenges`;
 
-  // While auth is resolving — or, for a logged-in user, while we're still
-  // checking whether they belong to an org — render a neutral placeholder so
+  // While auth is resolving, or, for a logged-in user, while we're still
+  // checking whether they belong to an org, render a neutral placeholder so
   // we never flash the marketing hero or briefly show the wrong CTA set.
   const heroResolving =
     authLoading || (isLoggedIn && myOrgQuery.isLoading);
@@ -375,6 +375,25 @@ export default function Intro() {
     .find(e => e.type === "activity" && !(e.reflectionText && e.reflectionText.trim().length > 0));
 
   const overdueTemplate = (templatesQuery.data?.templates ?? []).find(t => t.isDue);
+
+  // When the home page is opened with a hash (e.g. /#org-prompts-section
+  // from the org-member top nav), scroll the matching section into view
+  // once it's actually rendered. Wouter doesn't do this for us.
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (!hash) return;
+    let attempts = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 20) setTimeout(tryScroll, 120);
+    };
+    tryScroll();
+  }, [isLoggedIn, isOrgMember, hasActivePulse]);
 
   // Priority of personalised primary CTA: overdue regular activity beats
   // a draft reflection beats the generic "Calculate" call-to-action.
@@ -485,46 +504,12 @@ export default function Intro() {
             </p>
 
             {isOrgMember && (
-              <div
-                data-testid="welcome-org-ctas"
-                style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 18 }}
+              <p
+                data-testid="welcome-org-pointer"
+                style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: "0 0 18px 0", maxWidth: 520, lineHeight: 1.5 }}
               >
-                {hasActivePulse ? (
-                  <a
-                    href="#org-prompts-section"
-                    className="mi-btn-hero"
-                    data-testid="welcome-cta-answer-pulse"
-                    onClick={(e) => {
-                      const target = document.getElementById("org-prompts-section");
-                      if (target) {
-                        e.preventDefault();
-                        target.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }
-                    }}
-                  >
-                    Answer a Pulse →
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    className="mi-btn-hero"
-                    data-testid="welcome-cta-answer-pulse"
-                    title="No open Pulse right now — we'll let you know when one drops."
-                    aria-disabled="true"
-                    onClick={(e) => e.preventDefault()}
-                    style={{ opacity: 0.55, cursor: "not-allowed" }}
-                  >
-                    Answer a Pulse →
-                  </button>
-                )}
-                <Link
-                  href={hasActiveChallenge ? challengeHref : "/challenges"}
-                  className="mi-btn-hero"
-                  data-testid="welcome-cta-add-to-challenge"
-                >
-                  Add to a Challenge →
-                </Link>
-              </div>
+                Your four jobs from {myOrgQuery.data?.org?.name ?? "your organisation"} are in the panel below: share volunteering, open a pulse, join a challenge, or update your impact.
+              </p>
             )}
 
             <div
@@ -584,7 +569,7 @@ export default function Intro() {
         </section>
       ) : (
       <section className="mi-hero">
-        {/* Faces image — blended into right side of hero */}
+        {/* Faces image, blended into right side of hero */}
         <div style={{
           position: "absolute", top: 0, right: 0, bottom: 0,
           width: "55%", zIndex: 1, pointerEvents: "none",
@@ -651,6 +636,152 @@ export default function Intro() {
 
 
       </section>
+      )}
+
+      {/* ── YOUR ORGANISATION: unified 4-job panel (members only) ──
+          Mirrors the /org member view so the four key jobs are obvious
+          on the home page too. Order matches /org: Share, Pulse,
+          Challenges, Calculate/update. Hidden for managers and
+          non-members. */}
+      {isLoggedIn && isOrgMember && myOrgQuery.data?.org && (
+        <section
+          data-testid="home-org-jobs"
+          style={{ background: "white", padding: "32px 5% 16px" }}
+        >
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <h2
+              className="mi-fraunces"
+              style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 700, color: "#0E1922", marginBottom: 6 }}
+            >
+              Your organisation
+            </h2>
+            <p style={{ fontSize: 14, color: "#5b6770", lineHeight: 1.5, marginBottom: 18, maxWidth: 720 }}>
+              You're a member of <strong style={{ color: "#0E1922" }}>{myOrgQuery.data.org.name}</strong>. Here are the four things you can do from here. Your manager runs the analytics, reports, and the join link separately.
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: 12,
+              }}
+            >
+              <div
+                data-testid="home-job-share"
+                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <BadgeCheck className="w-4 h-4" style={{ color: C.orange }} />
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Share volunteering with {myOrgQuery.data.org.name}</p>
+                </div>
+                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
+                  Send your volunteering hours into your organisation's totals. Submitted now, no manager approval needed. Your manager sees what you submitted (with your name) and it counts towards their reporting.
+                </p>
+                <Link
+                  href="/org/submit"
+                  data-testid="home-link-org-submit"
+                  style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                >
+                  Start a submission
+                </Link>
+              </div>
+
+              <div
+                data-testid="home-job-pulse"
+                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <ClipboardList className="w-4 h-4" style={{ color: C.orange }} />
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Open a pulse</p>
+                </div>
+                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
+                  {hasActivePulse
+                    ? `${activeSurveys.length} open ${activeSurveys.length === 1 ? "pulse" : "pulses"} from ${myOrgQuery.data.org.name}. Around 30 seconds each. Anonymous unless the question says otherwise. Your manager only sees the totals.`
+                    : `No open pulse from ${myOrgQuery.data.org.name} right now. We'll surface them here as soon as one is live.`}
+                </p>
+                {hasActivePulse ? (
+                  <a
+                    href="#org-prompts-section"
+                    data-testid="home-link-pulse"
+                    onClick={(e) => {
+                      const target = document.getElementById("org-prompts-section");
+                      if (target) {
+                        e.preventDefault();
+                        target.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }}
+                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                  >
+                    Open a pulse
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    aria-disabled="true"
+                    onClick={(e) => e.preventDefault()}
+                    data-testid="home-link-pulse"
+                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, border: "none", opacity: 0.55, cursor: "not-allowed" }}
+                  >
+                    No open pulse
+                  </button>
+                )}
+              </div>
+
+              <div
+                data-testid="home-job-challenges"
+                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <Trophy className="w-4 h-4" style={{ color: C.orange }} />
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Active challenges</p>
+                </div>
+                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
+                  {hasActiveChallenge
+                    ? `${activeChallenges.length} active ${activeChallenges.length === 1 ? "challenge" : "challenges"} from ${myOrgQuery.data.org.name}. Your activity counts towards the team total and the leaderboard. Your name is shown to other members on the leaderboard.`
+                    : `No active challenge from ${myOrgQuery.data.org.name} right now. We'll surface them here as soon as one is live.`}
+                </p>
+                {hasActiveChallenge ? (
+                  <Link
+                    href={challengeHref}
+                    data-testid="home-link-challenges"
+                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                  >
+                    See challenges
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    aria-disabled="true"
+                    onClick={(e) => e.preventDefault()}
+                    data-testid="home-link-challenges"
+                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, border: "none", opacity: 0.55, cursor: "not-allowed" }}
+                  >
+                    No active challenge
+                  </button>
+                )}
+              </div>
+
+              <div
+                data-testid="home-job-calculate"
+                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <Sparkles className="w-4 h-4" style={{ color: C.orange }} />
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Calculate or update my impact</p>
+                </div>
+                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
+                  Run the personal wizard to turn what you've done into hours and a social value figure. Stays private to you unless you choose to share it with {myOrgQuery.data.org.name}.
+                </p>
+                <Link
+                  href="/wizard/actions"
+                  data-testid="home-link-calculate"
+                  style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                >
+                  Start the wizard
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* ── FOR YOUR ORGANISATION (member-only prompts) ──

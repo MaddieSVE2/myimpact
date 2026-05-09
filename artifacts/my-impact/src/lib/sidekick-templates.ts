@@ -101,13 +101,13 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
 
       switch (ctx.persona) {
         case "veteran":
-          return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about the wider contribution I've made through ${top}. ${numbers}${recent} I'm a veteran / forces background applicant — frame the discipline, leadership and teamwork in plain civilian language an admissions tutor will recognise. Use British English, first person, no clichés.`;
+          return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about the wider contribution I've made through ${top}. ${numbers}${recent} I'm a veteran / forces background applicant, frame the discipline, leadership and teamwork in plain civilian language an admissions tutor will recognise. Use British English, first person, no clichés.`;
         case "carer":
-          return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider contribution. ${numbers}${recent} I'm an unpaid carer, so please weave in what caring has taught me — coordination, advocacy, resilience — alongside ${top}. Honest, first person, British English, no over-claiming.`;
+          return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider contribution. ${numbers}${recent} I'm an unpaid carer, so please weave in what caring has taught me, coordination, advocacy, resilience, alongside ${top}. Honest, first person, British English, no over-claiming.`;
         case "career_break":
           return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider contribution. ${numbers}${recent} I am a mature applicant returning to study after a career break. Frame ${top} as evidence of active contribution during that period. First person, British English, calm and honest tone.`;
         case "apprenticeship":
-          return `Please draft a short supporting-statement paragraph (around 80 words) for my apprenticeship application about ${top}. ${numbers}${recent} Pull out commitment, reliability and teamwork — what apprenticeship assessors actually look for. First person, British English, no waffle.`;
+          return `Please draft a short supporting-statement paragraph (around 80 words) for my apprenticeship application about ${top}. ${numbers}${recent} Pull out commitment, reliability and teamwork, what apprenticeship assessors actually look for. First person, British English, no waffle.`;
         case "student":
         default:
           return `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider experience and the difference I've made through ${top}. ${numbers}${recent} First person, British English, specific not generic, no clichés like "I have always been passionate about…".`;
@@ -128,7 +128,7 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
 
       switch (ctx.persona) {
         case "veteran":
-          return `Please write a short LinkedIn post (around 100 words, 3 short paragraphs) about the social value I've created through ${top}. ${numbers}${recent} I'm a forces veteran — frame the leadership and teamwork side without jargon. End with a single quiet line, not a call to action. British English, first person, no emojis, no hashtags.`;
+          return `Please write a short LinkedIn post (around 100 words, 3 short paragraphs) about the social value I've created through ${top}. ${numbers}${recent} I'm a forces veteran, frame the leadership and teamwork side without jargon. End with a single quiet line, not a call to action. British English, first person, no emojis, no hashtags.`;
         case "carer":
           return `Please write a short LinkedIn post (around 100 words) about the contribution I've made through ${top} alongside being an unpaid carer. ${numbers}${recent} Be matter-of-fact, not heroic. British English, first person, no emojis, no hashtags.`;
         case "org_manager":
@@ -155,9 +155,9 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
 
       switch (ctx.persona) {
         case "veteran":
-          return `Please write 3 CV bullet points based on ${top}. ${numbers}${recent} I'm ex-forces — translate any military framing into plain civilian language. Each bullet: action verb, specific contribution, measurable outcome where possible. British English. No fluff.`;
+          return `Please write 3 CV bullet points based on ${top}. ${numbers}${recent} I'm ex-forces, translate any military framing into plain civilian language. Each bullet: action verb, specific contribution, measurable outcome where possible. British English. No fluff.`;
         case "carer":
-          return `Please write 3 CV bullet points covering my unpaid caring responsibilities and ${top}. ${numbers}${recent} Use professional language an HR reader will recognise — coordination, advocacy, multi-stakeholder management. Each bullet starts with a strong verb. British English.`;
+          return `Please write 3 CV bullet points covering my unpaid caring responsibilities and ${top}. ${numbers}${recent} Use professional language an HR reader will recognise, coordination, advocacy, multi-stakeholder management. Each bullet starts with a strong verb. British English.`;
         case "career_break":
           return `Please write 3 CV bullet points presenting my career-break period as active contribution, anchored on ${top}. ${numbers}${recent} Confident, not apologetic. Strong action verbs. British English.`;
         case "apprenticeship":
@@ -181,7 +181,7 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
 
       switch (ctx.persona) {
         case "veteran":
-          return `Please draft 2 to 3 sentences for a cover letter that reference my contribution through ${top}. ${numbers} I'm a veteran — keep it civilian-friendly, no acronyms, focus on what I'd bring to a workplace. British English, first person, no clichés.`;
+          return `Please draft 2 to 3 sentences for a cover letter that reference my contribution through ${top}. ${numbers} I'm a veteran, keep it civilian-friendly, no acronyms, focus on what I'd bring to a workplace. British English, first person, no clichés.`;
         case "carer":
           return `Please draft 2 to 3 sentences for a cover letter that show how my unpaid caring and ${top} make me a strong candidate. ${numbers} Honest, specific, not over-explained. British English, first person.`;
         case "career_break":
@@ -249,7 +249,7 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
 
 const REGENERATE_ANGLES = [
   "This time take a different angle: lead with what changed for the people I worked with, not what I did.",
-  "This time take a different angle: be more concise — cut a third of the words and keep only the most specific detail.",
+  "This time take a different angle: be more concise, cut a third of the words and keep only the most specific detail.",
   "This time take a different angle: focus on a single transferable skill rather than describing the activity.",
   "This time take a different angle: open with a concrete moment or example rather than a summary.",
   "This time take a different angle: write it more conversationally, like I'm telling a friend.",

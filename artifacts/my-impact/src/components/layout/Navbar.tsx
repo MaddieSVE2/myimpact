@@ -242,11 +242,16 @@ export function Navbar() {
   // Only the demo-org manager has the new dashboard/settings pages today.
   const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
 
-  // Demo-org managers get an org-context top nav (Dashboard, Activities,
-  // Challenges, Pulse, Export, Settings) instead of the personal wizard
-  // nav. Personal pages remain reachable from the user dropdown. Real-org
-  // managers don't have these pages wired yet, so they keep the personal
-  // nav for now (matches the existing /org/dashboard demo-only gate).
+  // Org members (non-manager) get a focused top nav surfacing the four key
+  // jobs: see your impact, share with your employer, take part in
+  // challenges, and answer pulses. Calculate, History and Journal stay
+  // reachable from the account dropdown. Demo-org managers get the org
+  // dashboard nav. Real-org managers and personal users keep the personal
+  // nav for now.
+  const isOrgMemberOnly = inOrg && !isOrgManager;
+  const orgShortName = orgData?.org?.name
+    ? (orgData.org.name.length > 14 ? `${orgData.org.name.slice(0, 12)}…` : orgData.org.name)
+    : "my employer";
   const navItems = isDemoOrgManager
     ? [
         { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
@@ -256,21 +261,28 @@ export function Navbar() {
         { href: "/org/export",     label: "Export",     icon: Download },
         { href: "/org/settings",   label: "Settings",   icon: Settings },
       ]
-    : [
-        ...(inOrg
-          ? []
-          : [
-              { href: "/log", label: "Log activity", icon: PlusCircle },
-              { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
-            ]),
-        { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
-        { href: "/history", label: t("navbar.history"), icon: History },
-        ...(gamificationEnabled
-          ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
-          : []),
-        { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
-        { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
-      ];
+    : isOrgMemberOnly
+      ? [
+          { href: "/results",      label: t("navbar.myImpact"),                    icon: Sparkles },
+          { href: "/org/submit",   label: `Share with ${orgShortName}`,            icon: Building2 },
+          { href: "/challenges",   label: "Challenges",                            icon: Trophy },
+          { href: "/#org-prompts-section", label: "Pulse",                         icon: ClipboardList },
+        ]
+      : [
+          ...(inOrg
+            ? []
+            : [
+                { href: "/log", label: "Log activity", icon: PlusCircle },
+                { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
+              ]),
+          { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
+          { href: "/history", label: t("navbar.history"), icon: History },
+          ...(gamificationEnabled
+            ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
+            : []),
+          { href: "/journal", label: t("navbar.journal"), icon: BookOpen },
+          { href: "/suggestions", label: t("navbar.ideas"), icon: Lightbulb },
+        ];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -335,8 +347,10 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
               <>
-                {/* CTA — desktop only. Hidden for organisation users. */}
-                {!inOrg && (
+                {/* CTA - desktop only. Hidden for org managers (their org-context
+                    nav doesn't surface a personal calculate). Org members keep it
+                    so calculating impact is always one click away. */}
+                {!isOrgManager && (
                   <Link
                     href="/wizard/actions"
                     className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
@@ -346,7 +360,7 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* User menu — desktop only */}
+                {/* User menu, desktop only */}
                 <div className="relative hidden lg:block" ref={userMenuRef}>
                   <button
                     onClick={() => setUserMenuOpen(o => !o)}
@@ -375,6 +389,42 @@ export function Navbar() {
                         )}
                       </div>
                       <div className="py-1">
+                        {/* Personal pages we surface in the dropdown for org
+                            members, since their top nav focuses on the org
+                            jobs (Share / Challenges / Pulse). Calculate, History
+                            and Journal still need to be one click away. */}
+                        {isOrgMemberOnly && (
+                          <>
+                            <Link
+                              href="/wizard/actions"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                              data-testid="link-calculate-dropdown"
+                            >
+                              <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                              Calculate my impact
+                            </Link>
+                            <Link
+                              href="/history"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                              data-testid="link-history-dropdown"
+                            >
+                              <History className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                              {t("navbar.history")}
+                            </Link>
+                            <Link
+                              href="/journal"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/40 transition-colors text-left"
+                              data-testid="link-journal-dropdown"
+                            >
+                              <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                              {t("navbar.journal")}
+                            </Link>
+                            <div className="my-1 border-t border-border" />
+                          </>
+                        )}
                         {/* Account */}
                         <Link
                           href="/profile"
@@ -490,7 +540,7 @@ export function Navbar() {
               </>
             ) : (
               <>
-                {/* High contrast toggle — desktop, logged-out (icon only) */}
+                {/* High contrast toggle, desktop, logged-out (icon only) */}
                 <div className="relative hidden lg:block group">
                   <button
                     onClick={toggleTheme}
@@ -523,7 +573,7 @@ export function Navbar() {
               </>
             )}
 
-            {/* Sidekick icon — mobile only. Hidden when an org manager has
+            {/* Sidekick icon, mobile only. Hidden when an org manager has
                 turned off AI features for the organisation. In that case the
                 mobile dropdown shows a one-line dismissible explanation. */}
             {!aiDisabledByOrg && (
@@ -537,7 +587,7 @@ export function Navbar() {
               </button>
             )}
 
-            {/* Hamburger — mobile only */}
+            {/* Hamburger, mobile only */}
             <button
               className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: "rgba(255,255,255,0.7)" }}
@@ -577,7 +627,10 @@ export function Navbar() {
               );
             })}
 
-            {!(isLoggedIn && inOrg) && (
+            {/* Calculate CTA on mobile. Hidden for org managers (their nav
+                already covers the org jobs). Org members keep it so the
+                personal wizard is always reachable. */}
+            {!isOrgManager && (
               <Link
                 href="/wizard/actions"
                 onClick={() => setMobileOpen(false)}
@@ -588,7 +641,32 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Divider before account actions — only when logged in */}
+            {/* Mobile parity: org members get History and Journal in the
+                mobile dropdown too, since the main nav row replaces them. */}
+            {isLoggedIn && isOrgMemberOnly && (
+              <>
+                <Link
+                  href="/history"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+                  data-testid="link-history-mobile"
+                >
+                  <History className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {t("navbar.history")}
+                </Link>
+                <Link
+                  href="/journal"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+                  data-testid="link-journal-mobile"
+                >
+                  <BookOpen className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {t("navbar.journal")}
+                </Link>
+              </>
+            )}
+
+            {/* Divider before account actions, only when logged in */}
             {isLoggedIn && <div className="my-1 border-t border-white/10" />}
 
             {/* Account */}
@@ -665,7 +743,7 @@ export function Navbar() {
               {t("navbar.sendFeedback")}
             </Link>
 
-            {/* Organisation — divider only when at least one item will show */}
+            {/* Organisation, divider only when at least one item will show */}
             {isLoggedIn && (!orgLoading || isAdmin) && <div className="my-1 border-t border-white/10" />}
 
             {isLoggedIn && !orgLoading && (

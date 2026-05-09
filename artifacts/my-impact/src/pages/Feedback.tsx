@@ -60,7 +60,7 @@ export default function Feedback() {
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Share feedback</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Questions, ideas, bug reports — we'd love to hear from you.
+            Questions, ideas, bug reports, we'd love to hear from you.
           </p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function Feedback() {
               id="feedback-message"
               value={message}
               onChange={e => setMessage(e.target.value)}
-              placeholder="Tell us what's on your mind — bugs, feature requests, general thoughts, anything goes."
+              placeholder="Tell us what's on your mind, bugs, feature requests, general thoughts, anything goes."
               className="w-full text-sm border border-border rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-background placeholder:text-muted-foreground"
               rows={6}
               maxLength={5000}

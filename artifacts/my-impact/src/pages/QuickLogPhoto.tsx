@@ -366,7 +366,7 @@ export default function QuickLogPhoto() {
                 <div className="rounded-xl border border-dashed border-border bg-muted/10 px-4 py-5 text-center">
                   <p className="text-sm text-foreground font-medium mb-1">No regular activities yet</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Set one up in the calculator first — then you can log it in two taps from here.
+                    Set one up in the calculator first, then you can log it in two taps from here.
                   </p>
                   <Link
                     href="/wizard/actions"

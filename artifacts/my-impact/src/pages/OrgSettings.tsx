@@ -66,7 +66,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
       await navigator.clipboard.writeText(inviteLink);
       setLinkCopied(true);
       window.setTimeout(() => setLinkCopied(false), 1500);
-    } catch { flash("Could not copy — copy it manually."); }
+    } catch { flash("Could not copy, copy it manually."); }
   }
 
   const flash = (msg: string) => { setToast(msg); window.setTimeout(() => setToast(null), 2200); };
@@ -106,7 +106,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
       await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    } catch { flash("Could not copy — copy it manually."); }
+    } catch { flash("Could not copy, copy it manually."); }
   }
 
   function sendInvite() {
@@ -366,7 +366,7 @@ function AiFeaturesTab({ initialEnabled }: { initialEnabled: boolean }) {
         <div>
           <h3 className="text-sm font-semibold mb-1">AI features</h3>
           <p className="text-xs text-muted-foreground max-w-prose">
-            Controls whether your members see the in-app AI Sidekick — used for activity suggestions, summarising journal entries and answering questions about their impact. Turning it off hides the feature for everyone in your organisation.
+            Controls whether your members see the in-app AI Sidekick, used for activity suggestions, summarising journal entries and answering questions about their impact. Turning it off hides the feature for everyone in your organisation.
           </p>
         </div>
         <button
@@ -421,11 +421,11 @@ function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type:
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Manager contact</p>
-          <p className="font-semibold text-foreground">{isDemoOrg ? DEMO_ORG_CONTACT_EMAIL : "—"}</p>
+          <p className="font-semibold text-foreground">{isDemoOrg ? DEMO_ORG_CONTACT_EMAIL : "Not set"}</p>
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Invite code</p>
-          <p className="font-mono font-semibold text-foreground">{isDemoOrg ? getOrgInviteCode(org.id, DEMO_INVITE_CODE) : "—"}</p>
+          <p className="font-mono font-semibold text-foreground">{isDemoOrg ? getOrgInviteCode(org.id, DEMO_INVITE_CODE) : "Not set"}</p>
         </div>
       </div>
       <p className="text-xs text-muted-foreground pt-2 border-t border-border">
@@ -470,7 +470,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
   const [error, setError]     = useState<string | null>(null);
   const [toast, setToast]     = useState<string | null>(null);
 
-  // White-text contrast warning — managers picking very pale brand colours
+  // White-text contrast warning, managers picking very pale brand colours
   // would render unreadable buttons in the org dashboard.
   const primaryContrast = useMemo(() => contrastRatio(primary, "#FFFFFF"), [primary]);
   const showContrastWarning = primaryContrast < 4.5;
@@ -557,7 +557,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
         Your logo and colours appear on the org dashboard, header and exported PDF report.
       </p>
 
-      {/* Live preview tile — shows what the dashboard header will look like
+      {/* Live preview tile, shows what the dashboard header will look like
           with the manager's currently-edited (unsaved) logo + colours. */}
       <BrandingPreview logoUrl={logoUrl} primary={primary} accent={accent} />
 

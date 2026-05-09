@@ -89,7 +89,7 @@ export const en = {
     onboardingEmailsDesc: "Welcome and getting-started tips in your first month after signing up.",
     monthlyRecap: "Monthly impact recap",
     monthlyRecapDesc:
-      "A short personalised summary on the 1st of each month — hours, social value, milestones, and one journal highlight. Unsubscribe in one click from the email or here.",
+      "A short personalised summary on the 1st of each month, covering hours, social value, milestones, and one journal highlight. Unsubscribe in one click from the email or here.",
     monthlyRecapOnToast: "Monthly recap on",
     monthlyRecapOffToast: "Monthly recap off",
     monthlyRecapOnDesc: "We'll send a personalised summary on the 1st of each month.",
@@ -121,9 +121,9 @@ export const en = {
     aboutYouDesc: "Help us personalise your experience. Just a couple of quick questions.",
     resumingLast: "Resuming your last session",
     startFresh: "Start fresh",
-    profilePrefilled: "We've pre-filled your details from your profile — adjust anything below.",
+    profilePrefilled: "We've pre-filled your details from your profile. Adjust anything below.",
     mySituation: "My situation…",
-    situationHelp: "Select all that apply — we use this to personalise the language and framing of your results.",
+    situationHelp: "Select all that apply. We use this to personalise the language and framing of your results.",
     iLiveIn: "I live in…",
     iLiveInHelp: "We use this to recommend nearby activities.",
     postcodePlaceholder: "e.g. Manchester, M1, SW1A 2AA…",
@@ -159,7 +159,7 @@ export const en = {
     signIn: "Sign in",
     signInDesc: "We'll email you a magic link, no password needed.",
     orgSignIn: "Log in to your organisation dashboard",
-    orgSignInDesc: "Access your team's impact data and reports. We'll send you a magic link — no password needed.",
+    orgSignInDesc: "Access your team's impact data and reports. We'll send you a magic link, no password needed.",
     emailAddress: "Email address",
     emailPlaceholder: "you@example.com",
     sendLink: "Send sign-in link",
@@ -230,7 +230,7 @@ export const en = {
   },
   journal: {
     title: "Impact journal",
-    subtitle: "Reflect on what you've done — privately or to share.",
+    subtitle: "Reflect on what you've done, privately or to share.",
   },
   guestBanner: {
     browsing: "You're browsing as a guest.",
@@ -239,7 +239,7 @@ export const en = {
   },
   errors: {
     generic: "Something went wrong",
-    refresh: "We hit an unexpected error loading this page. Please try refreshing — your data is safe.",
+    refresh: "We hit an unexpected error loading this page. Please try refreshing. Your data is safe.",
     tryAgain: "Try again",
   },
   orgDashboard: {
@@ -253,7 +253,7 @@ export const en = {
     pulseSummaryActive: "Active surveys",
     pulseSummaryResponses: "Responses",
     pulseSummaryAverage: "Average rating",
-    pulseSummaryNone: "No pulse activity yet — create a survey below.",
+    pulseSummaryNone: "No pulse activity yet. Create a survey below.",
     pulseTrendLabel: "Trend",
     pulseTrendEmpty: "No trend data yet.",
     monthlyTrendTitle: "Social value by month",

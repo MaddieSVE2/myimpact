@@ -344,7 +344,7 @@ export default function AnnualRecap() {
           <p className="text-white/70 max-w-md mb-2 leading-relaxed">
             {recap.lifetimeRecordCount === 0
               ? `You haven't logged any activity in ${recap.year} yet. Start now and your ${recap.year} recap will be waiting.`
-              : `You have ${recap.lifetimeRecordCount} record${recap.lifetimeRecordCount === 1 ? "" : "s"} so far — keep going to unlock a full annual recap.`}
+              : `You have ${recap.lifetimeRecordCount} record${recap.lifetimeRecordCount === 1 ? "" : "s"} so far, keep going to unlock a full annual recap.`}
           </p>
           {recap.firstRecordAt ? (
             <p className="text-white/40 text-sm mb-8">
@@ -524,7 +524,7 @@ export default function AnnualRecap() {
             >
               "{j.text}"
             </p>
-            <p style={{ marginTop: 24, color: "rgba(255,255,255,0.55)", fontSize: 14 }}>— Your journal · {dateLabel}</p>
+            <p style={{ marginTop: 24, color: "rgba(255,255,255,0.55)", fontSize: 14 }}>From your journal · {dateLabel}</p>
           </StepShell>
         );
       }
@@ -636,12 +636,12 @@ export default function AnnualRecap() {
                     }}
                   />
                 </div>
-                <p className="text-xs text-white/40 mt-2 text-center">Recording happens in real time — about 15 seconds.</p>
+                <p className="text-xs text-white/40 mt-2 text-center">Recording happens in real time, about 15 seconds.</p>
               </div>
             ) : !videoSupported ? (
               <div style={{ marginTop: 22, maxWidth: 340, textAlign: "center" }}>
                 <p className="text-sm text-white/80">
-                  Video sharing isn't supported on this browser — try Chrome or Safari.
+                  Video sharing isn't supported on this browser, try Chrome or Safari.
                 </p>
               </div>
             ) : (
@@ -852,7 +852,7 @@ export default function AnnualRecap() {
     }
     toast({
       title: "Video downloaded",
-      description: "Direct sharing isn't available here — find the video in Downloads and share it from there.",
+      description: "Direct sharing isn't available here, find the video in Downloads and share it from there.",
     });
   }
 
@@ -887,7 +887,7 @@ export default function AnnualRecap() {
 
       <StepDots steps={steps} current={stepIndex} />
 
-      {/* Tap zones (mobile) — disabled on share card step so controls remain clickable */}
+      {/* Tap zones (mobile), disabled on share card step so controls remain clickable */}
       <div className="relative flex-1 flex flex-col">
         {step?.kind !== "shareCard" ? (
           <>

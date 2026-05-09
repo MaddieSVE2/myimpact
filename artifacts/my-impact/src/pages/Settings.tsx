@@ -201,7 +201,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Email — read-only */}
+          {/* Email, read-only */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
               {t("settings.emailAddress")}
@@ -370,7 +370,7 @@ export default function Settings() {
         </div>
       </section>
 
-      {/* Reminders / push notifications section — feature-detected. */}
+      {/* Reminders / push notifications section, feature-detected. */}
       <RemindersSettings />
 
       {/* Recurring templates section */}
@@ -891,7 +891,7 @@ function SidekickVoiceSettings() {
           >
             {VOICE_PERSONA_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label} — {opt.description}
+                {opt.label}, {opt.description}
               </option>
             ))}
           </select>
@@ -1000,7 +1000,7 @@ function VoiceUsageMeter() {
       </div>
       {eitherCapHit && (
         <p className="mt-3 text-[11px] text-destructive font-medium" data-testid="voice-usage-cap-warning">
-          You've used your voice budget for this month — voice will be back next month, or upgrade your plan.
+          You've used your voice budget for this month, voice will be back next month, or upgrade your plan.
         </p>
       )}
     </div>
@@ -1028,7 +1028,7 @@ const TRIGGER_LABELS: { key: keyof PushTriggerToggles; title: string; desc: stri
   {
     key: "challengeEnd",
     title: "Group or challenge end",
-    desc: "When a cohort or challenge you're part of finishes — coming with team challenges.",
+    desc: "When a cohort or challenge you're part of finishes, coming with team challenges.",
   },
 ];
 
@@ -1062,7 +1062,7 @@ function RemindersSettings() {
         const p = await fetchPreferences();
         if (!cancelled) setPrefs(p);
       } catch {
-        // best-effort — likely just no auth or push not configured.
+        // best-effort, likely just no auth or push not configured.
       } finally {
         if (!cancelled) setLoading(false);
       }

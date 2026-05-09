@@ -55,7 +55,7 @@ export default function OrgDemoPage() {
 
   return (
     <div>
-      {/* Sticky type switcher bar — sits below the demo notice banner */}
+      {/* Sticky type switcher bar, sits below the demo notice banner */}
       <div className="sticky top-0 z-20 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center backdrop-blur-sm">
         <p className="text-xs font-semibold text-primary">
           This is example data for illustration. Your real dashboard populates as members log their activities.
@@ -82,7 +82,7 @@ export default function OrgDemoPage() {
             </button>
           ))}
           <span className="hidden sm:inline text-xs text-muted-foreground ml-auto shrink-0">
-            Example data only — not your real dashboard
+            Example data only, not your real dashboard
           </span>
         </div>
       </div>

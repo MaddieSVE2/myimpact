@@ -916,7 +916,7 @@ export function Sidekick() {
                 if (!cancelled) setVoiceError(data.error);
               }
             } catch {
-              // ignore — fall through to the generic error
+              // ignore, fall through to the generic error
             }
           }
           throw new Error(`speak failed (${res.status})`);
@@ -941,7 +941,7 @@ export function Sidekick() {
           await audio.play();
         } catch (err) {
           // Browsers may block autoplay until a user gesture has happened.
-          // Fall back gracefully — the transcript is already on screen.
+          // Fall back gracefully, the transcript is already on screen.
           console.warn("audio autoplay blocked", err);
           URL.revokeObjectURL(url);
           if (!cancelled) setVoiceState("idle");

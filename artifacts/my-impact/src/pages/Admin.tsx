@@ -246,7 +246,7 @@ export default function Admin() {
                   className={idx % 2 === 0 ? "bg-background" : "bg-secondary/20"}
                 >
                   <td className="px-4 py-3 text-foreground font-medium">
-                    {u.displayName ?? <span className="text-muted-foreground italic">—</span>}
+                    {u.displayName ?? <span className="text-muted-foreground italic">Not set</span>}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">

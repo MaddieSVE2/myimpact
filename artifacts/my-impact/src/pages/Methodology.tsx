@@ -63,19 +63,19 @@ const SECTIONS: CollapsibleSection[] = [
     summary: "Each logged activity is multiplied by an evidence-based proxy value, then summed across four pillars.",
     content: (
       <>
-        <p>Every activity in My Impact has a <strong>proxy value</strong> — a peer-reviewed monetary estimate of the social, health, or environmental benefit it produces. We sum the contributions across four pillars to give a total verified social value:</p>
+        <p>Every activity in My Impact has a <strong>proxy value</strong>: a peer-reviewed monetary estimate of the social, health, or environmental benefit it produces. We sum the contributions across four pillars to give a total verified social value:</p>
         <ol style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong>Impact of activities</strong> — the proxy value for each activity multiplied by how much you did. Hour-based activities use the per-hour proxy; count-based activities (e.g. trees planted, bags donated) use the per-unit proxy.
+            <strong>Impact of activities</strong>: the proxy value for each activity multiplied by how much you did. Hour-based activities use the per-hour proxy; count-based activities (e.g. trees planted, bags donated) use the per-unit proxy.
           </li>
           <li>
-            <strong>Time contributed</strong> — total volunteer hours across all activities, valued at the National Living Wage rate of <strong>£12.21/hour</strong> (GOV.UK, 2024/25). This recognises that freely given time has real economic value.
+            <strong>Time contributed</strong>: total volunteer hours across all activities, valued at the National Living Wage rate of <strong>£12.21/hour</strong> (GOV.UK, 2024/25). This recognises that freely given time has real economic value.
           </li>
           <li>
-            <strong>Donations</strong> — the direct monetary value of charitable donations you have logged.
+            <strong>Donations</strong>: the direct monetary value of charitable donations you have logged.
           </li>
           <li>
-            <strong>Personal growth</strong> — the same volunteer hours valued at <strong>£15/hour</strong>, reflecting the employer-valued skills premium identified by NCVO's <em>Time Well Spent</em> research (2023), which found employers value volunteering experience at an average of £1,500 per year for someone giving roughly 100 hours.
+            <strong>Personal growth</strong>: the same volunteer hours valued at <strong>£15/hour</strong>, reflecting the employer-valued skills premium identified by NCVO's <em>Time Well Spent</em> research (2023), which found employers value volunteering experience at an average of £1,500 per year for someone giving roughly 100 hours.
           </li>
         </ol>
         <p style={{ marginTop: 14 }}>The four pillars are reported separately so funders, employers and individuals can see exactly which kind of value is being claimed and avoid double counting.</p>
@@ -94,16 +94,16 @@ const SECTIONS: CollapsibleSection[] = [
         <p>My Impact does not invent values. Every proxy is sourced from one of the following:</p>
         <ul style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong>The Social Value Engine</strong> — the UK's accredited platform for social value measurement, used by councils, universities and national charities. Their library is grounded in HM Treasury Green Book methodology and Social Value International standards.
+            <strong>The Social Value Engine</strong>: the UK's accredited platform for social value measurement, used by councils, universities and national charities. Their library is grounded in HM Treasury Green Book methodology and Social Value International standards.
           </li>
           <li>
-            <strong>GOV.UK and HM Treasury sources</strong> — including the Standard UK Landfill Tax, National Living Wage, and Greater Manchester Combined Authority unit-cost database.
+            <strong>GOV.UK and HM Treasury sources</strong>: including the Standard UK Landfill Tax, National Living Wage, and Greater Manchester Combined Authority unit-cost database.
           </li>
           <li>
-            <strong>Peer-reviewed UK research</strong> — including PSSRU informal carer costs, Sport England wellbeing research, NEF Refuge SROI, Pro Bono Economics' work for Power to Change, Volunteer Scotland's <em>Time Well Spent</em> follow-up, and FareShare's food bank impact reports.
+            <strong>Peer-reviewed UK research</strong>: including PSSRU informal carer costs, Sport England wellbeing research, NEF Refuge SROI, Pro Bono Economics' work for Power to Change, Volunteer Scotland's <em>Time Well Spent</em> follow-up, and FareShare's food bank impact reports.
           </li>
           <li>
-            <strong>Sector-specific reports</strong> — including The Wildlife Trusts' Network for Nature, NCVO's Time Well Spent, and Action for Children's Wheatley Children's Centre evaluation.
+            <strong>Sector-specific reports</strong>: including The Wildlife Trusts' Network for Nature, NCVO's Time Well Spent, and Action for Children's Wheatley Children's Centre evaluation.
           </li>
         </ul>
         <p style={{ marginTop: 14 }}>Each activity stores the proxy source string and the year of the value, so we can audit and refresh the library as new evidence emerges. The full citations list at the bottom of this page itemises every external source we currently rely on.</p>
@@ -120,10 +120,10 @@ const SECTIONS: CollapsibleSection[] = [
         <p style={{ marginTop: 12 }}>To keep mapping honest, we apply two rules:</p>
         <ul style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong>Single primary SDG per activity</strong> — every activity is tagged with the one Goal it contributes to most directly. We do not double-count an activity across multiple Goals, even when it is plausibly relevant to several.
+            <strong>Single primary SDG per activity</strong>: every activity is tagged with the one Goal it contributes to most directly. We do not double-count an activity across multiple Goals, even when it is plausibly relevant to several.
           </li>
           <li>
-            <strong>Proxy and Goal must align</strong> — the proxy value must measure an outcome the SDG is concerned with. Conservation volunteering, for example, uses a wage-replacement proxy (Wildlife Trusts) and is tagged Life on Land — not Decent Work.
+            <strong>Proxy and Goal must align</strong>: the proxy value must measure an outcome the SDG is concerned with. Conservation volunteering, for example, uses a wage-replacement proxy (Wildlife Trusts) and is tagged Life on Land, not Decent Work.
           </li>
         </ul>
         <p style={{ marginTop: 14 }}>This is deliberately conservative. Many activities have spillover benefits to other SDGs (a community garden creates both Life on Land and Good Health and Well-Being value), but counting only the primary Goal keeps headline figures defensible to funders and auditors.</p>
@@ -140,13 +140,13 @@ const SECTIONS: CollapsibleSection[] = [
         <p style={{ marginTop: 12 }}>Three measures are already in place to keep numbers credible:</p>
         <ul style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong>Sensible defaults and frequency caps</strong> — every activity has a sensible default and a guidance question that discourages double-counting (for example, the general charity volunteering activity explicitly tells users to avoid counting hours already logged under a more specific activity).
+            <strong>Sensible defaults and frequency caps</strong>: every activity has a sensible default and a guidance question that discourages double-counting (for example, the general charity volunteering activity explicitly tells users to avoid counting hours already logged under a more specific activity).
           </li>
           <li>
-            <strong>Conservative proxy choice</strong> — where multiple proxies exist for the same outcome, we use the lower or more widely accepted one.
+            <strong>Conservative proxy choice</strong>: where multiple proxies exist for the same outcome, we use the lower or more widely accepted one.
           </li>
           <li>
-            <strong>Single-SDG attribution</strong> — see the SDG mapping rule above.
+            <strong>Single-SDG attribution</strong>: see the SDG mapping rule above.
           </li>
         </ul>
         <p style={{ marginTop: 14 }}>
@@ -164,16 +164,16 @@ const SECTIONS: CollapsibleSection[] = [
         <p>Social value figures are estimates, not invoices. We have built in several practices to make sure the headline number is defensible:</p>
         <ul style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong>Rounding</strong> — totals are rounded to whole pounds in the UI; underlying calculations carry two decimal places to avoid rounding drift.
+            <strong>Rounding</strong>: totals are rounded to whole pounds in the UI; underlying calculations carry two decimal places to avoid rounding drift.
           </li>
           <li>
-            <strong>Conservative defaults</strong> — defaults are set at the lower end of typical participation rather than averages, so the displayed estimate skews low if a user accepts the default without editing.
+            <strong>Conservative defaults</strong>: defaults are set at the lower end of typical participation rather than averages, so the displayed estimate skews low if a user accepts the default without editing.
           </li>
           <li>
-            <strong>Per-activity transparency</strong> — every activity shows the proxy source, the year of the value, and the unit it is measured in. Users see the breakdown that makes up their total before accepting it.
+            <strong>Per-activity transparency</strong>: every activity shows the proxy source, the year of the value, and the unit it is measured in. Users see the breakdown that makes up their total before accepting it.
           </li>
           <li>
-            <strong>Refresh cadence</strong> — proxies are reviewed at least annually and refreshed when the underlying source publishes a new edition.
+            <strong>Refresh cadence</strong>: proxies are reviewed at least annually and refreshed when the underlying source publishes a new edition.
           </li>
         </ul>
         <p style={{ marginTop: 14 }}>For activities that may be claimed in more than one place (caring, employability, community involvement), the friendly-question copy explicitly warns against double counting hours already logged elsewhere.</p>
@@ -183,22 +183,22 @@ const SECTIONS: CollapsibleSection[] = [
 ];
 
 const CITATIONS: { label: string; href?: string }[] = [
-  { label: "Social Value Engine — UK accredited platform for social value measurement.", href: "https://www.socialvalueengine.com" },
-  { label: "HM Treasury — The Green Book: Central Government Guidance on Appraisal and Evaluation (2022)." },
-  { label: "Social Value International — Principles of Social Value and SROI accreditation framework.", href: "https://www.socialvalue.org.uk" },
-  { label: "GOV.UK — National Living Wage rates (2024/25), £12.21/hour.", href: "https://www.gov.uk/national-minimum-wage-rates" },
-  { label: "GOV.UK — Standard UK Landfill Tax (2025), £126.15/tonne.", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
-  { label: "Greater Manchester Combined Authority — Unit Cost Database (2024)." },
-  { label: "PSSRU / Carers UK — Unit Costs of Health and Social Care, informal carer estimates (2022).", href: "https://www.pssru.ac.uk" },
-  { label: "Sport England — Active Lives data and social value research summary." },
-  { label: "NCVO — Time Well Spent: Diversity and Volunteering (2023).", href: "https://www.ncvo.org.uk/" },
-  { label: "Volunteer Scotland — Technical Report on the Wellbeing Value of Volunteering (2025)." },
-  { label: "FareShare — Value of being supported by a food bank, £185/visit (2018).", href: "https://fareshare.org.uk" },
-  { label: "The Wildlife Trusts — Network for Nature Annual Report Y1 (2025)." },
-  { label: "Pro Bono Economics — The Economics of CATs: Power to Change (2020), TNL Community Fund." },
-  { label: "Action for Children — Wheatley Children's Centre social value evaluation (2023)." },
-  { label: "NEF / Refuge — Refuge SROI updated model findings (2021)." },
-  { label: "United Nations — The 17 Sustainable Development Goals.", href: "https://sdgs.un.org/goals" },
+  { label: "Social Value Engine, UK accredited platform for social value measurement.", href: "https://www.socialvalueengine.com" },
+  { label: "HM Treasury, The Green Book: Central Government Guidance on Appraisal and Evaluation (2022)." },
+  { label: "Social Value International, Principles of Social Value and SROI accreditation framework.", href: "https://www.socialvalue.org.uk" },
+  { label: "GOV.UK, National Living Wage rates (2024/25), £12.21/hour.", href: "https://www.gov.uk/national-minimum-wage-rates" },
+  { label: "GOV.UK, Standard UK Landfill Tax (2025), £126.15/tonne.", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
+  { label: "Greater Manchester Combined Authority, Unit Cost Database (2024)." },
+  { label: "PSSRU / Carers UK, Unit Costs of Health and Social Care, informal carer estimates (2022).", href: "https://www.pssru.ac.uk" },
+  { label: "Sport England, Active Lives data and social value research summary." },
+  { label: "NCVO, Time Well Spent: Diversity and Volunteering (2023).", href: "https://www.ncvo.org.uk/" },
+  { label: "Volunteer Scotland, Technical Report on the Wellbeing Value of Volunteering (2025)." },
+  { label: "FareShare, Value of being supported by a food bank, £185/visit (2018).", href: "https://fareshare.org.uk" },
+  { label: "The Wildlife Trusts, Network for Nature Annual Report Y1 (2025)." },
+  { label: "Pro Bono Economics, The Economics of CATs: Power to Change (2020), TNL Community Fund." },
+  { label: "Action for Children, Wheatley Children's Centre social value evaluation (2023)." },
+  { label: "NEF / Refuge, Refuge SROI updated model findings (2021)." },
+  { label: "United Nations, The 17 Sustainable Development Goals.", href: "https://sdgs.un.org/goals" },
 ];
 
 export default function Methodology() {
@@ -213,7 +213,7 @@ export default function Methodology() {
   // SEO meta tags. Set on mount, restore on unmount so other pages aren't affected.
   useEffect(() => {
     const prevTitle = document.title;
-    const title = "Methodology and Evidence — How My Impact calculates social value";
+    const title = "Methodology and Evidence, How My Impact calculates social value";
     const description = "How My Impact calculates social value: SROI methodology, Social Value Engine proxies, UN SDG mapping, verification approach, and the citations behind every number.";
     const ogImage = `${SITE_ORIGIN}${BASE_URL}/opengraph.jpg`;
     document.title = title;
@@ -304,7 +304,7 @@ export default function Methodology() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("[evidence-pack]", err);
-      setDownloadError("Sorry — the download didn't work. Please try again in a moment.");
+      setDownloadError("Sorry, the download didn't work. Please try again in a moment.");
     } finally {
       setDownloading(false);
     }
@@ -342,7 +342,7 @@ export default function Methodology() {
           </h1>
 
           <p style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, maxWidth: 640 }}>
-            My Impact uses the Social Return on Investment (SROI) framework, accredited Social Value Engine proxies, and the UN Sustainable Development Goals to convert everyday acts of contribution into a defensible monetary figure. This page explains how — in plain English at the top, with the technical detail beneath.
+            My Impact uses the Social Return on Investment (SROI) framework, accredited Social Value Engine proxies, and the UN Sustainable Development Goals to convert everyday acts of contribution into a defensible monetary figure. This page explains how, in plain English at the top, with the technical detail beneath.
           </p>
 
           <div style={{ marginTop: 28, display: "flex", flexWrap: "wrap" as const, gap: 12 }}>
@@ -402,7 +402,7 @@ export default function Methodology() {
                 <strong>We use the Social Value Engine.</strong> Their library is the UK's accredited source for social value proxies, used by councils and universities. We do not invent monetary values.
               </li>
               <li>
-                <strong>Each activity is tagged to one UN SDG.</strong> One activity, one Goal — no double counting across Goals.
+                <strong>Each activity is tagged to one UN SDG.</strong> One activity, one Goal, no double counting across Goals.
               </li>
               <li>
                 <strong>We add four pillars.</strong> Activity impact, time at the National Living Wage, donations, and a personal-growth premium. We always show the breakdown so funders can see what's claimed.
@@ -524,7 +524,7 @@ export default function Methodology() {
                 One PDF with every reference your team needs.
               </h2>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", lineHeight: 1.75, marginBottom: 24 }}>
-                The evidence pack bundles the methodology summary, the four formulas, field-evidence quotes from our pilot trials, advisory group bios, and the full citations list — formatted for funder, partner, and journalist reading.
+                The evidence pack bundles the methodology summary, the four formulas, field-evidence quotes from our pilot trials, advisory group bios, and the full citations list, formatted for funder, partner, and journalist reading.
               </p>
               <button
                 onClick={handleDownload}

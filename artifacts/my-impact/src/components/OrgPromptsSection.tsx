@@ -415,7 +415,7 @@ export function OrgPromptsSection({ variant = "full" }: OrgPromptsSectionProps) 
               action={
                 <div className="flex items-center gap-1.5">
                   <Link
-                    href="/"
+                    href="/#org-prompts-section"
                     className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                     data-testid={`link-answer-survey-compact-${s.id}`}
                   >

@@ -85,7 +85,7 @@ export default function ActivitiesStep() {
   const [customQuantity, setCustomQuantity] = useState(20);
   const [analyseError, setAnalyseError] = useState("");
 
-  // Pending custom activities from describe mode — queued for quantify step
+  // Pending custom activities from describe mode, queued for quantify step
   const [pendingCustomActivities, setPendingCustomActivities] = useState<PendingCustomActivity[]>([]);
   const [pendingCustomQuantities, setPendingCustomQuantities] = useState<Record<number, number>>({});
 
@@ -144,7 +144,7 @@ export default function ActivitiesStep() {
   }, [interests]);
 
   // Boost specific activities based on the user's selected interests only.
-  // Situation/background no longer affects activity ranking — it only influences
+  // Situation/background no longer affects activity ranking, it only influences
   // language, framing, and report card sections (see Results.tsx).
   const boostedActivityIds = useMemo(() => {
     const boosted = new Set<string>();
@@ -224,7 +224,7 @@ export default function ActivitiesStep() {
       return;
     }
     if (selectedIds.size === 0 && pendingCustomActivities.length === 0) {
-      // Only already-committed custom activities — skip quantify and go straight through
+      // Only already-committed custom activities, skip quantify and go straight through
       input.activities.forEach((_, i) => removeActivity(0));
       setLocation("/wizard/contributions");
       return;
@@ -416,7 +416,7 @@ export default function ActivitiesStep() {
 
       const totalUsable = matchedIds.length + newPending.length;
       if (totalUsable === 0) {
-        // All downstream analyses failed — nothing usable was added
+        // All downstream analyses failed, nothing usable was added
         setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
         return;
       }
@@ -1185,7 +1185,7 @@ export default function ActivitiesStep() {
                         )}
 
                         {!pendingItem.analysed.proxyMatch && (
-                          <p className="text-xs text-muted-foreground italic mt-2">No proxy match found — this activity will count towards your volunteer hours but not your social value total.</p>
+                          <p className="text-xs text-muted-foreground italic mt-2">No proxy match found, this activity will count towards your volunteer hours but not your social value total.</p>
                         )}
                       </div>
 
