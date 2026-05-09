@@ -383,6 +383,7 @@ function SurveyRow({
     <div
       className={`rounded-lg border transition-colors cursor-pointer ${isArchived ? "border-border bg-muted/20 hover:bg-muted/40" : "border-border bg-white hover:bg-muted/30"}`}
       data-testid={`survey-row-${survey.id}`}
+      onClick={e => { if (!(e.target as HTMLElement).closest("button")) onToggle(); }}
     >
       <div className="flex items-start justify-between gap-3 p-3">
         <button
@@ -931,7 +932,7 @@ function DemoPulseSurveysSection() {
 function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void; highlight?: boolean }) {
   const sentimentBadge = getSentimentBadge(survey.distribution, survey.totals.responses);
   return (
-    <div className={`rounded-lg border transition-colors cursor-pointer ${highlight ? "border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/60" : "border-border bg-white hover:bg-muted/30"}`} data-testid={`survey-row-${survey.id}`}>
+    <div className={`rounded-lg border transition-colors cursor-pointer ${highlight ? "border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/60" : "border-border bg-white hover:bg-muted/30"}`} data-testid={`survey-row-${survey.id}`} onClick={e => { if (!(e.target as HTMLElement).closest("button")) onToggle(); }}>
       <div className="flex items-start justify-between gap-3 p-3">
         <button
           type="button"
