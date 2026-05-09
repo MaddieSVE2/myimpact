@@ -203,37 +203,22 @@ export default function QuickLogActivity() {
   }, [authLoading, isLoggedIn, challengeId, setLocation]);
 
   const profile = profileQuery.data?.profile;
-  const profileComplete = !!(
-    profile &&
-    typeof profile.postcode === "string" &&
-    profile.postcode.trim() &&
-    Array.isArray(profile.interests) &&
-    profile.interests.length > 0
-  );
 
-  // Profile completeness gate
-  const redirectedRef = useRef(false);
-  useEffect(() => {
-    if (!isLoggedIn || profileQuery.isLoading || redirectedRef.current) return;
-    if (!profileComplete) {
-      redirectedRef.current = true;
-      const target = challengeId ? `/wizard/actions?challenge=${challengeId}` : "/wizard/actions";
-      setLocation(target);
-    }
-  }, [isLoggedIn, profileQuery.isLoading, profileComplete, challengeId, setLocation]);
-
-  // Resolve postcode → region/lat/lng once profile is loaded.
+  // Resolve postcode → region/lat/lng if the profile already has one. The
+  // quick-log flow does NOT require a postcode — we just attach location
+  // metadata when it's available so dashboards can map the entry. Missing
+  // postcode/interests no longer redirect the user to the full wizard.
   const [locationMeta, setLocationMetaLocal] = useState<LocationMeta | null>(null);
   useEffect(() => {
-    if (!profileComplete || !profile?.postcode) return;
+    if (!profile?.postcode) return;
     const raw = profile.postcode.trim();
-    if (!UK_POSTCODE_RE.test(raw)) return;
+    if (!raw || !UK_POSTCODE_RE.test(raw)) return;
     let cancelled = false;
     lookupPostcode(raw).then((meta) => {
       if (!cancelled && meta) setLocationMetaLocal(meta);
     });
     return () => { cancelled = true; };
-  }, [profileComplete, profile?.postcode]);
+  }, [profile?.postcode]);
 
   const interests = useMemo(() => profile?.interests ?? [], [profile?.interests]);
 
@@ -259,14 +244,7 @@ export default function QuickLogActivity() {
   const [pickSearch, setPickSearch] = useState("");
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
-  const [hours, setHours] = useState<number>(1);
   const [entryDate, setEntryDate] = useState<string>(todayIso());
-
-  // Session calculator
-  const [showSessionCalc, setShowSessionCalc] = useState(false);
-  const [sessionHrs, setSessionHrs] = useState(2);
-  const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
-  const [weeksPerYear, setWeeksPerYear] = useState(40);
 
   // Describe mode
   const [describeText, setDescribeText] = useState("");
@@ -274,16 +252,12 @@ export default function QuickLogActivity() {
   const [describeError, setDescribeError] = useState("");
   const [analysed, setAnalysed] = useState<{ name: string; analysed: AnalysedActivity } | null>(null);
 
-  // Reset quantity/hours when picking a different activity
+  // Reset quantity when picking a different activity. Hours are derived
+  // from quantity at submit-time so there's no separate hours state to
+  // keep in sync with the user's edits.
   useEffect(() => {
     if (selectedActivity) {
       setQuantity(selectedActivity.defaultQuantity ?? 1);
-      setHours(
-        selectedActivity.unit === "hour"
-          ? selectedActivity.defaultQuantity ?? 20
-          : Math.max(1, Math.round((selectedActivity.defaultQuantity ?? 1) * 2))
-      );
-      setShowSessionCalc(false);
     }
   }, [selectedActivity]);
 
@@ -354,7 +328,15 @@ export default function QuickLogActivity() {
       // valuation matches the wizard exactly.
       const enteredQty = isHousehold ? 1 : Math.max(1, Number(quantity) || 1);
       const qty = isHourUnit ? 1 : enteredQty;
-      const hrs = isHourUnit ? enteredQty : Math.max(1, Number(hours) || 1);
+      // Quick log only exposes ONE quantity field. Derive hoursPerYear
+      // deterministically from the visible quantity so the saved value
+      // always reflects what the user actually entered (mirrors the
+      // describe-mode formula). Households default to 1 hour.
+      const hrs = isHourUnit
+        ? enteredQty
+        : isHousehold
+          ? 1
+          : Math.max(1, Math.round(enteredQty * 2));
       activities = [{
         activityId: selectedActivity.id,
         quantity: qty,
@@ -459,7 +441,7 @@ export default function QuickLogActivity() {
   };
 
   // ── Render ──
-  if (authLoading || (isLoggedIn && profileQuery.isLoading) || (isLoggedIn && !profileComplete)) {
+  if (authLoading || (isLoggedIn && profileQuery.isLoading)) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -480,18 +462,10 @@ export default function QuickLogActivity() {
       </button>
 
       <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">
-        Log an activity
+        Quick log
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        A quick way to add one activity to your impact record. Want to log multiple at once?{" "}
-        <button
-          type="button"
-          onClick={() => setLocation(challengeId ? `/wizard/actions?challenge=${challengeId}` : "/wizard/actions")}
-          className="text-primary underline underline-offset-2 hover:text-primary/80"
-        >
-          Use the full calculator
-        </button>
-        .
+        Add one activity to your record — pick what you did, how much, and when.
       </p>
 
       {challenge && (
@@ -582,16 +556,6 @@ export default function QuickLogActivity() {
               activity={selectedActivity}
               quantity={quantity}
               setQuantity={setQuantity}
-              hours={hours}
-              setHours={setHours}
-              showSessionCalc={showSessionCalc}
-              setShowSessionCalc={setShowSessionCalc}
-              sessionHrs={sessionHrs}
-              setSessionHrs={setSessionHrs}
-              sessionsPerWeek={sessionsPerWeek}
-              setSessionsPerWeek={setSessionsPerWeek}
-              weeksPerYear={weeksPerYear}
-              setWeeksPerYear={setWeeksPerYear}
               onChange={() => setSelectedActivity(null)}
             />
           )}
@@ -652,12 +616,19 @@ export default function QuickLogActivity() {
           type="date"
           value={entryDate}
           max={todayIso()}
-          onChange={e => setEntryDate(e.target.value)}
+          onChange={e => {
+            const v = e.target.value;
+            if (!v) return;
+            const max = todayIso();
+            // Defensively clamp future dates that bypass the picker UI
+            // (mobile browsers sometimes ignore the max attribute).
+            setEntryDate(v > max ? max : v);
+          }}
           className="w-full md:w-auto px-3 py-2.5 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
           data-testid="quick-log-entry-date"
         />
         <p className="text-xs text-muted-foreground mt-1.5">
-          Defaults to today. You can backdate to log a past activity.
+          Defaults to today. You can backdate to any past date.
         </p>
       </div>
 
@@ -680,7 +651,7 @@ export default function QuickLogActivity() {
           {submitting ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
           ) : (
-            <><Check className="w-4 h-4" /> Log activity</>
+            <><Check className="w-4 h-4" /> Log it</>
           )}
         </button>
       </div>
@@ -692,33 +663,32 @@ interface ActivityQuantityPanelProps {
   activity: ActivityItem;
   quantity: number;
   setQuantity: (n: number) => void;
-  hours: number;
-  setHours: (n: number) => void;
-  showSessionCalc: boolean;
-  setShowSessionCalc: (b: boolean) => void;
-  sessionHrs: number;
-  setSessionHrs: (n: number) => void;
-  sessionsPerWeek: number;
-  setSessionsPerWeek: (n: number) => void;
-  weeksPerYear: number;
-  setWeeksPerYear: (n: number) => void;
   onChange: () => void;
+}
+
+function quantityFieldLabel(activity: ActivityItem): string {
+  switch (activity.unit) {
+    case "hour": return "Hours spent";
+    case "session": return "Sessions";
+    case "person":
+    case "young_person":
+    case "participant": return "People helped";
+    case "child": return "Children";
+    case "tree": return "Trees";
+    case "bin": return "Bins";
+    case "bag": return "Bags";
+    case "event": return "Events";
+    case "donation": return "Donations";
+    case "mile_per_year": return "Miles";
+    case "week": return "Weeks";
+    default: return activity.unitLabel || "Quantity";
+  }
 }
 
 function ActivityQuantityPanel({
   activity,
   quantity,
   setQuantity,
-  hours,
-  setHours,
-  showSessionCalc,
-  setShowSessionCalc,
-  sessionHrs,
-  setSessionHrs,
-  sessionsPerWeek,
-  setSessionsPerWeek,
-  weeksPerYear,
-  setWeeksPerYear,
   onChange,
 }: ActivityQuantityPanelProps) {
   return (
@@ -743,17 +713,18 @@ function ActivityQuantityPanel({
       </div>
 
       <div className="bg-muted/30 rounded-lg p-4">
-        <p className="text-sm font-medium text-foreground mb-3">{activity.friendlyQuestion}</p>
-
         {activity.unit === "household" ? (
           <div className="flex items-center gap-3 p-3 bg-white rounded-md border border-border">
             <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
               <Check className="w-3 h-3 text-white" />
             </div>
-            <span className="text-sm text-foreground">Yes, I do this</span>
+            <span className="text-sm text-foreground">Yes, I do this for my household</span>
           </div>
-        ) : activity.unit === "hour" ? (
+        ) : (
           <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              {quantityFieldLabel(activity)}
+            </label>
             <div className="flex items-center gap-3">
               <input
                 type="number"
@@ -763,89 +734,7 @@ function ActivityQuantityPanel({
                 className="w-28 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
                 data-testid="quick-log-quantity"
               />
-              <span className="text-sm text-muted-foreground">hours per year</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              That's roughly {Math.round((quantity || 0) / 52 * 10) / 10} hours a week
-            </p>
-            {!showSessionCalc ? (
-              <button
-                type="button"
-                onClick={() => setShowSessionCalc(true)}
-                className="mt-2 text-xs text-primary/70 hover:text-primary underline underline-offset-2 transition-colors"
-              >
-                Calculate from sessions instead
-              </button>
-            ) : (
-              <div className="mt-3 bg-white border border-border rounded-md p-3 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Sessions per year</p>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <input
-                    type="number" min="0.5" step="0.5"
-                    value={sessionHrs}
-                    onChange={e => {
-                      const v = Number(e.target.value);
-                      setSessionHrs(v);
-                      setQuantity(Math.round(v * sessionsPerWeek * weeksPerYear));
-                    }}
-                    className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                  />
-                  <span className="text-muted-foreground text-xs">hrs/session ×</span>
-                  <input
-                    type="number" min="1"
-                    value={sessionsPerWeek}
-                    onChange={e => {
-                      const v = Number(e.target.value);
-                      setSessionsPerWeek(v);
-                      setQuantity(Math.round(sessionHrs * v * weeksPerYear));
-                    }}
-                    className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                  />
-                  <span className="text-muted-foreground text-xs">×</span>
-                  <input
-                    type="number" min="1" max="52"
-                    value={weeksPerYear}
-                    onChange={e => {
-                      const v = Number(e.target.value);
-                      setWeeksPerYear(v);
-                      setQuantity(Math.round(sessionHrs * sessionsPerWeek * v));
-                    }}
-                    className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                  />
-                  <span className="text-muted-foreground text-xs">weeks =</span>
-                  <span className="font-bold text-foreground text-sm">
-                    {Math.round(sessionHrs * sessionsPerWeek * weeksPerYear)} hrs/yr
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={e => setQuantity(Number(e.target.value))}
-                className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                data-testid="quick-log-quantity"
-              />
               <span className="text-sm text-muted-foreground">{activity.unitLabel}</span>
-            </div>
-            <div className="mt-4">
-              <p className="text-sm font-medium text-foreground mb-2">Approximate hours</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min="1"
-                  value={hours}
-                  onChange={e => setHours(Number(e.target.value))}
-                  className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                  data-testid="quick-log-hours"
-                />
-                <span className="text-sm text-muted-foreground">hours per year</span>
-              </div>
             </div>
           </div>
         )}
