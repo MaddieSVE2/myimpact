@@ -348,9 +348,7 @@ export default function Intro() {
   const activeChallenges = orgPromptsQuery.data?.challenges ?? [];
   const hasActivePulse = isOrgMember && activeSurveys.length > 0;
   const hasActiveChallenge = isOrgMember && activeChallenges.length > 0;
-  const challengeHref = activeChallenges.length === 1
-    ? `/wizard/actions?challenge=${activeChallenges[0].id}`
-    : `/challenges`;
+  const challengeHref = `/challenges`;
 
   // While auth is resolving, or, for a logged-in user, while we're still
   // checking whether they belong to an org, render a neutral placeholder so

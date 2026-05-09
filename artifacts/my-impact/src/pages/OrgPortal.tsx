@@ -1721,9 +1721,7 @@ export default function OrgPortal() {
   const memberActiveChallenges = orgPromptsQuery.data?.challenges ?? [];
   const memberHasActivePulse = isMemberView && memberActiveSurveys.length > 0;
   const memberHasActiveChallenge = isMemberView && memberActiveChallenges.length > 0;
-  const memberChallengeHref = memberActiveChallenges.length === 1
-    ? `/wizard/actions?challenge=${memberActiveChallenges[0].id}`
-    : `/challenges`;
+  const memberChallengeHref = `/challenges`;
 
   function handlePresetChange(key: PresetKey) {
     setPreset(key);
