@@ -109,7 +109,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
   });
 
   return (
-    <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
+    <div className="bg-background border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ function DemoOrgChallengesPanel() {
   }
 
   return (
-    <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
+    <div className="bg-background border border-border rounded-xl p-5 mb-6" data-testid="section-org-challenges">
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <div className="flex items-center gap-2">
