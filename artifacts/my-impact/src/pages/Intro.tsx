@@ -672,6 +672,8 @@ export default function Intro() {
         </section>
       )}
 
+      {!isLoggedIn && !authLoading && (
+      <>
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(28px, 4vw, 48px) 5% clamp(60px, 10vw, 120px)" }}>
         <FadeIn>
@@ -903,6 +905,8 @@ export default function Intro() {
           </div>
         </FadeIn>
       </section>
+      </>
+      )}
       {/* ── FOOTER ── */}
       <footer className="mi-footer" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <img
