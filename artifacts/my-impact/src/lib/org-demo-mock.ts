@@ -42,7 +42,7 @@ export interface DemoActivity {
 }
 
 export const DEMO_MEMBERS: DemoMember[] = [
-  { id: "m-001", name: "Sam Patel",        email: "sam.patel@riverside-youth-trust.org.uk",       role: "manager", joinedAt: "2025-01-12", region: "North West" },
+  { id: "m-001", name: "Sam Patel",        email: "sam.patel@demo-organisation.org",              role: "manager", joinedAt: "2025-01-12", region: "North West" },
   { id: "m-002", name: "Aisha Khan",       email: "aisha.khan@example.com",                       role: "member",  joinedAt: "2025-02-04", region: "North West" },
   { id: "m-003", name: "Tom Reilly",       email: "tom.reilly@example.com",                       role: "member",  joinedAt: "2025-02-21", region: "Yorkshire and The Humber" },
   { id: "m-004", name: "Priya Sharma",     email: "priya.sharma@example.com",                     role: "member",  joinedAt: "2025-03-08", region: "West Midlands" },
@@ -727,7 +727,7 @@ export const DEMO_SSO_CONFIGS: DemoSsoConfig[] = [
   {
     id: "demo-sso-001",
     provider: "google",
-    domain: "riverside-youth-trust.org.uk",
+    domain: "demo-organisation.org",
     tenantId: null,
     enforceSSO: true,
     status: "verified",
@@ -792,7 +792,7 @@ export interface DemoWebhook {
 export const DEMO_WEBHOOKS: DemoWebhook[] = [
   {
     id: "demo-wh-001",
-    url: "https://hooks.riverside-youth-trust.org.uk/myimpact",
+    url: "https://hooks.demo-organisation.org/myimpact",
     events: ["member.joined", "hours.attested", "milestone.earned"],
     enabled: true,
     deadAt: null,
