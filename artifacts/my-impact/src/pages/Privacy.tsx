@@ -170,7 +170,7 @@ const SECTIONS: Section[] = [
           <li><strong>Stripe</strong> (payments, Ireland &amp; USA) — for paid organisation plans only, Stripe processes card details directly. We never see or store your card number. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>OpenAI</strong> (Sidekick AI assistant, USA) — when you use Sidekick, your prompt (and the recent context you've chosen to include, such as your latest activity totals) is sent to OpenAI to generate a reply. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>Sentry</strong> (error monitoring, USA) — receives anonymised error reports (stack traces, browser metadata, your internal user id) so we can fix bugs. Sensitive form values are scrubbed before sending. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>Replit Deployments</strong> (hosting + PostgreSQL, USA) — hosts the application server and our PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>Managed cloud hosting provider</strong> (hosting + PostgreSQL, USA) — hosts the application server and our managed PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>Social Value Engine</strong> (methodology, United Kingdom) — we use their accredited SROI values to calculate impact scores. No personal data is shared with them.</li>
         </ul>
         <p style={{ marginTop: 12 }}>All third-party processors we work with are bound by data processing agreements and are required to handle your data in accordance with UK GDPR.</p>

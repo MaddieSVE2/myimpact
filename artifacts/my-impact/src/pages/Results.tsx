@@ -1197,7 +1197,7 @@ export default function Results() {
   };
 
   const shareText = `I generated ${formatCurrency(result.totalValue)} in social value this year. Find out what yours is:`;
-  const shareUrl = "https://myimpact.replit.com";
+  const shareUrl = "https://myimpact.uk";
 
   const handleNativeShare = async () => {
     const hasNative = typeof navigator !== "undefined" && typeof navigator.share === "function";

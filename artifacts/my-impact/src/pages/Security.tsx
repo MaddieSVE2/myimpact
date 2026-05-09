@@ -121,7 +121,7 @@ const SECTIONS: Section[] = [
           <>
             <p>We use a small set of named, trusted processors, each bound by a data processing agreement:</p>
             <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-              <li><strong>Replit Deployments</strong> — application hosting and PostgreSQL database.</li>
+              <li><strong>Managed cloud hosting (USA)</strong> — application hosting and managed PostgreSQL database.</li>
               <li><strong>Resend</strong> — transactional email delivery (magic links, notifications).</li>
               <li><strong>Stripe</strong> — payment processing for paid plans (we never see card details).</li>
               <li><strong>OpenAI</strong> — powers the optional Sidekick AI assistant via enterprise endpoints.</li>
