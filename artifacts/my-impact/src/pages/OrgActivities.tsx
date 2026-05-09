@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { Footer } from "@/components/layout/Footer";
 import {
   Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users,
 } from "lucide-react";
@@ -103,6 +104,7 @@ export default function OrgActivities() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-activities-root">
       <div className="flex items-center gap-2 mb-1">
         <Users className="w-5 h-5 text-primary" />
@@ -226,5 +228,7 @@ export default function OrgActivities() {
         to download a polished PDF or CSV (with optional anonymisation).
       </p>
     </div>
+    <Footer />
+    </>
   );
 }

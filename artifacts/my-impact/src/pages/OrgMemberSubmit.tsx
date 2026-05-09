@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import {
   Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye,
@@ -282,6 +283,7 @@ export default function OrgMemberSubmit() {
   const orgName = orgData.org.name;
 
   return (
+    <>
     <div className="max-w-3xl mx-auto px-4 py-8" data-testid="org-member-submit-root">
       <div className="flex items-start gap-3 mb-2">
         <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
@@ -914,5 +916,7 @@ export default function OrgMemberSubmit() {
         </motion.div>
       )}
     </div>
+    <Footer />
+    </>
   );
 }

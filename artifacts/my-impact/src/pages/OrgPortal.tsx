@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Footer } from "@/components/layout/Footer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -1757,6 +1758,7 @@ export default function OrgPortal() {
   const orgLogoUrl = branding?.logoUrl ?? null;
 
   return (
+    <>
     <div className="max-w-4xl mx-auto px-4 py-10" style={brandStyle} data-testid="org-portal-root">
       <div className="flex items-start justify-between mb-8 flex-wrap gap-3">
         <div className="flex items-start gap-3">
@@ -2150,5 +2152,7 @@ export default function OrgPortal() {
         </>
       ) : null}
     </div>
+    <Footer />
+    </>
   );
 }

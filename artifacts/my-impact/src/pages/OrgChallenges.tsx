@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Flag, AlertCircle } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
 import { OrgChallengesPanel } from "@/components/OrgChallengesPanel";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { useMyOrg } from "@/lib/org-export";
@@ -47,6 +48,7 @@ export default function OrgChallenges() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-challenges-root">
       <div className="flex items-center gap-2 mb-1">
         <Flag className="w-5 h-5 text-primary" />
@@ -59,5 +61,7 @@ export default function OrgChallenges() {
 
       <OrgChallengesPanel orgId={orgData.org.id} />
     </div>
+    <Footer />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { Footer } from "@/components/layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, TrendingUp, Users, Clock, BadgeCheck, Download, FileText, FileSpreadsheet,
@@ -311,6 +312,7 @@ export default function OrgDashboard() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8" style={brandStyle} data-testid="org-dashboard-root">
       {/* Publishable document header */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
@@ -790,5 +792,7 @@ export default function OrgDashboard() {
         </Link>
       </div>
     </div>
+    <Footer />
+    </>
   );
 }

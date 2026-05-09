@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ClipboardList, AlertCircle } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
@@ -48,6 +49,7 @@ export default function OrgPulse() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-pulse-root">
       <div className="flex items-center gap-2 mb-1">
         <ClipboardList className="w-5 h-5 text-primary" />
@@ -61,5 +63,7 @@ export default function OrgPulse() {
       <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
       <PulseSurveysSection isDemoOrg={isDemoOrg} />
     </div>
+    <Footer />
+    </>
   );
 }

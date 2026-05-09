@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
+import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette } from "lucide-react";
@@ -955,6 +956,7 @@ export default function OrgSettings() {
   const isDemoOrg = orgData.org.id === DEMO_ORG_ID;
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-display font-semibold text-foreground">Organisation settings</h1>
@@ -990,5 +992,7 @@ export default function OrgSettings() {
         {active === "profile"   && <ProfileTab org={{ ...orgData.org, sroiCostPerVolunteer: orgData.org.sroiCostPerVolunteer ?? null, sroiCostBreakdown: orgData.org.sroiCostBreakdown }} isDemoOrg={isDemoOrg} />}
       </motion.div>
     </div>
+    <Footer />
+    </>
   );
 }
