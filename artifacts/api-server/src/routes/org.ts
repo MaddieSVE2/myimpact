@@ -759,6 +759,13 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
       valueByCategory,
       sdgBreakdowns,
+      sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
+      sroiCostBreakdown: {
+        recruitment: org.sroiCostRecruitment ?? null,
+        onboarding: org.sroiCostOnboarding ?? null,
+        support: org.sroiCostSupport ?? null,
+        admin: org.sroiCostAdmin ?? null,
+      },
       branding: {
         logoDataUrl,
         brandPrimary: org.brandPrimary ?? null,

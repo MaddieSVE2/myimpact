@@ -21,6 +21,13 @@ export interface PreloadedLogo {
   height: number;
 }
 
+export interface SroiCostBreakdownArg {
+  recruitment?: number | null;
+  onboarding?: number | null;
+  support?: number | null;
+  admin?: number | null;
+}
+
 export interface RenderOrgPdfArgs {
   orgName: string;
   rows: Array<{ activity: DemoActivity; member: { name: string; email: string } }>;
@@ -29,6 +36,8 @@ export interface RenderOrgPdfArgs {
   filterSummary: string;
   highlights: Array<{ activity: DemoActivity; member: { name: string; email: string } }>;
   sdgs: SdgBreakdownPoint[];
+  sroiCostPerVolunteer?: number | null;
+  sroiCostBreakdown?: SroiCostBreakdownArg | null;
   branding?: OrgBranding | null;
   preloadedLogo?: PreloadedLogo | null;
   // SROI assumptions used to keep the PDF in sync with the on-screen
@@ -68,8 +77,17 @@ function mixRgb(a: RGB, b: RGB, t: number): RGB {
 export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
   const {
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
+    sroiCostPerVolunteer, sroiCostBreakdown,
     branding, preloadedLogo, sroi, locale,
   } = args;
+  void sroiCostPerVolunteer;
+  const breakdownLines: Array<{ label: string; value: number }> = [];
+  if (sroiCostBreakdown) {
+    if (typeof sroiCostBreakdown.recruitment === "number") breakdownLines.push({ label: "Recruitment", value: sroiCostBreakdown.recruitment });
+    if (typeof sroiCostBreakdown.onboarding === "number")  breakdownLines.push({ label: "Onboarding",  value: sroiCostBreakdown.onboarding });
+    if (typeof sroiCostBreakdown.support === "number")     breakdownLines.push({ label: "Support",     value: sroiCostBreakdown.support });
+    if (typeof sroiCostBreakdown.admin === "number")       breakdownLines.push({ label: "Admin",       value: sroiCostBreakdown.admin });
+  }
   const t = makeT(locale ?? DEFAULT_LOCALE);
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -399,6 +417,28 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
       doc.text(c.sub, x + 12, y + 54);
     });
     y += sroiCardH + 18;
+
+    // Auditable Recruitment / Onboarding / Support / Admin sub-amounts
+    // making up the per-volunteer cost. Wording matches the dashboard
+    // SROI explainer table. Omitted cleanly when nothing is set.
+    if (breakdownLines.length > 0) {
+      y = ensureSpace(y, 26 + breakdownLines.length * 14);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(MUTED);
+      doc.text("Per-volunteer cost breakdown", margin, y);
+      y += 6;
+      setDraw(HAIRLINE); doc.setLineWidth(0.5);
+      doc.line(margin, y, margin + contentW, y);
+      y += 12;
+      breakdownLines.forEach((l) => {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+        doc.text(l.label, margin, y);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(INK);
+        const v = `£${l.value.toLocaleString("en-GB")}`;
+        doc.text(v, margin + contentW - doc.getTextWidth(v), y);
+        y += 14;
+      });
+      y += 4;
+    }
   }
 
   // ===== ACTIVITY TABLE =====================================================

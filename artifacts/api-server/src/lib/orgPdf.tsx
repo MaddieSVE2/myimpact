@@ -305,6 +305,13 @@ export interface OrgPdfBranding {
   brandAccent: string | null;
 }
 
+export interface OrgPdfSroiBreakdown {
+  recruitment?: number | null;
+  onboarding?: number | null;
+  support?: number | null;
+  admin?: number | null;
+}
+
 export interface OrgPdfData {
   orgName: string;
   orgType: string;
@@ -319,6 +326,8 @@ export interface OrgPdfData {
   averageValuePerPerson: number;
   valueByCategory: Array<{ category: string; value: number }>;
   sdgBreakdowns: OrgSdgBreakdown[];
+  sroiCostPerVolunteer?: number | null;
+  sroiCostBreakdown?: OrgPdfSroiBreakdown | null;
   branding?: OrgPdfBranding;
 }
 
@@ -379,6 +388,42 @@ function PageHeader({ data, title }: { data: OrgPdfData; title: string }) {
   );
 }
 
+function SroiBlock({ data }: { data: OrgPdfData }) {
+  const primary = data.branding?.brandPrimary || ORANGE;
+  const cost = data.sroiCostPerVolunteer;
+  if (typeof cost !== "number") return null;
+  const b = data.sroiCostBreakdown ?? null;
+  const lines: Array<{ label: string; value: number }> = [];
+  if (b) {
+    if (typeof b.recruitment === "number") lines.push({ label: "Recruitment", value: b.recruitment });
+    if (typeof b.onboarding === "number")  lines.push({ label: "Onboarding",  value: b.onboarding });
+    if (typeof b.support === "number")     lines.push({ label: "Support",     value: b.support });
+    if (typeof b.admin === "number")       lines.push({ label: "Admin",       value: b.admin });
+  }
+  return (
+    <View style={{ ...styles.metricCard, marginBottom: 16 }} data-testid="pdf-sroi-cost-block">
+      <Text style={styles.metricLabel}>ORG. INVESTMENT PER VOLUNTEER</Text>
+      <Text style={{ ...styles.metricValue, color: primary }}>{formatCurrency(cost)}</Text>
+      <Text style={styles.metricSubtitle}>Annual cost used to calculate the SROI ratio</Text>
+      {lines.length > 0 && (
+        <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: CREAM_BORDER }}>
+          {lines.map(l => (
+            <View
+              key={l.label}
+              style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 }}
+            >
+              <Text style={{ fontSize: 10, color: DARK_MUTED, fontFamily: "DM Sans" }}>{l.label}</Text>
+              <Text style={{ fontSize: 10, color: NAVY, fontFamily: "DM Sans", fontWeight: "bold" }}>
+                {formatCurrency(l.value)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function StatsPage({ data }: { data: OrgPdfData }) {
   const primary = data.branding?.brandPrimary || ORANGE;
   const metrics = [
@@ -428,6 +473,8 @@ function StatsPage({ data }: { data: OrgPdfData }) {
             </View>
           ))}
         </View>
+
+        <SroiBlock data={data} />
 
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>

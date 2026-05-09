@@ -136,6 +136,8 @@ export default function OrgExport() {
       rangeSummary: rangeSummary(),
       highlights,
       sdgs,
+      sroiCostPerVolunteer: orgData.org.sroiCostPerVolunteer ?? null,
+      sroiCostBreakdown: orgData.org.sroiCostBreakdown ?? null,
       branding: orgData.org.branding ?? null,
       sroi: { costPerVolunteer: sroiCostPerVolunteer, totalMembers },
       locale,
@@ -157,6 +159,7 @@ export default function OrgExport() {
       "save",
       pdfArgs.sroi,
       pdfArgs.locale,
+      pdfArgs.sroiCostBreakdown,
     );
   }
 
@@ -190,6 +193,8 @@ export default function OrgExport() {
           filterSummary: pdfArgs.rangeSummary,
           highlights: pdfArgs.highlights,
           sdgs: pdfArgs.sdgs,
+          sroiCostPerVolunteer: pdfArgs.sroiCostPerVolunteer,
+          sroiCostBreakdown: pdfArgs.sroiCostBreakdown,
           branding: pdfArgs.branding,
           sroi: pdfArgs.sroi,
           locale: pdfArgs.locale,

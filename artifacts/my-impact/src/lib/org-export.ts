@@ -202,10 +202,17 @@ export async function buildOrgPdf(
   output: "save" | "blob" = "save",
   sroi?: RenderOrgPdfArgs["sroi"],
   locale?: RenderOrgPdfArgs["locale"],
+  // Optional auditable per-volunteer cost sub-amounts (Recruitment /
+  // Onboarding / Support / Admin). When provided, rendered as a small
+  // breakdown table in the SROI assumptions section of the PDF so
+  // funders see the same numbers as the dashboard.
+  costBreakdown?: SroiCostBreakdown | null,
 ): Promise<Blob | void> {
   const preloadedLogo = branding?.logoUrl ? await loadLogoAsDataUrl(branding.logoUrl) : null;
   const doc = renderOrgPdf({
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
+    sroiCostPerVolunteer: sroi?.costPerVolunteer ?? null,
+    sroiCostBreakdown: costBreakdown ?? null,
     branding: branding ?? null, preloadedLogo, sroi: sroi ?? null, locale,
   });
   if (output === "blob") {
