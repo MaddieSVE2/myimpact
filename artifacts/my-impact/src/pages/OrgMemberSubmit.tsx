@@ -66,6 +66,7 @@ export default function OrgMemberSubmit() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
+  const [personalRecordId, setPersonalRecordId] = useState<number | null>(null);
   const [mySubs, setMySubs] = useState<MySubmission[] | null>(null);
   const [mySubsError, setMySubsError] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -233,6 +234,7 @@ export default function OrgMemberSubmit() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Submission failed.");
       setCreatedRecordId(data?.record?.id ?? null);
+      setPersonalRecordId(data?.record?.personalRecordId ?? null);
       setWithdrawn(false);
       setWithdrawError(null);
       setStep("done");
@@ -871,6 +873,21 @@ export default function OrgMemberSubmit() {
                 Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are now part of your organisation's totals.
               </p>
               <p className="text-xs text-muted-foreground mb-4">Your organisation manager can see them flagged as member-submitted.</p>
+              {saveToPersonal && !withdrawn && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4" data-testid="member-submit-personal-confirmation">
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Also saved to your personal impact report.{" "}
+                    <a
+                      href="/history"
+                      className="underline font-medium hover:text-green-800"
+                      data-testid="member-submit-personal-link"
+                    >
+                      View your history
+                    </a>
+                  </span>
+                </div>
+              )}
               {createdRecordId && (
                 <div className="mb-6">
                   <button
@@ -898,6 +915,7 @@ export default function OrgMemberSubmit() {
                 setActivityDate(todayIso());
                 setSaveToPersonal(false);
                 setCreatedRecordId(null);
+                setPersonalRecordId(null);
                 setWithdrawn(false);
                 setWithdrawError(null);
                 setStep("select");

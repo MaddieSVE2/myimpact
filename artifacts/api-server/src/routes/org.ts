@@ -2131,6 +2131,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
     // the member so they can see this submission in their own impact report.
     // This runs regardless of whether there are standard activities — a
     // something_else-only submission is still valid for a personal record.
+    let personalRecordId: number | null = null;
     if (saveToPersonal) {
       // Standard activities contribute SVE proxy impact value.
       // something_else hours are passed as additionalVolunteerHours so they
@@ -2152,7 +2153,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         detail: c.detail,
       }));
       const dateLabel = parsedActivityDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-      await db.insert(impactRecordsTable).values({
+      const [personalInserted] = await db.insert(impactRecordsTable).values({
         userId,
         name: `${name} (personal)`,
         periodLabel: dateLabel,
@@ -2166,7 +2167,8 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         resultJson: personalCalc,
         source: "user",
         entryDate: parsedActivityDate,
-      });
+      }).returning({ id: impactRecordsTable.id });
+      personalRecordId = personalInserted?.id ?? null;
     }
 
     await writeAuditLog(membership.orgId, userId, "member.submit", "impact_record", String(inserted.id), {
@@ -2206,6 +2208,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         activityCount: cleaned.length,
         submittedToOrgId: membership.orgId,
         submittedToOrgAt: now.toISOString(),
+        personalRecordId: personalRecordId ?? undefined,
       },
     });
   } catch (err) {
