@@ -41,7 +41,7 @@ export interface DemoActivity {
   verified: boolean;
 }
 
-export const DEMO_MEMBERS: DemoMember[] = [
+const CORE_MEMBERS: DemoMember[] = [
   { id: "m-001", name: "Sam Patel",        email: "sam.patel@demo-organisation.org",              role: "manager", joinedAt: "2025-01-12", region: "North West" },
   { id: "m-002", name: "Aisha Khan",       email: "aisha.khan@example.com",                       role: "member",  joinedAt: "2025-02-04", region: "North West" },
   { id: "m-003", name: "Tom Reilly",       email: "tom.reilly@example.com",                       role: "member",  joinedAt: "2025-02-21", region: "Yorkshire and The Humber" },
@@ -78,7 +78,7 @@ export const DEMO_MEMBERS: DemoMember[] = [
 
 // Raw activity rows used to build the demo dataset. Tuple form keeps the file
 // readable while we ship a credible year of impact spanning 12
-// months, 32 members and 10 categories.
+// months, 285 members and 10 categories.
 type RawActivity = readonly [
   memberId: string,
   occurredAt: string,
@@ -88,6 +88,78 @@ type RawActivity = readonly [
   hours: number,
   socialValueGBP: number,
   verified: boolean,
+];
+
+// ── Synthetic cohort: m-033 … m-285 ──────────────────────────────────────
+// Deterministically generated so the demo always renders the same 285 members.
+const _SF = [
+  "Alex","Jordan","Morgan","Casey","Taylor","Riley","Cameron","Avery","Skyler","Peyton",
+  "Reese","Finley","Hayden","Quinn","Sawyer","Rowan","Emery","Elliot","Logan","River",
+  "Sage","Zara","Nadia","Priya","Amara","Fatou","Yemi","Kofi","Aarav","Rahul",
+  "Luca","Marco","Sofia","Elena","Mira","Anya","Jess","Sam","Max","Jamie",
+];
+const _SL = [
+  "Clarke","Davies","Evans","Fletcher","Grant","Hayes","Irving","Jennings","Kennedy","Lambert",
+  "Mason","Norton","Owen","Parker","Reid","Stevens","Turner","Underwood","Vincent","Walker",
+  "Adeyemi","Balogun","Diallo","Emmanuel","Ferreira","Gupta","Hassan","Islam","Joshi","Kapoor",
+  "Lim","Mensah","Nwosu","Osei","Patel","Rahman","Singh","Tran","Ullah","Vasquez",
+];
+const _SR = [
+  "North West","Yorkshire and The Humber","West Midlands","London","South East",
+  "South West","East Midlands","North East","East of England","Wales","Scotland",
+];
+const _SC: ActivityCategory[] = [
+  "Environment","Community","Health","Education","Sport & Active",
+  "Fundraising","Mentoring","Arts & Culture","Animal Welfare","Emergency Response",
+];
+const _SA = [
+  "Volunteering session","Team fundraiser","Community event helper","Skills workshop",
+  "Mentoring session","Awareness campaign","Environmental project","Charity run",
+  "Community garden day","Digital skills support",
+];
+const _SJM = [
+  "2025-01","2025-02","2025-03","2025-04","2025-05",
+  "2025-06","2025-07","2025-08","2025-09","2025-10",
+];
+const _SAM = [
+  "2025-02","2025-03","2025-04","2025-05","2025-06",
+  "2025-07","2025-08","2025-09","2025-10","2025-11","2025-12",
+];
+const SYNTHETIC_COHORT: { member: DemoMember; activity: RawActivity }[] =
+  Array.from({ length: 253 }, (_, k) => {
+    const n       = k + 33;
+    const id      = `m-${String(n).padStart(3, "0")}`;
+    const first   = _SF[k % _SF.length]!;
+    const last    = _SL[Math.floor(k / _SF.length) % _SL.length]!;
+    const region  = _SR[k % _SR.length]!;
+    const jm      = _SJM[k % _SJM.length]!;
+    const jd      = String(1 + (k % 27)).padStart(2, "0");
+    const cat     = _SC[k % _SC.length]!;
+    const am      = _SAM[k % _SAM.length]!;
+    const ad      = String(3 + (k % 25)).padStart(2, "0");
+    const hours   = 2 + (k % 5);
+    const value   = 150 + (k % 8) * 50;
+    const actName = _SA[k % _SA.length]!;
+    return {
+      member: {
+        id,
+        name: `${first} ${last}`,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}${n}@example.com`,
+        role: "member",
+        joinedAt: `${jm}-${jd}`,
+        region,
+      },
+      activity: [
+        id, `${am}-${ad}`, cat, actName,
+        `Contributed ${hours}h to the ${cat.toLowerCase()} programme as part of the team.`,
+        hours, value, true,
+      ] as unknown as RawActivity,
+    };
+  });
+
+export const DEMO_MEMBERS: DemoMember[] = [
+  ...CORE_MEMBERS,
+  ...SYNTHETIC_COHORT.map(s => s.member),
 ];
 
 const RAW_ACTIVITIES: RawActivity[] = [
@@ -254,7 +326,10 @@ const RAW_ACTIVITIES: RawActivity[] = [
   ["m-032", "2025-12-05", "Arts & Culture",     "Community Christmas concert",   "Organised and performed at the community Christmas concert. 200 attendees.",             4,   360, true],
 ];
 
-export const DEMO_ACTIVITIES: DemoActivity[] = RAW_ACTIVITIES.map((r, i) => ({
+export const DEMO_ACTIVITIES: DemoActivity[] = [
+  ...RAW_ACTIVITIES,
+  ...SYNTHETIC_COHORT.map(s => s.activity),
+].map((r, i) => ({
   id: `a-${String(i + 1).padStart(3, "0")}`,
   memberId: r[0],
   occurredAt: r[1],
