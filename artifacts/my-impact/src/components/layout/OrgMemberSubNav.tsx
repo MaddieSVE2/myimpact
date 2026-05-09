@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ClipboardList, Trophy, Building2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -26,15 +25,6 @@ export function OrgMemberSubNav() {
   const { isLoggedIn } = useAuth();
   const { data: orgData, isLoading } = useMyOrgMembership(isLoggedIn);
 
-  const [hash, setHash] = useState(() =>
-    typeof window !== "undefined" ? window.location.hash : ""
-  );
-  useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
-
   const inOrg = !isLoading && !!orgData?.org;
   const isOrgManager = inOrg && orgData?.org?.role === "manager";
   const isOrgMemberOnly = inOrg && !isOrgManager;
@@ -42,7 +32,7 @@ export function OrgMemberSubNav() {
   if (!isOrgMemberOnly) return null;
 
   const orgName = orgData?.org?.name ?? "My Organisation";
-  const pulseActive = location === "/" && hash === "#org-prompts-section";
+  const pulseActive = location === "/";
 
   const items = [
     { href: "/#org-prompts-section", label: "Pulse", icon: ClipboardList, testId: "member-subnav-pulse", active: pulseActive },
