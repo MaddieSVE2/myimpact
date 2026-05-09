@@ -468,6 +468,20 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
                 </div>
               ))}
             </div>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
+                <span className="text-[10px] text-muted-foreground">1–2 Low</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
+                <span className="text-[10px] text-muted-foreground">3 Mid</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                <span className="text-[10px] text-muted-foreground">4–5 High</span>
+              </span>
+            </div>
           </div>
 
           {data.trend.length > 1 && (
@@ -491,6 +505,20 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
                     <span className="text-[10px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
                   </div>
                 ))}
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500" />
+                  <span className="text-[10px] text-muted-foreground">1–2 Low</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" />
+                  <span className="text-[10px] text-muted-foreground">3 Mid</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                  <span className="text-[10px] text-muted-foreground">4–5 High</span>
+                </span>
               </div>
             </div>
           )}
