@@ -94,9 +94,9 @@ export default function OrgDashboard() {
   }, [orgData?.org?.summaryYearStart, isDemoOrg]);
 
   // ── Period bounds ──
-  // For the demo org the data is fixed to 2025, so we anchor the reference
-  // date to mid-2025 so that offset=0 always maps to the 2025 period.
-  const DEMO_REFERENCE_DATE = new Date("2025-07-15T12:00:00Z");
+  // For the demo org we anchor the reference date to May 2026 so that
+  // offset=0 maps to the Jan–Dec 2026 period and offset=-1 maps to 2025.
+  const DEMO_REFERENCE_DATE = new Date("2026-05-09T12:00:00Z");
   const periodBounds = useMemo(
     () => getPeriodBounds(summaryYearStart, periodOffset, isDemoOrg ? DEMO_REFERENCE_DATE : undefined),
     [summaryYearStart, periodOffset, isDemoOrg],

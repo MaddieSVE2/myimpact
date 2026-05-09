@@ -324,6 +324,47 @@ const RAW_ACTIVITIES: RawActivity[] = [
   ["m-031", "2025-12-13", "Fundraising",        "Christmas appeal coordinator",  "Coordinated the charity's Christmas gift appeal. 200 gifts collected for 80 families.", 5,   600, true],
   ["m-032", "2025-10-04", "Education",          "School governor",               "Attended the autumn school governors' meeting and led the SEND sub-committee.",           3,   300, true],
   ["m-032", "2025-12-05", "Arts & Culture",     "Community Christmas concert",   "Organised and performed at the community Christmas concert. 200 attendees.",             4,   360, true],
+
+  // January 2026
+  ["m-001", "2026-01-08", "Community",          "New year volunteer briefing",   "Ran the 2026 kickoff briefing for the volunteer cohort. 18 new starters.",                   3,   210, true],
+  ["m-002", "2026-01-11", "Environment",        "Canal towpath clean-up",        "Winter clear of the Mersey towpath. Eight bin bags collected, 1km cleared.",                  4,   220, true],
+  ["m-003", "2026-01-17", "Sport & Active",     "Junior parkrun marshalling",    "Marshalled the junior 2K parkrun, supporting 90+ young runners on a cold morning.",           2,   140, true],
+  ["m-004", "2026-01-21", "Education",          "Year 4 reading mentor",         "Weekly one-to-one reading session at St Mary's Primary. Fourth term running.",                1.5, 180, true],
+  ["m-005", "2026-01-25", "Community",          "Repair café host",              "Hosted January's repair café. Fixed a toaster, two lamps and a vacuum cleaner.",              3,   165, true],
+  ["m-008", "2026-01-28", "Mentoring",          "Apprenticeship 1:1 mentor",     "New-year check-in session with two apprentices. Goal-setting for Q1.",                        2,   220, true],
+
+  // February 2026
+  ["m-002", "2026-02-03", "Environment",        "Community tree planting",       "Planted 35 native saplings on the community green in partnership with the council.",          5,   460, true],
+  ["m-006", "2026-02-07", "Animal Welfare",     "Dog shelter dog-walking",       "Walked six shelter dogs and helped with enrichment activities at the rescue.",                 4,   220, true],
+  ["m-009", "2026-02-11", "Arts & Culture",     "Community choir lead",          "Led the weekly community choir rehearsal. 26 attendees, new term starting.",                  2,   190, true],
+  ["m-007", "2026-02-15", "Health",             "Care home visits",              "Afternoon of music and conversation at Oakleigh care home.",                                   2.5, 180, true],
+  ["m-003", "2026-02-19", "Sport & Active",     "Cycling buddy ride",            "Led a confidence-building group ride for eight new cyclists around the local park.",           3,   200, true],
+  ["m-005", "2026-02-22", "Fundraising",        "Quiz night fundraiser",         "Hosted February quiz night raising £620 for the youth centre's spring programme.",             4,   620, true],
+  ["m-001", "2026-02-26", "Community",          "Trustee board meeting",         "Attended Q1 trustee board with updated impact metrics and 2026 action plan.",                 3,   250, true],
+
+  // March 2026
+  ["m-004", "2026-03-05", "Education",          "STEM workshop assistant",       "Helped run a robotics workshop for 24 girls aged 10–12. Best attendance yet.",               4,   500, true],
+  ["m-002", "2026-03-08", "Community",          "Soup kitchen evening",          "Cooked and served around 80 hot meals at the city-centre soup kitchen.",                      4,   400, true],
+  ["m-006", "2026-03-12", "Environment",        "Wildflower seeding",            "Sowed pollinator-friendly mix across three verges in collaboration with the council.",         3,   220, true],
+  ["m-008", "2026-03-15", "Education",          "Refugee English class",         "Taught beginner conversational English to eight newly arrived refugees.",                      2,   260, true],
+  ["m-009", "2026-03-19", "Mentoring",          "Creative writing mentor",       "Mentored three young people on their short story submissions for the regional competition.",   2,   240, true],
+  ["m-005", "2026-03-22", "Emergency Response", "First aid cover at gala",       "Provided first-aid cover at the spring youth football tournament.",                           5,   420, true],
+  ["m-003", "2026-03-26", "Health",             "Mental-health walk lead",       "Co-led a peer walking group for adults managing low mood. Eleven participants.",               2.5, 210, true],
+  ["m-demo","2026-03-29", "Environment",        "Litter pick & river survey",    "Joined a local wildlife trust river-health survey and litter pick. 12kg collected.",          3,   195, true],
+
+  // April 2026
+  ["m-007", "2026-04-06", "Fundraising",        "Sponsored 10K run",             "Completed a 10K raising £840 for the youth trust's new bursary fund.",                       2,   840, true],
+  ["m-002", "2026-04-10", "Environment",        "Park bench restoration",        "Restored five weather-damaged benches with a four-person crew.",                               5,   260, true],
+  ["m-004", "2026-04-14", "Mentoring",          "School governor meeting",       "Attended the spring governors meeting and presented the reading-volunteer impact data.",       2.5, 260, true],
+  ["m-006", "2026-04-17", "Animal Welfare",     "Hedgehog rescue volunteering",  "Cared for five injured hedgehogs at the local wildlife rescue.",                               3,   195, true],
+  ["m-009", "2026-04-23", "Arts & Culture",     "Open-mic host",                 "Hosted the monthly open-mic night supporting eleven local performers.",                        3,   255, true],
+  ["m-001", "2026-04-27", "Mentoring",          "New volunteer onboarding",      "Inducted six new volunteers over two evenings, including safeguarding refresher.",             4,   480, true],
+
+  // May 2026
+  ["m-005", "2026-05-03", "Community",          "Mayfest festival stewarding",   "Stewarded the main entrance at Mayfest 2026, welcoming around 750 attendees.",                6,   510, true],
+  ["m-003", "2026-05-07", "Sport & Active",     "Inclusive football coach",      "Coached the weekly inclusive 5-a-side session for adults with disabilities.",                  2,   190, true],
+  ["m-008", "2026-05-08", "Mentoring",          "Care leaver mentor",            "Monthly mentoring session with a young care leaver now in their second tenancy.",              2,   250, true],
+  ["m-demo","2026-05-09", "Community",          "Community market stall",        "Ran the My Impact awareness stall at the local community market. 45 conversations.",          3,   180, true],
 ];
 
 export const DEMO_ACTIVITIES: DemoActivity[] = [
