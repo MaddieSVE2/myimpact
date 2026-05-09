@@ -381,17 +381,12 @@ function SurveyRow({
     : null;
   return (
     <div
-      className={`rounded-lg border transition-colors cursor-pointer ${isArchived ? "border-border bg-muted/20 hover:bg-muted/40" : "border-border bg-white hover:bg-muted/30"}`}
+      className={`rounded-lg border transition-all cursor-pointer ${isArchived ? "border-border bg-muted/20 hover:bg-primary/10 hover:border-primary hover:shadow-md" : "border-border bg-white hover:bg-primary/10 hover:border-primary hover:shadow-md"}`}
       data-testid={`survey-row-${survey.id}`}
-      onClick={e => { if (!(e.target as HTMLElement).closest("button")) onToggle(); }}
+      onClick={onToggle}
     >
       <div className="flex items-start justify-between gap-3 p-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-left min-w-0 flex-1"
-          data-testid={`button-toggle-survey-${survey.id}`}
-        >
+        <div className="text-left min-w-0 flex-1" data-testid={`button-toggle-survey-${survey.id}`}>
           <div className="flex items-center gap-2 flex-wrap">
             <ScoreIndicator average={survey.latestAverage} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
@@ -416,12 +411,12 @@ function SurveyRow({
             Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             {isArchived && ` · archived ${new Date(survey.archivedAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
           </p>
-        </button>
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           {!isArchived && onArchive && (
             <button
               type="button"
-              onClick={onArchive}
+              onClick={e => { e.stopPropagation(); onArchive(); }}
               disabled={disabled}
               className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
               data-testid={`button-archive-survey-${survey.id}`}
@@ -429,14 +424,9 @@ function SurveyRow({
               <Archive className="w-3 h-3" /> Archive
             </button>
           )}
-          <button
-            type="button"
-            onClick={onToggle}
-            className="p-1.5 rounded hover:bg-muted/30"
-            aria-label={open ? "Collapse" : "Expand"}
-          >
+          <div className="p-1.5 rounded" aria-hidden>
             {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </button>
+          </div>
         </div>
       </div>
       {open && <SurveyResultsView surveyId={survey.id} />}
@@ -932,14 +922,9 @@ function DemoPulseSurveysSection() {
 function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void; highlight?: boolean }) {
   const sentimentBadge = getSentimentBadge(survey.distribution, survey.totals.responses);
   return (
-    <div className={`rounded-lg border transition-colors cursor-pointer ${highlight ? "border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/60" : "border-border bg-white hover:bg-muted/30"}`} data-testid={`survey-row-${survey.id}`} onClick={e => { if (!(e.target as HTMLElement).closest("button")) onToggle(); }}>
+    <div className={`rounded-lg border transition-all cursor-pointer ${highlight ? "border-emerald-300 bg-emerald-50/40 hover:bg-primary/10 hover:border-primary hover:shadow-md" : "border-border bg-white hover:bg-primary/10 hover:border-primary hover:shadow-md"}`} data-testid={`survey-row-${survey.id}`} onClick={onToggle}>
       <div className="flex items-start justify-between gap-3 p-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-left min-w-0 flex-1"
-          data-testid={`button-toggle-survey-${survey.id}`}
-        >
+        <div className="text-left min-w-0 flex-1" data-testid={`button-toggle-survey-${survey.id}`}>
           <div className="flex items-center gap-2 flex-wrap">
             <ScoreIndicator average={survey.trend.length > 0 ? survey.trend[survey.trend.length - 1].average : survey.totals.responses > 0 ? survey.totals.average : null} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
@@ -963,24 +948,17 @@ function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPuls
           <p className="text-xs text-muted-foreground mt-0.5">
             Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
           </p>
-        </button>
+        </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
-            data-testid={`button-archive-survey-${survey.id}`}
+          <div
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border opacity-60"
+            aria-hidden
           >
             <Archive className="w-3 h-3" /> Archive
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            className="p-1.5 rounded hover:bg-muted/30"
-            aria-label={open ? "Collapse" : "Expand"}
-          >
+          </div>
+          <div className="p-1.5 rounded" aria-hidden>
             {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </button>
+          </div>
         </div>
       </div>
       {open && <DemoSurveyResultsView survey={survey} />}
