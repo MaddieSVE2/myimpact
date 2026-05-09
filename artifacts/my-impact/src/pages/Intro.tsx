@@ -1040,7 +1040,7 @@ export default function Intro() {
       </>
       )}
       {/* ── FOOTER ── */}
-      <footer className="mi-footer mt-[100px]" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
+      <footer className="mi-footer mt-[0px]" style={{ background: C.offBlack, padding: "40px 5%", textAlign: "center" }}>
         <img
           src={`${import.meta.env.BASE_URL}images/myimpact.png`}
           alt="My Impact"
