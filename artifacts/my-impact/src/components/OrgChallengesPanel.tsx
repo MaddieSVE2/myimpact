@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Flag, Plus, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -276,9 +276,23 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
   );
 }
 
+const DEMO_CHALLENGES_SESSION_KEY = "demo-org-challenges";
+
 function DemoOrgChallengesPanel() {
   const t = useT();
-  const [challenges, setChallenges] = useState(DEMO_CHALLENGES as ApiChallenge[]);
+  const [challenges, setChallenges] = useState<ApiChallenge[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(DEMO_CHALLENGES_SESSION_KEY);
+      if (stored) return JSON.parse(stored) as ApiChallenge[];
+    } catch {}
+    return DEMO_CHALLENGES as ApiChallenge[];
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DEMO_CHALLENGES_SESSION_KEY, JSON.stringify(challenges));
+    } catch {}
+  }, [challenges]);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

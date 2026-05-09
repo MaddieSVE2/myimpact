@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -738,9 +738,23 @@ const DEMO_TEMPLATE_OPTIONS: Array<{ key: Template; label: string; question: str
   { key: "custom",         label: "Custom question", question: "" },
 ];
 
+const DEMO_SURVEYS_SESSION_KEY = "demo-pulse-surveys";
+
 function DemoPulseSurveysSection() {
   const [openId, setOpenId] = useState<string | null>(null);
-  const [surveys, setSurveys] = useState<DemoPulseSurvey[]>(DEMO_PULSE_SURVEYS);
+  const [surveys, setSurveys] = useState<DemoPulseSurvey[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(DEMO_SURVEYS_SESSION_KEY);
+      if (stored) return JSON.parse(stored) as DemoPulseSurvey[];
+    } catch {}
+    return DEMO_PULSE_SURVEYS;
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DEMO_SURVEYS_SESSION_KEY, JSON.stringify(surveys));
+    } catch {}
+  }, [surveys]);
   const [creating, setCreating] = useState(false);
   const [template, setTemplate] = useState<Template>("meaningfulness");
   const [question, setQuestion] = useState(DEMO_TEMPLATE_OPTIONS[0].question);
