@@ -274,6 +274,7 @@ export const en = {
     sroiCsvAssumptionCost: "SROI assumption: {{costPerVolunteer}} per volunteer (recruitment, onboarding, support, admin)",
     sroiCsvAssumptionTotal: "Total investment: {{totalInvestment}} across {{members}} members",
     sroiCsvAssumptionRatio: "SROI ratio: {{ratio}} of social value per £1 invested",
+    sroiCsvAssumptionBreakdownLine: "Per-volunteer cost breakdown — {{label}}: {{amount}}",
     avgPerMemberSub: "social value across all members",
     avgHoursPerMember: "Avg hours per member",
     avgHoursPerMemberSub: "across all members",

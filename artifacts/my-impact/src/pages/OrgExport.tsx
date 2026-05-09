@@ -109,6 +109,29 @@ export default function OrgExport() {
       ratio: `£${sroiRatio.toFixed(2)}`,
     }),
   ];
+  // Append auditable per-volunteer cost sub-amounts when the org has entered
+  // them. Labels match the dashboard and PDF ("Recruitment / Onboarding /
+  // Support / Admin"). Lines are omitted cleanly when no breakdown is stored.
+  const costBreakdown = orgData.org.sroiCostBreakdown ?? null;
+  if (costBreakdown) {
+    const isCy = locale === "cy";
+    const breakdownItems: Array<{ value: number | null; en: string; cy: string }> = [
+      { value: costBreakdown.recruitment, en: "Recruitment", cy: "Recriwtio" },
+      { value: costBreakdown.onboarding,  en: "Onboarding",  cy: "Sefydlu" },
+      { value: costBreakdown.support,     en: "Support",     cy: "Cefnogaeth" },
+      { value: costBreakdown.admin,       en: "Admin",       cy: "Gweinyddu" },
+    ];
+    for (const item of breakdownItems) {
+      if (typeof item.value === "number") {
+        csvAssumptions.push(
+          t("orgDashboard.sroiCsvAssumptionBreakdownLine", {
+            label: isCy ? item.cy : item.en,
+            amount: `£${item.value.toLocaleString("en-GB")}`,
+          }),
+        );
+      }
+    }
+  }
 
   function handleCsvActivity() {
     if (filtered.length === 0) return;

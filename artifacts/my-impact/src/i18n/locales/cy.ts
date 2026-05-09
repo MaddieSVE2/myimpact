@@ -276,6 +276,7 @@ export const cy: Catalogue = {
     sroiCsvAssumptionCost: "Tybiaeth SROI: {{costPerVolunteer}} y gwirfoddolwr (recriwtio, sefydlu, cefnogaeth, gweinyddu)",
     sroiCsvAssumptionTotal: "Cyfanswm buddsoddiad: {{totalInvestment}} ar draws {{members}} aelod",
     sroiCsvAssumptionRatio: "Cymhareb SROI: {{ratio}} o werth cymdeithasol am bob £1 a fuddsoddwyd",
+    sroiCsvAssumptionBreakdownLine: "Dadansoddiad cost fesul gwirfoddolwr — {{label}}: {{amount}}",
     avgPerMemberSub: "gwerth cymdeithasol ar draws yr holl aelodau",
     avgHoursPerMember: "Oriau cyfartalog fesul aelod",
     avgHoursPerMemberSub: "ar draws yr holl aelodau",
