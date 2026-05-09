@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
+import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { useT } from "@/i18n";
 import {
   DEMO_ORG_ID, DEMO_INVITE_CODE, DEMO_ACTIVITIES,
@@ -242,6 +243,9 @@ export default function OrgDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Pulse summary — donut + sparkline aggregate of active surveys */}
+      <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
 
       {/* Trend over the year — line/area chart matches the public charity-example dashboard */}
       <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-monthly-trend">
