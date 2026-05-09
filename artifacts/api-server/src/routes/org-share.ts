@@ -179,6 +179,18 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request, res: Response) =
   const includeCategories = scope === "all" || scope === "categories";
   const includeRegions = scope === "all" || scope === "regions";
 
+  const costBreakdown = (
+    org.sroiCostRecruitment !== null ||
+    org.sroiCostOnboarding !== null ||
+    org.sroiCostSupport !== null ||
+    org.sroiCostAdmin !== null
+  ) ? {
+    recruitment: org.sroiCostRecruitment ?? null,
+    onboarding: org.sroiCostOnboarding ?? null,
+    support: org.sroiCostSupport ?? null,
+    admin: org.sroiCostAdmin ?? null,
+  } : null;
+
   res.json({
     share: {
       slug: link.slug,
@@ -187,6 +199,8 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request, res: Response) =
       expiresAt: link.expiresAt ? link.expiresAt.toISOString() : null,
       orgName: org.name,
       orgType: org.type,
+      sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
+      sroiCostBreakdown: costBreakdown,
     },
     sections: {
       summary: includeSummary ? summary : null,

@@ -11,6 +11,13 @@ import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+interface CostBreakdown {
+  recruitment: number | null;
+  onboarding: number | null;
+  support: number | null;
+  admin: number | null;
+}
+
 interface ShareInfo {
   slug: string;
   scope: "all" | "summary" | "timeline" | "categories" | "regions";
@@ -18,6 +25,8 @@ interface ShareInfo {
   expiresAt: string | null;
   orgName: string;
   orgType: string;
+  sroiCostPerVolunteer: number | null;
+  sroiCostBreakdown: CostBreakdown | null;
 }
 
 interface SummarySection {
@@ -43,6 +52,31 @@ interface ShareResponse {
 function formatExpiry(iso: string | null): string {
   if (!iso) return "no expiry";
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const BREAKDOWN_LABELS: Array<{ key: keyof CostBreakdown; label: string }> = [
+  { key: "recruitment", label: "Recruitment" },
+  { key: "onboarding",  label: "Onboarding" },
+  { key: "support",     label: "Support" },
+  { key: "admin",       label: "Admin" },
+];
+
+function CostBreakdownTable({ breakdown }: { breakdown: CostBreakdown | null }) {
+  if (!breakdown) return null;
+  const lines = BREAKDOWN_LABELS.filter(({ key }) => typeof breakdown[key] === "number");
+  if (lines.length === 0) return null;
+  return (
+    <table className="w-full text-xs mt-3 border-t border-border">
+      <tbody>
+        {lines.map(({ key, label }) => (
+          <tr key={key} className="border-t border-border first:border-0">
+            <td className="py-1.5 text-muted-foreground">{label}</td>
+            <td className="py-1.5 text-right font-semibold text-foreground">£{(breakdown[key] as number).toLocaleString("en-GB")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export default function OrgSharePage() {
@@ -166,6 +200,19 @@ export default function OrgSharePage() {
             <p className="text-2xl font-display font-bold text-foreground">{Math.round(summary.totalHours).toLocaleString("en-GB")}</p>
             <p className="text-xs text-muted-foreground mt-1">volunteering hours</p>
           </div>
+        </div>
+      )}
+
+      {/* Per-volunteer cost breakdown */}
+      {share.sroiCostPerVolunteer !== null && (
+        <div className="bg-white border border-border rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-1">Per-volunteer investment</h3>
+          <p className="text-xs text-muted-foreground mb-4">The estimated cost this organisation invests per volunteer.</p>
+          <div className="flex items-end gap-3 mb-3">
+            <p className="text-2xl font-display font-bold text-foreground">£{share.sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
+            <p className="text-xs text-muted-foreground mb-1">per volunteer</p>
+          </div>
+          <CostBreakdownTable breakdown={share.sroiCostBreakdown} />
         </div>
       )}
 
