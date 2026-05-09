@@ -253,14 +253,13 @@ export function Navbar() {
         { href: "/org/settings",   label: "Settings",   icon: Settings },
       ]
     : [
+        { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
+        { href: "/history", label: t("navbar.history"), icon: History },
         ...(isOrgManager
           ? []
           : [
-              { href: "/log", label: "Log activity", icon: PlusCircle },
-              { href: "/wizard/actions", label: t("navbar.calculate"), icon: Sparkles },
+              { href: "/log", label: "Quick Log", icon: PlusCircle },
             ]),
-        { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
-        { href: "/history", label: t("navbar.history"), icon: History },
         ...(gamificationEnabled
           ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]
           : []),
