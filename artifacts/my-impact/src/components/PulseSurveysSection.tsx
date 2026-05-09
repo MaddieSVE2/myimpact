@@ -75,6 +75,26 @@ const SCHEDULE_LABELS: Record<Schedule, string> = {
   quarterly: "Quarterly",
 };
 
+type SentimentBadge = { label: string; className: string } | null;
+
+function getSentimentBadge(
+  distribution: Array<{ rating: number; count: number }>,
+  totalResponses: number,
+): SentimentBadge {
+  if (totalResponses === 0) return null;
+  const positive = distribution.filter(d => d.rating >= 4).reduce((s, d) => s + d.count, 0);
+  const negative = distribution.filter(d => d.rating <= 2).reduce((s, d) => s + d.count, 0);
+  const posRatio = positive / totalResponses;
+  const negRatio = negative / totalResponses;
+  if (posRatio >= 0.6) {
+    return { label: "Mostly Positive", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" };
+  }
+  if (negRatio >= 0.4) {
+    return { label: "Needs Attention", className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" };
+  }
+  return { label: "Mixed", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" };
+}
+
 function useSurveys() {
   return useQuery<{ surveys: SurveyListItem[] }>({
     queryKey: ["org-surveys"],
@@ -375,6 +395,10 @@ function SurveyRow({
   disabled?: boolean;
 }) {
   const isArchived = !!survey.archivedAt;
+  const { data: resultsData } = useSurveyResults(survey.id);
+  const sentimentBadge = resultsData
+    ? getSentimentBadge(resultsData.distribution, resultsData.totals.responses)
+    : null;
   return (
     <div
       className={`rounded-lg border ${isArchived ? "border-border bg-muted/20" : "border-border bg-white"}`}
@@ -396,6 +420,14 @@ function SurveyRow({
             {survey.anonymous && (
               <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> Anonymous
+              </span>
+            )}
+            {sentimentBadge && (
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
+                data-testid={`badge-sentiment-${survey.id}`}
+              >
+                {sentimentBadge.label}
               </span>
             )}
           </div>
@@ -625,6 +657,7 @@ function DemoPulseSurveysSection() {
 }
 
 function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; open: boolean; onToggle: () => void }) {
+  const sentimentBadge = getSentimentBadge(survey.distribution, survey.totals.responses);
   return (
     <div className="rounded-lg border border-border bg-white" data-testid={`survey-row-${survey.id}`}>
       <div className="flex items-start justify-between gap-3 p-3">
@@ -643,6 +676,14 @@ function DemoSurveyRow({ survey, open, onToggle }: { survey: DemoPulseSurvey; op
             {survey.anonymous && (
               <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> Anonymous
+              </span>
+            )}
+            {sentimentBadge && (
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
+                data-testid={`badge-sentiment-${survey.id}`}
+              >
+                {sentimentBadge.label}
               </span>
             )}
           </div>
