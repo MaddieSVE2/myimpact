@@ -455,7 +455,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
                 <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
                   <span className="text-[10px] text-muted-foreground font-medium">{d.count}</span>
                   <div
-                    className="w-full rounded-t-sm bg-primary/60"
+                    className={`w-full rounded-t-sm ${d.rating <= 2 ? 'bg-red-400 dark:bg-red-500' : d.rating === 3 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
                     style={{ height: `${(d.count / max) * CHART_MAX_PX}px`, minHeight: d.count > 0 ? '4px' : '0px' }}
                   />
                 </div>
@@ -479,7 +479,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
                     <span className="text-[10px] text-foreground font-medium">{t.average.toFixed(1)}</span>
                     <span className="text-[9px] text-muted-foreground">({t.count})</span>
                     <div
-                      className="w-full rounded-t-sm bg-primary/60"
+                      className={`w-full rounded-t-sm ${t.average <= 2 ? 'bg-red-400 dark:bg-red-500' : t.average < 3.5 ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-400'}`}
                       style={{ height: `${(t.average / 5) * CHART_MAX_PX}px`, minHeight: t.average > 0 ? '4px' : '0px' }}
                     />
                   </div>
