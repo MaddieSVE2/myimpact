@@ -10,7 +10,7 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
-import { DEMO_CHALLENGES } from "@/lib/org-demo-mock";
+import { DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
 
 const DEMO = {
   org: { name: "Demo Organisation", type: "Corporate", location: "North West, England" },
@@ -84,12 +84,37 @@ const DEMO = {
     membersWithMultipleRoles: 18,
     avgMonthsActive: 14,
   },
-  challenges: DEMO_CHALLENGES,
-  pulse: [
-    { id: "demo-ps-001", question: "How meaningful does your volunteering feel right now?", schedule: "monthly", anonymous: true, trend: [{ label: "Apr 2026" }], totals: { average: 4.3, responses: 28 } },
-    { id: "demo-ps-002", question: "How connected do you feel to the rest of the team?", schedule: "quarterly", anonymous: true, trend: [{ label: "Q1 2026" }], totals: { average: 4.1, responses: 22 } },
-    { id: "demo-ps-003", question: "How are you feeling about your wellbeing this week?", schedule: "monthly", anonymous: true, trend: [{ label: "Apr 2026" }], totals: { average: 3.8, responses: 25 } },
+  challenges: [
+    {
+      id: "demo-ch-001", name: "Spring community sprint",
+      description: "Hit £3,000 of Community-category social value before the end of June.",
+      goalType: "social_value" as const, target: 3000, progressTotal: 2150, progressPercent: 72,
+      participantCount: 12, startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-06-30T23:59:59.000Z",
+      hasEnded: false, isActive: true,
+    },
+    {
+      id: "demo-ch-002", name: "150 environmental hours",
+      description: "A combined goal across all members to log 150 hours of environmental work this quarter.",
+      goalType: "hours" as const, target: 150, progressTotal: 92, progressPercent: 61,
+      participantCount: 11, startDate: "2026-05-01T00:00:00.000Z", endDate: "2026-07-31T23:59:59.000Z",
+      hasEnded: false, isActive: true,
+    },
+    {
+      id: "demo-ch-003", name: "Reading mentor month",
+      description: "Get 7 members signed up as weekly reading mentors at local primary schools.",
+      goalType: "social_value" as const, target: 1500, progressTotal: 870, progressPercent: 58,
+      participantCount: 7, startDate: "2026-05-01T00:00:00.000Z", endDate: "2026-05-31T23:59:59.000Z",
+      hasEnded: false, isActive: true,
+    },
+    {
+      id: "demo-ch-004", name: "Winter fundraising drive",
+      description: "Reach £5,000 of fundraising activity across the organisation.",
+      goalType: "social_value" as const, target: 5000, progressTotal: 5240, progressPercent: 100,
+      participantCount: 18, startDate: "2025-12-01T00:00:00.000Z", endDate: "2026-02-28T23:59:59.000Z",
+      hasEnded: true, isActive: false,
+    },
   ],
+  pulse: DEMO_PULSE_SURVEYS,
   monthlyTimeline: [
     { month: "Jan", value: 7200 },
     { month: "Feb", value: 16400 },

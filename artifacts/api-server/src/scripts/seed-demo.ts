@@ -2,6 +2,7 @@ import {
   db, pool,
   usersTable, organisationsTable, orgMembersTable,
   orgSurveysTable, orgSurveyResponsesTable,
+  challengesTable, challengeParticipantsTable,
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -229,8 +230,101 @@ async function ensureMembership(orgId: string, userId: string, role: "member" | 
     }
     return;
   }
-  await db.insert(orgMembersTable).values({ orgId, userId, role });
+  await db.insert(orgMembersTable).values({ orgId, userId, role, status: "active" });
   console.log(`  Membership created: user ${userId} -> org ${orgId} (${role})`);
+}
+
+// ---------------------------------------------------------------------------
+// Seed helpers (challenges)
+// ---------------------------------------------------------------------------
+
+
+interface DemoChallengeSpec {
+  id: string;
+  name: string;
+  description: string;
+  goalType: "social_value" | "hours";
+  target: string;
+  startDate: Date;
+  endDate: Date;
+  inviteCode: string;
+}
+
+const DEMO_CHALLENGE_SPECS: DemoChallengeSpec[] = [
+  {
+    id: "demo-ch-001",
+    name: "Spring community sprint",
+    description: "Hit £3,000 of Community-category social value before the end of June.",
+    goalType: "social_value",
+    target: "3000",
+    startDate: new Date("2026-04-01T00:00:00.000Z"),
+    endDate: new Date("2026-06-30T23:59:59.000Z"),
+    inviteCode: "DEMOCH001",
+  },
+  {
+    id: "demo-ch-002",
+    name: "150 environmental hours",
+    description: "A combined goal across all members to log 150 hours of environmental work this quarter.",
+    goalType: "hours",
+    target: "150",
+    startDate: new Date("2026-05-01T00:00:00.000Z"),
+    endDate: new Date("2026-07-31T23:59:59.000Z"),
+    inviteCode: "DEMOCH002",
+  },
+  {
+    id: "demo-ch-003",
+    name: "Reading mentor month",
+    description: "Get 7 members signed up as weekly reading mentors at local primary schools.",
+    goalType: "social_value",
+    target: "1500",
+    startDate: new Date("2026-05-01T00:00:00.000Z"),
+    endDate: new Date("2026-05-31T23:59:59.000Z"),
+    inviteCode: "DEMOCH003",
+  },
+  {
+    id: "demo-ch-004",
+    name: "Winter fundraising drive",
+    description: "Reach £5,000 of fundraising activity across the organisation.",
+    goalType: "social_value",
+    target: "5000",
+    startDate: new Date("2025-12-01T00:00:00.000Z"),
+    endDate: new Date("2026-02-28T23:59:59.000Z"),
+    inviteCode: "DEMOCH004",
+  },
+];
+
+async function ensureDemoChallenges(orgId: string, memberUserIds: string[]) {
+  for (const spec of DEMO_CHALLENGE_SPECS) {
+    const existing = await db.query.challengesTable.findFirst({
+      where: eq(challengesTable.id, spec.id),
+    });
+    if (existing) {
+      console.log(`  Challenge already exists: "${spec.name}", skipping.`);
+    } else {
+      await db.insert(challengesTable).values({
+        id: spec.id,
+        name: spec.name,
+        description: spec.description,
+        goalType: spec.goalType,
+        target: spec.target,
+        startDate: spec.startDate,
+        endDate: spec.endDate,
+        ownerId: null,
+        orgId,
+        scope: "org",
+        inviteCode: spec.inviteCode,
+      });
+      console.log(`  Challenge created: "${spec.name}"`);
+    }
+
+    for (const userId of memberUserIds) {
+      await db
+        .insert(challengeParticipantsTable)
+        .values({ challengeId: spec.id, userId })
+        .onConflictDoNothing();
+    }
+  }
+  console.log(`  Challenge participants enrolled: ${memberUserIds.join(", ")}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -373,6 +467,8 @@ async function seedDemo() {
   }
 
   console.log(`  Responses: ${totalInserted} inserted, ${totalSkipped} already existed.`);
+
+  await ensureDemoChallenges(orgId, [userId, orgAdminUserId]);
 
   console.log("Demo seed complete.");
   console.log(`  Member email:   ${DEMO_EMAIL}`);

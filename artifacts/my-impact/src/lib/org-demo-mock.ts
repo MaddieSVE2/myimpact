@@ -726,113 +726,251 @@ export function computeMonthlyTrend(activities: DemoActivity[] = DEMO_ACTIVITIES
 }
 
 // ---------------------------------------------------------------------------
-// Challenges (demo org only)
+// Pulse surveys (demo org only)
 // ---------------------------------------------------------------------------
-// Shape mirrors the `ApiChallenge` returned by `/api/challenges/mine` so the
-// `OrgChallengesPanel` can render demo data with no rework.
-export interface DemoChallenge {
+// Shape mirrors `SurveyListItem` + `SurveyResults` so both `OrgPulseSummaryCard`
+// and `PulseSurveysSection` can swap to demo data with no rework.
+export type DemoPulseSchedule = "one_off" | "monthly" | "quarterly";
+export type DemoPulseTemplate = "meaningfulness" | "wellbeing" | "custom";
+export interface DemoPulseSurvey {
   id: string;
-  name: string;
-  description: string;
-  goalType: "social_value" | "hours";
-  target: number;
-  startDate: string; // ISO
-  endDate: string;   // ISO
-  ownerId: string | null;
-  orgId: string;
-  scope: "org";
-  inviteCode: string;
-  hasEnded: boolean;
-  hasStarted: boolean;
-  participantCount: number;
-  isOwner: boolean;
-  progressTotal: number;
-  progressPercent: number;
-  isActive: boolean;
+  template: DemoPulseTemplate;
+  question: string;
+  schedule: DemoPulseSchedule;
+  anonymous: boolean;
+  createdAt: string;
+  archivedAt: string | null;
+  totals: { responses: number; average: number };
+  distribution: Array<{ rating: number; count: number }>;
+  trend: Array<{
+    windowKey: string;
+    label: string;
+    average: number;
+    count: number;
+    distribution: Array<{ rating: number; count: number }>;
+  }>;
+  comments: Array<{ id: string; comment: string; windowKey: string; windowLabel: string; createdAt: string }>;
 }
 
-export const DEMO_CHALLENGES: DemoChallenge[] = [
+export const DEMO_COMMENT_PRIVACY_THRESHOLD = 3;
+
+export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
   {
-    id: "demo-ch-001",
-    name: "Spring community sprint",
-    description: "Hit £3,000 of Community-category social value before the end of June.",
-    goalType: "social_value",
-    target: 3000,
-    progressTotal: 2150,
-    progressPercent: 72,
-    participantCount: 12,
-    startDate: "2026-04-01T00:00:00.000Z",
-    endDate: "2026-06-30T23:59:59.000Z",
-    ownerId: "m-001",
-    orgId: DEMO_ORG_ID,
-    scope: "org",
-    inviteCode: "DEMO-CH01",
-    hasStarted: true,
-    hasEnded: false,
-    isActive: true,
-    isOwner: true,
+    id: "demo-ps-001",
+    template: "meaningfulness",
+    question: "How meaningful does your volunteering feel right now?",
+    schedule: "monthly",
+    anonymous: true,
+    createdAt: "2025-09-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 28, average: 4.3 },
+    distribution: [
+      { rating: 1, count: 0 },
+      { rating: 2, count: 1 },
+      { rating: 3, count: 4 },
+      { rating: 4, count: 10 },
+      { rating: 5, count: 13 },
+    ],
+    trend: [
+      {
+        windowKey: "2025-09", label: "Sep 2025", average: 3.9, count: 18,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 8 },
+          { rating: 5, count: 5 },
+        ],
+      },
+      {
+        windowKey: "2025-10", label: "Oct 2025", average: 4.0, count: 21,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 3 },
+          { rating: 4, count: 11 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2025-11", label: "Nov 2025", average: 4.2, count: 24,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 2 },
+          { rating: 4, count: 12 },
+          { rating: 5, count: 9 },
+        ],
+      },
+      {
+        windowKey: "2026-04", label: "Apr 2026", average: 4.3, count: 28,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 0 },
+          { rating: 3, count: 3 },
+          { rating: 4, count: 13 },
+          { rating: 5, count: 12 },
+        ],
+      },
+    ],
+    comments: [
+      { id: "demo-cm-001", comment: "The reading-mentor sessions are easily the highlight of my month.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-12T10:00:00.000Z" },
+      { id: "demo-cm-002", comment: "Loving the variety, I feel like I'm actually making a difference locally.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-15T18:00:00.000Z" },
+      { id: "demo-cm-003", comment: "Would love a bit more notice on event dates so I can plan around work.", windowKey: "2025-11", windowLabel: "Nov 2025", createdAt: "2025-11-20T08:30:00.000Z" },
+      { id: "demo-cm-004", comment: "Felt really welcomed at my first session, thanks for pairing me with Jas.", windowKey: "2025-11", windowLabel: "Nov 2025", createdAt: "2025-11-18T19:00:00.000Z" },
+      { id: "demo-cm-005", comment: "Could we get a bit more intro training before being put on shift?", windowKey: "2025-10", windowLabel: "Oct 2025", createdAt: "2025-10-09T07:30:00.000Z" },
+    ],
   },
   {
-    id: "demo-ch-002",
-    name: "150 environmental hours",
-    description: "A combined goal across all members to log 150 hours of environmental work this quarter.",
-    goalType: "hours",
-    target: 150,
-    progressTotal: 92,
-    progressPercent: 61,
-    participantCount: 11,
-    startDate: "2026-05-01T00:00:00.000Z",
-    endDate: "2026-07-31T23:59:59.000Z",
-    ownerId: "m-001",
-    orgId: DEMO_ORG_ID,
-    scope: "org",
-    inviteCode: "DEMO-CH02",
-    hasStarted: true,
-    hasEnded: false,
-    isActive: true,
-    isOwner: true,
+    id: "demo-ps-002",
+    template: "custom",
+    question: "How connected do you feel to the rest of the team?",
+    schedule: "quarterly",
+    anonymous: true,
+    createdAt: "2025-07-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 22, average: 4.1 },
+    distribution: [
+      { rating: 1, count: 0 },
+      { rating: 2, count: 1 },
+      { rating: 3, count: 4 },
+      { rating: 4, count: 10 },
+      { rating: 5, count: 7 },
+    ],
+    trend: [
+      {
+        windowKey: "2025-Q3", label: "Q3 2025", average: 3.7, count: 17,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 2 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 8 },
+          { rating: 5, count: 3 },
+        ],
+      },
+      {
+        windowKey: "2025-Q4", label: "Q4 2025", average: 3.9, count: 19,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 9 },
+          { rating: 5, count: 5 },
+        ],
+      },
+      {
+        windowKey: "2026-Q1", label: "Q1 2026", average: 4.0, count: 21,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 10 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2026-Q2", label: "Q2 2026", average: 4.1, count: 22,
+        distribution: [
+          { rating: 1, count: 0 },
+          { rating: 2, count: 1 },
+          { rating: 3, count: 4 },
+          { rating: 4, count: 10 },
+          { rating: 5, count: 7 },
+        ],
+      },
+    ],
+    comments: [
+      { id: "demo-cm-101", comment: "The new buddy pairings really help when you're starting out.", windowKey: "2026-Q2", windowLabel: "Q2 2026", createdAt: "2026-04-08T12:00:00.000Z" },
+      { id: "demo-cm-102", comment: "More socials would be great, I only really see people on shifts.", windowKey: "2026-Q1", windowLabel: "Q1 2026", createdAt: "2026-02-18T18:00:00.000Z" },
+      { id: "demo-cm-103", comment: "WhatsApp group has been brilliant for last-minute swaps.", windowKey: "2026-Q2", windowLabel: "Q2 2026", createdAt: "2026-04-25T09:15:00.000Z" },
+      { id: "demo-cm-104", comment: "Quarterly catch-up was a nice touch, felt heard.", windowKey: "2025-Q4", windowLabel: "Q4 2025", createdAt: "2025-12-12T16:00:00.000Z" },
+    ],
   },
   {
-    id: "demo-ch-003",
-    name: "Reading mentor month",
-    description: "Get 7 members signed up as weekly reading mentors at local primary schools.",
-    goalType: "social_value",
-    target: 1500,
-    progressTotal: 870,
-    progressPercent: 58,
-    participantCount: 7,
-    startDate: "2026-05-01T00:00:00.000Z",
-    endDate: "2026-05-31T23:59:59.000Z",
-    ownerId: "m-001",
-    orgId: DEMO_ORG_ID,
-    scope: "org",
-    inviteCode: "DEMO-CH03",
-    hasStarted: true,
-    hasEnded: false,
-    isActive: true,
-    isOwner: true,
-  },
-  {
-    id: "demo-ch-004",
-    name: "Winter fundraising drive",
-    description: "Reach £5,000 of fundraising activity across the organisation.",
-    goalType: "social_value",
-    target: 5000,
-    progressTotal: 5240,
-    progressPercent: 100,
-    participantCount: 18,
-    startDate: "2025-12-01T00:00:00.000Z",
-    endDate: "2026-02-28T23:59:59.000Z",
-    ownerId: "m-001",
-    orgId: DEMO_ORG_ID,
-    scope: "org",
-    inviteCode: "DEMO-CH04",
-    hasStarted: true,
-    hasEnded: true,
-    isActive: false,
-    isOwner: true,
+    id: "demo-ps-003",
+    template: "wellbeing",
+    question: "How are you feeling about your wellbeing this week?",
+    schedule: "monthly",
+    anonymous: true,
+    createdAt: "2025-10-01T09:00:00.000Z",
+    archivedAt: null,
+    totals: { responses: 41, average: 3.8 },
+    distribution: [
+      { rating: 1, count: 1 },
+      { rating: 2, count: 3 },
+      { rating: 3, count: 9 },
+      { rating: 4, count: 17 },
+      { rating: 5, count: 11 },
+    ],
+    trend: [
+      {
+        windowKey: "2026-01", label: "Jan 2026", average: 3.5, count: 32,
+        distribution: [
+          { rating: 1, count: 2 },
+          { rating: 2, count: 4 },
+          { rating: 3, count: 9 },
+          { rating: 4, count: 11 },
+          { rating: 5, count: 6 },
+        ],
+      },
+      {
+        windowKey: "2026-02", label: "Feb 2026", average: 3.6, count: 36,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 4 },
+          { rating: 3, count: 10 },
+          { rating: 4, count: 13 },
+          { rating: 5, count: 8 },
+        ],
+      },
+      {
+        windowKey: "2026-03", label: "Mar 2026", average: 3.7, count: 39,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 3 },
+          { rating: 3, count: 10 },
+          { rating: 4, count: 15 },
+          { rating: 5, count: 10 },
+        ],
+      },
+      {
+        windowKey: "2026-04", label: "Apr 2026", average: 3.8, count: 41,
+        distribution: [
+          { rating: 1, count: 1 },
+          { rating: 2, count: 3 },
+          { rating: 3, count: 9 },
+          { rating: 4, count: 17 },
+          { rating: 5, count: 11 },
+        ],
+      },
+    ],
+    comments: [
+      { id: "demo-cm-201", comment: "Volunteering has genuinely been good for my own headspace.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-10T20:00:00.000Z" },
+      { id: "demo-cm-202", comment: "Bit run-down this month, taking next week off the rota.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-22T07:30:00.000Z" },
+      { id: "demo-cm-203", comment: "Honestly the social side keeps me going through busy weeks at work.", windowKey: "2026-04", windowLabel: "Apr 2026", createdAt: "2026-04-28T19:45:00.000Z" },
+      { id: "demo-cm-204", comment: "Felt better after the wellbeing chat session, more of those please.", windowKey: "2026-03", windowLabel: "Mar 2026", createdAt: "2026-03-14T17:00:00.000Z" },
+      { id: "demo-cm-205", comment: "Stretched thin between work and shifts, could do with shorter slots.", windowKey: "2026-02", windowLabel: "Feb 2026", createdAt: "2026-02-09T08:00:00.000Z" },
+      { id: "demo-cm-206", comment: "Energising start to the year, really needed it after the holidays.", windowKey: "2026-01", windowLabel: "Jan 2026", createdAt: "2026-01-21T18:30:00.000Z" },
+    ],
   },
 ];
+
+// Pre-computed summary used by `OrgPulseSummaryCard` for the demo org.
+export interface DemoPulseSummary {
+  active: number;
+  responses: number;
+  average: number;
+}
+export function computeDemoPulseSummary(surveys: DemoPulseSurvey[] = DEMO_PULSE_SURVEYS): DemoPulseSummary {
+  const active = surveys.filter(s => !s.archivedAt);
+  const responses = active.reduce((s, x) => s + x.totals.responses, 0);
+  const weighted = active.reduce((s, x) => s + x.totals.average * x.totals.responses, 0);
+  return {
+    active: active.length,
+    responses,
+    average: responses > 0 ? weighted / responses : 0,
+  };
+}
 
 // Mock invite link state: managers can revoke + regenerate. Persisted per-org so demos survive a refresh.
 const INVITE_KEY = (orgId: string) => `org-invite-code:${orgId}`;

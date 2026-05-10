@@ -155,8 +155,10 @@ router.get("/prompts", authenticate, async (req: AuthenticatedRequest, res) => {
                 .where(
                   and(
                     inArray(impactRecordsTable.userId, participantIds),
-                    gte(impactRecordsTable.createdAt, c.startDate),
+                    gte(impactRecordsTable.entryDate, c.startDate),
+                    lte(impactRecordsTable.entryDate, c.endDate),
                     lte(impactRecordsTable.createdAt, c.endDate),
+                    eq(impactRecordsTable.submittedToOrgId, orgId),
                   ),
                 );
 

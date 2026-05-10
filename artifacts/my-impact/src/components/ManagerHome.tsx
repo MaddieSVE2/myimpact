@@ -6,7 +6,7 @@ import {
   ArrowRight, BarChart2, FileSpreadsheet, Download,
 } from "lucide-react";
 import {
-  DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_CHALLENGES,
+  DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_PULSE_SURVEYS,
   computeDemoAggregates, getRemovedMemberIds,
 } from "@/lib/org-demo-mock";
 
@@ -132,7 +132,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !isDemo,
+    enabled: true,
     retry: false,
   });
 
@@ -203,7 +203,12 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
     hoursSub = `${agg.totalActivities} activities`;
     valueValue = formatGBP(agg.totalSocialValue);
     valueSub = `${formatGBP(agg.verifiedSocialValue)} verified`;
-    challengesValue = String(DEMO_CHALLENGES.filter(c => c.isActive && c.scope === "org").length);
+    if (liveChallengesQuery.data) {
+      const active = liveChallengesQuery.data.challenges.filter(
+        c => c.isActive && c.scope === "org",
+      ).length;
+      challengesValue = String(active);
+    }
   } else {
     if (liveStatsQuery.data) {
       const s = liveStatsQuery.data;

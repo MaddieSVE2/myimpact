@@ -67,16 +67,22 @@ async function listChallengeRecords(
   participantIds: string[]
 ) {
   if (participantIds.length === 0) return [] as typeof impactRecordsTable.$inferSelect[];
+
+  const conditions = [
+    inArray(impactRecordsTable.userId, participantIds),
+    gte(impactRecordsTable.entryDate, challenge.startDate),
+    lte(impactRecordsTable.entryDate, challenge.endDate),
+    lte(impactRecordsTable.createdAt, challenge.endDate),
+  ];
+
+  if (challenge.scope === "org" && challenge.orgId) {
+    conditions.push(eq(impactRecordsTable.submittedToOrgId, challenge.orgId));
+  }
+
   return await db
     .select()
     .from(impactRecordsTable)
-    .where(
-      and(
-        inArray(impactRecordsTable.userId, participantIds),
-        gte(impactRecordsTable.createdAt, challenge.startDate),
-        lte(impactRecordsTable.createdAt, challenge.endDate)
-      )
-    );
+    .where(and(...conditions));
 }
 
 async function computeProgress(
@@ -490,6 +496,43 @@ router.post("/:id/leave", authenticate, async (req: AuthenticatedRequest, res) =
   } catch (err) {
     console.error("Leave challenge error:", err);
     res.status(500).json({ error: "Failed to leave challenge" });
+  }
+});
+
+router.post("/:id/end", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const id = String(req.params.id);
+
+    const challenge = await db.query.challengesTable.findFirst({
+      where: eq(challengesTable.id, id),
+    });
+    if (!challenge) { res.status(404).json({ error: "Challenge not found" }); return; }
+
+    let canEnd = challenge.ownerId === userId;
+    if (!canEnd && challenge.scope === "org" && challenge.orgId) {
+      const membership = await getOrgManagerMembership(userId);
+      if (membership && membership.orgId === challenge.orgId) canEnd = true;
+    }
+    if (!canEnd) {
+      res.status(403).json({ error: "Only the challenge owner or org manager can end this challenge" }); return;
+    }
+
+    if (challenge.endDate.getTime() < Date.now()) {
+      res.status(400).json({ error: "Challenge has already ended" }); return;
+    }
+
+    const now = new Date();
+    const [updated] = await db
+      .update(challengesTable)
+      .set({ endDate: now })
+      .where(eq(challengesTable.id, id))
+      .returning();
+
+    res.json({ ok: true, challenge: serializeChallenge(updated) });
+  } catch (err) {
+    console.error("End challenge error:", err);
+    res.status(500).json({ error: "Failed to end challenge" });
   }
 });
 
