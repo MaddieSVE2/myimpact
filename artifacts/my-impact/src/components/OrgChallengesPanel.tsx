@@ -356,13 +356,11 @@ function DemoOrgChallengesPanel() {
           </button>
         )}
       </div>
-
       {successId && (
         <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-challenge-success">
           Challenge created successfully.
         </p>
       )}
-
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
           <div>
@@ -437,14 +435,13 @@ function DemoOrgChallengesPanel() {
           </div>
         </div>
       )}
-
       <div className="mt-4 space-y-2" data-testid="list-org-challenges">
         {challenges.map(c => {
           const pct = Math.min(100, Math.max(0, Math.round(c.progressPercent)));
           const targetLabel = c.goalType === "social_value" ? `£${c.target.toLocaleString("en-GB")}` : `${c.target} ${t("orgDashboard.challengesHoursUnit")}`;
           const progressLabel = c.goalType === "social_value" ? `£${Math.round(c.progressTotal).toLocaleString("en-GB")}` : `${Math.round(c.progressTotal)} ${t("orgDashboard.challengesHoursUnit")}`;
           return (
-            <div key={c.id} className={`rounded-lg border p-3 ${c.id === successId ? "border-emerald-300 bg-emerald-50/40" : "border-border"}`} data-testid={`org-challenge-${c.id}`}>
+            <div key={c.id} className="rounded-lg border p-3 border-border bg-[#ffffff]" data-testid={`org-challenge-${c.id}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
