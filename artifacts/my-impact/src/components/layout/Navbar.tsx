@@ -600,7 +600,7 @@ export function Navbar() {
                   Pulse
                 </Link>
                 <Link
-                  href="/challenges"
+                  href="/org/member/challenges"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
                   data-testid="member-subnav-challenges-mobile"

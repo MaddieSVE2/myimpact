@@ -36,7 +36,7 @@ export function OrgMemberSubNav() {
 
   const items = [
     { href: "/org/member/pulse", label: "Pulse", icon: ClipboardList, testId: "member-subnav-pulse", active: pulseActive },
-    { href: "/org/challenges", label: "Challenges", icon: Trophy, testId: "member-subnav-challenges", active: location === "/org/challenges" || location.startsWith("/org/challenges/") },
+    { href: "/org/member/challenges", label: "Challenges", icon: Trophy, testId: "member-subnav-challenges", active: location === "/org/member/challenges" || location.startsWith("/org/member/challenges/") },
     { href: "/org/submit", label: `Share with ${orgName}`, icon: Building2, testId: "member-subnav-share", active: location === "/org/submit" || location.startsWith("/org/submit/") },
   ];
 
