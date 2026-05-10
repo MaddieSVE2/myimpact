@@ -39,6 +39,7 @@ import OrgDashboard from "@/pages/OrgDashboard";
 import OrgActivities from "@/pages/OrgActivities";
 import OrgChallenges from "@/pages/OrgChallenges";
 import OrgPulse from "@/pages/OrgPulse";
+import OrgMemberPulse from "@/pages/OrgMemberPulse";
 import OrgExport from "@/pages/OrgExport";
 import OrgSettings from "@/pages/OrgSettings";
 import OrgRegister from "@/pages/OrgRegister";
@@ -322,6 +323,9 @@ function AppRouter() {
             </Route>
             <Route path="/org/challenges">
               {() => <PrivateRoute component={OrgChallenges} />}
+            </Route>
+            <Route path="/org/member/pulse">
+              {() => <PrivateRoute component={OrgMemberPulse} />}
             </Route>
             <Route path="/org/pulse">
               {() => <PrivateRoute component={OrgPulse} />}

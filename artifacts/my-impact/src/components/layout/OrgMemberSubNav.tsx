@@ -32,11 +32,11 @@ export function OrgMemberSubNav() {
   if (!isOrgMemberOnly) return null;
 
   const orgName = orgData?.org?.name ?? "My Organisation";
-  const pulseActive = location === "/";
+  const pulseActive = location === "/org/member/pulse" || location.startsWith("/org/member/pulse/");
 
   const items = [
-    { href: "/#org-prompts-section", label: "Pulse", icon: ClipboardList, testId: "member-subnav-pulse", active: pulseActive },
-    { href: "/challenges", label: "Challenges", icon: Trophy, testId: "member-subnav-challenges", active: location === "/challenges" || location.startsWith("/challenges/") },
+    { href: "/org/member/pulse", label: "Pulse", icon: ClipboardList, testId: "member-subnav-pulse", active: pulseActive },
+    { href: "/org/challenges", label: "Challenges", icon: Trophy, testId: "member-subnav-challenges", active: location === "/org/challenges" || location.startsWith("/org/challenges/") },
     { href: "/org/submit", label: `Share with ${orgName}`, icon: Building2, testId: "member-subnav-share", active: location === "/org/submit" || location.startsWith("/org/submit/") },
   ];
 
