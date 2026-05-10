@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
@@ -132,7 +132,7 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     return;
   }
 
-  res.json({ ok: true, orgName: org.name, orgId: org.id });
+  res.json({ ok: true, orgName: org.name, orgId: org.id, allowedDomain: org.allowedDomain ?? null });
 });
 
 router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -161,6 +161,17 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const userEmail = req.user!.email;
 
+  // Domain restriction: if the org has allowedDomain set, reject emails that don't match.
+  if (org.allowedDomain) {
+    const emailDomain = userEmail.split("@")[1]?.toLowerCase() ?? "";
+    if (emailDomain !== org.allowedDomain.toLowerCase()) {
+      res.status(403).json({
+        error: `This organisation only accepts members with an @${org.allowedDomain} email address.`,
+      });
+      return;
+    }
+  }
+
   const registration = await db.query.orgRegistrationsTable.findFirst({
     where: and(
       eq(orgRegistrationsTable.inviteCode, inviteCode.trim().toUpperCase()),
@@ -171,6 +182,8 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
 
   const shouldBeManager = registration?.contactEmail?.toLowerCase() === userEmail.toLowerCase();
   const role = shouldBeManager ? "manager" : "member";
+  // Managers are active immediately; regular members start as pending.
+  const memberStatus = shouldBeManager ? "active" : "pending";
 
   const existing = await db.query.orgMembersTable.findFirst({
     where: (t, { and }) => and(eq(t.orgId, org.id), eq(t.userId, userId)),
@@ -179,10 +192,10 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   if (existing) {
     if (shouldBeManager && existing.role !== "manager") {
       await db.update(orgMembersTable)
-        .set({ role: "manager" })
+        .set({ role: "manager", status: "active" })
         .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     }
-    res.json({ ok: true, orgName: org.name, alreadyMember: true });
+    res.json({ ok: true, orgName: org.name, alreadyMember: true, status: existing.status });
     return;
   }
 
@@ -194,26 +207,28 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  await db.insert(orgMembersTable).values({ orgId: org.id, userId, role });
+  await db.insert(orgMembersTable).values({ orgId: org.id, userId, role, status: memberStatus });
 
-  enqueueOrgEvent({
-    orgId: org.id,
-    eventType: "member.joined",
-    payload: {
-      member: { ref: userId, email: userEmail },
-      role,
-      joinedAt: new Date().toISOString(),
-    },
-  }).catch(err => console.error("[org.join] failed to enqueue member.joined:", err));
+  if (shouldBeManager) {
+    enqueueOrgEvent({
+      orgId: org.id,
+      eventType: "member.joined",
+      payload: {
+        member: { ref: userId, email: userEmail },
+        role,
+        joinedAt: new Date().toISOString(),
+      },
+    }).catch(err => console.error("[org.join] failed to enqueue member.joined:", err));
 
-  trackServerEvent({
-    eventName: "org_invite_accepted",
-    userId,
-    surface: "org",
-    props: { role, orgType: org.type ?? "unknown" },
-  });
+    trackServerEvent({
+      eventName: "org_invite_accepted",
+      userId,
+      surface: "org",
+      props: { role, orgType: org.type ?? "unknown" },
+    });
+  }
 
-  res.json({ ok: true, orgName: org.name, alreadyMember: false });
+  res.json({ ok: true, orgName: org.name, alreadyMember: false, status: memberStatus });
 });
 
 router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -252,6 +267,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       name: org.name,
       type: org.type,
       role: membership.role,
+      membershipStatus: membership.status,
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
@@ -262,6 +278,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
         admin: org.sroiCostAdmin ?? null,
       },
       summaryYearStart: org.summaryYearStart ?? "01-01",
+      allowedDomain: org.allowedDomain ?? null,
       branding: {
         logoUrl,
         logoKey: org.logoKey ?? null,
@@ -416,12 +433,13 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart } = body as {
+  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart, allowedDomain } = body as {
     aiSidekickEnabled?: unknown;
     challengeLeaderboardEnabled?: unknown;
     sroiCostPerVolunteer?: unknown;
     sroiCostBreakdown?: unknown;
     summaryYearStart?: unknown;
+    allowedDomain?: unknown;
   };
   const updates: {
     aiSidekickEnabled?: boolean;
@@ -432,6 +450,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     sroiCostSupport?: number | null;
     sroiCostAdmin?: number | null;
     summaryYearStart?: string;
+    allowedDomain?: string | null;
   } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
@@ -447,6 +466,22 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
     updates.summaryYearStart = summaryYearStart;
+  }
+
+  if ("allowedDomain" in body) {
+    if (allowedDomain === null || allowedDomain === "" || allowedDomain === undefined) {
+      updates.allowedDomain = null;
+    } else if (typeof allowedDomain === "string") {
+      const cleaned = allowedDomain.trim().toLowerCase().replace(/^@/, "");
+      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(cleaned)) {
+        res.status(400).json({ error: "allowedDomain must be a valid domain (e.g. organisation.org) without the @ symbol." });
+        return;
+      }
+      updates.allowedDomain = cleaned;
+    } else {
+      res.status(400).json({ error: "allowedDomain must be a domain string or null." });
+      return;
+    }
   }
 
   // Validate a single sub-amount: must be null or an integer between 0 and 1,000,000.
@@ -582,6 +617,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
         admin: updated.sroiCostAdmin ?? null,
       },
       summaryYearStart: updated.summaryYearStart ?? "01-01",
+      allowedDomain: updated.allowedDomain ?? null,
     },
   });
 });
@@ -701,7 +737,7 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
     const to = toRaw ? endOfDay(toRaw) : undefined;
 
     const members = await db.query.orgMembersTable.findMany({
-      where: eq(orgMembersTable.orgId, org.id),
+      where: and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.status, "active")),
     });
 
     const memberIds = members.map(m => m.userId);
@@ -825,7 +861,7 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
     }
 
     const members = await db.query.orgMembersTable.findMany({
-      where: eq(orgMembersTable.orgId, membership.orgId),
+      where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")),
     });
     const memberIds = members.map(m => m.userId);
 
@@ -1100,7 +1136,7 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
     }
 
     const members = await db.query.orgMembersTable.findMany({
-      where: eq(orgMembersTable.orgId, membership.orgId),
+      where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")),
     });
     const memberIds = members.map(m => m.userId);
 
@@ -1177,6 +1213,131 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
 });
 
 // ---------------------------------------------------------------------------
+// Members management endpoints (manager-only)
+// ---------------------------------------------------------------------------
+
+router.get("/my/members", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can view the member list." }); return; }
+
+  const pageSizeParam = typeof req.query.pageSize === "string" ? parseInt(req.query.pageSize, 10) : 20;
+  const pageSize = Number.isFinite(pageSizeParam) && pageSizeParam >= 1 && pageSizeParam <= 100 ? pageSizeParam : 20;
+  const pageParam = typeof req.query.page === "string" ? parseInt(req.query.page, 10) : 1;
+  const page = Number.isFinite(pageParam) && pageParam >= 1 ? pageParam : 1;
+  const offset = (page - 1) * pageSize;
+
+  const statusFilter = req.query.status === "pending" ? "pending" : req.query.status === "all" ? null : "active";
+
+  const whereCondition = statusFilter !== null
+    ? and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, statusFilter))
+    : eq(orgMembersTable.orgId, membership.orgId);
+
+  const [totalResult, rows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(orgMembersTable).where(whereCondition),
+    db.select({
+      orgId: orgMembersTable.orgId,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      status: orgMembersTable.status,
+      joinedAt: orgMembersTable.joinedAt,
+    }).from(orgMembersTable)
+      .where(whereCondition)
+      .orderBy(asc(orgMembersTable.joinedAt))
+      .limit(pageSize)
+      .offset(offset),
+  ]);
+
+  const total = totalResult[0]?.count ?? 0;
+  const memberUserIds = rows.map(r => r.userId);
+
+  const [userRows, profileRows] = memberUserIds.length > 0 ? await Promise.all([
+    db.select({ id: usersTable.id, email: usersTable.email, displayName: usersTable.displayName })
+      .from(usersTable).where(inArray(usersTable.id, memberUserIds)),
+    db.select({ userId: userProfilesTable.userId, postcode: userProfilesTable.postcode })
+      .from(userProfilesTable).where(inArray(userProfilesTable.userId, memberUserIds)),
+  ]) : [[], []];
+
+  const userMap = new Map(userRows.map(u => [u.id, u]));
+  const profileMap = new Map(profileRows.map(p => [p.userId, p]));
+
+  const members = rows.map(r => {
+    const u = userMap.get(r.userId);
+    const p = profileMap.get(r.userId);
+    return {
+      userId: r.userId,
+      name: u?.displayName ?? u?.email ?? r.userId,
+      email: u?.email ?? "",
+      role: r.role,
+      status: r.status,
+      joinedAt: r.joinedAt.toISOString(),
+      postcode: p?.postcode ?? null,
+    };
+  });
+
+  res.json({ members, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+});
+
+router.post("/my/members/:userId/approve", authenticate, async (req: AuthenticatedRequest, res) => {
+  const actorId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.userId, actorId), eq(orgMembersTable.status, "active")),
+  });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can approve requests." }); return; }
+
+  const { userId } = req.params;
+  const target = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)),
+  });
+  if (!target) { res.status(404).json({ error: "Member request not found." }); return; }
+  if (target.status !== "pending") { res.json({ ok: true, alreadyActive: true }); return; }
+
+  await db.update(orgMembersTable)
+    .set({ status: "active" })
+    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
+
+  const targetUser = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
+  enqueueOrgEvent({
+    orgId: membership.orgId,
+    eventType: "member.joined",
+    payload: {
+      member: { ref: userId, email: targetUser?.email ?? "" },
+      role: target.role,
+      joinedAt: new Date().toISOString(),
+    },
+  }).catch(err => console.error("[org.approve] failed to enqueue member.joined:", err));
+
+  res.json({ ok: true });
+});
+
+router.post("/my/members/:userId/reject", authenticate, async (req: AuthenticatedRequest, res) => {
+  const actorId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.userId, actorId), eq(orgMembersTable.status, "active")),
+  });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can reject requests." }); return; }
+
+  const { userId } = req.params;
+  const target = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)),
+  });
+  if (!target) { res.status(404).json({ error: "Member request not found." }); return; }
+  if (target.status !== "pending") {
+    res.status(409).json({ error: "Only pending join requests can be rejected." }); return;
+  }
+
+  await db.delete(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "pending")));
+
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
 // Manager-only helper — used by both the Match programme and Enterprise SSO
 // admin endpoints below. Returns the full membership row so callers can read
 // `.orgId`, `.role`, etc.
@@ -1185,7 +1346,7 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
 async function requireOrgManager(req: AuthenticatedRequest, res: import("express").Response) {
   const userId = req.user!.id;
   const membership = await db.query.orgMembersTable.findFirst({
-    where: eq(orgMembersTable.userId, userId),
+    where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")),
   });
   if (!membership) {
     res.status(404).json({ error: "You are not a member of any organisation." });
@@ -1333,7 +1494,7 @@ function parseRecordForMatch(raw: unknown): ResultJsonForMatch {
 
 async function loadOrgMatchSet(orgId: string, from?: Date, to?: Date) {
   const members = await db.query.orgMembersTable.findMany({
-    where: eq(orgMembersTable.orgId, orgId),
+    where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
   });
   const memberIds = members.map(m => m.userId);
 

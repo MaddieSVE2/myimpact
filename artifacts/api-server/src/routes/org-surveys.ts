@@ -64,7 +64,7 @@ function describeWindow(schedule: Schedule, key: string): string {
 async function requireMembership(req: AuthenticatedRequest, res: Response) {
   const userId = req.user!.id;
   const membership = await db.query.orgMembersTable.findFirst({
-    where: eq(orgMembersTable.userId, userId),
+    where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")),
   });
   if (!membership) {
     res.status(404).json({ error: "You are not a member of any organisation." });

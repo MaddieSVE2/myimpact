@@ -51,7 +51,7 @@ function parseResult(raw: unknown): ParsedResult {
 
 async function getOrgManagerMembership(userId: string) {
   return await db.query.orgMembersTable.findFirst({
-    where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.role, "manager")),
+    where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.role, "manager"), eq(orgMembersTable.status, "active")),
   });
 }
 
@@ -249,7 +249,7 @@ router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
       await ensureParticipant(id, userId);
     } else if (scope === "org" && orgId) {
       const members = await db.query.orgMembersTable.findMany({
-        where: eq(orgMembersTable.orgId, orgId),
+        where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
       });
       if (members.length > 0) {
         await db
@@ -376,7 +376,8 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
       const membership = await db.query.orgMembersTable.findFirst({
         where: and(
           eq(orgMembersTable.userId, userId),
-          eq(orgMembersTable.orgId, challenge.orgId)
+          eq(orgMembersTable.orgId, challenge.orgId),
+          eq(orgMembersTable.status, "active")
         ),
       });
       if (membership) canView = true;
@@ -444,11 +445,12 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       const membership = await db.query.orgMembersTable.findFirst({
         where: and(
           eq(orgMembersTable.userId, userId),
-          eq(orgMembersTable.orgId, challenge.orgId)
+          eq(orgMembersTable.orgId, challenge.orgId),
+          eq(orgMembersTable.status, "active")
         ),
       });
       if (!membership) {
-        res.status(403).json({ error: "You must be a member of the organisation to join this challenge" }); return;
+        res.status(403).json({ error: "You must be an active member of the organisation to join this challenge" }); return;
       }
     }
 

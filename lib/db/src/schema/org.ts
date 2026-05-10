@@ -41,6 +41,7 @@ export const organisationsTable = pgTable("organisations", {
   // (calendar year). Admins can choose: calendar (01-01), academic (09-01),
   // financial (04-01), or any custom month-day.
   summaryYearStart: text("summary_year_start").notNull().default("01-01"),
+  allowedDomain: text("allowed_domain"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -48,6 +49,7 @@ export const orgMembersTable = pgTable("org_members", {
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
   userId: text("user_id").notNull().references(() => usersTable.id),
   role: text("role").notNull().default("member"),
+  status: text("status").notNull().default("pending"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (table) => ({
   userUnique: unique("org_members_user_unique").on(table.userId),

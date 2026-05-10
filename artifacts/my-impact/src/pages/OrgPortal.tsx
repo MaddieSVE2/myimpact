@@ -759,8 +759,9 @@ function OrgSelector({ selected, onSelect }: { selected: OrgListItem | null; onS
 function JoinOrgPanel() {
   const [code, setCode] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<OrgListItem | null>(null);
-  const [step, setStep] = useState<"entry" | "consent" | "joined">("entry");
+  const [step, setStep] = useState<"entry" | "consent" | "joined" | "pending">("entry");
   const [orgName, setOrgName] = useState("");
+  const [allowedDomain, setAllowedDomain] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fromInviteLink, setFromInviteLink] = useState(false);
   const queryClient = useQueryClient();
@@ -803,10 +804,11 @@ function JoinOrgPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
-      return data as { ok: boolean; orgName: string };
+      return data as { ok: boolean; orgName: string; allowedDomain: string | null };
     },
     onSuccess: (data) => {
       setOrgName(data.orgName);
+      setAllowedDomain(data.allowedDomain ?? null);
       setStep("consent");
     },
     onError: (err: Error) => {
@@ -830,17 +832,32 @@ function JoinOrgPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
-      return data as { ok: boolean; orgName: string; alreadyMember: boolean };
+      return data as { ok: boolean; orgName: string; alreadyMember: boolean; status: string };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-org"] });
       queryClient.invalidateQueries({ queryKey: ["org-stats"] });
-      setStep("joined");
+      setStep(data.status === "pending" ? "pending" : "joined");
     },
     onError: (err: Error) => {
       setError(err.message);
     },
   });
+
+  if (step === "pending") {
+    return (
+      <motion.div className="bg-white border border-border rounded-xl p-8 text-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="w-6 h-6 text-amber-600" />
+        </div>
+        <h2 className="text-lg font-display font-semibold text-foreground mb-2">Your request is pending approval</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Your request to join <strong>{orgName}</strong> has been submitted. An organisation manager will approve or reject it shortly — you'll be able to contribute your activity data once approved.
+        </p>
+        <p className="text-xs text-muted-foreground">You can close this page. Check back later to see if your request has been approved.</p>
+      </motion.div>
+    );
+  }
 
   if (step === "joined") {
     return (
@@ -867,6 +884,12 @@ function JoinOrgPanel() {
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">Join {orgName}?</h2>
           <p className="text-sm text-muted-foreground">Before you confirm, here's exactly what will and won't be shared:</p>
         </div>
+        {allowedDomain && (
+          <div className="mx-6 mb-2 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-800">
+            <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-blue-500" />
+            <span>This organisation restricts membership to <strong>@{allowedDomain}</strong> email addresses. Your account email must match to be accepted.</span>
+          </div>
+        )}
         <div className="px-6 pb-4 space-y-2">
           {[
             { shared: true, label: "Your total social value (£ amount)" },

@@ -697,7 +697,7 @@ function parseResultJson(raw: unknown): StoredResultJson {
 
 async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
   const members = await db.query.orgMembersTable.findMany({
-    where: eq(orgMembersTable.orgId, orgId),
+    where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
   });
 
   const memberIds = members.map(m => m.userId);

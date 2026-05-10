@@ -9,9 +9,10 @@ import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
 import {
   DEMO_ORG_ID, DEMO_ORG_NAME, DEMO_ORG_TYPE, DEMO_INVITE_CODE,
-  DEMO_ORG_CONTACT_EMAIL, DEMO_MEMBERS,
+  DEMO_ORG_CONTACT_EMAIL, DEMO_MEMBERS, DEMO_PENDING_REQUESTS,
   getOrgInviteCode, setOrgInviteCode, generateInviteCode,
   getRemovedMemberIds, setRemovedMemberIds,
+  type DemoPendingRequest,
 } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -28,7 +29,7 @@ interface SroiCostBreakdown {
   support: number | null;
   admin: number | null;
 }
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; membershipStatus?: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding; allowedDomain?: string | null } | null }
 
 const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
@@ -56,7 +57,122 @@ const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ clas
 
 interface PendingInvite { id: string; email: string; sentAt: string; resentAt: string | null }
 
-function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string }) {
+interface LiveMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  joinedAt: string;
+  postcode: string | null;
+}
+
+interface LiveMembersResponse {
+  members: LiveMember[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+function AllowedDomainField({ initialDomain, isDemoOrg }: { initialDomain: string | null; isDemoOrg: boolean }) {
+  const [domain, setDomain] = useState(initialDomain ?? "");
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const flash = (msg: string) => { setToast(msg); window.setTimeout(() => setToast(null), 2200); };
+
+  async function save() {
+    if (isDemoOrg) { flash("Saved (demo)."); return; }
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/settings`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedDomain: domain.trim() || null }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to save");
+      }
+      qc.invalidateQueries({ queryKey: ["my-org"] });
+      flash("Domain restriction saved.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save.");
+    } finally { setSaving(false); }
+  }
+
+  async function clear() {
+    if (isDemoOrg) { setDomain(""); flash("Cleared (demo)."); return; }
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/settings`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedDomain: null }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to save");
+      }
+      setDomain("");
+      qc.invalidateQueries({ queryKey: ["my-org"] });
+      flash("Domain restriction removed.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save.");
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Restrict to email domain (optional)</p>
+      <p className="text-[11px] text-muted-foreground mb-2">
+        If set, only users whose email ends with this domain can join via the invite link.
+      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center rounded-md border border-border overflow-hidden focus-within:border-primary">
+          <span className="px-2 py-1.5 text-xs text-muted-foreground bg-muted/40">@</span>
+          <input
+            type="text"
+            value={domain}
+            onChange={e => setDomain(e.target.value.replace(/^@/, ""))}
+            placeholder="organisation.org"
+            className="px-2 py-1.5 text-xs focus:outline-none min-w-0 w-48"
+            data-testid="input-allowed-domain"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          data-testid="button-save-allowed-domain"
+        >
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+        </button>
+        {domain && (
+          <button
+            type="button"
+            onClick={clear}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 disabled:opacity-60 transition-colors"
+            data-testid="button-clear-allowed-domain"
+          >
+            <X className="w-3.5 h-3.5" /> Remove restriction
+          </button>
+        )}
+      </div>
+      {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+      {toast && <p className="text-[11px] text-green-700 mt-1">{toast}</p>}
+    </div>
+  );
+}
+
+function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; orgId: string; allowedDomain: string | null }) {
   const [removed, setRemoved] = useState<string[]>(() => isDemoOrg ? getRemovedMemberIds(orgId) : []);
   const [inviteCode, setInviteCode] = useState<string>(() => isDemoOrg ? getOrgInviteCode(orgId, DEMO_INVITE_CODE) : DEMO_INVITE_CODE);
   const [invites, setInvites] = useState<PendingInvite[]>([
@@ -68,7 +184,48 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Pagination state (demo)
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+
+  // Demo pending requests state
+  const [demoPending, setDemoPending] = useState<DemoPendingRequest[]>(isDemoOrg ? DEMO_PENDING_REQUESTS : []);
+
+  // Live mode state
+  const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
+  const [livePending, setLivePending] = useState<LiveMember[]>([]);
+  const [liveTotal, setLiveTotal] = useState(0);
+  const [liveTotalPages, setLiveTotalPages] = useState(1);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+
   const inviteLink = `${window.location.origin}${BASE}/org?invite=${encodeURIComponent(inviteCode)}`;
+
+  async function fetchLiveMembers(p: number) {
+    setLiveLoading(true);
+    try {
+      const [activeRes, pendingRes] = await Promise.all([
+        fetch(`${BASE}/api/org/my/members?page=${p}&status=active`, { credentials: "include" }),
+        fetch(`${BASE}/api/org/my/members?status=pending`, { credentials: "include" }),
+      ]);
+      if (activeRes.ok) {
+        const j: LiveMembersResponse = await activeRes.json();
+        setLiveMembers(j.members);
+        setLiveTotal(j.total);
+        setLiveTotalPages(j.totalPages);
+      }
+      if (pendingRes.ok) {
+        const j: LiveMembersResponse = await pendingRes.json();
+        setLivePending(j.members);
+      }
+    } catch { /* ignore */ }
+    finally { setLiveLoading(false); }
+  }
+
+  useEffect(() => {
+    if (!isDemoOrg) { fetchLiveMembers(page); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoOrg, page]);
 
   async function copyInviteLink() {
     try {
@@ -80,13 +237,17 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
 
   const flash = (msg: string) => { setToast(msg); window.setTimeout(() => setToast(null), 2200); };
 
-  const visibleMembers = useMemo(
+  const visibleDemoMembers = useMemo(
     () => DEMO_MEMBERS.filter(m => !removed.includes(m.id)),
     [removed],
   );
+  const pagedDemoMembers = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return visibleDemoMembers.slice(start, start + PAGE_SIZE);
+  }, [visibleDemoMembers, page]);
+  const demoTotalPages = Math.ceil(visibleDemoMembers.length / PAGE_SIZE);
 
-  function removeMember(id: string) {
-    if (!isDemoOrg) return;
+  function removeDemoMember(id: string) {
     const member = DEMO_MEMBERS.find(m => m.id === id);
     if (member?.role === "manager") { flash("You can't remove the organisation manager."); return; }
     if (!window.confirm(`Remove ${member?.name ?? "this member"} from the organisation?`)) return;
@@ -96,10 +257,44 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
     flash(`Removed ${member?.name ?? "member"}.`);
   }
 
-  function restoreMember(id: string) {
+  function restoreDemoMember(id: string) {
     const next = removed.filter(x => x !== id);
     setRemoved(next);
     setRemovedMemberIds(orgId, next);
+  }
+
+  function approveDemoPending(id: string) {
+    const req = demoPending.find(r => r.id === id);
+    setDemoPending(prev => prev.filter(r => r.id !== id));
+    flash(`Approved ${req?.name ?? "request"}.`);
+  }
+
+  function rejectDemoPending(id: string) {
+    const req = demoPending.find(r => r.id === id);
+    setDemoPending(prev => prev.filter(r => r.id !== id));
+    flash(`Rejected ${req?.name ?? "request"}.`);
+  }
+
+  async function approveLiveMember(userId: string) {
+    setActionBusy(userId);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/approve`, { method: "POST", credentials: "include" });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error((j as { error?: string }).error ?? "Failed"); }
+      flash("Approved.");
+      await fetchLiveMembers(page);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to approve."); }
+    finally { setActionBusy(null); }
+  }
+
+  async function rejectLiveMember(userId: string) {
+    setActionBusy(userId);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/reject`, { method: "POST", credentials: "include" });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error((j as { error?: string }).error ?? "Failed"); }
+      flash("Rejected.");
+      await fetchLiveMembers(page);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to reject."); }
+    finally { setActionBusy(null); }
   }
 
   function regenerateInvite() {
@@ -137,19 +332,63 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
     flash("Invite revoked.");
   }
 
-  if (!isDemoOrg) {
-    return (
-      <div className="bg-white border border-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold mb-2">Members</h3>
-        <p className="text-[13px] text-muted-foreground">Member management for live organisations is coming soon. Members currently join via the invite link from your dashboard.</p>
-      </div>
-    );
-  }
+  const pendingCount = isDemoOrg ? demoPending.length : livePending.length;
+  const pendingRequests = isDemoOrg
+    ? demoPending.map(r => ({ userId: r.id, name: r.name, email: r.email, joinedAt: r.requestedAt }))
+    : livePending.map(r => ({ userId: r.userId, name: r.name, email: r.email, joinedAt: r.joinedAt }));
+
+  const totalMembers = isDemoOrg ? visibleDemoMembers.length : liveTotal;
+  const totalPages = isDemoOrg ? demoTotalPages : liveTotalPages;
+  const showFrom = totalMembers === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showTo = isDemoOrg ? Math.min(page * PAGE_SIZE, visibleDemoMembers.length) : Math.min(page * PAGE_SIZE, liveTotal);
 
   return (
     <div className="space-y-6">
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-foreground text-white text-[13px] px-3 py-2 rounded-lg shadow" role="status">{toast}</div>
+      )}
+
+      {/* Join requests (pending approvals) */}
+      {pendingCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5" data-testid="section-join-requests">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            <h3 className="text-sm font-semibold text-amber-900">Join requests ({pendingCount})</h3>
+          </div>
+          <ul className="divide-y divide-amber-200">
+            {pendingRequests.map(r => (
+              <li key={r.userId} className="flex items-center justify-between gap-3 py-2.5 text-xs" data-testid={`row-request-${r.userId}`}>
+                <div>
+                  <p className="font-semibold text-foreground">{r.name}</p>
+                  <p className="text-muted-foreground">{r.email}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Requested {new Date(r.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={actionBusy === r.userId}
+                    onClick={() => isDemoOrg ? approveDemoPending(r.userId) : approveLiveMember(r.userId)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-600 text-white text-[11px] font-semibold hover:bg-green-700 disabled:opacity-60"
+                    data-testid={`button-approve-${r.userId}`}
+                  >
+                    {actionBusy === r.userId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionBusy === r.userId}
+                    onClick={() => isDemoOrg ? rejectDemoPending(r.userId) : rejectLiveMember(r.userId)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    data-testid={`button-reject-${r.userId}`}
+                  >
+                    <X className="w-3 h-3" /> Reject
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Invite link management */}
@@ -205,6 +444,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
             </div>
           </div>
         </div>
+        <AllowedDomainField initialDomain={allowedDomain} isDemoOrg={isDemoOrg} />
       </div>
 
       {/* Members table */}
@@ -212,9 +452,18 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-semibold">Members</h3>
-            <p className="text-[13px] text-muted-foreground">{visibleMembers.length} of {DEMO_MEMBERS.length} active. Demo data.</p>
+            {totalMembers > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Showing {showFrom}–{showTo} of {totalMembers}{isDemoOrg ? " (demo data)" : ""}
+              </p>
+            )}
           </div>
         </div>
+        {liveLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
@@ -222,43 +471,96 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[140px]">Name</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[180px]">Email</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Region</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
               </tr>
             </thead>
             <tbody>
-              {visibleMembers.map(m => (
-                <tr key={m.id} className="border-b border-border/60" data-testid={`row-member-${m.id}`}>
-                  <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
-                  <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
-                  <td className="py-2 pr-3">
-                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      {m.role}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3 text-muted-foreground">{m.region}</td>
-                  <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                  <td className="py-2 pr-3 text-right">
-                    {m.role === "manager" ? (
-                      <span className="text-[11px] text-muted-foreground italic">manager</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => removeMember(m.id)}
-                        className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
-                        data-testid={`button-remove-${m.id}`}
-                      >
-                        <Trash2 className="w-3 h-3" /> Remove
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {isDemoOrg
+                ? pagedDemoMembers.map(m => (
+                    <tr key={m.id} className="border-b border-border/60" data-testid={`row-member-${m.id}`}>
+                      <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
+                      <td className="py-2 pr-3">
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                          {m.role}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">{m.postcode}</td>
+                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="py-2 pr-3 text-right">
+                        {m.role === "manager" ? (
+                          <span className="text-[11px] text-muted-foreground italic">manager</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeDemoMember(m.id)}
+                            className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
+                            data-testid={`button-remove-${m.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" /> Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                : liveMembers.map(m => (
+                    <tr key={m.userId} className="border-b border-border/60" data-testid={`row-member-${m.userId}`}>
+                      <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
+                      <td className="py-2 pr-3">
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                          {m.role}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
+                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <span className="text-[11px] text-muted-foreground italic">{m.role}</span>
+                      </td>
+                    </tr>
+                  ))
+              }
+              {(isDemoOrg ? pagedDemoMembers : liveMembers).length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-xs text-muted-foreground">No members yet.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
-        {removed.length > 0 && (
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Showing {showFrom}–{showTo} of {totalMembers} members
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 disabled:opacity-40 transition-colors"
+                data-testid="button-prev-page"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 disabled:opacity-40 transition-colors"
+                data-testid="button-next-page"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isDemoOrg && removed.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
             <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Recently removed</p>
             <ul className="space-y-1">
@@ -268,7 +570,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
                 return (
                   <li key={id} className="flex items-center justify-between text-[13px] text-muted-foreground">
                     <span>{m.name} <span className="text-[11px]">({m.email})</span></span>
-                    <button onClick={() => restoreMember(id)} className="text-primary hover:underline text-[12px] font-semibold">Restore</button>
+                    <button onClick={() => restoreDemoMember(id)} className="text-primary hover:underline text-[12px] font-semibold">Restore</button>
                   </li>
                 );
               })}
@@ -277,7 +579,8 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         )}
       </div>
 
-      {/* Pending invites */}
+      {/* Pending invites (demo only) */}
+      {isDemoOrg && (
       <div className="bg-white border border-border rounded-xl p-5" data-testid="section-pending-invites">
         <div className="flex items-center gap-2 mb-3">
           <Mail className="w-4 h-4 text-primary" />
@@ -325,6 +628,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
           </ul>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -1036,7 +1340,7 @@ export default function OrgSettings() {
       </div>
 
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-        {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} />}
+        {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} allowedDomain={orgData.org.allowedDomain ?? null} />}
         {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} initialLeaderboardEnabled={orgData.org.challengeLeaderboardEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
         {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}

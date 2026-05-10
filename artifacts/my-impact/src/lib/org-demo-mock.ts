@@ -27,6 +27,14 @@ export interface DemoMember {
   role: "manager" | "member";
   joinedAt: string; // ISO date
   region: string;
+  postcode: string;
+}
+
+export interface DemoPendingRequest {
+  id: string;
+  name: string;
+  email: string;
+  requestedAt: string; // ISO date
 }
 
 export interface DemoActivity {
@@ -42,38 +50,43 @@ export interface DemoActivity {
 }
 
 const CORE_MEMBERS: DemoMember[] = [
-  { id: "m-001", name: "Sam Patel",        email: "sam.patel@demo-organisation.org",              role: "manager", joinedAt: "2025-01-12", region: "North West" },
-  { id: "m-002", name: "Aisha Khan",       email: "aisha.khan@example.com",                       role: "member",  joinedAt: "2025-02-04", region: "North West" },
-  { id: "m-003", name: "Tom Reilly",       email: "tom.reilly@example.com",                       role: "member",  joinedAt: "2025-02-21", region: "Yorkshire and The Humber" },
-  { id: "m-004", name: "Priya Sharma",     email: "priya.sharma@example.com",                     role: "member",  joinedAt: "2025-03-08", region: "West Midlands" },
-  { id: "m-005", name: "James O'Connor",   email: "james.oconnor@example.com",                    role: "member",  joinedAt: "2025-03-30", region: "London" },
-  { id: "m-006", name: "Maya Hughes",      email: "maya.hughes@example.com",                      role: "member",  joinedAt: "2025-04-14", region: "South East" },
-  { id: "m-007", name: "Daniel Brookes",   email: "daniel.brookes@example.com",                   role: "member",  joinedAt: "2025-05-02", region: "South West" },
-  { id: "m-008", name: "Leila Ahmadi",     email: "leila.ahmadi@example.com",                     role: "member",  joinedAt: "2025-05-19", region: "North West" },
-  { id: "m-009", name: "Chloe Bennett",    email: "chloe.bennett@example.com",                    role: "member",  joinedAt: "2025-06-11", region: "North East" },
-  { id: "m-demo", name: "Demo User",       email: "demo@demo.org",                                role: "member",  joinedAt: "2025-07-01", region: "Yorkshire and The Humber" },
-  { id: "m-011", name: "Rachel Osei",       email: "rachel.osei@example.com",                      role: "member",  joinedAt: "2025-01-15", region: "Yorkshire and The Humber" },
-  { id: "m-012", name: "Kieran Walsh",      email: "kieran.walsh@example.com",                     role: "member",  joinedAt: "2025-01-22", region: "North West" },
-  { id: "m-013", name: "Fatima Begum",      email: "fatima.begum@example.com",                     role: "member",  joinedAt: "2025-02-01", region: "West Midlands" },
-  { id: "m-014", name: "Marcus Webb",       email: "marcus.webb@example.com",                      role: "member",  joinedAt: "2025-02-10", region: "London" },
-  { id: "m-015", name: "Sioned Davies",     email: "sioned.davies@example.com",                    role: "member",  joinedAt: "2025-02-18", region: "Wales" },
-  { id: "m-016", name: "Nneka Okafor",      email: "nneka.okafor@example.com",                     role: "member",  joinedAt: "2025-03-01", region: "South East" },
-  { id: "m-017", name: "Ben Holroyd",       email: "ben.holroyd@example.com",                      role: "member",  joinedAt: "2025-03-12", region: "Yorkshire and The Humber" },
-  { id: "m-018", name: "Amara Diallo",      email: "amara.diallo@example.com",                     role: "member",  joinedAt: "2025-03-20", region: "North West" },
-  { id: "m-019", name: "Jack Fitzpatrick",  email: "jack.fitzpatrick@example.com",                 role: "member",  joinedAt: "2025-04-02", region: "North East" },
-  { id: "m-020", name: "Sophie Dyer",       email: "sophie.dyer@example.com",                      role: "member",  joinedAt: "2025-04-10", region: "East Midlands" },
-  { id: "m-021", name: "Yusuf Al-Rashid",   email: "yusuf.alrashid@example.com",                   role: "member",  joinedAt: "2025-04-18", region: "West Midlands" },
-  { id: "m-022", name: "Gemma Lawson",      email: "gemma.lawson@example.com",                     role: "member",  joinedAt: "2025-04-25", region: "North West" },
-  { id: "m-023", name: "Patrick Brennan",   email: "patrick.brennan@example.com",                  role: "member",  joinedAt: "2025-05-06", region: "London" },
-  { id: "m-024", name: "Thandi Nkosi",      email: "thandi.nkosi@example.com",                     role: "member",  joinedAt: "2025-05-14", region: "South East" },
-  { id: "m-025", name: "Connor MacPherson", email: "connor.macpherson@example.com",                role: "member",  joinedAt: "2025-05-22", region: "Scotland" },
-  { id: "m-026", name: "Isabel Ferreira",   email: "isabel.ferreira@example.com",                  role: "member",  joinedAt: "2025-06-01", region: "London" },
-  { id: "m-027", name: "Ryan Hawkins",      email: "ryan.hawkins@example.com",                     role: "member",  joinedAt: "2025-06-08", region: "South West" },
-  { id: "m-028", name: "Nadia Volkov",      email: "nadia.volkov@example.com",                     role: "member",  joinedAt: "2025-06-15", region: "East of England" },
-  { id: "m-029", name: "Oliver Drummond",   email: "oliver.drummond@example.com",                  role: "member",  joinedAt: "2025-07-01", region: "North West" },
-  { id: "m-030", name: "Mia Tanaka",        email: "mia.tanaka@example.com",                       role: "member",  joinedAt: "2025-07-09", region: "London" },
-  { id: "m-031", name: "Samuel Adeyemi",    email: "samuel.adeyemi@example.com",                   role: "member",  joinedAt: "2025-08-01", region: "West Midlands" },
-  { id: "m-032", name: "Fiona Llewellyn",   email: "fiona.llewellyn@example.com",                  role: "member",  joinedAt: "2025-09-01", region: "Wales" },
+  { id: "m-001", name: "Sam Patel",        email: "sam.patel@demo-organisation.org",              role: "manager", joinedAt: "2025-01-12", region: "North West",              postcode: "M1 1AE" },
+  { id: "m-002", name: "Aisha Khan",       email: "aisha.khan@example.com",                       role: "member",  joinedAt: "2025-02-04", region: "North West",              postcode: "M14 5EU" },
+  { id: "m-003", name: "Tom Reilly",       email: "tom.reilly@example.com",                       role: "member",  joinedAt: "2025-02-21", region: "Yorkshire and The Humber", postcode: "LS1 4AP" },
+  { id: "m-004", name: "Priya Sharma",     email: "priya.sharma@example.com",                     role: "member",  joinedAt: "2025-03-08", region: "West Midlands",           postcode: "B1 1BB" },
+  { id: "m-005", name: "James O'Connor",   email: "james.oconnor@example.com",                    role: "member",  joinedAt: "2025-03-30", region: "London",                  postcode: "E1 6RF" },
+  { id: "m-006", name: "Maya Hughes",      email: "maya.hughes@example.com",                      role: "member",  joinedAt: "2025-04-14", region: "South East",              postcode: "RH10 1QQ" },
+  { id: "m-007", name: "Daniel Brookes",   email: "daniel.brookes@example.com",                   role: "member",  joinedAt: "2025-05-02", region: "South West",              postcode: "BS1 4DJ" },
+  { id: "m-008", name: "Leila Ahmadi",     email: "leila.ahmadi@example.com",                     role: "member",  joinedAt: "2025-05-19", region: "North West",              postcode: "M60 2LA" },
+  { id: "m-009", name: "Chloe Bennett",    email: "chloe.bennett@example.com",                    role: "member",  joinedAt: "2025-06-11", region: "North East",              postcode: "NE1 7RU" },
+  { id: "m-demo", name: "Demo User",       email: "demo@demo.org",                                role: "member",  joinedAt: "2025-07-01", region: "Yorkshire and The Humber", postcode: "LS2 8DT" },
+  { id: "m-011", name: "Rachel Osei",       email: "rachel.osei@example.com",                      role: "member",  joinedAt: "2025-01-15", region: "Yorkshire and The Humber", postcode: "LS15 8AA" },
+  { id: "m-012", name: "Kieran Walsh",      email: "kieran.walsh@example.com",                     role: "member",  joinedAt: "2025-01-22", region: "North West",              postcode: "M22 4ER" },
+  { id: "m-013", name: "Fatima Begum",      email: "fatima.begum@example.com",                     role: "member",  joinedAt: "2025-02-01", region: "West Midlands",           postcode: "B12 0JX" },
+  { id: "m-014", name: "Marcus Webb",       email: "marcus.webb@example.com",                      role: "member",  joinedAt: "2025-02-10", region: "London",                  postcode: "SE1 7PB" },
+  { id: "m-015", name: "Sioned Davies",     email: "sioned.davies@example.com",                    role: "member",  joinedAt: "2025-02-18", region: "Wales",                   postcode: "CF10 1EP" },
+  { id: "m-016", name: "Nneka Okafor",      email: "nneka.okafor@example.com",                     role: "member",  joinedAt: "2025-03-01", region: "South East",              postcode: "GU1 4BY" },
+  { id: "m-017", name: "Ben Holroyd",       email: "ben.holroyd@example.com",                      role: "member",  joinedAt: "2025-03-12", region: "Yorkshire and The Humber", postcode: "BD1 1EW" },
+  { id: "m-018", name: "Amara Diallo",      email: "amara.diallo@example.com",                     role: "member",  joinedAt: "2025-03-20", region: "North West",              postcode: "WN1 1PP" },
+  { id: "m-019", name: "Jack Fitzpatrick",  email: "jack.fitzpatrick@example.com",                 role: "member",  joinedAt: "2025-04-02", region: "North East",              postcode: "SR1 3LA" },
+  { id: "m-020", name: "Sophie Dyer",       email: "sophie.dyer@example.com",                      role: "member",  joinedAt: "2025-04-10", region: "East Midlands",           postcode: "NG1 5GG" },
+  { id: "m-021", name: "Yusuf Al-Rashid",   email: "yusuf.alrashid@example.com",                   role: "member",  joinedAt: "2025-04-18", region: "West Midlands",           postcode: "CV1 2GF" },
+  { id: "m-022", name: "Gemma Lawson",      email: "gemma.lawson@example.com",                     role: "member",  joinedAt: "2025-04-25", region: "North West",              postcode: "PR1 2RL" },
+  { id: "m-023", name: "Patrick Brennan",   email: "patrick.brennan@example.com",                  role: "member",  joinedAt: "2025-05-06", region: "London",                  postcode: "N1 9GU" },
+  { id: "m-024", name: "Thandi Nkosi",      email: "thandi.nkosi@example.com",                     role: "member",  joinedAt: "2025-05-14", region: "South East",              postcode: "TN1 1NX" },
+  { id: "m-025", name: "Connor MacPherson", email: "connor.macpherson@example.com",                role: "member",  joinedAt: "2025-05-22", region: "Scotland",                postcode: "G1 1RJ" },
+  { id: "m-026", name: "Isabel Ferreira",   email: "isabel.ferreira@example.com",                  role: "member",  joinedAt: "2025-06-01", region: "London",                  postcode: "W1T 3JH" },
+  { id: "m-027", name: "Ryan Hawkins",      email: "ryan.hawkins@example.com",                     role: "member",  joinedAt: "2025-06-08", region: "South West",              postcode: "EX1 1GE" },
+  { id: "m-028", name: "Nadia Volkov",      email: "nadia.volkov@example.com",                     role: "member",  joinedAt: "2025-06-15", region: "East of England",         postcode: "CB1 2ET" },
+  { id: "m-029", name: "Oliver Drummond",   email: "oliver.drummond@example.com",                  role: "member",  joinedAt: "2025-07-01", region: "North West",              postcode: "OL1 1JN" },
+  { id: "m-030", name: "Mia Tanaka",        email: "mia.tanaka@example.com",                       role: "member",  joinedAt: "2025-07-09", region: "London",                  postcode: "EC1V 9FR" },
+  { id: "m-031", name: "Samuel Adeyemi",    email: "samuel.adeyemi@example.com",                   role: "member",  joinedAt: "2025-08-01", region: "West Midlands",           postcode: "WV1 1RP" },
+  { id: "m-032", name: "Fiona Llewellyn",   email: "fiona.llewellyn@example.com",                  role: "member",  joinedAt: "2025-09-01", region: "Wales",                   postcode: "SA1 1TW" },
+];
+
+export const DEMO_PENDING_REQUESTS: DemoPendingRequest[] = [
+  { id: "pr-001", name: "Jordan Blake",    email: "jordan.blake@example.com",   requestedAt: "2026-05-07" },
+  { id: "pr-002", name: "Mei-Lin Huang",   email: "mei.huang@external.co.uk",   requestedAt: "2026-05-09" },
 ];
 
 // Raw activity rows used to build the demo dataset. Tuple form keeps the file
@@ -283,6 +296,11 @@ const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
     const actName2 = _SA[(k + 5) % _SA.length]!;
     const actName3 = _SA[(k + 3) % _SA.length]!;
     const actName4 = _SA[(k + 7) % _SA.length]!;
+    const _SPC = [
+      "M1","LS1","B1","E1","RH10","BS1","NE1","NG1","CV1","G1",
+      "PR1","N1","TN1","W1T","EX1","CB1","OL1","EC1V","WV1","SA1",
+    ];
+    const pcd = `${_SPC[k % _SPC.length]!} ${1 + (k % 9)}${String.fromCharCode(65 + (k % 26))}${String.fromCharCode(65 + ((k + 3) % 26))}`;
     return {
       member: {
         id,
@@ -291,6 +309,7 @@ const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
         role: "member",
         joinedAt: `${jm}-${jd}`,
         region,
+        postcode: pcd,
       },
       activities: [
         [
