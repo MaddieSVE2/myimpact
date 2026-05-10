@@ -272,6 +272,79 @@ router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 });
 
+router.get("/org", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")),
+    });
+    if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+    const orgId = membership.orgId;
+
+    const orgChallenges = await db
+      .select()
+      .from(challengesTable)
+      .where(and(eq(challengesTable.scope, "org"), eq(challengesTable.orgId, orgId)))
+      .orderBy(desc(challengesTable.startDate));
+
+    if (orgChallenges.length === 0) { res.json({ challenges: [] }); return; }
+
+    const allIds = orgChallenges.map(c => c.id);
+    const allParts = await db
+      .select({ challengeId: challengeParticipantsTable.challengeId, userId: challengeParticipantsTable.userId })
+      .from(challengeParticipantsTable)
+      .where(inArray(challengeParticipantsTable.challengeId, allIds));
+
+    const partsMap: Record<string, string[]> = {};
+    const enrolledSet = new Set<string>();
+    for (const p of allParts) {
+      (partsMap[p.challengeId] ??= []).push(p.userId);
+      if (p.userId === userId) enrolledSet.add(p.challengeId);
+    }
+
+    const now = Date.now();
+    const summaries = await Promise.all(
+      orgChallenges.map(async (c) => {
+        const participantIds = partsMap[c.id] ?? [];
+        const records = await listChallengeRecords(c, participantIds);
+        let total = 0;
+        let mine = 0;
+        for (const r of records) {
+          const p = parseResult(r.resultJson);
+          const contrib = c.goalType === "hours" ? p.totalHours : p.totalValue;
+          total += contrib;
+          if (r.userId === userId) mine += contrib;
+        }
+        const target = Number(c.target);
+        const percent = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
+        const hasEnded = c.endDate.getTime() < now;
+        return {
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          goalType: c.goalType as "social_value" | "hours",
+          target,
+          startDate: c.startDate.toISOString(),
+          endDate: c.endDate.toISOString(),
+          orgId: c.orgId,
+          participantCount: participantIds.length,
+          progressTotal: Math.round(total * 100) / 100,
+          progressPercent: percent,
+          myContribution: Math.round(mine * 100) / 100,
+          isEnrolled: enrolledSet.has(c.id),
+          hasEnded,
+          isActive: !hasEnded && c.startDate.getTime() <= now,
+        };
+      }),
+    );
+
+    res.json({ challenges: summaries });
+  } catch (err) {
+    console.error("Org challenges error:", err);
+    res.status(500).json({ error: "Failed to load challenges" });
+  }
+});
+
 router.get("/mine", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
