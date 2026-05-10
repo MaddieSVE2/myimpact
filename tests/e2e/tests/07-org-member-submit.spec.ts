@@ -18,6 +18,49 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     await api.dispose();
   });
 
+  test("'Something else' validation — error shown when description is empty, clears when filled", async ({ browser }) => {
+    const created = await api.createOrg(`E2E Something Else Org ${Date.now()}`, "charity");
+    const seOrgId = created.orgId;
+
+    const ctx = await browser.newContext();
+    try {
+      const page = await ctx.newPage();
+      await signInWithMagicLink(page, api, memberEmail);
+
+      const join = await page.request.post("/api/org/join", {
+        data: { inviteCode: created.inviteCode, orgId: seOrgId },
+      });
+      expect(join.ok()).toBe(true);
+
+      // ── Step 1: pick 'Something else' without filling the inline title ────
+      await page.goto("/org/submit");
+      await expect(page.getByTestId("org-member-submit-root")).toBeVisible({ timeout: 15_000 });
+
+      await page.getByTestId("member-submit-activity-something-else").click();
+      // Deliberately leave the inline title empty and advance to step 2
+      await page.getByTestId("member-submit-next-details").click();
+
+      // ── Step 2: fill hours so the button is enabled, then click Review ────
+      await page.getByTestId("member-submit-hours-something_else").fill("2");
+
+      // First click — validation fires; error should now be visible
+      await page.getByTestId("member-submit-next-review").click();
+      await expect(page.getByTestId("member-submit-something-else-error")).toBeVisible();
+
+      // ── Fix the description — error should clear and Review should succeed ─
+      await page.getByTestId("member-submit-detail-something_else").fill("Picked up litter along the river path");
+      await expect(page.getByTestId("member-submit-something-else-error")).not.toBeVisible();
+
+      await page.getByTestId("member-submit-next-review").click();
+
+      // Reaching step 3 (review) confirms the guard was satisfied
+      await expect(page.getByTestId("member-submit-confirm")).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await ctx.close();
+      await api.deleteOrg(seOrgId);
+    }
+  });
+
   test("logged-in member walks /org/submit and sees the success state", async ({ browser }) => {
     // Direct-create an org so this spec is independent of the registration
     // approval flow already covered by spec 4.
