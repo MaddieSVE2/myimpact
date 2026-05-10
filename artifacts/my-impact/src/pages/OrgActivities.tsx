@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Footer } from "@/components/layout/Footer";
 import {
-  Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users,
+  Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users, Info,
 } from "lucide-react";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_MEMBERS,
@@ -20,6 +20,26 @@ function parseCategory(v: string): "all" | ActivityCategory {
   return "all";
 }
 
+const CATEGORY_PROXY: Record<ActivityCategory, string> = {
+  "Environment":        "Wildlife Trusts wage-replacement proxy (2022)",
+  "Community":          "HACT Social Value Bank — Community participation (2023)",
+  "Health":             "Sport England / NEF wellbeing valuation (2022)",
+  "Education":          "Pro Bono Economics / Power to Change literacy proxy (2022)",
+  "Sport & Active":     "Sport England wellbeing SROI model (2023)",
+  "Fundraising":        "NCVO volunteer time at median wage, ONS (2023)",
+  "Mentoring":          "Volunteer Scotland Time Well Spent follow-up (2022)",
+  "Arts & Culture":     "HACT Social Value Bank — Arts participation (2023)",
+  "Animal Welfare":     "RSPCA SROI framework (2022)",
+  "Emergency Response": "British Red Cross SROI model (2022)",
+};
+
+function calcActivityBreakdown(hours: number, socialValueGBP: number): string {
+  if (hours <= 0) return `£${socialValueGBP.toLocaleString("en-GB")} (lump sum)`;
+  const rate = socialValueGBP / hours;
+  const rateStr = rate % 1 === 0 ? `£${rate.toFixed(0)}` : `£${rate.toFixed(2)}`;
+  return `${hours.toLocaleString("en-GB")} hrs × ${rateStr}/hr`;
+}
+
 export default function OrgActivities() {
   const { data: orgData, isLoading, isError } = useMyOrg();
   const [, setLocation] = useLocation();
@@ -29,6 +49,7 @@ export default function OrgActivities() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [anonymise, setAnonymise] = useState(false);
+  const [openTooltip, setOpenTooltip] = useState<string | null>(null);
 
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
@@ -44,6 +65,10 @@ export default function OrgActivities() {
     setPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFrom, periodTo]);
+
+  useEffect(() => {
+    setOpenTooltip(null);
+  }, [page, category, memberId, query, from, to]);
 
   useEffect(() => {
     if (orgData?.org && isManager && !isDemoOrg) {
@@ -214,8 +239,30 @@ export default function OrgActivities() {
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">
-                            <span className="font-semibold text-foreground">£{a.socialValueGBP}</span>
-                            {a.verified && <BadgeCheck className="inline-block w-3 h-3 text-green-600 ml-1" aria-label="Verified" />}
+                            <div className="inline-flex items-center gap-1 justify-end">
+                              <span className="font-semibold text-foreground">£{a.socialValueGBP.toLocaleString("en-GB")}</span>
+                              {a.verified && <BadgeCheck className="w-3 h-3 text-green-600 shrink-0" aria-label="Verified" />}
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenTooltip(prev => prev === a.id ? null : a.id)}
+                                  className="text-muted-foreground hover:text-primary transition-colors"
+                                  aria-label="How this value is calculated"
+                                  data-testid={`value-info-${a.id}`}
+                                >
+                                  <Info className="w-3 h-3" />
+                                </button>
+                                {openTooltip === a.id && (
+                                  <div className="absolute right-0 top-5 z-30 w-60 px-3 py-2.5 rounded-md bg-white border border-border shadow-lg text-[11px] text-muted-foreground leading-relaxed">
+                                    <p className="font-semibold text-foreground mb-1 tabular-nums">{calcActivityBreakdown(a.hours, a.socialValueGBP)}</p>
+                                    <p className="mb-1.5">{CATEGORY_PROXY[a.category]}</p>
+                                    <Link href="/methodology" className="text-primary hover:underline font-medium" data-testid={`methodology-link-${a.id}`}>
+                                      Learn about our methodology →
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
