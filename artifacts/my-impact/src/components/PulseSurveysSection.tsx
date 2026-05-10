@@ -201,7 +201,7 @@ function LivePulseSurveysSection() {
             <ClipboardList className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Member pulse surveys</h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[13px] text-muted-foreground mt-1">
             30-second prompts that help you measure how your members are feeling and how meaningful their work is. Anonymous by default.
           </p>
         </div>
@@ -209,7 +209,7 @@ function LivePulseSurveysSection() {
           <button
             type="button"
             onClick={() => { setCreating(true); setCreateError(null); handleTemplateChange("meaningfulness"); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             data-testid="button-new-pulse-survey"
           >
             <Plus className="w-3.5 h-3.5" /> New survey
@@ -220,14 +220,14 @@ function LivePulseSurveysSection() {
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">Template</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">Template</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(templatesData?.templates ?? []).map(t => (
                 <button
                   key={t.key}
                   type="button"
                   onClick={() => handleTemplateChange(t.key)}
-                  className={`text-left px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                  className={`text-left px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
                     template === t.key
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border bg-white text-foreground hover:bg-muted/30"
@@ -240,7 +240,7 @@ function LivePulseSurveysSection() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
               Question {template !== "custom" && <span className="text-muted-foreground font-normal">(edit if you like)</span>}
             </label>
             <input
@@ -255,7 +255,7 @@ function LivePulseSurveysSection() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">How often</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">How often</label>
               <select
                 value={schedule}
                 onChange={e => setSchedule(e.target.value as Schedule)}
@@ -276,17 +276,17 @@ function LivePulseSurveysSection() {
                 className="rounded border-border w-4 h-4 text-primary focus:ring-primary"
                 data-testid="checkbox-pulse-anonymous"
               />
-              <label htmlFor="pulse-anon" className="text-xs text-foreground inline-flex items-center gap-1">
+              <label htmlFor="pulse-anon" className="text-[13px] text-foreground inline-flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Anonymous responses
               </label>
             </div>
           </div>
-          {createError && <p className="text-xs text-red-600">{createError}</p>}
+          {createError && <p className="text-[13px] text-red-600">{createError}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={() => { setCreating(false); setCreateError(null); }}
-              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+              className="px-3 py-2 rounded-lg border border-border text-[13px] font-semibold text-foreground hover:bg-muted/30 transition-colors"
             >
               Cancel
             </button>
@@ -294,7 +294,7 @@ function LivePulseSurveysSection() {
               type="button"
               onClick={() => { setCreateError(null); createMutation.mutate(); }}
               disabled={createMutation.isPending || (template === "custom" && !question.trim())}
-              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-pulse-survey"
             >
               {createMutation.isPending ? "Creating…" : "Launch survey"}
@@ -309,7 +309,7 @@ function LivePulseSurveysSection() {
             <div className="animate-spin w-5 h-5 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         ) : active.length === 0 && archived.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">
+          <p className="text-[13px] text-muted-foreground text-center py-6">
             No surveys yet. Launch one to start hearing from your members.
           </p>
         ) : (
@@ -334,7 +334,7 @@ function LivePulseSurveysSection() {
                 <button
                   type="button"
                   onClick={() => setShowArchived(v => !v)}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                  className="text-[13px] font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                   data-testid="toggle-archived-surveys"
                 >
                   {showArchived ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -390,24 +390,24 @@ function SurveyRow({
           <div className="flex items-center gap-2 flex-wrap">
             <ScoreIndicator average={survey.latestAverage} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
-            <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${isArchived ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+            <span className={`text-[12px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${isArchived ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
               {isArchived ? "Archived" : SCHEDULE_LABELS[survey.schedule]}
             </span>
             {survey.anonymous && (
-              <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
+              <span className="text-[12px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> Anonymous
               </span>
             )}
             {sentimentBadge && (
               <span
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
+                className={`text-[12px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
                 data-testid={`badge-sentiment-${survey.id}`}
               >
                 {sentimentBadge.label}
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-[13px] text-muted-foreground mt-0.5">
             Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             {isArchived && ` · archived ${new Date(survey.archivedAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
           </p>
@@ -418,7 +418,7 @@ function SurveyRow({
               type="button"
               onClick={e => { e.stopPropagation(); onArchive(); }}
               disabled={disabled}
-              className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
               data-testid={`button-archive-survey-${survey.id}`}
             >
               <Archive className="w-3 h-3" /> Archive
@@ -522,14 +522,14 @@ function ResultsPanel({
       {/* Window switcher */}
       {hasWindowSwitching && (
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Response window</p>
+          <p className="text-[12px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Response window</p>
           <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Response window">
             <button
               type="button"
               role="tab"
               aria-selected={windowKey === "all"}
               onClick={() => setWindowKey("all")}
-              className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${windowKey === "all" ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
+              className={`px-2.5 py-1 rounded-full border text-[12px] font-semibold transition-colors ${windowKey === "all" ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
               data-testid={`survey-window-${surveyId}-all`}
             >
               All time
@@ -541,7 +541,7 @@ function ResultsPanel({
                 role="tab"
                 aria-selected={windowKey === t.windowKey}
                 onClick={() => setWindowKey(t.windowKey)}
-                className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${windowKey === t.windowKey ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
+                className={`px-2.5 py-1 rounded-full border text-[12px] font-semibold transition-colors ${windowKey === t.windowKey ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted/30"}`}
                 data-testid={`survey-window-${surveyId}-${t.windowKey}`}
               >
                 {t.label}
@@ -557,13 +557,13 @@ function ResultsPanel({
           <p className={`text-3xl font-display font-black leading-none ${scoreColor}`} data-testid={`survey-average-${surveyId}`}>
             {responses > 0 ? average.toFixed(1) : "—"}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">out of 5</p>
+          <p className="text-[12px] text-muted-foreground mt-1">out of 5</p>
         </div>
         <div className="rounded-xl border border-border bg-white p-3.5 text-center">
           <p className="text-3xl font-display font-black text-foreground leading-none" data-testid={`survey-count-${surveyId}`}>
             {responses}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">responses</p>
+          <p className="text-[12px] text-muted-foreground mt-1">responses</p>
         </div>
         <div className="rounded-xl border border-border bg-white p-3.5 text-center">
           {delta !== null ? (
@@ -571,14 +571,14 @@ function ResultsPanel({
               <p className={`text-3xl font-display font-black leading-none ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-500" : "text-foreground"}`}>
                 {delta > 0 ? "+" : ""}{delta.toFixed(1)}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">vs prev period</p>
+              <p className="text-[12px] text-muted-foreground mt-1">vs prev period</p>
             </>
           ) : (
             <>
               <p className={`text-3xl font-display font-black leading-none ${positivePct >= 60 ? "text-emerald-600" : positivePct < 40 ? "text-red-500" : "text-amber-600"}`}>
                 {responses > 0 ? `${positivePct}%` : "—"}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">positive (4–5)</p>
+              <p className="text-[12px] text-muted-foreground mt-1">positive (4–5)</p>
             </>
           )}
         </div>
@@ -595,15 +595,15 @@ function ResultsPanel({
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             <span className="flex items-center gap-1">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-muted-foreground">{positivePct}% positive (4–5)</span>
+              <span className="text-[12px] text-muted-foreground">{positivePct}% positive (4–5)</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
-              <span className="text-[10px] text-muted-foreground">{neutralPct}% neutral (3)</span>
+              <span className="text-[12px] text-muted-foreground">{neutralPct}% neutral (3)</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
-              <span className="text-[10px] text-muted-foreground">{negativePct}% low (1–2)</span>
+              <span className="text-[12px] text-muted-foreground">{negativePct}% low (1–2)</span>
             </span>
           </div>
         </div>
@@ -611,7 +611,7 @@ function ResultsPanel({
 
       {/* Distribution chart */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5" data-testid={`survey-distribution-label-${surveyId}`}>
+        <p className="text-[12px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5" data-testid={`survey-distribution-label-${surveyId}`}>
           {distributionLabel}
         </p>
         {responses === 0 ? (
@@ -626,7 +626,7 @@ function ResultsPanel({
                   <div key={d.rating} className="flex-1 flex flex-col items-center justify-end h-full gap-0.5">
                     {d.count > 0 ? (
                       <>
-                        <span className="text-[10px] font-semibold text-foreground">{pct}%</span>
+                        <span className="text-[12px] font-semibold text-foreground">{pct}%</span>
                         <span className="text-[9px] text-muted-foreground">{d.count}</span>
                       </>
                     ) : (
@@ -643,7 +643,7 @@ function ResultsPanel({
             <div className="flex items-start gap-2 mt-1">
               {distribution.map(d => (
                 <div key={d.rating} className="flex-1 flex justify-center">
-                  <span className="text-[10px] text-muted-foreground">{d.rating}</span>
+                  <span className="text-[12px] text-muted-foreground">{d.rating}</span>
                 </div>
               ))}
             </div>
@@ -654,7 +654,7 @@ function ResultsPanel({
       {/* Trend chart */}
       {trend.length > 1 && (
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5">Trend over time</p>
+          <p className="text-[12px] uppercase tracking-wider font-semibold text-muted-foreground mb-2.5">Trend over time</p>
           <div className="flex items-end gap-2 border-b border-border" style={{ height: `${CHART_H + 20}px` }}>
             {trend.map(t => {
               const isSelected = selectedWindow?.windowKey === t.windowKey;
@@ -668,7 +668,7 @@ function ResultsPanel({
                   data-testid={`survey-trend-${surveyId}-${t.windowKey}`}
                   tabIndex={hasWindowSwitching ? 0 : -1}
                 >
-                  <span className="text-[10px] font-medium text-foreground">{t.average.toFixed(1)}</span>
+                  <span className="text-[12px] font-medium text-foreground">{t.average.toFixed(1)}</span>
                   <span className="text-[9px] text-muted-foreground">({t.count})</span>
                   <div
                     className={`w-full rounded-t-md transition-opacity ${barColor} ${hasWindowSwitching && !isSelected ? "opacity-50 group-hover:opacity-80" : ""}`}
@@ -681,38 +681,38 @@ function ResultsPanel({
           <div className="flex items-start gap-2 mt-1">
             {trend.map(t => (
               <div key={t.windowKey} className="flex-1 flex justify-center">
-                <span className="text-[10px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
+                <span className="text-[12px] text-muted-foreground truncate max-w-full text-center">{t.label}</span>
               </div>
             ))}
           </div>
           {hasWindowSwitching && (
-            <p className="text-[10px] text-muted-foreground/70 mt-1.5 italic">Click a bar to filter the distribution above.</p>
+            <p className="text-[12px] text-muted-foreground/70 mt-1.5 italic">Click a bar to filter the distribution above.</p>
           )}
         </div>
       )}
 
       {/* Comments */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 inline-flex items-center gap-1">
+        <p className="text-[12px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 inline-flex items-center gap-1">
           <MessageSquare className="w-3 h-3" /> Member comments
         </p>
         {anonymous && (
-          <p className="text-[10px] text-muted-foreground mb-2">Shown only after {commentPrivacyThreshold}+ responses per period to protect anonymity.</p>
+          <p className="text-[12px] text-muted-foreground mb-2">Shown only after {commentPrivacyThreshold}+ responses per period to protect anonymity.</p>
         )}
         {commentsBelowThreshold ? (
-          <p className="text-xs text-muted-foreground italic" data-testid={`survey-comments-hidden-${surveyId}`}>
+          <p className="text-[13px] text-muted-foreground italic" data-testid={`survey-comments-hidden-${surveyId}`}>
             Comments are hidden for this period to protect anonymity ({selectedWindow!.count}/{commentPrivacyThreshold} responses needed).
           </p>
         ) : visibleComments.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No comments to show yet.</p>
+          <p className="text-[13px] text-muted-foreground italic">No comments to show yet.</p>
         ) : (
           <ul className="space-y-2.5 max-h-72 overflow-y-auto pr-1" data-testid={`survey-comments-${surveyId}`}>
             {visibleComments.map(c => (
               <li key={c.id} className="flex gap-2.5">
                 <div className="w-0.5 shrink-0 self-stretch rounded-full bg-primary/25" />
                 <div className="py-0.5">
-                  <p className="text-xs text-foreground leading-relaxed">"{c.comment}"</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{c.windowLabel}</p>
+                  <p className="text-[13px] text-foreground leading-relaxed">"{c.comment}"</p>
+                  <p className="text-[12px] text-muted-foreground mt-1">{c.windowLabel}</p>
                 </div>
               </li>
             ))}
@@ -797,7 +797,7 @@ function DemoPulseSurveysSection() {
             <ClipboardList className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Member pulse surveys</h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[13px] text-muted-foreground mt-1">
             30-second prompts that help you measure how your members are feeling and how meaningful their work is. Anonymous by default.
           </p>
         </div>
@@ -805,7 +805,7 @@ function DemoPulseSurveysSection() {
           <button
             type="button"
             onClick={() => { setCreating(true); handleTemplateChange("meaningfulness"); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             data-testid="button-new-pulse-survey"
           >
             <Plus className="w-3.5 h-3.5" /> New survey
@@ -814,7 +814,7 @@ function DemoPulseSurveysSection() {
       </div>
 
       {successId && (
-        <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-survey-success">
+        <p className="mt-3 text-[13px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-survey-success">
           Survey launched successfully.
         </p>
       )}
@@ -822,14 +822,14 @@ function DemoPulseSurveysSection() {
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">Template</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">Template</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {DEMO_TEMPLATE_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
                   type="button"
                   onClick={() => handleTemplateChange(opt.key)}
-                  className={`text-left px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                  className={`text-left px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
                     template === opt.key
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border bg-white text-foreground hover:bg-muted/30"
@@ -842,7 +842,7 @@ function DemoPulseSurveysSection() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
               Question {template !== "custom" && <span className="text-muted-foreground font-normal">(edit if you like)</span>}
             </label>
             <input
@@ -857,7 +857,7 @@ function DemoPulseSurveysSection() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">How often</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">How often</label>
               <select
                 value={schedule}
                 onChange={e => setSchedule(e.target.value as Schedule)}
@@ -878,7 +878,7 @@ function DemoPulseSurveysSection() {
                 className="rounded border-border w-4 h-4 text-primary focus:ring-primary"
                 data-testid="checkbox-pulse-anonymous"
               />
-              <label htmlFor="demo-pulse-anon" className="text-xs text-foreground inline-flex items-center gap-1">
+              <label htmlFor="demo-pulse-anon" className="text-[13px] text-foreground inline-flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Anonymous responses
               </label>
             </div>
@@ -887,7 +887,7 @@ function DemoPulseSurveysSection() {
             <button
               type="button"
               onClick={() => setCreating(false)}
-              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+              className="px-3 py-2 rounded-lg border border-border text-[13px] font-semibold text-foreground hover:bg-muted/30 transition-colors"
             >
               Cancel
             </button>
@@ -895,7 +895,7 @@ function DemoPulseSurveysSection() {
               type="button"
               onClick={handleCreate}
               disabled={template === "custom" && !question.trim()}
-              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-pulse-survey"
             >
               Launch survey
@@ -928,30 +928,30 @@ function DemoSurveyRow({ survey, open, onToggle, highlight }: { survey: DemoPuls
           <div className="flex items-center gap-2 flex-wrap">
             <ScoreIndicator average={survey.trend.length > 0 ? survey.trend[survey.trend.length - 1].average : survey.totals.responses > 0 ? survey.totals.average : null} />
             <span className="text-sm font-semibold text-foreground truncate">{survey.question}</span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+            <span className="text-[12px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               {SCHEDULE_LABELS[survey.schedule]}
             </span>
             {survey.anonymous && (
-              <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
+              <span className="text-[12px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> Anonymous
               </span>
             )}
             {sentimentBadge && (
               <span
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
+                className={`text-[12px] font-semibold px-1.5 py-0.5 rounded ${sentimentBadge.className}`}
                 data-testid={`badge-sentiment-${survey.id}`}
               >
                 {sentimentBadge.label}
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-[13px] text-muted-foreground mt-0.5">
             Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <div
-            className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border opacity-60"
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border opacity-60"
             aria-hidden
           >
             <Archive className="w-3 h-3" /> Archive

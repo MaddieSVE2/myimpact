@@ -295,23 +295,23 @@ export default function OrgExport() {
         <h3 className="text-sm font-semibold text-foreground mb-3">Options</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">From</label>
+            <label className="block text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">From</label>
             <input
               type="date" value={from} onChange={e => setFrom(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-md border border-border text-xs"
+              className="w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
               data-testid="export-from"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">To</label>
+            <label className="block text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">To</label>
             <input
               type="date" value={to} onChange={e => setTo(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-md border border-border text-xs"
+              className="w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
               data-testid="export-to"
             />
           </div>
           <div className="flex items-end">
-            <label className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none py-1.5">
+            <label className="inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none py-1.5">
               <input
                 type="checkbox"
                 checked={anonymise}
@@ -326,7 +326,7 @@ export default function OrgExport() {
 
         {/* Sections to include */}
         <div className="border-t border-border pt-4 mt-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Sections to include in PDF</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Sections to include in PDF</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 mb-3">
             {(
               [
@@ -337,7 +337,7 @@ export default function OrgExport() {
                 { key: "sroi",        label: "SROI assumptions" },
               ] as const
             ).map(({ key, label }) => (
-              <label key={key} className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
+              <label key={key} className="inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={sections[key]}
@@ -349,7 +349,7 @@ export default function OrgExport() {
               </label>
             ))}
             {/* Activity log gets its own full-width row to signal prominence */}
-            <label className="col-span-2 sm:col-span-3 inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none font-medium">
+            <label className="col-span-2 sm:col-span-3 inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none font-medium">
               <input
                 type="checkbox"
                 checked={sections.activityLog}
@@ -361,13 +361,13 @@ export default function OrgExport() {
             </label>
           </div>
           {noSectionsSelected && (
-            <p className="text-[11px] text-red-600 flex items-center gap-1">
+            <p className="text-[12px] text-red-600 flex items-center gap-1">
               <AlertCircle className="w-3 h-3 shrink-0" /> Select at least one section to enable the PDF download.
             </p>
           )}
         </div>
 
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 mt-3">
+        <p className="text-[12px] text-muted-foreground inline-flex items-center gap-1.5 mt-3">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
           {filtered.length} {filtered.length === 1 ? "activity" : "activities"} included
           {anonymise ? " · names will be replaced with Member 001, 002, …" : " · names and emails will be included"}
@@ -379,13 +379,13 @@ export default function OrgExport() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Live preview</h3>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Updates automatically when you change the date range, anonymisation or branding.
             </p>
           </div>
           {previewLoading && (
             <div
-              className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              className="flex items-center gap-1.5 text-[12px] text-muted-foreground"
               data-testid="export-preview-loading"
             >
               <div className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" />
@@ -395,11 +395,11 @@ export default function OrgExport() {
         </div>
         <div className="relative w-full" style={{ minHeight: 520 }}>
           {previewError ? (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-red-600">
+            <div className="absolute inset-0 flex items-center justify-center text-[13px] text-red-600">
               {previewError}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+            <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-foreground">
               No activities in this range, adjust the filters above to see a preview.
             </div>
           ) : previewUrl ? (
@@ -417,13 +417,13 @@ export default function OrgExport() {
         <div className="bg-white border border-border rounded-xl p-5">
           <FileText className="w-5 h-5 text-primary mb-2" />
           <h4 className="text-sm font-semibold text-foreground mb-1">Impact PDF</h4>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-[13px] text-muted-foreground mb-4">
             A funder-ready report with summary stats, monthly trend, top SDGs, highlights and full activity table.
           </p>
           <button
             onClick={handlePdf}
             disabled={filtered.length === 0 || noSectionsSelected}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             data-testid="button-export-pdf"
           >
             <FileText className="w-3.5 h-3.5" /> Download PDF
@@ -433,13 +433,13 @@ export default function OrgExport() {
         <div className="bg-white border border-border rounded-xl p-5">
           <FileSpreadsheet className="w-5 h-5 text-primary mb-2" />
           <h4 className="text-sm font-semibold text-foreground mb-1">Activity CSV</h4>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-[13px] text-muted-foreground mb-4">
             Every activity in the chosen range as a spreadsheet row, including hours, social value and SDG.
           </p>
           <button
             onClick={handleCsvActivity}
             disabled={filtered.length === 0}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 transition-colors disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-50"
             data-testid="button-export-csv-activity"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" /> Download CSV
@@ -449,13 +449,13 @@ export default function OrgExport() {
         <div className="bg-white border border-border rounded-xl p-5">
           <FileSpreadsheet className="w-5 h-5 text-primary mb-2" />
           <h4 className="text-sm font-semibold text-foreground mb-1">SDG breakdown CSV</h4>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-[13px] text-muted-foreground mb-4">
             One row per Sustainable Development Goal, with social value, hours, members and activities.
           </p>
           <button
             onClick={handleCsvSdg}
             disabled={sdgs.length === 0}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 transition-colors disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-50"
             data-testid="button-export-csv-sdg"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" /> Download CSV

@@ -113,7 +113,7 @@ function LiveOrgPulseSummaryCard() {
         <ScoreIndicator average={showDonut ? avg : null} />
       </div>
       {!hasAny ? (
-        <p className="text-xs text-muted-foreground">{t("orgDashboard.pulseSummaryNone")}</p>
+        <p className="text-[13px] text-muted-foreground">{t("orgDashboard.pulseSummaryNone")}</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-[auto_auto_1fr] gap-4 items-center">
           <div className="flex items-center justify-center">
@@ -143,19 +143,19 @@ function LiveOrgPulseSummaryCard() {
           </div>
           <div className="grid grid-cols-2 gap-2 min-w-[180px]">
             <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
               <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-active">{activeIds.length}</p>
             </div>
             <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
               <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{totals.responses}</p>
             </div>
           </div>
           <div className="min-w-0">
             <div className="flex items-baseline justify-between gap-2 mb-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseTrendLabel")}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseTrendLabel")}</p>
               {trendPoints.length > 0 && (
-                <p className="text-[10px] text-muted-foreground">{trendPoints[0].label} → {trendPoints[trendPoints.length - 1].label}</p>
+                <p className="text-[12px] text-muted-foreground">{trendPoints[0].label} → {trendPoints[trendPoints.length - 1].label}</p>
               )}
             </div>
             {sparkPoints.length > 0 ? (
@@ -165,7 +165,7 @@ function LiveOrgPulseSummaryCard() {
                 {lastPoint && <circle cx={lastPoint[0]} cy={lastPoint[1]} r={3} fill="hsl(var(--primary))" />}
               </svg>
             ) : (
-              <p className="text-xs text-muted-foreground py-2">{t("orgDashboard.pulseTrendEmpty")}</p>
+              <p className="text-[13px] text-muted-foreground py-2">{t("orgDashboard.pulseTrendEmpty")}</p>
             )}
           </div>
         </div>
@@ -261,11 +261,11 @@ function DemoOrgPulseSummaryCard() {
         {/* Headline numbers */}
         <div className="grid grid-cols-2 gap-2 min-w-[180px]">
           <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryActive")}</p>
             <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-active">{summary.active}</p>
           </div>
           <div className="rounded-lg bg-muted/30 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
             <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{summary.responses}</p>
           </div>
         </div>
@@ -273,9 +273,9 @@ function DemoOrgPulseSummaryCard() {
         {/* Sparkline trend */}
         <div className="min-w-0">
           <div className="flex items-baseline justify-between gap-2 mb-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseTrendLabel")}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseTrendLabel")}</p>
             {trendPoints.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">{trendPoints[0].label} → {trendPoints[trendPoints.length - 1].label}</p>
+              <p className="text-[12px] text-muted-foreground">{trendPoints[0].label} → {trendPoints[trendPoints.length - 1].label}</p>
             )}
           </div>
           {sparkPoints.length > 0 ? (
@@ -285,7 +285,7 @@ function DemoOrgPulseSummaryCard() {
               {lastPoint && <circle cx={lastPoint[0]} cy={lastPoint[1]} r={3} fill="hsl(var(--primary))" />}
             </svg>
           ) : (
-            <p className="text-xs text-muted-foreground py-2">{t("orgDashboard.pulseTrendEmpty")}</p>
+            <p className="text-[13px] text-muted-foreground py-2">{t("orgDashboard.pulseTrendEmpty")}</p>
           )}
         </div>
       </div>
