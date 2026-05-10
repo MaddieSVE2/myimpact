@@ -464,70 +464,129 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
         ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-[13px]">
-            <thead>
-              <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[140px]">Name</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[180px]">Email</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isDemoOrg
-                ? pagedDemoMembers.map(m => (
-                    <tr key={m.id} className="border-b border-border/60" data-testid={`row-member-${m.id}`}>
-                      <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
-                      <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
-                      <td className="py-2 pr-3">
+        <>
+          {/* Mobile cards — visible on screens narrower than 640px */}
+          <ul className="sm:hidden divide-y divide-border/60">
+            {(isDemoOrg ? pagedDemoMembers : liveMembers).length === 0 && (
+              <li className="py-6 text-center text-xs text-muted-foreground">No members yet.</li>
+            )}
+            {isDemoOrg
+              ? pagedDemoMembers.map(m => (
+                  <li key={m.id} className="py-3 flex items-start justify-between gap-3" data-testid={`row-member-${m.id}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-foreground truncate">{m.name}</p>
+                      <p className="text-[12px] text-muted-foreground truncate">{m.email}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {m.role}
                         </span>
-                      </td>
-                      <td className="py-2 pr-3 text-muted-foreground">{m.postcode}</td>
-                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="py-2 pr-3 text-right">
-                        {m.role === "manager" ? (
-                          <span className="text-[11px] text-muted-foreground italic">manager</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => removeDemoMember(m.id)}
-                            className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
-                            data-testid={`button-remove-${m.id}`}
-                          >
-                            <Trash2 className="w-3 h-3" /> Remove
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                : liveMembers.map(m => (
-                    <tr key={m.userId} className="border-b border-border/60" data-testid={`row-member-${m.userId}`}>
-                      <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
-                      <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
-                      <td className="py-2 pr-3">
+                        <span className="text-[11px] text-muted-foreground">
+                          Joined {new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      {m.role === "manager" ? (
+                        <span className="text-[11px] text-muted-foreground italic">manager</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => removeDemoMember(m.id)}
+                          className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
+                          data-testid={`button-remove-${m.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" /> Remove
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))
+              : liveMembers.map(m => (
+                  <li key={m.userId} className="py-3 flex items-start justify-between gap-3" data-testid={`row-member-${m.userId}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-foreground truncate">{m.name}</p>
+                      <p className="text-[12px] text-muted-foreground truncate">{m.email}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {m.role}
                         </span>
-                      </td>
-                      <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
-                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="py-2 pr-3 text-right">
-                        <span className="text-[11px] text-muted-foreground italic">{m.role}</span>
-                      </td>
-                    </tr>
-                  ))
-              }
-              {(isDemoOrg ? pagedDemoMembers : liveMembers).length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-center text-xs text-muted-foreground">No members yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          Joined {new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-[11px] text-muted-foreground italic">{m.role}</div>
+                  </li>
+                ))
+            }
+          </ul>
+
+          {/* Desktop/tablet table — hidden on phones */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full table-fixed text-[13px]">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[140px]">Name</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[180px]">Email</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isDemoOrg
+                  ? pagedDemoMembers.map(m => (
+                      <tr key={m.id} className="border-b border-border/60" data-testid={`row-member-${m.id}-desktop`}>
+                        <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
+                        <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
+                        <td className="py-2 pr-3">
+                          <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {m.role}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 text-muted-foreground">{m.postcode}</td>
+                        <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="py-2 pr-3 text-right">
+                          {m.role === "manager" ? (
+                            <span className="text-[11px] text-muted-foreground italic">manager</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => removeDemoMember(m.id)}
+                              className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
+                              data-testid={`button-remove-${m.id}-desktop`}
+                            >
+                              <Trash2 className="w-3 h-3" /> Remove
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  : liveMembers.map(m => (
+                      <tr key={m.userId} className="border-b border-border/60" data-testid={`row-member-${m.userId}-desktop`}>
+                        <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
+                        <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
+                        <td className="py-2 pr-3">
+                          <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {m.role}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
+                        <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="py-2 pr-3 text-right">
+                          <span className="text-[11px] text-muted-foreground italic">{m.role}</span>
+                        </td>
+                      </tr>
+                    ))
+                }
+                {(isDemoOrg ? pagedDemoMembers : liveMembers).length === 0 && (
+                  <tr><td colSpan={6} className="py-6 text-center text-xs text-muted-foreground">No members yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
         )}
 
         {/* Pagination */}
