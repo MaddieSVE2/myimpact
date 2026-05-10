@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Footer } from "@/components/layout/Footer";
 import {
   Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users, Info,
@@ -9,7 +10,7 @@ import {
   getDemoMember, getRemovedMemberIds, ALL_CATEGORIES,
   type ActivityCategory,
 } from "@/lib/org-demo-mock";
-import { useMyOrg, memberLabel } from "@/lib/org-export";
+import { useMyOrg, BASE } from "@/lib/org-export";
 import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 
@@ -40,9 +41,65 @@ function calcActivityBreakdown(hours: number, socialValueGBP: number): string {
   return `${hours.toLocaleString("en-GB")} hrs × ${rateStr}/hr`;
 }
 
+function calcRealBreakdown(hours: number, socialValueGBP: number, valuePerUnit: number, unitLabel: string): string {
+  if (valuePerUnit > 0 && unitLabel) {
+    const lowerUnit = unitLabel.toLowerCase();
+    const isHourBased = lowerUnit.includes("hr") || lowerUnit.includes("hour");
+    if (isHourBased && hours > 0) {
+      const rateStr = valuePerUnit % 1 === 0 ? `£${valuePerUnit.toFixed(0)}` : `£${valuePerUnit.toFixed(2)}`;
+      return `${hours.toLocaleString("en-GB")} hrs × ${rateStr}/hr`;
+    }
+    if (!isHourBased) {
+      const qty = valuePerUnit > 0 ? Math.round(socialValueGBP / valuePerUnit * 100) / 100 : hours;
+      const rateStr = valuePerUnit % 1 === 0 ? `£${valuePerUnit.toFixed(0)}` : `£${valuePerUnit.toFixed(2)}`;
+      return `${qty.toLocaleString("en-GB")} ${unitLabel} × ${rateStr}`;
+    }
+  }
+  return calcActivityBreakdown(hours, socialValueGBP);
+}
+
+interface RealActivity {
+  id: string;
+  occurredAt: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string | null;
+  category: string;
+  activity: string;
+  description: string;
+  hours: number;
+  socialValueGBP: number;
+  verified: boolean;
+  valuePerUnit: number;
+  unitLabel: string;
+  proxy: string;
+  proxyYear: string;
+  source: "member-submitted" | "org-attested";
+}
+
+interface RealMember {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+function useRealOrgActivities(enabled: boolean, from: string, to: string) {
+  return useQuery<{ activities: RealActivity[]; members: RealMember[] }>({
+    queryKey: ["org-activities", from, to],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to)   params.set("to",   to);
+      const res = await fetch(`${BASE}/api/org/activities?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load activities");
+      return res.json();
+    },
+    enabled,
+  });
+}
+
 export default function OrgActivities() {
   const { data: orgData, isLoading, isError } = useMyOrg();
-  const [, setLocation] = useLocation();
 
   const [category, setCategory] = useState<"all" | ActivityCategory>("all");
   const [memberId, setMemberId] = useState<"all" | string>("all");
@@ -82,37 +139,68 @@ export default function OrgActivities() {
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [openTooltip]);
 
-  useEffect(() => {
-    if (orgData?.org && isManager && !isDemoOrg) {
-      setLocation("/org", { replace: true });
-    }
-  }, [orgData?.org, isManager, isDemoOrg, setLocation]);
+  const realFeedEnabled = Boolean(orgData?.org && isManager && !isDemoOrg);
+  const { data: realData, isLoading: realLoading } = useRealOrgActivities(realFeedEnabled, from, to);
 
   const removedIds = useMemo(
     () => isDemoOrg ? new Set(getRemovedMemberIds(DEMO_ORG_ID)) : new Set<string>(),
     [isDemoOrg],
   );
 
-  const allActivities = useMemo(
+  const demoActivities = useMemo(
     () => DEMO_ACTIVITIES.filter(a => !removedIds.has(a.memberId)),
     [removedIds],
   );
 
+  // For real orgs: build a stable anonymisation index from the members list.
+  const realMemberIndex = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    if (realData?.members) {
+      realData.members.forEach((m, idx) => map.set(m.id, idx + 1));
+    }
+    return map;
+  }, [realData?.members]);
+
+  function realMemberLabel(mId: string, anon: boolean): { name: string; email: string } {
+    if (anon) {
+      const idx = realMemberIndex.get(mId) ?? 0;
+      return { name: `Member ${String(idx).padStart(3, "0")}`, email: "Not set" };
+    }
+    const act = realData?.activities.find(a => a.memberId === mId);
+    return {
+      name: act?.memberName ?? mId,
+      email: act?.memberEmail ?? "",
+    };
+  }
+
   const filtered = useMemo(() => {
-    return allActivities.filter(a => {
+    if (isDemoOrg) {
+      return demoActivities.filter(a => {
+        if (category !== "all" && a.category !== category) return false;
+        if (memberId !== "all" && a.memberId !== memberId) return false;
+        if (from && a.occurredAt < from) return false;
+        if (to && a.occurredAt > to) return false;
+        if (query) {
+          const q = query.toLowerCase();
+          const m = getDemoMember(a.memberId);
+          const hay = `${a.activity} ${a.description} ${anonymise ? "" : (m?.name ?? "")}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      }).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    }
+
+    return (realData?.activities ?? []).filter(a => {
       if (category !== "all" && a.category !== category) return false;
       if (memberId !== "all" && a.memberId !== memberId) return false;
-      if (from && a.occurredAt < from) return false;
-      if (to && a.occurredAt > to) return false;
       if (query) {
         const q = query.toLowerCase();
-        const m = getDemoMember(a.memberId);
-        const hay = `${a.activity} ${a.description} ${anonymise ? "" : (m?.name ?? "")}`.toLowerCase();
+        const hay = `${a.activity} ${a.description} ${anonymise ? "" : a.memberName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     }).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-  }, [allActivities, category, memberId, from, to, query, anonymise]);
+  }, [isDemoOrg, demoActivities, realData?.activities, category, memberId, from, to, query, anonymise]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -145,8 +233,8 @@ export default function OrgActivities() {
     </div>;
   }
 
-  if (!isDemoOrg) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 flex justify-center">
+  if (!isDemoOrg && realLoading) {
+    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
@@ -208,9 +296,14 @@ export default function OrgActivities() {
             </select>
             <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-member">
               <option value="all">All members</option>
-              {DEMO_MEMBERS.filter(m => !removedIds.has(m.id)).map(m => (
-                <option key={m.id} value={m.id}>{anonymise ? memberLabel(m.id, true).name : m.name}</option>
-              ))}
+              {isDemoOrg
+                ? DEMO_MEMBERS.filter(m => !removedIds.has(m.id)).map(m => (
+                    <option key={m.id} value={m.id}>{anonymise ? `Member ${String(DEMO_MEMBERS.findIndex(dm => dm.id === m.id) + 1).padStart(3, "0")}` : m.name}</option>
+                  ))
+                : (realData?.members ?? []).map((m, idx) => (
+                    <option key={m.id} value={m.id}>{anonymise ? `Member ${String(idx + 1).padStart(3, "0")}` : m.name}</option>
+                  ))
+              }
             </select>
             <div className="flex gap-1">
               <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="From" />
@@ -236,7 +329,29 @@ export default function OrgActivities() {
                   </thead>
                   <tbody>
                     {pageRows.map(a => {
-                      const m = memberLabel(a.memberId, anonymise);
+                      const isReal = !isDemoOrg;
+                      const m = isReal
+                        ? realMemberLabel(a.memberId, anonymise)
+                        : (() => {
+                            const demo = getDemoMember(a.memberId);
+                            if (anonymise) {
+                              const idx = DEMO_MEMBERS.findIndex(dm => dm.id === a.memberId);
+                              return { name: `Member ${String(idx + 1).padStart(3, "0")}`, email: "" };
+                            }
+                            return { name: demo?.name ?? a.memberId, email: demo?.email ?? "" };
+                          })();
+
+                      const realA = a as RealActivity;
+                      const demoA = a as typeof DEMO_ACTIVITIES[number];
+
+                      const proxyText = isReal
+                        ? (realA.proxy || "")
+                        : CATEGORY_PROXY[(a as typeof DEMO_ACTIVITIES[number]).category as ActivityCategory] ?? "";
+
+                      const breakdownText = isReal
+                        ? calcRealBreakdown(realA.hours, realA.socialValueGBP, realA.valuePerUnit, realA.unitLabel)
+                        : calcActivityBreakdown(demoA.hours, demoA.socialValueGBP);
+
                       return (
                         <tr key={a.id} className="border-b border-border/60 align-top hover:bg-muted/20" data-testid={`row-activity-${a.id}`}>
                           <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
@@ -266,8 +381,8 @@ export default function OrgActivities() {
                                 </button>
                                 {openTooltip === a.id && (
                                   <div className="absolute right-0 top-5 z-30 w-60 px-3 py-2.5 rounded-md bg-white border border-border shadow-lg text-[11px] text-muted-foreground leading-relaxed">
-                                    <p className="font-semibold text-foreground mb-1 tabular-nums">{calcActivityBreakdown(a.hours, a.socialValueGBP)}</p>
-                                    <p className="mb-1.5">{CATEGORY_PROXY[a.category]}</p>
+                                    <p className="font-semibold text-foreground mb-1 tabular-nums">{breakdownText}</p>
+                                    {proxyText && <p className="mb-1.5">{proxyText}</p>}
                                     <Link href="/methodology" className="text-primary hover:underline font-medium" data-testid={`methodology-link-${a.id}`} onClick={() => setOpenTooltip(null)}>
                                       Learn about our methodology →
                                     </Link>

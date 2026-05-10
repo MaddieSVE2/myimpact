@@ -2436,4 +2436,194 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
   }
 });
 
+// ─── GET /api/org/activities ───────────────────────────────────────────────
+// Manager-only. Returns a flat list of individual activity lines (one entry
+// per activity within each impact record) for all members of this org, across
+// both member-submitted and org-attested sources. Each line includes the SVE
+// proxy citation and formula fields so the frontend can render the info-icon
+// tooltip without falling back to category-level defaults.
+//
+// Query params:
+//   from  — ISO-8601 date (inclusive lower bound on activity date)
+//   to    — ISO-8601 date (inclusive upper bound on activity date)
+router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+
+    const fromParam = req.query.from;
+    const toParam   = req.query.to;
+    const fromStr = typeof fromParam === "string" && fromParam ? fromParam : null;
+    const toStr   = typeof toParam   === "string" && toParam   ? toParam   : null;
+
+    // Resolve API key IDs that belong to this org (for org-attested records).
+    const orgApiKeyRows = await db
+      .select({ id: orgApiKeysTable.id })
+      .from(orgApiKeysTable)
+      .where(eq(orgApiKeysTable.orgId, orgId));
+    const apiKeyIdList = orgApiKeyRows.map(k => k.id);
+
+    const memberCond = eq(impactRecordsTable.submittedToOrgId, orgId);
+    const attestedCond = apiKeyIdList.length > 0
+      ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
+      : sql`FALSE`;
+
+    const records = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(sql`(${memberCond}) OR (${attestedCond})`)
+      .orderBy(desc(impactRecordsTable.createdAt));
+
+    const userIds = Array.from(new Set(records.map(r => r.userId)));
+    const users = userIds.length > 0
+      ? await db
+          .select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : [];
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    interface ActivityLine {
+      id: string;
+      occurredAt: string;
+      memberId: string;
+      memberName: string;
+      memberEmail: string | null;
+      category: string;
+      activity: string;
+      description: string;
+      hours: number;
+      socialValueGBP: number;
+      verified: boolean;
+      valuePerUnit: number;
+      unitLabel: string;
+      proxy: string;
+      proxyYear: string;
+      source: "member-submitted" | "org-attested";
+    }
+
+    const lines: ActivityLine[] = [];
+
+    for (const r of records) {
+      const user = userMap.get(r.userId);
+      const memberName  = user?.displayName ?? user?.email ?? "Member";
+      const memberEmail = user?.email ?? null;
+
+      const actLines = Array.isArray(r.activitiesJson)
+        ? (r.activitiesJson as Array<Record<string, unknown>>)
+        : [];
+
+      // Determine the canonical date for this record.
+      // org-attested: occurredAt lives in resultJson; fall back to attestedAt/createdAt.
+      // member-submitted: entryDate is the activity date.
+      let recordDate: string;
+      if (r.source === "org-attested") {
+        const rj = (r.resultJson ?? {}) as Record<string, unknown>;
+        const raw = typeof rj.occurredAt === "string" ? rj.occurredAt : null;
+        recordDate = raw
+          ? raw.slice(0, 10)
+          : (r.attestedAt ?? r.createdAt).toISOString().slice(0, 10);
+      } else {
+        recordDate = r.entryDate
+          ? r.entryDate.toISOString().slice(0, 10)
+          : (r.submittedToOrgAt ?? r.createdAt).toISOString().slice(0, 10);
+      }
+
+      // Apply date-range filter in application code so both sources are handled
+      // uniformly regardless of which DB column holds the activity date.
+      if (fromStr && recordDate < fromStr) continue;
+      if (toStr   && recordDate > toStr)   continue;
+
+      for (let i = 0; i < actLines.length; i++) {
+        const l = actLines[i];
+        const actId = typeof l.activityId === "string" ? l.activityId : "";
+
+        if (actId === "org_attested") {
+          // Org-attested records: rate stored alongside the line.
+          const valuePerUnit = typeof l.valuePerUnit === "number" ? l.valuePerUnit : 17;
+          const hours = typeof l.hoursPerYear === "number"
+            ? l.hoursPerYear
+            : typeof l.quantity === "number" ? l.quantity : 0;
+          const description = typeof l.description === "string" ? l.description : "";
+          const category = typeof (r.resultJson as Record<string, unknown>)?.category === "string"
+            ? ((r.resultJson as Record<string, unknown>).category as string)
+            : "Community";
+
+          lines.push({
+            id: `${r.id}-${i}`,
+            occurredAt: recordDate,
+            memberId: r.userId,
+            memberName,
+            memberEmail,
+            category,
+            activity: r.name ?? "Attested activity",
+            description,
+            hours,
+            socialValueGBP: Math.round(Number(r.totalValue) * 100) / 100,
+            verified: true,
+            valuePerUnit,
+            unitLabel: "hrs",
+            proxy: "Organisation-attested volunteer hours (wage-replacement proxy, ONS)",
+            proxyYear: "2023",
+            source: "org-attested",
+          });
+        } else {
+          // Member-submitted: look up the canonical activity definition.
+          const actDef = ACTIVITIES.find(a => a.id === actId);
+          const hours    = typeof l.hoursPerYear === "number" ? l.hoursPerYear : 0;
+          const quantity = typeof l.quantity     === "number" ? l.quantity     : 0;
+
+          // Use the stored quantity for the formula (hours for hour-based
+          // activities, the specific quantity otherwise).
+          const isHourBased = actDef
+            ? actDef.unit === "hour" || actDef.unit === "hour_per_week"
+            : false;
+          const formulaQty = isHourBased ? hours : quantity;
+          const valuePerUnit = actDef?.valuePerUnit ?? 0;
+          const socialValueGBP = Math.round(formulaQty * valuePerUnit * 100) / 100;
+
+          const description =
+            typeof l.detail       === "string" ? l.detail :
+            typeof l.description  === "string" ? l.description : "";
+
+          // something_else activities have no SVE proxy.
+          const isSomethingElse = actId === "something_else" || !actDef;
+
+          lines.push({
+            id: `${r.id}-${i}`,
+            occurredAt: recordDate,
+            memberId: r.userId,
+            memberName,
+            memberEmail,
+            category: actDef?.category ?? "Community",
+            activity: actDef?.name ?? (typeof l.title === "string" ? l.title : actId) ?? "Activity",
+            description,
+            hours,
+            socialValueGBP: isSomethingElse ? 0 : socialValueGBP,
+            verified: !!r.attestedAt,
+            valuePerUnit: actDef?.valuePerUnit ?? 0,
+            unitLabel: actDef?.unitLabel ?? "hrs",
+            proxy: actDef?.proxy ?? "",
+            proxyYear: actDef?.proxyYear ?? "",
+            source: "member-submitted",
+          });
+        }
+      }
+    }
+
+    // Members list (for the filter dropdown in the UI).
+    const memberList = users.map(u => ({
+      id: u.id,
+      name: u.displayName ?? u.email ?? "Member",
+      email: u.email,
+    }));
+
+    res.json({ activities: lines, members: memberList });
+  } catch (err) {
+    console.error("Org activities error:", err);
+    res.status(500).json({ error: "Failed to load activities" });
+  }
+});
+
 export default router;
