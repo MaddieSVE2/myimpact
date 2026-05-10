@@ -605,7 +605,7 @@ export default function OrgMemberSubmit() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       {isHourly ? (
                         <div>
-                          <label className="block text-[11px] font-medium text-foreground mb-1">Hours per year</label>
+                          <label className="block text-[11px] font-medium text-foreground mb-1">Hours</label>
                           <input
                             type="number"
                             min={0}
@@ -632,7 +632,7 @@ export default function OrgMemberSubmit() {
                           </div>
                           <div>
                             <label className="block text-[11px] font-medium text-foreground mb-1">
-                              Hours per year
+                              Hours
                               {!line.hoursManual && <span className="text-muted-foreground font-normal"> (auto)</span>}
                             </label>
                             <input
