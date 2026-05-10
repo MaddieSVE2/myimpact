@@ -228,6 +228,77 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     });
   }
 
+  if (memberStatus === "pending") {
+    (async () => {
+      try {
+        const managerRows = await db
+          .select({ userId: orgMembersTable.userId })
+          .from(orgMembersTable)
+          .where(
+            and(
+              eq(orgMembersTable.orgId, org.id),
+              eq(orgMembersTable.role, "manager"),
+              eq(orgMembersTable.status, "active"),
+            ),
+          );
+
+        if (managerRows.length === 0) return;
+
+        const managerUserIds = managerRows.map(r => r.userId);
+        const [managerUsers, requesterUser] = await Promise.all([
+          db
+            .select({ id: usersTable.id, email: usersTable.email })
+            .from(usersTable)
+            .where(inArray(usersTable.id, managerUserIds)),
+          db
+            .select({ displayName: usersTable.displayName })
+            .from(usersTable)
+            .where(eq(usersTable.id, userId))
+            .then(rows => rows[0] ?? null),
+        ]);
+
+        const requesterName = requesterUser?.displayName?.trim() || userEmail;
+        const { client, fromEmail } = await getUncachableResendClient();
+        const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
+        const reviewUrl = `${appUrl}/org/settings`;
+
+        await Promise.all(
+          managerUsers.map(manager =>
+            client.emails.send({
+              from: fromEmail,
+              to: manager.email,
+              subject: `New join request for ${escHtml(org.name)}`,
+              html: `
+                <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+                  <h2 style="color:#213547;margin-top:0;">New member request</h2>
+                  <p style="color:#444;font-size:15px;line-height:1.5;">
+                    Someone has requested to join <strong>${escHtml(org.name)}</strong> and is waiting for your approval.
+                  </p>
+                  <table style="width:100%;border-collapse:collapse;margin-top:16px;background:white;border-radius:8px;overflow:hidden;">
+                    <tr style="background:#f7f5ef;">
+                      <td style="padding:12px 16px;color:#555;width:120px;font-size:13px;"><strong>Name</strong></td>
+                      <td style="padding:12px 16px;color:#213547;font-size:14px;">${escHtml(requesterName)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px 16px;color:#555;font-size:13px;"><strong>Email</strong></td>
+                      <td style="padding:12px 16px;font-size:14px;"><a href="mailto:${escHtml(userEmail)}" style="color:#E8633A;">${escHtml(userEmail)}</a></td>
+                    </tr>
+                  </table>
+                  <div style="margin-top:24px;">
+                    <a href="${reviewUrl}" style="display:inline-block;background:#E8633A;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:600;">Review request</a>
+                  </div>
+                  <p style="color:#aaa;font-size:11px;margin-top:32px;">My Impact · myimpact.uk</p>
+                </div>
+              `,
+            }).catch(err => console.error("[org.join] failed to send manager notification:", err)),
+          ),
+        );
+      } catch (err) {
+        console.error("[org.join] failed to notify managers:", err);
+      }
+    })();
+  }
+
   res.json({ ok: true, orgName: org.name, alreadyMember: false, status: memberStatus });
 });
 
