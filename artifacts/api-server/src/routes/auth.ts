@@ -405,12 +405,19 @@ async function loginPersonaAccount(res: any, normalizedEmail: string) {
     });
 
     if (!existingMembership) {
-      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id, role: desiredRole }).onConflictDoNothing();
-    } else if (desiredRole === "manager" && existingMembership.role !== "manager") {
-      await db
-        .update(orgMembersTable)
-        .set({ role: "manager" })
-        .where(and(eq(orgMembersTable.orgId, DEMO_ORG_ID), eq(orgMembersTable.userId, user.id)));
+      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id, role: desiredRole, status: "active" }).onConflictDoNothing();
+    } else {
+      const needsRoleUpdate = desiredRole === "manager" && existingMembership.role !== "manager";
+      const needsStatusFix = existingMembership.status !== "active";
+      if (needsRoleUpdate || needsStatusFix) {
+        await db
+          .update(orgMembersTable)
+          .set({
+            ...(needsRoleUpdate ? { role: "manager" } : {}),
+            ...(needsStatusFix ? { status: "active" } : {}),
+          })
+          .where(and(eq(orgMembersTable.orgId, DEMO_ORG_ID), eq(orgMembersTable.userId, user.id)));
+      }
     }
   }
 
