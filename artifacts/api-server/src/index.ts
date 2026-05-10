@@ -21,6 +21,13 @@ async function bootstrap(): Promise<void> {
     );
   }
 
+  if (process.env.ENABLE_DEMO_LOGIN === "true") {
+    const { seedDemo } = await import("./scripts/seed-demo.js");
+    seedDemo().catch((err) => {
+      console.error("[seed-demo] Seed failed (non-fatal):", err);
+    });
+  }
+
   if (!process.env.APP_URL && !process.env.REPLIT_DEV_DOMAIN) {
     console.warn(
       "[CONFIG WARNING] Neither APP_URL nor REPLIT_DEV_DOMAIN is set. " +

@@ -331,7 +331,7 @@ async function ensureDemoChallenges(orgId: string, memberUserIds: string[]) {
 // Seed
 // ---------------------------------------------------------------------------
 
-async function seedDemo() {
+export async function seedDemo() {
   const userId = await ensureUser(DEMO_EMAIL, DEMO_USER_ID);
 
   let existingOrg = await db.query.organisationsTable.findFirst({
@@ -474,11 +474,15 @@ async function seedDemo() {
   console.log(`  Member email:   ${DEMO_EMAIL}`);
   console.log(`  Manager email:  ${ORG_ADMIN_EMAIL}`);
   console.log(`  Invite code:    ${DEMO_INVITE_CODE}`);
-
-  await pool.end();
 }
 
-seedDemo().catch((err) => {
-  console.error("Seed failed:", err);
-  process.exit(1);
-});
+// Allow running directly: tsx src/scripts/seed-demo.ts
+const isMain = process.argv[1]?.endsWith("seed-demo.ts") || process.argv[1]?.endsWith("seed-demo.js");
+if (isMain) {
+  seedDemo()
+    .then(() => pool.end())
+    .catch((err) => {
+      console.error("Seed failed:", err);
+      process.exit(1);
+    });
+}
