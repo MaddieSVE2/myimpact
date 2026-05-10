@@ -279,6 +279,33 @@ function PersonalDevelopmentDetail({
 
 // ── Proxy methodology ─────────────────────────────────────────────────────────
 
+function calcResultBreakdown(b: {
+  unit?: string;
+  unitLabel?: string;
+  valuePerUnit?: number;
+  quantity?: number;
+  hours: number;
+  impactValue: number;
+}): string {
+  const vpu = b.valuePerUnit;
+  if (!vpu) return "";
+  const rate = `£${vpu % 1 === 0 ? vpu.toFixed(0) : vpu.toFixed(2)}`;
+  if (b.unit === "hour" || !b.unit) {
+    return `${Math.round(b.hours).toLocaleString("en-GB")} hrs × ${rate}/hr`;
+  }
+  const qty = b.quantity ?? (vpu > 0 ? Math.round(b.impactValue / vpu) : 0);
+  const unitLabel = b.unitLabel ?? b.unit;
+  let sing = unitLabel;
+  if (unitLabel === "hours") sing = "hr";
+  else if (unitLabel === "miles") sing = "mile";
+  else if (unitLabel === "weeks per year") sing = "week";
+  else if (unitLabel === "people helped" || unitLabel === "people") sing = "person";
+  else if (unitLabel === "young people") sing = "young person";
+  else if (unitLabel === "children") sing = "child";
+  else if (unitLabel.endsWith("s") && unitLabel.length > 2) sing = unitLabel.slice(0, -1);
+  return `${qty.toLocaleString("en-GB")} ${unitLabel} × ${rate}/${sing}`;
+}
+
 function ProxyMethodology({ breakdowns }: {
   breakdowns: Array<{
     activityId: string;
@@ -289,6 +316,10 @@ function ProxyMethodology({ breakdowns }: {
     sdgColor: string;
     impactValue: number;
     hours: number;
+    quantity?: number;
+    valuePerUnit?: number;
+    unit?: string;
+    unitLabel?: string;
   }>
 }) {
   const [open, setOpen] = useState(false);
@@ -335,32 +366,40 @@ function ProxyMethodology({ breakdowns }: {
             </p>
           </div>
           <div className="divide-y divide-border">
-            {withProxy.map(b => (
-              <div key={b.activityId} className="flex items-start gap-3 px-5 py-3.5">
-                <div
-                  className="w-0.5 self-stretch rounded-full shrink-0 mt-0.5"
-                  style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground leading-snug">{b.activityName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                        <span className="font-medium text-foreground/70">Proxy: </span>
-                        {b.proxy}
-                        {b.proxyYear && (
-                          <span className="text-muted-foreground/60"> ({b.proxyYear})</span>
+            {withProxy.map(b => {
+              const formula = calcResultBreakdown(b);
+              return (
+                <div key={b.activityId} className="flex items-start gap-3 px-5 py-3.5">
+                  <div
+                    className="w-0.5 self-stretch rounded-full shrink-0 mt-0.5"
+                    style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground leading-snug">{b.activityName}</p>
+                        {formula && (
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug tabular-nums font-medium">
+                            {formula}
+                          </p>
                         )}
-                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 leading-none align-middle">closest match</span>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                          <span className="font-medium text-foreground/70">Proxy: </span>
+                          {b.proxy}
+                          {b.proxyYear && (
+                            <span className="text-muted-foreground/60"> ({b.proxyYear})</span>
+                          )}
+                          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 leading-none align-middle">closest match</span>
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold shrink-0" style={{ color: "#F06127" }}>
+                        {formatCurrency(b.impactValue)}
                       </p>
                     </div>
-                    <p className="text-sm font-bold shrink-0" style={{ color: "#F06127" }}>
-                      {formatCurrency(b.impactValue)}
-                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {noProxyCustom.map(b => (
               <div key={b.activityId} className="flex items-start gap-3 px-5 py-3.5 bg-muted/5">
                 <div
@@ -380,6 +419,9 @@ function ProxyMethodology({ breakdowns }: {
             <p className="text-xs text-muted-foreground">
               Source: <span className="font-medium">Social Value Engine proxy library</span> · Values reflect wellbeing-adjusted social return on investment
             </p>
+            <Link href="/methodology" className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+              <Info className="w-3 h-3" aria-hidden="true" /> Learn about our methodology →
+            </Link>
           </div>
         </div>
       )}

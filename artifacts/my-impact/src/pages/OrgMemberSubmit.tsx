@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -18,8 +18,15 @@ interface SelectedLine {
   activityId: string;
   quantity: number;
   hoursPerYear: number;
+  hoursManual?: boolean;
   title: string;
   detail: string;
+}
+
+interface SessionCalc {
+  hrsPerSession: number;
+  sessionsPerWeek: number;
+  weeksPerYear: number;
 }
 
 function todayIso(): string {
@@ -51,6 +58,26 @@ function estimatedValue(act: ActivityItem, line: SelectedLine): number {
   return line.quantity * act.valuePerUnit;
 }
 
+function unitSingular(unitLabel: string): string {
+  if (unitLabel === "hours") return "hr";
+  if (unitLabel === "miles") return "mile";
+  if (unitLabel === "weeks per year") return "week";
+  if (unitLabel === "people helped" || unitLabel === "people") return "person";
+  if (unitLabel === "young people") return "young person";
+  if (unitLabel === "children") return "child";
+  if (unitLabel.endsWith("s") && unitLabel.length > 2) return unitLabel.slice(0, -1);
+  return unitLabel;
+}
+
+function calcBreakdown(act: ActivityItem, line: SelectedLine): string {
+  const rate = `£${act.valuePerUnit % 1 === 0 ? act.valuePerUnit.toFixed(0) : act.valuePerUnit.toFixed(2)}`;
+  if (act.unit === "hour") {
+    return `${line.hoursPerYear.toLocaleString("en-GB")} hrs × ${rate}/hr`;
+  }
+  const sing = unitSingular(act.unitLabel);
+  return `${line.quantity.toLocaleString("en-GB")} ${act.unitLabel} × ${rate}/${sing}`;
+}
+
 export default function OrgMemberSubmit() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -63,6 +90,9 @@ export default function OrgMemberSubmit() {
   const [lines, setLines] = useState<Record<string, SelectedLine>>({});
   const [activityDate, setActivityDate] = useState<string>(todayIso);
   const [saveToPersonal, setSaveToPersonal] = useState(false);
+  const [sessionCalcs, setSessionCalcs] = useState<Record<string, SessionCalc>>({});
+  const [openCalcs, setOpenCalcs] = useState<Record<string, boolean>>({});
+  const [openProxyTooltip, setOpenProxyTooltip] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
@@ -189,6 +219,13 @@ export default function OrgMemberSubmit() {
       const next = { ...prev };
       delete next[id];
       return next;
+    });
+  }
+
+  function updateSessionCalc(id: string, patch: Partial<SessionCalc>) {
+    setSessionCalcs(prev => {
+      const cur = prev[id] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
+      return { ...prev, [id]: { ...cur, ...patch } };
     });
   }
 
@@ -525,65 +562,180 @@ export default function OrgMemberSubmit() {
                   </button>
                 </div>
 
-                {/* Description — above hours */}
-                <div className="mb-2">
-                  <label className="block text-[11px] font-medium text-foreground mb-1">
-                    What did you do?{!isSomethingElse && <span className="text-muted-foreground"> (optional)</span>}
-                  </label>
-                  <textarea
-                    value={isSomethingElse ? line.title : line.detail}
-                    onChange={e => {
-                      if (isSomethingElse) {
-                        updateLine(line.activityId, { title: e.target.value });
-                        if (e.target.value.trim()) setDetailsAttempted(false);
-                      } else {
-                        updateLine(line.activityId, { detail: e.target.value });
-                      }
-                    }}
-                    maxLength={500}
-                    rows={2}
-                    placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
-                    className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none resize-y ${isSomethingElse && detailsAttempted && !line.title.trim() ? "border-red-400 focus:border-red-400" : "border-border focus:border-primary"}`}
-                    data-testid={`member-submit-detail-${line.activityId}`}
-                  />
-                  {isSomethingElse && detailsAttempted && !line.title.trim() ? (
-                    <p className="mt-1 text-[11px] text-red-600 flex items-center gap-1" data-testid="member-submit-something-else-error">
-                      <AlertCircle className="w-3 h-3 shrink-0" /> Please describe what you did
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
-                  )}
-                </div>
+                {isSomethingElse ? (
+                  <>
+                    <div className="mb-2">
+                      <label className="block text-[11px] font-medium text-foreground mb-1">
+                        What did you do?
+                      </label>
+                      <textarea
+                        value={line.title}
+                        onChange={e => {
+                          updateLine(line.activityId, { title: e.target.value });
+                          if (e.target.value.trim()) setDetailsAttempted(false);
+                        }}
+                        maxLength={500}
+                        rows={2}
+                        placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
+                        className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none resize-y ${detailsAttempted && !line.title.trim() ? "border-red-400 focus:border-red-400" : "border-border focus:border-primary"}`}
+                        data-testid={`member-submit-detail-${line.activityId}`}
+                      />
+                      {detailsAttempted && !line.title.trim() ? (
+                        <p className="mt-1 text-[11px] text-red-600 flex items-center gap-1" data-testid="member-submit-something-else-error">
+                          <AlertCircle className="w-3 h-3 shrink-0" /> Please describe what you did
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-foreground mb-1">Hours spent</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={line.hoursPerYear || ""}
+                        onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                        data-testid={`member-submit-hours-${line.activityId}`}
+                      />
+                    </div>
+                  </>
+                ) : def ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                      {isHourly ? (
+                        <div>
+                          <label className="block text-[11px] font-medium text-foreground mb-1">Hours per year</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={line.hoursPerYear || ""}
+                            onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                            data-testid={`member-submit-hours-${line.activityId}`}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="block text-[11px] font-medium text-foreground mb-1">{def.unitLabel || "Quantity"}</label>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={line.quantity || ""}
+                              onChange={e => updateLine(line.activityId, { quantity: Number(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                              data-testid={`member-submit-quantity-${line.activityId}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-foreground mb-1">
+                              Hours per year
+                              {!line.hoursManual && <span className="text-muted-foreground font-normal"> (auto)</span>}
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={line.hoursPerYear || ""}
+                              onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0, hoursManual: true })}
+                              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                              data-testid={`member-submit-hours-${line.activityId}`}
+                            />
+                          </div>
+                        </>
+                      )}
+                      <div>
+                        <label className="block text-[11px] font-medium text-foreground mb-1">Title <span className="text-muted-foreground">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={line.title}
+                          onChange={e => updateLine(line.activityId, { title: e.target.value })}
+                          maxLength={120}
+                          placeholder="Short label"
+                          className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                          data-testid={`member-submit-title-${line.activityId}`}
+                        />
+                      </div>
+                    </div>
 
-                {/* Quantity for non-hourly activities */}
-                {!isHourly && def && (
-                  <div className="mb-2">
-                    <label className="block text-[11px] font-medium text-foreground mb-1">{def.unitLabel || "Quantity"}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={line.quantity || ""}
-                      onChange={e => updateLine(line.activityId, { quantity: Number(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                      data-testid={`member-submit-quantity-${line.activityId}`}
-                    />
-                  </div>
-                )}
+                    {/* Live estimated value with formula */}
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10 text-xs flex items-center gap-1.5 flex-wrap" data-testid={`member-submit-formula-${line.activityId}`}>
+                      <span className="text-muted-foreground">≈</span>
+                      <span className="font-semibold text-foreground">{formatGBP(estimatedValue(def, line))}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground tabular-nums">{calcBreakdown(def, line)}</span>
+                    </div>
 
-                {/* Hours spent */}
-                <div>
-                  <label className="block text-[11px] font-medium text-foreground mb-1">Hours spent</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.5}
-                    value={line.hoursPerYear || ""}
-                    onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-                    data-testid={`member-submit-hours-${line.activityId}`}
-                  />
-                </div>
+                    {!isHourly && (() => {
+                      const calc = sessionCalcs[line.activityId] ?? { hrsPerSession: 2, sessionsPerWeek: 1, weeksPerYear: 48 };
+                      const isOpen = !!openCalcs[line.activityId];
+                      return (
+                        <div className="mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setOpenCalcs(o => ({ ...o, [line.activityId]: !o[line.activityId] }))}
+                            className="text-[11px] font-medium text-primary hover:underline"
+                            data-testid={`member-submit-calc-toggle-${line.activityId}`}
+                          >
+                            {isOpen ? "Hide session calculator" : "Use session calculator (weekly shifts)"}
+                          </button>
+                          {isOpen && (
+                            <div className="mt-2 bg-muted/30 border border-border rounded-md p-3 space-y-2" data-testid={`member-submit-calc-${line.activityId}`}>
+                              <p className="text-xs font-medium text-muted-foreground">Estimate annual hours from a regular shift</p>
+                              <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <input
+                                  type="number" min="0.5" step="0.5"
+                                  value={calc.hrsPerSession}
+                                  onChange={e => updateSessionCalc(line.activityId, { hrsPerSession: Number(e.target.value) || 0 })}
+                                  className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  data-testid={`member-submit-calc-hrs-${line.activityId}`}
+                                />
+                                <span className="text-muted-foreground text-xs">hrs/session ×</span>
+                                <input
+                                  type="number" min="1"
+                                  value={calc.sessionsPerWeek}
+                                  onChange={e => updateSessionCalc(line.activityId, { sessionsPerWeek: Number(e.target.value) || 0 })}
+                                  className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  data-testid={`member-submit-calc-sessions-${line.activityId}`}
+                                />
+                                <span className="text-muted-foreground text-xs">/week ×</span>
+                                <input
+                                  type="number" min="1" max="52"
+                                  value={calc.weeksPerYear}
+                                  onChange={e => updateSessionCalc(line.activityId, { weeksPerYear: Number(e.target.value) || 0 })}
+                                  className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  data-testid={`member-submit-calc-weeks-${line.activityId}`}
+                                />
+                                <span className="text-muted-foreground text-xs">weeks =</span>
+                                <span className="font-bold text-foreground text-sm">
+                                  {Math.max(1, Math.round(calc.hrsPerSession * calc.sessionsPerWeek * calc.weeksPerYear))} hrs/yr
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-foreground mb-1">Detail <span className="text-muted-foreground">(optional)</span></label>
+                      <textarea
+                        value={line.detail}
+                        onChange={e => updateLine(line.activityId, { detail: e.target.value })}
+                        maxLength={500}
+                        rows={2}
+                        placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none resize-y focus:border-primary"
+                        data-testid={`member-submit-detail-${line.activityId}`}
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>
+                    </div>
+                  </>
+                ) : null}
               </div>
             );
           })}
@@ -688,25 +840,52 @@ export default function OrgMemberSubmit() {
                   const isSomethingElse = l.activityId === SOMETHING_ELSE_ID;
                   const displayName = isSomethingElse ? (l.title || "Something else") : (def?.name ?? l.activityId);
                   const displayDetail = isSomethingElse ? null : l.detail;
+                  const proxyOpen = openProxyTooltip === l.activityId;
                   return (
-                    <li key={l.activityId} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-medium text-foreground truncate">{displayName}</p>
-                          {isSomethingElse && (
-                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Custom</span>
+                    <li key={l.activityId} className="px-3 py-2 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-foreground truncate">{displayName}</p>
+                            {isSomethingElse && (
+                              <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Custom</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {isSomethingElse
+                              ? `${l.hoursPerYear} hrs`
+                              : def?.unit === "hour"
+                                ? `${l.hoursPerYear} hrs`
+                                : `${l.quantity} ${def?.unitLabel} · ${l.hoursPerYear} hrs`}
+                            {displayDetail && ` · ${displayDetail.length > 60 ? displayDetail.slice(0, 60) + "…" : displayDetail}`}
+                          </p>
+                          {!isSomethingElse && def && (
+                            <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                              {calcBreakdown(def, l)}
+                              {def.proxy && (
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenProxyTooltip(proxyOpen ? null : l.activityId)}
+                                  className="ml-1.5 inline-flex items-center align-middle text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                                  aria-label="View proxy source"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </button>
+                              )}
+                            </p>
+                          )}
+                          {proxyOpen && def?.proxy && (
+                            <div className="mt-1.5 px-2.5 py-2 rounded-md bg-muted/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                              <p className="font-medium text-foreground/80 mb-0.5">Proxy source</p>
+                              <p>{def.proxy}{def.proxyYear ? ` (${def.proxyYear})` : ""}</p>
+                              <Link href="/methodology" className="mt-1 inline-flex items-center gap-0.5 text-primary hover:underline text-[11px]">
+                                Learn about our methodology →
+                              </Link>
+                            </div>
                           )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {isSomethingElse
-                            ? `${l.hoursPerYear} hrs`
-                            : def?.unit === "hour"
-                              ? `${l.hoursPerYear} hrs`
-                              : `${l.quantity} ${def?.unitLabel} · ${l.hoursPerYear} hrs`}
-                          {displayDetail && ` · ${displayDetail.length > 60 ? displayDetail.slice(0, 60) + "…" : displayDetail}`}
-                        </p>
+                        {def && <p className="text-xs font-semibold tabular-nums shrink-0">{formatGBP(estimatedValue(def, l))}</p>}
                       </div>
-                      {def && <p className="text-xs font-semibold tabular-nums">{formatGBP(estimatedValue(def, l))}</p>}
                     </li>
                   );
                 })}
@@ -786,6 +965,7 @@ export default function OrgMemberSubmit() {
                       const isSomethingElse = l.activityId === SOMETHING_ELSE_ID;
                       const displayName = isSomethingElse ? (l.title || "Something else") : (l.detail || def?.name || l.activityId);
                       const category = isSomethingElse ? "Custom" : (def?.category ?? "");
+                      const previewTooltipOpen = openProxyTooltip === `preview-${l.activityId}`;
                       return (
                         <tr key={l.activityId} className="border-b border-border/60 align-top" data-testid={`member-submit-preview-row-${l.activityId}`}>
                           <td className="py-2 pr-3">
@@ -808,8 +988,33 @@ export default function OrgMemberSubmit() {
                             </p>
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{Math.round(l.hoursPerYear).toLocaleString("en-GB")}</td>
-                          <td className="py-2 pr-3 text-right whitespace-nowrap font-semibold text-foreground">
-                            {def ? formatGBP(estimatedValue(def, l)) : "—"}
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">
+                            {def ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <span className="font-semibold text-foreground tabular-nums">{formatGBP(estimatedValue(def, l))}</span>
+                                {!isSomethingElse && (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenProxyTooltip(previewTooltipOpen ? null : `preview-${l.activityId}`)}
+                                      className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                      aria-label="How this value is calculated"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </button>
+                                    {previewTooltipOpen && (
+                                      <div className="absolute right-0 top-5 z-20 w-56 px-2.5 py-2 rounded-md bg-white border border-border shadow-lg text-[11px] text-muted-foreground leading-relaxed">
+                                        <p className="font-semibold text-foreground mb-1 tabular-nums">{calcBreakdown(def, l)}</p>
+                                        {def.proxy && <p className="mb-1">{def.proxy}{def.proxyYear ? ` (${def.proxyYear})` : ""}</p>}
+                                        <Link href="/methodology" className="text-primary hover:underline">
+                                          Learn about our methodology →
+                                        </Link>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : "—"}
                           </td>
                         </tr>
                       );

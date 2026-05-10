@@ -722,6 +722,10 @@ export function calculateImpact(
         sdgColor: activity.sdgColor,
         impactValue: Math.round(impactValue * 100) / 100,
         hours: sel.hoursPerYear,
+        quantity: sel.quantity,
+        valuePerUnit: activity.valuePerUnit,
+        unit: activity.unit,
+        unitLabel: activity.unitLabel,
       };
     })
     .filter(Boolean) as Array<{
@@ -734,6 +738,10 @@ export function calculateImpact(
     sdgColor: string;
     impactValue: number;
     hours: number;
+    quantity: number;
+    valuePerUnit: number;
+    unit: string;
+    unitLabel: string;
   }>;
 
   // Process custom activities (user-typed, with SVE proxy matched by AI)
