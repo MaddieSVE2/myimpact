@@ -71,6 +71,18 @@ export default function OrgActivities() {
   }, [page, category, memberId, query, from, to]);
 
   useEffect(() => {
+    if (!openTooltip) return;
+    function handleMouseDown(e: MouseEvent) {
+      const target = e.target as Element;
+      if (!target.closest("[data-tooltip-wrapper]")) {
+        setOpenTooltip(null);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [openTooltip]);
+
+  useEffect(() => {
     if (orgData?.org && isManager && !isDemoOrg) {
       setLocation("/org", { replace: true });
     }
@@ -242,7 +254,7 @@ export default function OrgActivities() {
                             <div className="inline-flex items-center gap-1 justify-end">
                               <span className="font-semibold text-foreground">£{a.socialValueGBP.toLocaleString("en-GB")}</span>
                               {a.verified && <BadgeCheck className="w-3 h-3 text-green-600 shrink-0" aria-label="Verified" />}
-                              <div className="relative">
+                              <div className="relative" data-tooltip-wrapper>
                                 <button
                                   type="button"
                                   onClick={() => setOpenTooltip(prev => prev === a.id ? null : a.id)}
@@ -256,7 +268,7 @@ export default function OrgActivities() {
                                   <div className="absolute right-0 top-5 z-30 w-60 px-3 py-2.5 rounded-md bg-white border border-border shadow-lg text-[11px] text-muted-foreground leading-relaxed">
                                     <p className="font-semibold text-foreground mb-1 tabular-nums">{calcActivityBreakdown(a.hours, a.socialValueGBP)}</p>
                                     <p className="mb-1.5">{CATEGORY_PROXY[a.category]}</p>
-                                    <Link href="/methodology" className="text-primary hover:underline font-medium" data-testid={`methodology-link-${a.id}`}>
+                                    <Link href="/methodology" className="text-primary hover:underline font-medium" data-testid={`methodology-link-${a.id}`} onClick={() => setOpenTooltip(null)}>
                                       Learn about our methodology →
                                     </Link>
                                   </div>
