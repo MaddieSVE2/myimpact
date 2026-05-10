@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Footer } from "@/components/layout/Footer";
 import {
-  Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users, Info,
+  Filter, Search, EyeOff, ChevronLeft, ChevronRight, BadgeCheck, AlertCircle, Users, Info, Download,
 } from "lucide-react";
 import {
   DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_MEMBERS,
@@ -206,6 +206,61 @@ export default function OrgActivities() {
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  function downloadCSV() {
+    const headers = ["Date", "Member Name", "Member Email", "Category", "Activity", "Description", "Hours", "Social Value (GBP)", "Verified"];
+
+    const rows = filtered.map(a => {
+      const isReal = !isDemoOrg;
+      let memberName: string;
+      let memberEmail: string;
+
+      if (isReal) {
+        const label = realMemberLabel(a.memberId, anonymise);
+        memberName = label.name;
+        memberEmail = anonymise ? "" : (label.email ?? "");
+      } else {
+        const demo = getDemoMember(a.memberId);
+        if (anonymise) {
+          const idx = DEMO_MEMBERS.findIndex(dm => dm.id === a.memberId);
+          memberName = `Member ${String(idx + 1).padStart(3, "0")}`;
+          memberEmail = "";
+        } else {
+          memberName = demo?.name ?? a.memberId;
+          memberEmail = demo?.email ?? "";
+        }
+      }
+
+      const date = new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+      return [
+        date,
+        memberName,
+        memberEmail,
+        a.category,
+        a.activity,
+        a.description,
+        String(a.hours),
+        String(a.socialValueGBP),
+        a.verified ? "Yes" : "No",
+      ];
+    });
+
+    const escape = (v: string) => {
+      const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csvContent = [headers, ...rows].map(r => r.map(escape).join(",")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `activity-feed-${from || "all"}-to-${to || "all"}${anonymise ? "-anonymised" : ""}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   if (isLoading) {
     return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -266,16 +321,27 @@ export default function OrgActivities() {
               <h3 className="text-sm font-semibold text-foreground">Filters</h3>
               <span className="text-[13px] text-muted-foreground">({filtered.length} {filtered.length === 1 ? "result" : "results"})</span>
             </div>
-            <label className="inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={anonymise}
-                onChange={e => setAnonymise(e.target.checked)}
-                className="rounded border-border"
-                data-testid="checkbox-anonymise"
-              />
-              <EyeOff className="w-3 h-3" /> Anonymise members
-            </label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={anonymise}
+                  onChange={e => setAnonymise(e.target.checked)}
+                  className="rounded border-border"
+                  data-testid="checkbox-anonymise"
+                />
+                <EyeOff className="w-3 h-3" /> Anonymise members
+              </label>
+              <button
+                type="button"
+                onClick={downloadCSV}
+                disabled={filtered.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-medium hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                data-testid="btn-download-csv"
+              >
+                <Download className="w-3.5 h-3.5" /> Download CSV
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
