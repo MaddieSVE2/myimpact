@@ -13,7 +13,8 @@ import {
 } from "@/lib/org-demo-mock";
 import {
   useMyOrg, memberLabel, downloadCsv, activityExportRows, sdgExportRows, buildOrgPdf,
-  buildOrgPdfBlobAsync, DEFAULT_SROI_COST_PER_VOLUNTEER,
+  buildOrgPdfBlobAsync, DEFAULT_SROI_COST_PER_VOLUNTEER, DEFAULT_PDF_SECTIONS,
+  type PdfSections,
 } from "@/lib/org-export";
 import { PdfPager } from "@/components/PdfPager";
 import { useLocale } from "@/i18n/context";
@@ -26,6 +27,8 @@ export default function OrgExport() {
   const [anonymise, setAnonymise] = useState(true);
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
+  const [sections, setSections] = useState<PdfSections>({ ...DEFAULT_PDF_SECTIONS });
+  const noSectionsSelected = !Object.values(sections).some(Boolean);
 
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
@@ -175,12 +178,13 @@ export default function OrgExport() {
       branding: orgData.org.branding ?? null,
       sroi: { costPerVolunteer: sroiCostPerVolunteer, totalMembers },
       locale,
+      sections,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to, sroiCostPerVolunteer, totalMembers, locale]);
+  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to, sroiCostPerVolunteer, totalMembers, locale, sections]);
 
   function handlePdf() {
-    if (!pdfArgs || filtered.length === 0) return;
+    if (!pdfArgs || filtered.length === 0 || noSectionsSelected) return;
     buildOrgPdf(
       pdfArgs.orgName,
       pdfArgs.rowsForPdf,
@@ -194,6 +198,7 @@ export default function OrgExport() {
       pdfArgs.sroi,
       pdfArgs.locale,
       pdfArgs.sroiCostBreakdown,
+      pdfArgs.sections,
     );
   }
 
@@ -232,6 +237,7 @@ export default function OrgExport() {
           branding: pdfArgs.branding,
           sroi: pdfArgs.sroi,
           locale: pdfArgs.locale,
+          sections: pdfArgs.sections,
         });
         if (mySeq !== previewSeq.current) return;
         if (!(blob instanceof Blob)) {
@@ -317,7 +323,51 @@ export default function OrgExport() {
             </label>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
+
+        {/* Sections to include */}
+        <div className="border-t border-border pt-4 mt-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Sections to include in PDF</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 mb-3">
+            {(
+              [
+                { key: "stats",       label: "Summary stats" },
+                { key: "trend",       label: "Monthly trend chart" },
+                { key: "highlights",  label: "Highlights" },
+                { key: "sdgs",        label: "UN SDGs breakdown" },
+                { key: "sroi",        label: "SROI assumptions" },
+              ] as const
+            ).map(({ key, label }) => (
+              <label key={key} className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={sections[key]}
+                  onChange={e => setSections(s => ({ ...s, [key]: e.target.checked }))}
+                  className="rounded border-border"
+                  data-testid={`export-section-${key}`}
+                />
+                {label}
+              </label>
+            ))}
+            {/* Activity log gets its own full-width row to signal prominence */}
+            <label className="col-span-2 sm:col-span-3 inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none font-medium">
+              <input
+                type="checkbox"
+                checked={sections.activityLog}
+                onChange={e => setSections(s => ({ ...s, activityLog: e.target.checked }))}
+                className="rounded border-border"
+                data-testid="export-section-activityLog"
+              />
+              Individual activities (full activity log table)
+            </label>
+          </div>
+          {noSectionsSelected && (
+            <p className="text-[11px] text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 shrink-0" /> Select at least one section to enable the PDF download.
+            </p>
+          )}
+        </div>
+
+        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 mt-3">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
           {filtered.length} {filtered.length === 1 ? "activity" : "activities"} included
           {anonymise ? " · names will be replaced with Member 001, 002, …" : " · names and emails will be included"}
@@ -372,7 +422,7 @@ export default function OrgExport() {
           </p>
           <button
             onClick={handlePdf}
-            disabled={filtered.length === 0}
+            disabled={filtered.length === 0 || noSectionsSelected}
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             data-testid="button-export-pdf"
           >

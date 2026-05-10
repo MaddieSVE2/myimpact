@@ -8,9 +8,11 @@ import {
   type OrgBranding,
   type PreloadedLogo,
   type RenderOrgPdfArgs,
+  type PdfSections,
 } from "@/lib/org-pdf-render";
 
-export type { OrgBranding, PreloadedLogo, RenderOrgPdfArgs } from "@/lib/org-pdf-render";
+export type { OrgBranding, PreloadedLogo, RenderOrgPdfArgs, PdfSections } from "@/lib/org-pdf-render";
+export { DEFAULT_PDF_SECTIONS } from "@/lib/org-pdf-render";
 
 export const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -194,27 +196,19 @@ export async function buildOrgPdf(
   filterSummary: string,
   highlights: Array<{ activity: DemoActivity; member: { name: string; email: string } }>,
   sdgs: SdgBreakdownPoint[],
-  // Optional — extra parameter kept backward compatible so existing callers
-  // (which omit it) continue to work without changes.
   branding?: OrgBranding | null,
-  // When `"blob"`, the function returns the rendered PDF as a Blob instead
-  // of triggering a download. Defaults to `"save"` to preserve the existing
-  // behaviour for the Download PDF button.
   output: "save" | "blob" = "save",
   sroi?: RenderOrgPdfArgs["sroi"],
   locale?: RenderOrgPdfArgs["locale"],
-  // Optional auditable per-volunteer cost sub-amounts (Recruitment /
-  // Onboarding / Support / Admin). When provided, rendered as a small
-  // breakdown table in the SROI assumptions section of the PDF so
-  // funders see the same numbers as the dashboard.
   costBreakdown?: SroiCostBreakdown | null,
+  sections?: Partial<PdfSections>,
 ): Promise<Blob | void> {
   const preloadedLogo = branding?.logoUrl ? await loadLogoAsDataUrl(branding.logoUrl) : null;
   const doc = renderOrgPdf({
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
     sroiCostPerVolunteer: sroi?.costPerVolunteer ?? null,
     sroiCostBreakdown: costBreakdown ?? null,
-    branding: branding ?? null, preloadedLogo, sroi: sroi ?? null, locale,
+    branding: branding ?? null, preloadedLogo, sroi: sroi ?? null, locale, sections,
   });
   if (output === "blob") {
     return doc.output("blob");

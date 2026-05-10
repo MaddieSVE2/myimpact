@@ -28,6 +28,24 @@ export interface SroiCostBreakdownArg {
   admin?: number | null;
 }
 
+export interface PdfSections {
+  stats: boolean;
+  trend: boolean;
+  highlights: boolean;
+  sdgs: boolean;
+  sroi: boolean;
+  activityLog: boolean;
+}
+
+export const DEFAULT_PDF_SECTIONS: PdfSections = {
+  stats: true,
+  trend: true,
+  highlights: true,
+  sdgs: true,
+  sroi: true,
+  activityLog: true,
+};
+
 export interface RenderOrgPdfArgs {
   orgName: string;
   rows: Array<{ activity: DemoActivity; member: { name: string; email: string } }>;
@@ -51,6 +69,8 @@ export interface RenderOrgPdfArgs {
   // Active app locale; defaults to English. Used to keep the SROI section
   // copy aligned with the dashboard explainer in EN/CY.
   locale?: Locale;
+  // Which sections to include in the rendered PDF. Defaults to all on.
+  sections?: Partial<PdfSections>;
 }
 
 type RGB = [number, number, number];
@@ -78,8 +98,9 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
   const {
     orgName, rows, totals, monthlyTrend, filterSummary, highlights, sdgs,
     sroiCostPerVolunteer, sroiCostBreakdown,
-    branding, preloadedLogo, sroi, locale,
+    branding, preloadedLogo, sroi, locale, sections: sectionsArg,
   } = args;
+  const sec: PdfSections = { ...DEFAULT_PDF_SECTIONS, ...sectionsArg };
   void sroiCostPerVolunteer;
   const breakdownLines: Array<{ label: string; value: number }> = [];
   if (sroiCostBreakdown) {
@@ -188,176 +209,186 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
 
   // ===== SUMMARY STAT CARDS =================================================
   let y = headerH + 32;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(MUTED);
-  doc.text("AT A GLANCE", margin, y);
-  y += 12;
+  if (sec.stats) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(MUTED);
+    doc.text("AT A GLANCE", margin, y);
+    y += 12;
 
-  const cardGap = 14;
-  const cardW = (contentW - cardGap * 2) / 3;
-  const cardH = 80;
-  const statCards = [
-    { label: "Social value", value: `£${totals.value.toLocaleString("en-GB")}`, sub: "Total generated" },
-    { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member volunteer time" },
-    { label: "Activities",   value: totals.activities.toLocaleString("en-GB"),       sub: "Logged in this period" },
-  ];
-  statCards.forEach((c, i) => {
-    const x = margin + i * (cardW + cardGap);
-    setFill(brandTint);
-    doc.roundedRect(x, y, cardW, cardH, 8, 8, "F");
-    setFill(brand);
-    doc.roundedRect(x, y, 4, cardH, 2, 2, "F");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(8); setText(MUTED);
-    doc.text(c.label.toUpperCase(), x + 16, y + 18);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(22); setText(INK);
-    doc.text(c.value, x + 16, y + 48);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
-    doc.text(c.sub, x + 16, y + 66);
-  });
-  y += cardH + 26;
+    const cardGap = 14;
+    const cardW = (contentW - cardGap * 2) / 3;
+    const cardH = 80;
+    const statCards = [
+      { label: "Social value", value: `£${totals.value.toLocaleString("en-GB")}`, sub: "Total generated" },
+      { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member volunteer time" },
+      { label: "Activities",   value: totals.activities.toLocaleString("en-GB"),       sub: "Logged in this period" },
+    ];
+    statCards.forEach((c, i) => {
+      const x = margin + i * (cardW + cardGap);
+      setFill(brandTint);
+      doc.roundedRect(x, y, cardW, cardH, 8, 8, "F");
+      setFill(brand);
+      doc.roundedRect(x, y, 4, cardH, 2, 2, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8); setText(MUTED);
+      doc.text(c.label.toUpperCase(), x + 16, y + 18);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(22); setText(INK);
+      doc.text(c.value, x + 16, y + 48);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+      doc.text(c.sub, x + 16, y + 66);
+    });
+    y += cardH + 26;
+  } else {
+    y += 16;
+  }
 
   // ===== MONTHLY TREND CHART ================================================
-  y = drawSectionHeading(y, "Monthly social value trend");
-  if (monthlyTrend.length === 0) {
-    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text("No activity recorded in this period.", margin, y + 14);
-    y += 30;
-  } else {
-    const chartH = 150;
-    const chartTop = y;
-    const chartBottom = y + chartH - 22;
-    const chartLeft = margin + 36;
-    const chartRight = margin + contentW - 4;
-    const chartInnerW = chartRight - chartLeft;
-    const maxVal = Math.max(1, ...monthlyTrend.map(p => p.value));
-    const niceMax = Math.max(50, Math.ceil(maxVal / 50) * 50);
+  if (sec.trend) {
+    y = drawSectionHeading(y, "Monthly social value trend");
+    if (monthlyTrend.length === 0) {
+      setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text("No activity recorded in this period.", margin, y + 14);
+      y += 30;
+    } else {
+      const chartH = 150;
+      const chartTop = y;
+      const chartBottom = y + chartH - 22;
+      const chartLeft = margin + 36;
+      const chartRight = margin + contentW - 4;
+      const chartInnerW = chartRight - chartLeft;
+      const maxVal = Math.max(1, ...monthlyTrend.map(p => p.value));
+      const niceMax = Math.max(50, Math.ceil(maxVal / 50) * 50);
 
-    setDraw(HAIRLINE); doc.setLineWidth(0.5);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(SUBTLE);
-    const gridLines = 4;
-    for (let i = 0; i <= gridLines; i++) {
-      const gy = chartBottom - (i / gridLines) * (chartBottom - chartTop - 8);
-      doc.line(chartLeft, gy, chartRight, gy);
-      const v = Math.round((i / gridLines) * niceMax);
-      doc.text(`£${v}`, margin, gy + 3);
+      setDraw(HAIRLINE); doc.setLineWidth(0.5);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(SUBTLE);
+      const gridLines = 4;
+      for (let i = 0; i <= gridLines; i++) {
+        const gy = chartBottom - (i / gridLines) * (chartBottom - chartTop - 8);
+        doc.line(chartLeft, gy, chartRight, gy);
+        const v = Math.round((i / gridLines) * niceMax);
+        doc.text(`£${v}`, margin, gy + 3);
+      }
+
+      const n = monthlyTrend.length;
+      const slot = chartInnerW / n;
+      const barW = Math.min(36, Math.max(6, slot * 0.62));
+      monthlyTrend.forEach((p) => {
+        const i = monthlyTrend.indexOf(p);
+        const cx = chartLeft + slot * i + slot / 2;
+        const x = cx - barW / 2;
+        const usableH = chartBottom - chartTop - 8;
+        const h = (p.value / niceMax) * usableH;
+        const by = chartBottom - h;
+        const radius = Math.min(3, barW / 2);
+        setFill(brand);
+        doc.roundedRect(x, by, barW, h, radius, radius, "F");
+        if (h > 10) {
+          setFill(accent);
+          doc.roundedRect(x, by, barW, Math.min(h * 0.45, 14), radius, radius, "F");
+        }
+        if (barW >= 14) {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(7); setText(MUTED);
+          const vt = `£${p.value}`;
+          const vw = doc.getTextWidth(vt);
+          doc.text(vt, cx - vw / 2, Math.max(chartTop + 8, by - 3));
+        }
+        doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(MUTED);
+        const lw = doc.getTextWidth(p.label);
+        doc.text(p.label, cx - lw / 2, chartBottom + 12);
+      });
+
+      setDraw(MUTED); doc.setLineWidth(0.6);
+      doc.line(chartLeft, chartBottom, chartRight, chartBottom);
+      y += chartH + 10;
     }
-
-    const n = monthlyTrend.length;
-    const slot = chartInnerW / n;
-    const barW = Math.min(36, Math.max(6, slot * 0.62));
-    monthlyTrend.forEach((p) => {
-      const i = monthlyTrend.indexOf(p);
-      const cx = chartLeft + slot * i + slot / 2;
-      const x = cx - barW / 2;
-      const usableH = chartBottom - chartTop - 8;
-      const h = (p.value / niceMax) * usableH;
-      const by = chartBottom - h;
-      const radius = Math.min(3, barW / 2);
-      setFill(brand);
-      doc.roundedRect(x, by, barW, h, radius, radius, "F");
-      if (h > 10) {
-        setFill(accent);
-        doc.roundedRect(x, by, barW, Math.min(h * 0.45, 14), radius, radius, "F");
-      }
-      if (barW >= 14) {
-        doc.setFont("helvetica", "bold"); doc.setFontSize(7); setText(MUTED);
-        const vt = `£${p.value}`;
-        const vw = doc.getTextWidth(vt);
-        doc.text(vt, cx - vw / 2, Math.max(chartTop + 8, by - 3));
-      }
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7); setText(MUTED);
-      const lw = doc.getTextWidth(p.label);
-      doc.text(p.label, cx - lw / 2, chartBottom + 12);
-    });
-
-    setDraw(MUTED); doc.setLineWidth(0.6);
-    doc.line(chartLeft, chartBottom, chartRight, chartBottom);
-    y += chartH + 10;
   }
 
   // ===== HIGHLIGHTS =========================================================
-  y = ensureSpace(y, 60);
-  y = drawSectionHeading(y, "Highlights");
-  if (highlights.length === 0) {
-    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text("No activities to highlight in this range.", margin, y);
-    y += 18;
-  } else {
-    highlights.slice(0, 5).forEach((h) => {
-      const sdg = SDG_BY_CATEGORY[h.activity.category];
-      const sdgColor: RGB = sdg ? hexToRgb(sdg.color) : brand;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      const desc = doc.splitTextToSize(h.activity.description, contentW - 30) as string[];
-      const blockH = 44 + desc.length * 11;
-      y = ensureSpace(y, blockH + 8);
-      setFill(SURFACE);
-      doc.roundedRect(margin, y, contentW, blockH, 6, 6, "F");
-      setFill(sdgColor);
-      doc.rect(margin, y, 4, blockH, "F");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(INK);
-      doc.text(h.activity.activity, margin + 14, y + 18);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
-      const meta = `${h.member.name}  ·  £${h.activity.socialValueGBP}  ·  ${h.activity.hours}h  ·  SDG ${sdg?.number ?? "n/a"}`;
-      doc.text(meta, margin + 14, y + 32);
-      setText(MUTED);
-      doc.text(desc, margin + 14, y + 46);
-      y += blockH + 8;
-    });
+  if (sec.highlights) {
+    y = ensureSpace(y, 60);
+    y = drawSectionHeading(y, "Highlights");
+    if (highlights.length === 0) {
+      setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text("No activities to highlight in this range.", margin, y);
+      y += 18;
+    } else {
+      highlights.slice(0, 5).forEach((h) => {
+        const sdg = SDG_BY_CATEGORY[h.activity.category];
+        const sdgColor: RGB = sdg ? hexToRgb(sdg.color) : brand;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        const desc = doc.splitTextToSize(h.activity.description, contentW - 30) as string[];
+        const blockH = 44 + desc.length * 11;
+        y = ensureSpace(y, blockH + 8);
+        setFill(SURFACE);
+        doc.roundedRect(margin, y, contentW, blockH, 6, 6, "F");
+        setFill(sdgColor);
+        doc.rect(margin, y, 4, blockH, "F");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(INK);
+        doc.text(h.activity.activity, margin + 14, y + 18);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
+        const meta = `${h.member.name}  ·  £${h.activity.socialValueGBP}  ·  ${h.activity.hours}h  ·  SDG ${sdg?.number ?? "n/a"}`;
+        doc.text(meta, margin + 14, y + 32);
+        setText(MUTED);
+        doc.text(desc, margin + 14, y + 46);
+        y += blockH + 8;
+      });
+    }
   }
 
   // ===== SDG BREAKDOWN ======================================================
-  y += 6;
-  y = ensureSpace(y, 60);
-  y = drawSectionHeading(y, "UN Sustainable Development Goals");
-  if (sdgs.length === 0) {
-    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text("No SDG-aligned activities in this range.", margin, y);
-    y += 18;
-  } else {
-    const maxVal = Math.max(1, ...sdgs.map(s => s.value));
-    const rowH = 30;
-    const badgeSize = 22;
-    const barAreaX = margin + 210;
-    const barAreaW = contentW - 210 - 90;
-    const valueRightX = margin + contentW - 6;
-    sdgs.forEach((s, i) => {
-      y = ensureSpace(y, rowH + 4);
-      const sdgColor = hexToRgb(s.color);
-      if (i % 2 === 0) {
-        setFill(SURFACE);
-        doc.roundedRect(margin, y, contentW, rowH, 4, 4, "F");
-      }
-      const badgeY = y + (rowH - badgeSize) / 2;
-      setFill(sdgColor);
-      doc.roundedRect(margin + 8, badgeY, badgeSize, badgeSize, 4, 4, "F");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(WHITE);
-      const badgeT = String(s.number);
-      const bw = doc.getTextWidth(badgeT);
-      doc.text(badgeT, margin + 8 + badgeSize / 2 - bw / 2, badgeY + badgeSize / 2 + 3.5);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
-      doc.text(s.label, margin + 38, y + 14);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
-      doc.text(`${s.activities} activities  ·  ${s.members} members`, margin + 38, y + 24);
-      const trackY = y + rowH / 2 - 4;
-      setFill(mixRgb(sdgColor, [255, 255, 255], 0.78));
-      doc.roundedRect(barAreaX, trackY, barAreaW, 8, 3, 3, "F");
-      const fillW = Math.max(2, (s.value / maxVal) * barAreaW);
-      setFill(sdgColor);
-      doc.roundedRect(barAreaX, trackY, fillW, 8, 3, 3, "F");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
-      const valStr = `£${s.value.toLocaleString("en-GB")}`;
-      doc.text(valStr, valueRightX - doc.getTextWidth(valStr), y + 14);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
-      const pctStr = `${s.pct}%`;
-      doc.text(pctStr, valueRightX - doc.getTextWidth(pctStr), y + 24);
-      y += rowH + 2;
-    });
+  if (sec.sdgs) {
+    y += 6;
+    y = ensureSpace(y, 60);
+    y = drawSectionHeading(y, "UN Sustainable Development Goals");
+    if (sdgs.length === 0) {
+      setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text("No SDG-aligned activities in this range.", margin, y);
+      y += 18;
+    } else {
+      const maxVal = Math.max(1, ...sdgs.map(s => s.value));
+      const rowH = 30;
+      const badgeSize = 22;
+      const barAreaX = margin + 210;
+      const barAreaW = contentW - 210 - 90;
+      const valueRightX = margin + contentW - 6;
+      sdgs.forEach((s, i) => {
+        y = ensureSpace(y, rowH + 4);
+        const sdgColor = hexToRgb(s.color);
+        if (i % 2 === 0) {
+          setFill(SURFACE);
+          doc.roundedRect(margin, y, contentW, rowH, 4, 4, "F");
+        }
+        const badgeY = y + (rowH - badgeSize) / 2;
+        setFill(sdgColor);
+        doc.roundedRect(margin + 8, badgeY, badgeSize, badgeSize, 4, 4, "F");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11); setText(WHITE);
+        const badgeT = String(s.number);
+        const bw = doc.getTextWidth(badgeT);
+        doc.text(badgeT, margin + 8 + badgeSize / 2 - bw / 2, badgeY + badgeSize / 2 + 3.5);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
+        doc.text(s.label, margin + 38, y + 14);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+        doc.text(`${s.activities} activities  ·  ${s.members} members`, margin + 38, y + 24);
+        const trackY = y + rowH / 2 - 4;
+        setFill(mixRgb(sdgColor, [255, 255, 255], 0.78));
+        doc.roundedRect(barAreaX, trackY, barAreaW, 8, 3, 3, "F");
+        const fillW = Math.max(2, (s.value / maxVal) * barAreaW);
+        setFill(sdgColor);
+        doc.roundedRect(barAreaX, trackY, fillW, 8, 3, 3, "F");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
+        const valStr = `£${s.value.toLocaleString("en-GB")}`;
+        doc.text(valStr, valueRightX - doc.getTextWidth(valStr), y + 14);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+        const pctStr = `${s.pct}%`;
+        doc.text(pctStr, valueRightX - doc.getTextWidth(pctStr), y + 24);
+        y += rowH + 2;
+      });
+    }
+    y += 12;
   }
-  y += 12;
 
   // ===== SROI ASSUMPTIONS ===================================================
   // Mirrors the dashboard SROI explainer so the on-screen and exported
   // numbers tell the same story to funders.
-  if (sroi && sroi.totalMembers > 0) {
+  if (sec.sroi && sroi && sroi.totalMembers > 0) {
     y = ensureSpace(y, 130);
     y = drawSectionHeading(y, t("orgDashboard.sroiTitle"));
     const totalInvestment = sroi.totalMembers * sroi.costPerVolunteer;
@@ -442,45 +473,47 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
   }
 
   // ===== ACTIVITY TABLE =====================================================
-  y = ensureSpace(y, 110);
-  y = drawSectionHeading(y, "Activity log");
+  if (sec.activityLog) {
+    y = ensureSpace(y, 110);
+    y = drawSectionHeading(y, "Activity log");
 
-  autoTable(doc, {
-    startY: y,
-    head: [["Date", "Member", "Category", "SDG", "Activity", "Hours", "£"]],
-    body: rows.map(({ activity, member }) => {
-      const sdg = SDG_BY_CATEGORY[activity.category];
-      return [
-        new Date(activity.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-        member.name,
-        activity.category,
-        sdg ? `${sdg.number}` : "n/a",
-        `${activity.activity}\n${activity.description}`,
-        activity.hours.toString(),
-        `£${activity.socialValueGBP}`,
-      ];
-    }),
-    styles: {
-      fontSize: 8, cellPadding: 6, valign: "top",
-      textColor: [30, 41, 59], lineColor: HAIRLINE, lineWidth: 0.3,
-    },
-    headStyles: {
-      fillColor: brand, textColor: 255, fontStyle: "bold",
-      fontSize: 8.5, cellPadding: 7, halign: "left",
-    },
-    alternateRowStyles: { fillColor: SURFACE },
-    columnStyles: {
-      0: { cellWidth: 56 },
-      1: { cellWidth: 72 },
-      2: { cellWidth: 54 },
-      3: { cellWidth: 28, halign: "center" },
-      4: { cellWidth: 207 },
-      5: { cellWidth: 32, halign: "right" },
-      6: { cellWidth: 38, halign: "right" },
-    },
-    margin: { left: margin, right: margin, top: margin + 8, bottom: FOOTER_RESERVE + 8 },
-    showHead: "everyPage",
-  });
+    autoTable(doc, {
+      startY: y,
+      head: [["Date", "Member", "Category", "SDG", "Activity", "Hours", "£"]],
+      body: rows.map(({ activity, member }) => {
+        const sdg = SDG_BY_CATEGORY[activity.category];
+        return [
+          new Date(activity.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+          member.name,
+          activity.category,
+          sdg ? `${sdg.number}` : "n/a",
+          `${activity.activity}\n${activity.description}`,
+          activity.hours.toString(),
+          `£${activity.socialValueGBP}`,
+        ];
+      }),
+      styles: {
+        fontSize: 8, cellPadding: 6, valign: "top",
+        textColor: [30, 41, 59], lineColor: HAIRLINE, lineWidth: 0.3,
+      },
+      headStyles: {
+        fillColor: brand, textColor: 255, fontStyle: "bold",
+        fontSize: 8.5, cellPadding: 7, halign: "left",
+      },
+      alternateRowStyles: { fillColor: SURFACE },
+      columnStyles: {
+        0: { cellWidth: 56 },
+        1: { cellWidth: 72 },
+        2: { cellWidth: 54 },
+        3: { cellWidth: 28, halign: "center" },
+        4: { cellWidth: 207 },
+        5: { cellWidth: 32, halign: "right" },
+        6: { cellWidth: 38, halign: "right" },
+      },
+      margin: { left: margin, right: margin, top: margin + 8, bottom: FOOTER_RESERVE + 8 },
+      showHead: "everyPage",
+    });
+  }
 
   // ===== FOOTER PASS (every page) ==========================================
   const totalPages = doc.getNumberOfPages();
