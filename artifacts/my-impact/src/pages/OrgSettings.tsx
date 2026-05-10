@@ -465,11 +465,11 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           </div>
         ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full table-fixed text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[140px]">Name</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[180px]">Email</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[140px]">Name</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[180px]">Email</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
                 <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
@@ -480,8 +480,8 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
               {isDemoOrg
                 ? pagedDemoMembers.map(m => (
                     <tr key={m.id} className="border-b border-border/60" data-testid={`row-member-${m.id}`}>
-                      <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
+                      <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
+                      <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
                       <td className="py-2 pr-3">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {m.role}
@@ -507,8 +507,8 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                   ))
                 : liveMembers.map(m => (
                     <tr key={m.userId} className="border-b border-border/60" data-testid={`row-member-${m.userId}`}>
-                      <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
+                      <td className="py-2 pr-3 font-medium text-foreground truncate">{m.name}</td>
+                      <td className="py-2 pr-3 text-muted-foreground truncate">{m.email}</td>
                       <td className="py-2 pr-3">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {m.role}
