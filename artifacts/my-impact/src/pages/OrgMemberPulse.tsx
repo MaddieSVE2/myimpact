@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Check, X } from "lucide-react";
-import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { useMyOrg } from "@/lib/org-export";
 
@@ -272,7 +271,6 @@ export default function OrgMemberPulse() {
           </div>
         )}
       </div>
-      <Footer />
     </>
   );
 }

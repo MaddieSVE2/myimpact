@@ -21,6 +21,7 @@ import { usePageViewTracking } from "@/hooks/usePageViewTracking";
 import { X, LogIn, Building2 } from "lucide-react";
 
 // Layout & Pages
+import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { OrgMemberSubNav } from "@/components/layout/OrgMemberSubNav";
 import { Sidekick } from "@/components/Sidekick";
@@ -236,6 +237,16 @@ function OrgGuestRoute() {
   );
 }
 
+const NO_FOOTER_PATHS = [
+  "/login",
+  "/auth/confirm",
+  "/wizard",
+  "/results",
+  "/recap",
+  "/quick-log",
+  "/log",
+];
+
 function AppRouter() {
   const [location] = useLocation();
   const locationRef = useRef<string | undefined>(undefined);
@@ -245,6 +256,10 @@ function AppRouter() {
   }
 
   usePageViewTracking();
+
+  const showFooter = !NO_FOOTER_PATHS.some(
+    (p) => location === p || location.startsWith(p + "/")
+  );
 
   return (
     <div className="flex flex-row min-h-screen">
@@ -365,6 +380,7 @@ function AppRouter() {
           </Switch>
           </ErrorBoundary>
         </main>
+        {showFooter && <Footer />}
       </div>
       {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
       <Sidekick />

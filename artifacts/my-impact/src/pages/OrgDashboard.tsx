@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, TrendingUp, Users, Clock, BadgeCheck, FileText, FileSpreadsheet,
@@ -746,7 +745,6 @@ export default function OrgDashboard() {
         </Link>
       </div>
     </div>
-    <Footer />
     </>
   );
 }

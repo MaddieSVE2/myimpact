@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Footer } from "@/components/layout/Footer";
 import {
   Filter, Search, EyeOff, ChevronLeft, ChevronRight, AlertCircle, Users, Info, Download,
 } from "lucide-react";
@@ -486,7 +485,6 @@ export default function OrgActivities() {
           to download a polished PDF or CSV (with optional anonymisation).
         </p>
       </div>
-      <Footer />
     </>
   );
 }

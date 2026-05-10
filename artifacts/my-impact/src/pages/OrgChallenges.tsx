@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 import { Flag, AlertCircle } from "lucide-react";
-import { Footer } from "@/components/layout/Footer";
 import { OrgChallengesPanel } from "@/components/OrgChallengesPanel";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { useMyOrg } from "@/lib/org-export";
@@ -59,7 +58,6 @@ export default function OrgChallenges() {
 
       <OrgChallengesPanel orgId={orgData.org.id} />
     </div>
-    <Footer />
     </>
   );
 }

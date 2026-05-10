@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -295,7 +294,6 @@ export default function Terms() {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 }

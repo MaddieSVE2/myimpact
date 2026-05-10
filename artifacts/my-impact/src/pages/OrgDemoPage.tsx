@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { Building2, GraduationCap, Heart, Landmark } from "lucide-react";
 import OrgDemoDashboard from "./OrgDemoDashboard";
 import OrgDemoEducationDashboard from "./OrgDemoEducationDashboard";
@@ -92,7 +91,6 @@ export default function OrgDemoPage() {
       {selectedType === "education" && <OrgDemoEducationDashboard hideBanner />}
       {selectedType === "corporate" && <ComingSoonDashboard typeName="Corporate" />}
       {selectedType === "public" && <ComingSoonDashboard typeName="Public Sector" />}
-      <Footer />
     </div>
   );
 }

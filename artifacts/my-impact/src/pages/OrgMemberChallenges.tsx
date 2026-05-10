@@ -1,7 +1,6 @@
 import { Link } from "wouter";
 import { Trophy, AlertCircle, Flag, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { useMyOrg } from "@/lib/org-export";
 import { BASE } from "@/lib/org-export";
@@ -210,7 +209,6 @@ export default function OrgMemberChallenges() {
           </div>
         )}
       </div>
-      <Footer />
     </>
   );
 }

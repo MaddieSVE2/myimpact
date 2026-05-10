@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import {
   Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info,
@@ -1156,7 +1155,6 @@ export default function OrgMemberSubmit() {
         </motion.div>
       )}
     </div>
-    <Footer />
     </>
   );
 }

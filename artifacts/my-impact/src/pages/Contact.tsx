@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, CheckCircle, Mail } from "lucide-react";
-import { Footer } from "@/components/layout/Footer";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -64,7 +63,6 @@ export default function Contact() {
             </Link>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -148,7 +146,6 @@ export default function Contact() {
           </p>
         </form>
       </div>
-      <Footer />
     </div>
   );
 }

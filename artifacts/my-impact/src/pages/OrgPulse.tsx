@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 import { ClipboardList, AlertCircle } from "lucide-react";
-import { Footer } from "@/components/layout/Footer";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 import { useMyOrg } from "@/lib/org-export";
@@ -59,7 +58,6 @@ export default function OrgPulse() {
       <OrgPulseSummaryCard />
       <PulseSurveysSection />
     </div>
-    <Footer />
     </>
   );
 }

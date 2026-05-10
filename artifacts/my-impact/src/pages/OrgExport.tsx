@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import {
   Download, FileSpreadsheet, FileText, EyeOff, AlertCircle, CheckCircle2,
 } from "lucide-react";
@@ -463,7 +462,6 @@ export default function OrgExport() {
         </div>
       </div>
     </div>
-    <Footer />
     </>
   );
 }

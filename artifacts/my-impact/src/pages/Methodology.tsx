@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
 
 const C = {
@@ -599,7 +598,6 @@ export default function Methodology() {
         </FadeIn>
       </section>
 
-      <Footer />
     </div>
   );
 }

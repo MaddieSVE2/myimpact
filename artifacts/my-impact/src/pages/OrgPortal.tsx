@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { Footer } from "@/components/layout/Footer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -2173,7 +2172,6 @@ export default function OrgPortal() {
         </>
       ) : null}
     </div>
-    <Footer />
     </>
   );
 }

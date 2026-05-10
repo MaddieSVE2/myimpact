@@ -14,7 +14,6 @@
 // `BADGE_COLORS`, or add a new badge if it genuinely fits better.
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import {
   Wand2, BookMarked, FileDown, Smartphone, Building2, Users, LayoutDashboard,
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
@@ -548,7 +547,6 @@ export default function WhatsNew() {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { Building2, BarChart2, Users, TrendingUp, Clock, AlertCircle, Loader2, ChevronRight, Lock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -289,7 +288,6 @@ export default function OrgSharePage() {
         </p>
       </div>
     </div>
-    <Footer />
     </>
   );
 }

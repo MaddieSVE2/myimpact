@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Footer } from "@/components/layout/Footer";
 import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft, FileText, Award, Briefcase } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -476,7 +475,6 @@ export default function OrgRegister() {
           </>
         )}
       </div>
-      <Footer />
     </div>
   );
 }
