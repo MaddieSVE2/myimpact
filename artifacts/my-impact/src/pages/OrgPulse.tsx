@@ -1,28 +1,18 @@
-import { useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { ClipboardList, AlertCircle } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
-import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { useMyOrg } from "@/lib/org-export";
 import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 
 export default function OrgPulse() {
   const { data: orgData, isLoading, isError } = useMyOrg();
-  const [, setLocation] = useLocation();
 
   const isManager = orgData?.org?.role === "manager";
-  const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
   const summaryYearStart = orgData?.org?.summaryYearStart ?? "01-01";
-  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod } = useOrgPeriod(summaryYearStart, isDemoOrg);
-
-  useEffect(() => {
-    if (orgData?.org && isManager && !isDemoOrg) {
-      setLocation("/org", { replace: true });
-    }
-  }, [orgData?.org, isManager, isDemoOrg, setLocation]);
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod } = useOrgPeriod(summaryYearStart, false);
 
   if (isLoading) {
     return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
@@ -46,11 +36,6 @@ export default function OrgPulse() {
       <p className="text-base font-semibold mb-2">Manager access required</p>
     </div>;
   }
-  if (!isDemoOrg) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 flex justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-    </div>;
-  }
 
   return (
     <>
@@ -71,9 +56,8 @@ export default function OrgPulse() {
         Run short, anonymous check-ins with your members and see how they're feeling over time.
       </p>
 
-
-      <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
-      <PulseSurveysSection isDemoOrg={isDemoOrg} />
+      <OrgPulseSummaryCard />
+      <PulseSurveysSection />
     </div>
     <Footer />
     </>

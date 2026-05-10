@@ -6,7 +6,7 @@ import {
   ArrowRight, BarChart2, FileSpreadsheet, Download,
 } from "lucide-react";
 import {
-  DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_PULSE_SURVEYS, DEMO_CHALLENGES,
+  DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_CHALLENGES,
   computeDemoAggregates, getRemovedMemberIds,
 } from "@/lib/org-demo-mock";
 
@@ -143,7 +143,6 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !isDemo,
     retry: false,
   });
 
@@ -172,11 +171,10 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
   const isStatsLoading = !isDemo && liveStatsQuery.isLoading;
   const isStatsError = !isDemo && liveStatsQuery.isError;
   const isChallengesError = !isDemo && liveChallengesQuery.isError;
-  const isPulseLoading =
-    !isDemo && (liveSurveysQuery.isLoading
-      || liveSurveyResultsQueries.some(q => q.isLoading && recentSurveyIds.length > 0));
-  const isPulseError = !isDemo && (liveSurveysQuery.isError
-    || liveSurveyResultsQueries.some(q => q.isError));
+  const isPulseLoading = liveSurveysQuery.isLoading
+    || liveSurveyResultsQueries.some(q => q.isLoading && recentSurveyIds.length > 0);
+  const isPulseError = liveSurveysQuery.isError
+    || liveSurveyResultsQueries.some(q => q.isError);
 
   let membersValue = "—";
   let membersSub: string | undefined;
@@ -226,17 +224,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
 
   // Pulse rows
   let pulseRows: PulseRow[] = [];
-  if (isDemo) {
-    pulseRows = DEMO_PULSE_SURVEYS
-      .filter(s => !s.archivedAt)
-      .slice(0, 3)
-      .map(s => ({
-        id: s.id,
-        question: s.question,
-        responses: s.totals.responses,
-        average: s.totals.average,
-      }));
-  } else if (liveSurveysQuery.data) {
+  if (liveSurveysQuery.data) {
     const list = liveSurveysQuery.data.surveys
       .filter(s => !s.archivedAt)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))

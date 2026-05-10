@@ -552,7 +552,7 @@ export default function OrgDashboard() {
       </div>
 
       {/* Pulse summary — donut + sparkline aggregate of active surveys */}
-      <OrgPulseSummaryCard isDemoOrg={isDemoOrg} />
+      <OrgPulseSummaryCard />
 
       {/* Trend over the year — line/area chart matches the public charity-example dashboard */}
       <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-monthly-trend">

@@ -10,7 +10,7 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
-import { DEMO_CHALLENGES, DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
+import { DEMO_CHALLENGES } from "@/lib/org-demo-mock";
 
 const DEMO = {
   org: { name: "Demo Organisation", type: "Corporate", location: "North West, England" },
@@ -85,7 +85,11 @@ const DEMO = {
     avgMonthsActive: 14,
   },
   challenges: DEMO_CHALLENGES,
-  pulse: DEMO_PULSE_SURVEYS,
+  pulse: [
+    { id: "demo-ps-001", question: "How meaningful does your volunteering feel right now?", schedule: "monthly", anonymous: true, trend: [{ label: "Apr 2026" }], totals: { average: 4.3, responses: 28 } },
+    { id: "demo-ps-002", question: "How connected do you feel to the rest of the team?", schedule: "quarterly", anonymous: true, trend: [{ label: "Q1 2026" }], totals: { average: 4.1, responses: 22 } },
+    { id: "demo-ps-003", question: "How are you feeling about your wellbeing this week?", schedule: "monthly", anonymous: true, trend: [{ label: "Apr 2026" }], totals: { average: 3.8, responses: 25 } },
+  ],
   monthlyTimeline: [
     { month: "Jan", value: 7200 },
     { month: "Feb", value: 16400 },
