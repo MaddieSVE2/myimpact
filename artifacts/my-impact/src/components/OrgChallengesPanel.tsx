@@ -362,7 +362,7 @@ function DemoOrgChallengesPanel() {
         </p>
       )}
       {creating && (
-        <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
+        <div className="mt-4 p-4 rounded-lg border border-border space-y-3 bg-[#ffffff]">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
             <input
