@@ -319,12 +319,12 @@ export default function OrgActivities() {
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-left text-muted-foreground border-b border-border">
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Date</th>
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Member</th>
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Category</th>
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Activity</th>
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Hours</th>
-                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Social Value</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[96px] whitespace-nowrap">Date</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[130px]">Member</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[110px]">Category</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[160px]">Activity</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[56px] text-right whitespace-nowrap">Hours</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 min-w-[110px] text-right whitespace-nowrap">Social Value</th>
                     </tr>
                   </thead>
                   <tbody>

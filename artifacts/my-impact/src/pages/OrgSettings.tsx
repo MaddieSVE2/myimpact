@@ -219,12 +219,12 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Name</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Email</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Role</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Region</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Joined</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider text-right">Action</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[140px]">Name</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[180px]">Email</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Region</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
               </tr>
             </thead>
             <tbody>
