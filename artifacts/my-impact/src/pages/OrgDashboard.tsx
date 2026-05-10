@@ -39,12 +39,12 @@ function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, deci
     <div className={`rounded-xl p-5 border ${highlight ? "bg-primary text-white border-primary" : "bg-white border-border"} ${accentBorder}`}>
       <div className="flex items-center gap-2 mb-3">
         <Icon className={`w-4 h-4 ${highlight ? "text-white/70" : tone === "accent" ? "text-accent" : "text-primary"}`} />
-        <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
+        <p className={`text-[12px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
       </div>
       <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>
         {prefix}<AnimatedNumber value={value} decimals={decimals ?? 0} formatter={decimals ? undefined : v => v.toLocaleString("en-GB")} />
       </p>
-      {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
+      {sub && <p className={`text-[13px] mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
     </div>
   );
 }
@@ -326,12 +326,12 @@ export default function OrgDashboard() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl font-display font-semibold text-foreground">{orgData.org.name}</h1>
-              {isDemoOrg && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Demo data</span>}
+              {isDemoOrg && <span className="text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Demo data</span>}
             </div>
             <p className="text-sm text-muted-foreground">
               Impact summary · {periodLabel}
             </p>
-            <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 mt-1">
+            <p className="text-[12px] text-muted-foreground inline-flex items-center gap-1.5 mt-1">
               <EyeOff className="w-3 h-3" /> Anonymised, no member is named on this page. Member-level data lives in <Link href="/org/activities" className="underline">Activities</Link>.
             </p>
           </div>
@@ -349,7 +349,7 @@ export default function OrgDashboard() {
         <button
           type="button"
           onClick={() => setShowPeriodSettings(s => !s)}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${showPeriodSettings ? "bg-primary/10 border-primary/30 text-primary" : "bg-white border-border text-muted-foreground hover:text-foreground hover:border-primary/30"}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[13px] font-medium transition-colors ${showPeriodSettings ? "bg-primary/10 border-primary/30 text-primary" : "bg-white border-border text-muted-foreground hover:text-foreground hover:border-primary/30"}`}
           aria-expanded={showPeriodSettings}
           data-testid="period-settings-toggle"
         >
@@ -375,7 +375,7 @@ export default function OrgDashboard() {
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="w-4 h-4 text-primary" />
                 <h3 className="text-sm font-semibold">Summary period</h3>
-                <span className="text-xs text-muted-foreground">Choose the year boundary for all metrics on this dashboard.</span>
+                <span className="text-[13px] text-muted-foreground">Choose the year boundary for all metrics on this dashboard.</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                 {(Object.keys(SUMMARY_PERIOD_PRESETS) as Array<Exclude<SummaryPeriodType, "custom">>).map(type => {
@@ -418,7 +418,7 @@ export default function OrgDashboard() {
               {/* Custom month/day picker — always visible so the start date can be adjusted freely */}
               <div className="flex items-end gap-2 pt-2 border-t border-border/50">
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Month</label>
+                    <label className="block text-[12px] text-muted-foreground mb-1">Month</label>
                     <select
                       value={customMonth}
                       onChange={e => {
@@ -442,7 +442,7 @@ export default function OrgDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Day</label>
+                    <label className="block text-[12px] text-muted-foreground mb-1">Day</label>
                     <select
                       value={customDay}
                       onChange={e => setCustomDay(e.target.value)}
@@ -464,7 +464,7 @@ export default function OrgDashboard() {
                     {savingPeriod ? "Saving…" : "Apply"}
                   </button>
                   {periodSaved && (
-                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <span className="text-[13px] text-green-600 font-medium flex items-center gap-1">
                       <Check className="w-3 h-3" /> Saved
                     </span>
                   )}
@@ -475,7 +475,7 @@ export default function OrgDashboard() {
       </AnimatePresence>
 
       {isDemoOrg && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-6 text-xs text-amber-900">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-6 text-[13px] text-amber-900">
           You're viewing the demo organisation with mock data. Invite code <span className="font-mono font-semibold">{inviteCode}</span>.
         </div>
       )}
@@ -499,7 +499,7 @@ export default function OrgDashboard() {
           <h3 className="text-sm font-semibold">{t("orgDashboard.sroiTitle")}</h3>
         </div>
         <div className="grid md:grid-cols-2 gap-4 items-center">
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
             {t("orgDashboard.sroiBody", {
               costPerVolunteer: `£${sroiCostPerVolunteer.toLocaleString("en-GB")}`,
               members: headlineStats.totalMembers,
@@ -516,11 +516,11 @@ export default function OrgDashboard() {
                 : undefined}
               data-testid="card-sroi-cost-per-volunteer"
             >
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiOrgInvestmentLabel")}</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiOrgInvestmentLabel")}</p>
               <p className="text-xl font-display font-bold text-foreground" data-testid="text-sroi-cost-per-volunteer">£{sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
-              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiOrgInvestmentSub")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("orgDashboard.sroiOrgInvestmentSub")}</p>
               {sroiBreakdownLines.length > 0 && (
-                <table className="w-full mt-2 text-[10px]" data-testid="table-sroi-breakdown">
+                <table className="w-full mt-2 text-[11px]" data-testid="table-sroi-breakdown">
                   <tbody>
                     {sroiBreakdownLines.map(l => (
                       <tr key={l.key}>
@@ -533,19 +533,19 @@ export default function OrgDashboard() {
               )}
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiTotalInvestmentLabel")}</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiTotalInvestmentLabel")}</p>
               <p className="text-xl font-display font-bold text-foreground">£{totalInvestment.toLocaleString("en-GB")}</p>
-              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiTotalInvestmentSub")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("orgDashboard.sroiTotalInvestmentSub")}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiSocialValueLabel")}</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">{t("orgDashboard.sroiSocialValueLabel")}</p>
               <p className="text-xl font-display font-bold text-foreground">£{headlineStats.totalSocialValue.toLocaleString("en-GB")}</p>
-              <p className="text-[10px] text-muted-foreground">{t("orgDashboard.sroiSocialValueSub")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("orgDashboard.sroiSocialValueSub")}</p>
             </div>
             <div className="bg-primary/10 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-primary uppercase tracking-wide font-semibold mb-0.5">{t("orgDashboard.sroiRatioLabel")}</p>
+              <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-0.5">{t("orgDashboard.sroiRatioLabel")}</p>
               <p className="text-xl font-display font-bold text-primary">£{sroiRatio.toFixed(2)}</p>
-              <p className="text-[10px] text-primary/70">{t("orgDashboard.sroiRatioSub")}</p>
+              <p className="text-[11px] text-primary/70">{t("orgDashboard.sroiRatioSub")}</p>
             </div>
           </div>
         </div>
@@ -559,10 +559,10 @@ export default function OrgDashboard() {
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("orgDashboard.monthlyTrendTitle")}</h3>
-          <span className="text-xs text-muted-foreground">{t("orgDashboard.monthlyTrendSubtitle")}</span>
+          <span className="text-[13px] text-muted-foreground">{t("orgDashboard.monthlyTrendSubtitle")}</span>
         </div>
         {timelineData.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-6 text-center">{t("orgDashboard.monthlyTrendEmpty")}</p>
+          <p className="text-[13px] text-muted-foreground py-6 text-center">{t("orgDashboard.monthlyTrendEmpty")}</p>
         ) : (
           <ImpactTimeline data={timelineData} />
         )}
@@ -574,9 +574,9 @@ export default function OrgDashboard() {
           <Globe2 className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("orgDashboard.sdgTitle")}</h3>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">{t("orgDashboard.sdgSubtitle")}</p>
+        <p className="text-[13px] text-muted-foreground mb-4">{t("orgDashboard.sdgSubtitle")}</p>
         {sdgBreakdowns.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.sdgEmpty")}</p>
+          <p className="text-[13px] text-muted-foreground text-center py-6">{t("orgDashboard.sdgEmpty")}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
             <div className="h-56">
@@ -609,18 +609,18 @@ export default function OrgDashboard() {
             <ol className="space-y-2" data-testid="list-sdg-ranked">
               {sdgBreakdowns.map((s, idx) => (
                 <li key={s.number} className="flex items-center gap-3" data-testid={`sdg-rank-${s.number}`}>
-                  <span className="shrink-0 w-7 h-7 rounded-md text-white text-xs font-bold inline-flex items-center justify-center" style={{ backgroundColor: s.color }}>
+                  <span className="shrink-0 w-7 h-7 rounded-md text-white text-[13px] font-bold inline-flex items-center justify-center" style={{ backgroundColor: s.color }}>
                     {s.number}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-foreground truncate">{s.label}</p>
-                      <p className="text-xs font-bold text-foreground shrink-0">{s.pct}%</p>
+                      <p className="text-[13px] font-semibold text-foreground truncate">{s.label}</p>
+                      <p className="text-[13px] font-bold text-foreground shrink-0">{s.pct}%</p>
                     </div>
                     <div className="h-1.5 mt-1 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${s.pct}%`, backgroundColor: s.color }} />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {idx === 0 && <span className="font-semibold text-foreground">{t("orgDashboard.sdgLeading")} · </span>}
                       £{s.value.toLocaleString("en-GB")} · <span data-testid={`sdg-members-${s.number}`}>{s.members}</span> {t("orgDashboard.sdgMembers")} · {s.activities} {t("orgDashboard.sdgActivities")}
                     </p>
@@ -638,9 +638,9 @@ export default function OrgDashboard() {
           <Layers className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("orgDashboard.categoriesTitle")}</h3>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">{t("orgDashboard.categoriesSubtitle")}</p>
+        <p className="text-[13px] text-muted-foreground mb-4">{t("orgDashboard.categoriesSubtitle")}</p>
         {categoryBreakdown.every(c => c.value === 0) ? (
-          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.categoriesEmpty")}</p>
+          <p className="text-[13px] text-muted-foreground text-center py-6">{t("orgDashboard.categoriesEmpty")}</p>
         ) : (
           <div className="space-y-3">
             {categoryBreakdown.map((c, idx) => {
@@ -671,10 +671,10 @@ export default function OrgDashboard() {
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="shrink-0 text-[10px] font-bold text-muted-foreground w-4 text-right">{idx + 1}.</span>
+                      <span className="shrink-0 text-[11px] font-bold text-muted-foreground w-4 text-right">{idx + 1}.</span>
                       {sdg && (
                         <span
-                          className="shrink-0 inline-flex items-center justify-center text-[10px] font-bold text-white rounded px-1.5 py-0.5"
+                          className="shrink-0 inline-flex items-center justify-center text-[11px] font-bold text-white rounded px-1.5 py-0.5"
                           style={{ backgroundColor: sdg.color }}
                           title={`SDG ${sdg.number} · ${sdg.label}`}
                         >SDG {sdg.number}</span>
@@ -692,14 +692,14 @@ export default function OrgDashboard() {
                     <div className="h-full rounded-full" style={{ width: `${(c.value / max) * 100}%`, backgroundColor: barColor }} />
                   </div>
                   {isDemoOrg && (
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       <span className="font-semibold text-foreground">{c.members}</span> {t("orgDashboard.categoriesMembers")} · <span className="font-semibold text-foreground">{c.activities}</span> {t("orgDashboard.categoriesActivities")} · <span className="font-semibold text-foreground">{Math.round(c.hours)}</span> {t("orgDashboard.categoriesHours")}
                     </p>
                   )}
                   {items.length > 0 && (
                     <ul className="mt-2 divide-y divide-border/60 border border-border/60 rounded-md bg-muted/10">
                       {visible.map(g => (
-                        <li key={g.name} className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px]">
+                        <li key={g.name} className="flex items-center justify-between gap-3 px-3 py-1.5 text-[12px]">
                           <span className="font-medium text-foreground truncate">{g.name}</span>
                           <span className="shrink-0 text-muted-foreground">
                             {g.participants.size}p · {g.hours}h · <span className="font-semibold text-foreground">£{g.value.toLocaleString("en-GB")}</span>
@@ -712,7 +712,7 @@ export default function OrgDashboard() {
                     <button
                       type="button"
                       onClick={() => toggleCat(c.category)}
-                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                      className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
                       data-testid={`category-toggle-${c.category}`}
                     >
                       {expanded
@@ -732,17 +732,17 @@ export default function OrgDashboard() {
         <Link href="/org/activities" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-activities">
           <Users className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkActivitiesTitle")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkActivitiesSub")}</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkActivitiesSub")}</p>
         </Link>
         <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-pdf">
           <FileText className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkPdfTitle")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkPdfSub")}</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkPdfSub")}</p>
         </Link>
         <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-csv">
           <FileSpreadsheet className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkCsvTitle")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkCsvSub")}</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkCsvSub")}</p>
         </Link>
       </div>
     </div>

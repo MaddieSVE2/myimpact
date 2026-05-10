@@ -67,7 +67,7 @@ function CostBreakdownTable({ breakdown }: { breakdown: CostBreakdown | null }) 
   const lines = BREAKDOWN_LABELS.filter(({ key }) => typeof breakdown[key] === "number");
   if (lines.length === 0) return null;
   return (
-    <table className="w-full text-xs mt-3 border-t border-border">
+    <table className="w-full text-[13px] mt-3 border-t border-border">
       <tbody>
         {lines.map(({ key, label }) => (
           <tr key={key} className="border-t border-border first:border-0">
@@ -155,7 +155,7 @@ export default function OrgSharePage() {
             <Building2 className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Funder share · read only</p>
+            <p className="text-[13px] font-semibold text-primary uppercase tracking-wider mb-1">Funder share · read only</p>
             <p className="text-sm font-medium text-foreground leading-snug">{headerLine}</p>
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function OrgSharePage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-2xl font-display font-semibold text-foreground">{share.orgName}</h1>
-          <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold capitalize">{share.orgType}</span>
+          <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[13px] font-semibold capitalize">{share.orgType}</span>
         </div>
         <p className="text-sm text-muted-foreground">Anonymised aggregate impact across members.</p>
       </div>
@@ -175,32 +175,32 @@ export default function OrgSharePage() {
           <div className="bg-primary border border-primary rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-white/70" />
-              <p className="text-xs font-semibold text-white/70 uppercase tracking-wider">Total social value</p>
+              <p className="text-[13px] font-semibold text-white/70 uppercase tracking-wider">Total social value</p>
             </div>
             <p className="text-2xl font-display font-bold text-white">£{summary.totalSocialValue.toLocaleString("en-GB")}</p>
           </div>
           <div className="bg-white border border-border rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-4 h-4 text-primary" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Members</p>
+              <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Members</p>
             </div>
             <p className="text-2xl font-display font-bold text-foreground">{summary.totalMemberCount.toLocaleString("en-GB")}</p>
-            <p className="text-xs text-muted-foreground mt-1">{summary.totalUsers} with saved records</p>
+            <p className="text-[13px] text-muted-foreground mt-1">{summary.totalUsers} with saved records</p>
           </div>
           <div className="bg-white border border-border rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <BarChart2 className="w-4 h-4 text-primary" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg per person</p>
+              <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Avg per person</p>
             </div>
             <p className="text-2xl font-display font-bold text-foreground">£{summary.averageValuePerPerson.toLocaleString("en-GB")}</p>
           </div>
           <div className="bg-white border border-border rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-primary" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total hours given</p>
+              <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Total hours given</p>
             </div>
             <p className="text-2xl font-display font-bold text-foreground">{Math.round(summary.totalHours).toLocaleString("en-GB")}</p>
-            <p className="text-xs text-muted-foreground mt-1">volunteering hours</p>
+            <p className="text-[13px] text-muted-foreground mt-1">volunteering hours</p>
           </div>
         </div>
       )}
@@ -209,10 +209,10 @@ export default function OrgSharePage() {
       {share.sroiCostPerVolunteer !== null && (
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-1">Per-volunteer investment</h3>
-          <p className="text-xs text-muted-foreground mb-4">The estimated cost this organisation invests per volunteer.</p>
+          <p className="text-[13px] text-muted-foreground mb-4">The estimated cost this organisation invests per volunteer.</p>
           <div className="flex items-end gap-3 mb-3">
             <p className="text-2xl font-display font-bold text-foreground">£{share.sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
-            <p className="text-xs text-muted-foreground mb-1">per volunteer</p>
+            <p className="text-[13px] text-muted-foreground mb-1">per volunteer</p>
           </div>
           <CostBreakdownTable breakdown={share.sroiCostBreakdown} />
         </div>
@@ -222,7 +222,7 @@ export default function OrgSharePage() {
       {monthly && (
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-1">Impact over time</h3>
-          <p className="text-xs text-muted-foreground mb-4">Cumulative social value generated by members, by month.</p>
+          <p className="text-[13px] text-muted-foreground mb-4">Cumulative social value generated by members, by month.</p>
           <ImpactTimeline data={monthly} isLoading={false} />
         </div>
       )}
@@ -231,7 +231,7 @@ export default function OrgSharePage() {
       {categories && categories.length > 0 && (
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-1">Social value by category</h3>
-          <p className="text-xs text-muted-foreground mb-4">All data is anonymised: no individual names are shown.</p>
+          <p className="text-[13px] text-muted-foreground mb-4">All data is anonymised: no individual names are shown.</p>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categories} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -250,18 +250,18 @@ export default function OrgSharePage() {
       {regions && (
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-1">Where members are</h3>
-          <p className="text-xs text-muted-foreground mb-4">Member activity by UK region. Click any shaded area for details.</p>
+          <p className="text-[13px] text-muted-foreground mb-4">Member activity by UK region. Click any shaded area for details.</p>
           {regions.length > 0 ? (
             <>
               <UKRegionMap regions={regions} />
               <div className="mt-4">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Region summary</p>
+                <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Region summary</p>
                 <div className="space-y-2">
                   {regions.map(r => (
                     <div key={r.region} className="flex items-center gap-3">
                       <div className="w-28 shrink-0">
                         <p className="text-sm font-medium text-foreground">{r.region}</p>
-                        <p className="text-xs text-muted-foreground">{r.members} members</p>
+                        <p className="text-[13px] text-muted-foreground">{r.members} members</p>
                       </div>
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${r.pct}%` }} />
@@ -282,7 +282,7 @@ export default function OrgSharePage() {
 
       {/* Footer attribution */}
       <div className="text-center pt-4">
-        <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <p className="text-[13px] text-muted-foreground inline-flex items-center gap-1">
           <AlertCircle className="w-3 h-3" aria-hidden="true" />
           This is a read-only snapshot · Powered by{" "}
           <Link href="/" className="text-primary hover:underline font-medium">My Impact</Link>

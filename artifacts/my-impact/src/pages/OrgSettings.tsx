@@ -141,7 +141,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
     return (
       <div className="bg-white border border-border rounded-xl p-5">
         <h3 className="text-sm font-semibold mb-2">Members</h3>
-        <p className="text-xs text-muted-foreground">Member management for live organisations is coming soon. Members currently join via the invite link from your dashboard.</p>
+        <p className="text-[13px] text-muted-foreground">Member management for live organisations is coming soon. Members currently join via the invite link from your dashboard.</p>
       </div>
     );
   }
@@ -149,7 +149,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-foreground text-white text-xs px-3 py-2 rounded-lg shadow" role="status">{toast}</div>
+        <div className="fixed top-4 right-4 z-50 bg-foreground text-white text-[13px] px-3 py-2 rounded-lg shadow" role="status">{toast}</div>
       )}
 
       {/* Invite link management */}
@@ -157,12 +157,12 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
           <div>
             <h3 className="text-sm font-semibold">Invite code & link</h3>
-            <p className="text-xs text-muted-foreground">Share either the code or the full link with people you want to join your organisation.</p>
+            <p className="text-[13px] text-muted-foreground">Share either the code or the full link with people you want to join your organisation.</p>
           </div>
           <button
             type="button"
             onClick={regenerateInvite}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
             data-testid="button-regenerate-invite"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Revoke & regenerate
@@ -170,13 +170,13 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         </div>
         <div className="space-y-2">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Code</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Code</p>
             <div className="flex items-center gap-2">
               <code className="px-3 py-2 rounded-md bg-muted/40 font-mono text-sm font-semibold text-foreground" data-testid="text-invite-code">{inviteCode}</code>
               <button
                 type="button"
                 onClick={copyInvite}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
                 data-testid="button-copy-invite"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "Copied" : "Copy"}
@@ -184,20 +184,20 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
             </div>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Link</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Link</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
                 value={inviteLink}
                 onFocus={e => e.currentTarget.select()}
-                className="flex-1 px-3 py-2 rounded-md bg-muted/40 font-mono text-xs text-foreground border border-border focus:outline-none focus:border-primary"
+                className="flex-1 px-3 py-2 rounded-md bg-muted/40 font-mono text-[13px] text-foreground border border-border focus:outline-none focus:border-primary"
                 data-testid="text-invite-link"
               />
               <button
                 type="button"
                 onClick={copyInviteLink}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
                 data-testid="button-copy-invite-link"
               >
                 {linkCopied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />} {linkCopied ? "Copied" : "Copy link"}
@@ -212,19 +212,19 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-semibold">Members</h3>
-            <p className="text-xs text-muted-foreground">{visibleMembers.length} of {DEMO_MEMBERS.length} active. Demo data.</p>
+            <p className="text-[13px] text-muted-foreground">{visibleMembers.length} of {DEMO_MEMBERS.length} active. Demo data.</p>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider">Name</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider">Email</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider">Role</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider">Region</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider">Joined</th>
-                <th className="py-2 pr-3 font-semibold uppercase text-[10px] tracking-wider text-right">Action</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Name</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Email</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Role</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Region</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider">Joined</th>
+                <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -233,7 +233,7 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
                   <td className="py-2 pr-3 font-medium text-foreground">{m.name}</td>
                   <td className="py-2 pr-3 text-muted-foreground">{m.email}</td>
                   <td className="py-2 pr-3">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                       {m.role}
                     </span>
                   </td>
@@ -241,12 +241,12 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
                   <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                   <td className="py-2 pr-3 text-right">
                     {m.role === "manager" ? (
-                      <span className="text-[10px] text-muted-foreground italic">manager</span>
+                      <span className="text-[11px] text-muted-foreground italic">manager</span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => removeMember(m.id)}
-                        className="inline-flex items-center gap-1 text-[11px] text-red-600 hover:text-red-700 font-semibold"
+                        className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
                         data-testid={`button-remove-${m.id}`}
                       >
                         <Trash2 className="w-3 h-3" /> Remove
@@ -260,15 +260,15 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
         </div>
         {removed.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Recently removed</p>
+            <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Recently removed</p>
             <ul className="space-y-1">
               {removed.map(id => {
                 const m = DEMO_MEMBERS.find(x => x.id === id);
                 if (!m) return null;
                 return (
-                  <li key={id} className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{m.name} <span className="text-[10px]">({m.email})</span></span>
-                    <button onClick={() => restoreMember(id)} className="text-primary hover:underline text-[11px] font-semibold">Restore</button>
+                  <li key={id} className="flex items-center justify-between text-[13px] text-muted-foreground">
+                    <span>{m.name} <span className="text-[11px]">({m.email})</span></span>
+                    <button onClick={() => restoreMember(id)} className="text-primary hover:underline text-[12px] font-semibold">Restore</button>
                   </li>
                 );
               })}
@@ -292,31 +292,31 @@ function MembersTab({ isDemoOrg, orgId }: { isDemoOrg: boolean; orgId: string })
             value={newInviteEmail}
             onChange={e => setNewInviteEmail(e.target.value)}
             placeholder="person@example.com"
-            className="flex-1 px-3 py-1.5 rounded-md border border-border text-xs focus:outline-none focus:border-primary"
+            className="flex-1 px-3 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
             data-testid="input-new-invite"
           />
-          <button type="submit" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors" data-testid="button-send-invite">
+          <button type="submit" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors" data-testid="button-send-invite">
             <Plus className="w-3.5 h-3.5" /> Send invite
           </button>
         </form>
         {invites.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No pending invites.</p>
+          <p className="text-[13px] text-muted-foreground">No pending invites.</p>
         ) : (
           <ul className="divide-y divide-border">
             {invites.map(inv => (
-              <li key={inv.id} className="flex items-center justify-between gap-3 py-2 text-xs" data-testid={`row-invite-${inv.id}`}>
+              <li key={inv.id} className="flex items-center justify-between gap-3 py-2 text-[13px]" data-testid={`row-invite-${inv.id}`}>
                 <div>
                   <p className="font-medium text-foreground">{inv.email}</p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Sent {new Date(inv.sentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                     {inv.resentAt && ` · Resent ${new Date(inv.resentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => resendInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] font-semibold hover:bg-muted/30" data-testid={`button-resend-${inv.id}`}>
+                  <button onClick={() => resendInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold hover:bg-muted/30" data-testid={`button-resend-${inv.id}`}>
                     <RefreshCw className="w-3 h-3" /> Resend
                   </button>
-                  <button onClick={() => revokeInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[11px] font-semibold text-red-600 hover:bg-red-50" data-testid={`button-revoke-${inv.id}`}>
+                  <button onClick={() => revokeInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold text-red-600 hover:bg-red-50" data-testid={`button-revoke-${inv.id}`}>
                     <X className="w-3 h-3" /> Revoke
                   </button>
                 </div>
@@ -348,7 +348,7 @@ function SettingToggleRow({
     <div className="flex items-start justify-between gap-4">
       <div>
         <p className="text-sm font-semibold mb-0.5">{label}</p>
-        <p className="text-xs text-muted-foreground max-w-prose">{description}</p>
+        <p className="text-[13px] text-muted-foreground max-w-prose">{description}</p>
       </div>
       <button
         type="button"
@@ -439,7 +439,7 @@ function AiFeaturesTab({ initialEnabled, initialLeaderboardEnabled }: { initialE
         testId="toggle-leaderboard"
       />
 
-      <div className="text-xs space-y-0.5">
+      <div className="text-[13px] space-y-0.5">
         <p className={enabled ? "text-green-700" : "text-muted-foreground"}>
           AI Sidekick is <strong>{enabled ? "enabled" : "disabled"}</strong> for this organisation.
         </p>
@@ -447,17 +447,17 @@ function AiFeaturesTab({ initialEnabled, initialLeaderboardEnabled }: { initialE
           Challenge leaderboards are <strong>{leaderboardEnabled ? "visible" : "hidden"}</strong> for this organisation.
         </p>
         {mutation.isPending && (
-          <p className="text-[11px] text-muted-foreground pt-1 inline-flex items-center gap-1">
+          <p className="text-[12px] text-muted-foreground pt-1 inline-flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" /> Saving…
           </p>
         )}
         {!mutation.isPending && savedAt && !error && (
-          <p className="text-[11px] text-muted-foreground pt-1 inline-flex items-center gap-1">
+          <p className="text-[12px] text-muted-foreground pt-1 inline-flex items-center gap-1">
             <Check className="w-3 h-3 text-green-600" /> Saved
           </p>
         )}
         {error && (
-          <p className="text-[11px] text-red-600 pt-1">{error}</p>
+          <p className="text-[12px] text-red-600 pt-1">{error}</p>
         )}
       </div>
     </div>
@@ -474,23 +474,23 @@ function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type:
       <h3 className="text-sm font-semibold mb-2">Organisation profile</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Display name</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground">Display name</p>
           <p className="font-semibold text-foreground">{isDemoOrg ? DEMO_ORG_NAME : org.name}</p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Type</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground">Type</p>
           <p className="font-semibold text-foreground capitalize">{isDemoOrg ? DEMO_ORG_TYPE : org.type}</p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Manager contact</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground">Manager contact</p>
           <p className="font-semibold text-foreground">{isDemoOrg ? DEMO_ORG_CONTACT_EMAIL : "Not set"}</p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Invite code</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground">Invite code</p>
           <p className="font-mono font-semibold text-foreground">{isDemoOrg ? getOrgInviteCode(org.id, DEMO_INVITE_CODE) : "Not set"}</p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+      <p className="text-[13px] text-muted-foreground pt-2 border-t border-border">
         To change these details, contact us at <a className="text-primary underline" href="mailto:hello@myimpact.uk">hello@myimpact.uk</a>.
       </p>
       </div>
@@ -615,7 +615,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
         <Palette className="w-4 h-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold">Branding</h3>
       </div>
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="text-[13px] text-muted-foreground mb-4">
         Your logo and colours appear on the org dashboard, header and exported PDF report.
       </p>
 
@@ -626,7 +626,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
         {/* Logo */}
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Logo</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Logo</p>
           <div className="flex items-center gap-3">
             <div className="w-24 h-24 rounded-lg border border-border bg-muted/20 flex items-center justify-center overflow-hidden">
               {logoUrl
@@ -634,7 +634,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
                 : <Building2 className="w-8 h-8 text-muted-foreground" />}
             </div>
             <div className="flex flex-col gap-2">
-              <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border hover:bg-muted/30 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border border-border hover:bg-muted/30 cursor-pointer">
                 <Upload className="w-3.5 h-3.5" /> {logoUrl ? "Replace logo" : "Upload logo"}
                 <input
                   type="file"
@@ -648,7 +648,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
               {logoUrl && (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-muted/30"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border border-border text-muted-foreground hover:bg-muted/30"
                   onClick={removeLogo}
                   disabled={busy}
                   data-testid="button-remove-logo"
@@ -656,19 +656,19 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
                   <Trash2 className="w-3.5 h-3.5" /> Remove
                 </button>
               )}
-              <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP or SVG · max 2 MB</p>
+              <p className="text-[12px] text-muted-foreground">PNG, JPG, WebP or SVG · max 2 MB</p>
             </div>
           </div>
         </div>
 
         {/* Colours */}
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Brand colours</p>
+          <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Brand colours</p>
           <div className="space-y-3">
             <ColourField label="Primary" value={primary} onChange={setPrimary} testId="primary" />
             <ColourField label="Accent"  value={accent}  onChange={setAccent}  testId="accent" />
             {showContrastWarning && (
-              <div className="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+              <div className="flex items-start gap-2 text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Your primary colour has low contrast against white text. Buttons and badges may be hard to read.</span>
               </div>
@@ -677,7 +677,7 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
               type="button"
               onClick={saveColours}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold bg-primary text-white hover:opacity-90 disabled:opacity-50"
               data-testid="button-save-colours"
             >
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
@@ -688,22 +688,22 @@ function BrandingSection({ branding }: { branding: OrgBranding | null }) {
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-border">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[12px] text-muted-foreground">
           Reset returns your organisation to the default My Impact branding.
         </p>
         <button
           type="button"
           onClick={resetAll}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-muted/30 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border border-border text-muted-foreground hover:bg-muted/30 disabled:opacity-50"
           data-testid="button-reset-branding"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Reset to defaults
         </button>
       </div>
 
-      {error && <p className="text-xs text-red-600 mt-3" data-testid="branding-error">{error}</p>}
-      {toast && <p className="text-xs text-emerald-700 mt-3" data-testid="branding-toast">{toast}</p>}
+      {error && <p className="text-[13px] text-red-600 mt-3" data-testid="branding-error">{error}</p>}
+      {toast && <p className="text-[13px] text-emerald-700 mt-3" data-testid="branding-toast">{toast}</p>}
     </div>
   );
 }
@@ -714,7 +714,7 @@ function BrandingPreview({ logoUrl, primary, accent }: { logoUrl: string | null;
   const a = valid(accent)  ? accent  : DEFAULT_ACCENT;
   return (
     <div className="rounded-xl border border-border bg-muted/20 p-3" data-testid="branding-preview">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Live preview</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Live preview</p>
       <div className="rounded-lg border border-border bg-white p-4">
         <div className="flex items-center gap-3 mb-3 pb-3 border-b" style={{ borderColor: p }}>
           {logoUrl ? (
@@ -726,14 +726,14 @@ function BrandingPreview({ logoUrl, primary, accent }: { logoUrl: string | null;
           )}
           <div>
             <p className="text-sm font-display font-semibold text-foreground">Your organisation</p>
-            <p className="text-[11px] text-muted-foreground">Header preview</p>
+            <p className="text-[12px] text-muted-foreground">Header preview</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="px-3 py-1.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: p }}>
+          <button type="button" className="px-3 py-1.5 rounded-md text-[13px] font-semibold text-white" style={{ backgroundColor: p }}>
             Primary action
           </button>
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold border" style={{ color: a, borderColor: a }}>
+          <span className="px-2.5 py-1 rounded-md text-[12px] font-semibold border" style={{ color: a, borderColor: a }}>
             Accent badge
           </span>
         </div>
@@ -858,7 +858,7 @@ function SroiAssumptionsSection({
     <div className="bg-white border border-border rounded-xl p-5 space-y-4" data-testid="section-sroi-assumptions">
       <div>
         <h3 className="text-sm font-semibold mb-1">SROI assumptions</h3>
-        <p className="text-xs text-muted-foreground max-w-prose">
+        <p className="text-[13px] text-muted-foreground max-w-prose">
           Break the per-volunteer investment into recruitment, onboarding, support and admin so the total is auditable for funders. The dashboard SROI explainer uses the sum. Leave every line blank to fall back to the My Impact default of £{DEFAULT_SROI_COST_PER_VOLUNTEER}.
         </p>
       </div>
@@ -869,11 +869,11 @@ function SroiAssumptionsSection({
           const p = parsed[line.key];
           const invalid = p === "invalid";
           return (
-            <label key={line.key} className="block text-xs space-y-1">
+            <label key={line.key} className="block text-[13px] space-y-1">
               <span className="font-semibold text-foreground">{line.label}</span>
-              <span className="block text-[10px] text-muted-foreground">{line.help}</span>
+              <span className="block text-[11px] text-muted-foreground">{line.help}</span>
               <span className={`inline-flex items-center rounded-md border overflow-hidden focus-within:border-primary ${invalid ? "border-red-500" : "border-border"}`}>
-                <span className="px-2 py-1.5 text-xs text-muted-foreground bg-muted/40">£</span>
+                <span className="px-2 py-1.5 text-[13px] text-muted-foreground bg-muted/40">£</span>
                 <input
                   type="number"
                   min={0}
@@ -883,7 +883,7 @@ function SroiAssumptionsSection({
                   value={v}
                   onChange={e => setValues(prev => ({ ...prev, [line.key]: e.target.value }))}
                   placeholder="0"
-                  className="w-28 px-2 py-1.5 text-xs focus:outline-none"
+                  className="w-28 px-2 py-1.5 text-[13px] focus:outline-none"
                   data-testid={`input-sroi-${line.key}`}
                   aria-invalid={invalid || undefined}
                 />
@@ -894,20 +894,20 @@ function SroiAssumptionsSection({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           Total per volunteer: <strong className="text-foreground" data-testid="text-sroi-derived-total">£{effectiveCost.toLocaleString("en-GB")}</strong>
           {hasAnyBreakdown
-            ? <span className="text-[10px] ml-1">(sum of {filled.length} line{filled.length === 1 ? "" : "s"})</span>
+            ? <span className="text-[11px] ml-1">(sum of {filled.length} line{filled.length === 1 ? "" : "s"})</span>
             : usingDefault
-              ? <span className="text-[10px] ml-1">(default)</span>
-              : <span className="text-[10px] ml-1">(saved total)</span>}
+              ? <span className="text-[11px] ml-1">(default)</span>
+              : <span className="text-[11px] ml-1">(saved total)</span>}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={save}
             disabled={mutation.isPending || anyInvalid}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
             data-testid="button-save-sroi-cost"
           >
             {mutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save breakdown
@@ -917,7 +917,7 @@ function SroiAssumptionsSection({
               type="button"
               onClick={reset}
               disabled={mutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted/30 disabled:opacity-60 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 disabled:opacity-60 transition-colors"
               data-testid="button-reset-sroi-cost"
             >
               <RefreshCw className="w-3 h-3" /> Use default
@@ -926,9 +926,9 @@ function SroiAssumptionsSection({
         </div>
       </div>
 
-      {error && <p className="text-[11px] text-red-600" data-testid="sroi-error">{error}</p>}
+      {error && <p className="text-[12px] text-red-600" data-testid="sroi-error">{error}</p>}
       {!error && !mutation.isPending && savedAt && (
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+        <p className="text-[12px] text-muted-foreground inline-flex items-center gap-1">
           <Check className="w-3 h-3 text-green-600" /> Saved
         </p>
       )}
@@ -952,7 +952,7 @@ function ColourField({ label, value, onChange, testId }: { label: string; value:
   const isValid = /^#[0-9A-Fa-f]{6}$/.test(value);
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-16">{label}</span>
+      <span className="text-[13px] text-muted-foreground w-16">{label}</span>
       <input
         type="color"
         value={isValid ? value : "#000000"}
@@ -965,10 +965,10 @@ function ColourField({ label, value, onChange, testId }: { label: string; value:
         value={value}
         onChange={e => setHex(e.target.value)}
         maxLength={7}
-        className="font-mono text-xs px-2 py-1.5 rounded border border-border w-24 uppercase"
+        className="font-mono text-[13px] px-2 py-1.5 rounded border border-border w-24 uppercase"
         data-testid={`hex-${testId}`}
       />
-      {!isValid && <span className="text-[10px] text-red-600">Invalid hex</span>}
+      {!isValid && <span className="text-[11px] text-red-600">Invalid hex</span>}
     </div>
   );
 }
@@ -1026,7 +1026,7 @@ export default function OrgSettings() {
               role="tab"
               aria-selected={isActive}
               onClick={() => setActive(t.key)}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${isActive ? "bg-primary text-white border-primary" : "border-border text-foreground hover:bg-muted/30"}`}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border transition-colors ${isActive ? "bg-primary text-white border-primary" : "border-border text-foreground hover:bg-muted/30"}`}
               data-testid={`tab-${t.key}`}
             >
               <Icon className="w-3.5 h-3.5" /> {t.label}

@@ -264,9 +264,9 @@ export default function OrgActivities() {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Filters</h3>
-              <span className="text-xs text-muted-foreground">({filtered.length} {filtered.length === 1 ? "result" : "results"})</span>
+              <span className="text-[13px] text-muted-foreground">({filtered.length} {filtered.length === 1 ? "result" : "results"})</span>
             </div>
-            <label className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
+            <label className="inline-flex items-center gap-1.5 text-[13px] text-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={anonymise}
@@ -286,15 +286,15 @@ export default function OrgActivities() {
                 value={query}
                 onChange={e => { setQuery(e.target.value); setPage(1); }}
                 placeholder="Search description, activity, member…"
-                className="w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-xs focus:outline-none focus:border-primary"
+                className="w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
                 data-testid="input-search"
               />
             </div>
-            <select value={category} onChange={e => { setCategory(parseCategory(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-category">
+            <select value={category} onChange={e => { setCategory(parseCategory(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-[13px] bg-white" data-testid="select-category">
               <option value="all">All categories</option>
               {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-xs bg-white" data-testid="select-member">
+            <select value={memberId} onChange={e => { setMemberId(e.target.value); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-[13px] bg-white" data-testid="select-member">
               <option value="all">All members</option>
               {isDemoOrg
                 ? DEMO_MEMBERS.filter(m => !removedIds.has(m.id)).map(m => (
@@ -306,25 +306,25 @@ export default function OrgActivities() {
               }
             </select>
             <div className="flex gap-1">
-              <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="From" />
-              <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-xs" aria-label="To" />
+              <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="From" />
+              <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="To" />
             </div>
           </div>
 
           {filtered.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">No activities match these filters.</p>
+            <p className="text-[13px] text-muted-foreground text-center py-8">No activities match these filters.</p>
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-left text-muted-foreground border-b border-border">
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Date</th>
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Member</th>
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Category</th>
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3">Activity</th>
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Hours</th>
-                      <th className="font-semibold uppercase text-[10px] tracking-wider py-2 pr-3 text-right">Social Value</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Date</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Member</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Category</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">Activity</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Hours</th>
+                      <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Social Value</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -357,12 +357,12 @@ export default function OrgActivities() {
                           <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                           <td className="py-2 pr-3">
                             <p className="font-medium text-foreground">{m.name}</p>
-                            {!anonymise && m.email && <p className="text-[10px] text-muted-foreground">{m.email}</p>}
+                            {!anonymise && m.email && <p className="text-[11px] text-muted-foreground">{m.email}</p>}
                           </td>
-                          <td className="py-2 pr-3"><span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">{a.category}</span></td>
+                          <td className="py-2 pr-3"><span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-semibold">{a.category}</span></td>
                           <td className="py-2 pr-3 max-w-md">
                             <p className="font-medium text-foreground">{a.activity}</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
+                            <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">
@@ -380,7 +380,7 @@ export default function OrgActivities() {
                                   <Info className="w-3 h-3" />
                                 </button>
                                 {openTooltip === a.id && (
-                                  <div className="absolute right-0 top-5 z-30 w-60 px-3 py-2.5 rounded-md bg-white border border-border shadow-lg text-[11px] text-muted-foreground leading-relaxed">
+                                  <div className="absolute right-0 top-5 z-30 w-60 px-3 py-2.5 rounded-md bg-white border border-border shadow-lg text-[12px] text-muted-foreground leading-relaxed">
                                     <p className="font-semibold text-foreground mb-1 tabular-nums">{breakdownText}</p>
                                     {proxyText && <p className="mb-1.5">{proxyText}</p>}
                                     <Link href="/methodology" className="text-primary hover:underline font-medium" data-testid={`methodology-link-${a.id}`} onClick={() => setOpenTooltip(null)}>
@@ -399,7 +399,7 @@ export default function OrgActivities() {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 text-xs">
+                <div className="flex items-center justify-between mt-4 text-[13px]">
                   <p className="text-muted-foreground">Page {safePage} of {totalPages}</p>
                   <div className="flex gap-1">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border disabled:opacity-40">
@@ -415,7 +415,7 @@ export default function OrgActivities() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           Need to share this with funders or your board? Head to{" "}
           <Link href="/org/export" className="text-primary underline">Export</Link>{" "}
           to download a polished PDF or CSV (with optional anonymisation).

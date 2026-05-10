@@ -116,13 +116,13 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <Flag className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.challengesTitle")}</h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
+          <p className="text-[13px] text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
         </div>
         {!creating && (
           <button
             type="button"
             onClick={() => { setCreating(true); setError(null); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             data-testid="button-new-org-challenge"
           >
             <Plus className="w-3.5 h-3.5" /> {t("orgDashboard.challengesNew")}
@@ -133,7 +133,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border bg-muted/20 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
             <input
               type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -141,7 +141,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
             <textarea
               value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -150,7 +150,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
               <select
                 value={goalType} onChange={e => setGoalType(e.target.value as "social_value" | "hours")}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary"
@@ -161,7 +161,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
               <input
                 type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -169,7 +169,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
               <input
                 type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -177,7 +177,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
               <input
                 type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -185,11 +185,11 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               />
             </div>
           </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-[13px] text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={() => { setCreating(false); setError(null); }}
-              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+              className="px-3 py-2 rounded-lg border border-border text-[13px] font-semibold text-foreground hover:bg-muted/30 transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -197,7 +197,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               type="button"
               onClick={() => { setError(null); createMut.mutate(); }}
               disabled={createMut.isPending || !name.trim() || Number(target) <= 0}
-              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-challenge"
             >
               {createMut.isPending ? t("common.saving") : t("orgDashboard.challengesCreate")}
@@ -212,7 +212,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <div className="animate-spin w-5 h-5 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         ) : orgChallenges.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">{t("orgDashboard.challengesEmpty")}</p>
+          <p className="text-[13px] text-muted-foreground text-center py-6">{t("orgDashboard.challengesEmpty")}</p>
         ) : (
           <div className="space-y-2" data-testid="list-org-challenges">
             {orgChallenges.map(c => {
@@ -231,11 +231,11 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
                         >
                           {c.name}
                         </Link>
-                        <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                        <span className={`text-[11px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
                           {c.hasEnded ? t("orgDashboard.challengesEnded") : t("orgDashboard.challengesActive")}
                         </span>
                       </div>
-                      {c.description && <p className="text-xs text-muted-foreground mt-1">{c.description}</p>}
+                      {c.description && <p className="text-[13px] text-muted-foreground mt-1">{c.description}</p>}
                     </div>
                     <div className="shrink-0 flex items-start gap-2">
                       <p className="text-sm font-bold text-foreground" data-testid={`challenge-percent-${c.id}`}>{pct}%</p>
@@ -246,7 +246,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
                             if (confirm(t("orgDashboard.challengesConfirmEnd"))) endMut.mutate(c.id);
                           }}
                           disabled={endMut.isPending}
-                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors disabled:opacity-60"
                           data-testid={`button-end-challenge-${c.id}`}
                         >
                           <X className="w-3 h-3" /> {t("orgDashboard.challengesEnd2")}
@@ -257,7 +257,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
                   <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
                     <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                  <p className="text-[12px] text-muted-foreground mt-1.5">
                     <span className="font-semibold text-foreground">{progressLabel}</span> {t("orgDashboard.challengesProgressOf")} {targetLabel}
                     {" · "}
                     <span className="font-semibold text-foreground">{c.participantCount}</span> {t("orgDashboard.challengesParticipants")}
@@ -343,13 +343,13 @@ function DemoOrgChallengesPanel() {
             <Flag className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">{t("orgDashboard.challengesTitle")}</h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
+          <p className="text-[13px] text-muted-foreground mt-1">{t("orgDashboard.challengesSubtitle")}</p>
         </div>
         {!creating && (
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             data-testid="button-new-org-challenge"
           >
             <Plus className="w-3.5 h-3.5" /> {t("orgDashboard.challengesNew")}
@@ -357,14 +357,14 @@ function DemoOrgChallengesPanel() {
         )}
       </div>
       {successId && (
-        <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-challenge-success">
+        <p className="mt-3 text-[13px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid="demo-challenge-success">
           Challenge created successfully.
         </p>
       )}
       {creating && (
         <div className="mt-4 p-4 rounded-lg border border-border space-y-3 bg-[#ffffff]">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
             <input
               type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -372,7 +372,7 @@ function DemoOrgChallengesPanel() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
             <textarea
               value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -381,7 +381,7 @@ function DemoOrgChallengesPanel() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesGoalType")}</label>
               <select
                 value={goalType} onChange={e => setGoalType(e.target.value as "social_value" | "hours")}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-primary"
@@ -392,7 +392,7 @@ function DemoOrgChallengesPanel() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
               <input
                 type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -400,7 +400,7 @@ function DemoOrgChallengesPanel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
               <input
                 type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -408,7 +408,7 @@ function DemoOrgChallengesPanel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
               <input
                 type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
@@ -419,7 +419,7 @@ function DemoOrgChallengesPanel() {
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={() => setCreating(false)}
-              className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+              className="px-3 py-2 rounded-lg border border-border text-[13px] font-semibold text-foreground hover:bg-muted/30 transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -427,7 +427,7 @@ function DemoOrgChallengesPanel() {
               type="button"
               onClick={handleCreate}
               disabled={!name.trim() || Number(target) <= 0}
-              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-challenge"
             >
               {t("orgDashboard.challengesCreate")}
@@ -446,11 +446,11 @@ function DemoOrgChallengesPanel() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-foreground truncate" data-testid={`link-challenge-${c.id}`}>{c.name}</span>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                    <span className={`text-[11px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${c.hasEnded ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
                       {c.hasEnded ? t("orgDashboard.challengesEnded") : t("orgDashboard.challengesActive")}
                     </span>
                   </div>
-                  {c.description && <p className="text-xs text-muted-foreground mt-1">{c.description}</p>}
+                  {c.description && <p className="text-[13px] text-muted-foreground mt-1">{c.description}</p>}
                 </div>
                 <div className="shrink-0 flex items-start gap-2">
                   <p className="text-sm font-bold text-foreground" data-testid={`challenge-percent-${c.id}`}>{pct}%</p>
@@ -458,7 +458,7 @@ function DemoOrgChallengesPanel() {
                     <button
                       type="button"
                       disabled
-                      className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
+                      className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border cursor-not-allowed opacity-60"
                       data-testid={`button-end-challenge-${c.id}`}
                     >
                       <X className="w-3 h-3" /> {t("orgDashboard.challengesEnd2")}
@@ -469,7 +469,7 @@ function DemoOrgChallengesPanel() {
               <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
                 <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
+              <p className="text-[12px] text-muted-foreground mt-1.5">
                 <span className="font-semibold text-foreground">{progressLabel}</span> {t("orgDashboard.challengesProgressOf")} {targetLabel}
                 {" · "}
                 <span className="font-semibold text-foreground">{c.participantCount}</span> {t("orgDashboard.challengesParticipants")}
