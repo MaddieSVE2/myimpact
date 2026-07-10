@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { PageMeta } from "@/components/PageMeta";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -78,6 +79,11 @@ export default function About() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
+      <PageMeta
+        title="About My Impact — Making the invisible visible"
+        description="My Impact is a free tool that converts volunteering, community work, and caring into a defensible monetary figure using SROI methodology and Social Value Engine proxies."
+        canonical="https://myimpact.uk/about"
+      />
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>

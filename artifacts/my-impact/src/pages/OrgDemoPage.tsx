@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Building2, GraduationCap, Heart, Landmark } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 import OrgDemoDashboard from "./OrgDemoDashboard";
 import OrgDemoEducationDashboard from "./OrgDemoEducationDashboard";
 
@@ -55,6 +56,11 @@ export default function OrgDemoPage() {
 
   return (
     <div>
+      <PageMeta
+        title="Organisation Dashboard Demo — My Impact"
+        description="See how My Impact helps schools, charities, local authorities, and universities track aggregated social value across their members. Explore the live demo dashboard."
+        canonical="https://myimpact.uk/org/demo"
+      />
       {/* Sticky type switcher bar, sits below the demo notice banner */}
       <div className="sticky top-0 z-20 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-center backdrop-blur-sm">
         <p className="text-xs font-semibold text-primary">

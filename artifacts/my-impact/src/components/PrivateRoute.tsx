@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { getPreviousLocation } from "@/lib/nav-history";
+import { NoIndexMeta } from "@/components/PageMeta";
 
 interface PrivateRouteProps {
   component: React.ComponentType;
@@ -38,5 +39,10 @@ export function PrivateRoute({ component: Component }: PrivateRouteProps) {
     );
   }
 
-  return <Component />;
+  return (
+    <>
+      <NoIndexMeta />
+      <Component />
+    </>
+  );
 }

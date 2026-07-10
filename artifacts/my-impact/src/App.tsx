@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
+import { HelmetProvider, Helmet } from "react-helmet-async";
 import { updateNavHistory } from "@/lib/nav-history";
 import { captureException as captureSentryException } from "@/lib/sentry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,6 +20,31 @@ import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
 import { usePageViewTracking } from "@/hooks/usePageViewTracking";
 import { X, LogIn, Building2 } from "lucide-react";
+
+const NOINDEX_PATH_PREFIXES = [
+  "/login",
+  "/auth/confirm",
+  "/results",
+  "/wizard",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/pricing",
+  "/feedback",
+  "/admin",
+  "/log",
+  "/challenges",
+  "/org",
+  "/badges",
+  "/milestones",
+  "/recap",
+  "/quick-log",
+  "/history",
+  "/journal",
+  "/settings",
+  "/profile/setup",
+  "/profile",
+];
 
 // Layout & Pages
 import { Footer } from "@/components/layout/Footer";
@@ -238,6 +264,7 @@ function OrgGuestRoute() {
 }
 
 const NO_FOOTER_PATHS = [
+  "/",
   "/login",
   "/auth/confirm",
   "/wizard",
@@ -261,8 +288,17 @@ function AppRouter() {
     (p) => location === p || location.startsWith(p + "/")
   );
 
+  const shouldNoIndex = NOINDEX_PATH_PREFIXES.some(
+    (p) => location === p || location.startsWith(p + "/") || location.startsWith(p + "?")
+  );
+
   return (
     <div className="flex flex-row min-h-screen">
+      {shouldNoIndex && (
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
+      )}
       {/* ── Main content column ── */}
       <div className="flex flex-col flex-grow min-w-0">
         <Navbar />
@@ -392,29 +428,31 @@ function AppRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ThemeProvider>
-          <SocialSharingProvider>
-          <AuthProvider>
-            <LocaleProvider>
-              <FeedbackProvider>
-                <SidekickProvider>
-                  <WizardProvider>
-                    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                      <AppRouter />
-                    </WouterRouter>
-                  </WizardProvider>
-                </SidekickProvider>
-              </FeedbackProvider>
-              <ServiceWorkerUpdatePrompt />
-            </LocaleProvider>
-          </AuthProvider>
-          </SocialSharingProvider>
-          <Toaster />
-        </ThemeProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ThemeProvider>
+            <SocialSharingProvider>
+            <AuthProvider>
+              <LocaleProvider>
+                <FeedbackProvider>
+                  <SidekickProvider>
+                    <WizardProvider>
+                      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                        <AppRouter />
+                      </WouterRouter>
+                    </WizardProvider>
+                  </SidekickProvider>
+                </FeedbackProvider>
+                <ServiceWorkerUpdatePrompt />
+              </LocaleProvider>
+            </AuthProvider>
+            </SocialSharingProvider>
+            <Toaster />
+          </ThemeProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 

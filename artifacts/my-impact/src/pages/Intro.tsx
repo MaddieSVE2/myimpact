@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
@@ -170,6 +171,164 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
         <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 24, fontWeight: 900, color: C.orange, margin: 0 }}>{s.value}</p>
         <p style={{ fontSize: 12, color: "var(--brand-subtle-text)", textAlign: "right", maxWidth: 130, lineHeight: 1.4, margin: 0 }}>{s.what}</p>
       </div>
+    </div>
+  );
+}
+
+interface FAQItem {
+  q: string;
+  a: string;
+  aNode?: React.ReactNode;
+}
+
+const SVE_LINK = (
+  <a
+    href="https://www.socialvalueengine.com"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ color: "var(--brand-orange)", textDecoration: "underline", textUnderlineOffset: 3 }}
+  >
+    Social Value Engine
+  </a>
+);
+
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    q: "What is My Impact?",
+    a: "My Impact is a free tool for anyone who volunteers, cares for others, gives to charity, or takes positive action in their community. Answer a short set of questions about what you do, and it works out what your contributions are worth in pounds using peer-reviewed social value methodology. You get a shareable results page that is useful for job applications, funding bids, UCAS personal statements, DofE applications, and annual reports.",
+  },
+  {
+    q: "How does My Impact calculate social value?",
+    a: "We use the Social Value Engine, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.",
+    aNode: <>We use the {SVE_LINK}, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.</>,
+  },
+  {
+    q: "Is the information I enter verified or independently audited?",
+    a: "Today, contributions are self-reported. We are transparent about this on every results page. We use conservative proxy values, sensible default ranges, and single-SDG attribution to keep figures defensible. Organisation-side verification for group programmes is on our roadmap.",
+  },
+  {
+    q: "Is My Impact free to use?",
+    a: "Measuring your impact is free and you don't need an account to do it. If you do create a free account, you can also save your history, write journal entries, earn milestones, and share a public profile. For organisations wanting access to the dashboard, Pulse surveys, and other team features, there is a cost. Get in touch at hello@myimpact.uk to find out more.",
+  },
+  {
+    q: "What is the Social Value Engine?",
+    a: "The Social Value Engine (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.",
+    aNode: <>The {SVE_LINK} (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.</>,
+  },
+  {
+    q: "Can my organisation use My Impact?",
+    a: "Yes. My Impact works for schools, universities, charities, local authorities, and private sector employers running employee volunteering or community investment programmes. Organisations get a dedicated dashboard showing aggregated, anonymised impact data across their members, ready for programme reporting, funding bids, commissioner returns, and ESG reporting. Get in touch at hello@myimpact.uk or explore the demo dashboard to find out more.",
+  },
+];
+
+const HOMEPAGE_JSON_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://myimpact.uk/#website",
+    "url": "https://myimpact.uk/",
+    "name": "My Impact",
+    "description": "Free tool to calculate and share the social value of your volunteering, community work, and positive actions.",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "@id": "https://myimpact.uk/#webapp",
+    "url": "https://myimpact.uk/",
+    "name": "My Impact",
+    "applicationCategory": "LifestyleApplication",
+    "operatingSystem": "Web",
+    "description": "Free tool to measure, track and share the social value of volunteering and community contributions using SROI methodology.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "GBP",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQ_ITEMS.map(item => ({
+      "@type": "Question",
+      "name": item.q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": item.a,
+      },
+    })),
+  },
+];
+
+function HomeFAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {FAQ_ITEMS.map((item, i) => {
+        const isOpen = openIndex === i;
+        return (
+          <div
+            key={i}
+            style={{
+              background: "white",
+              borderRadius: 12,
+              border: `1px solid ${isOpen ? "rgba(232,99,58,0.3)" : "rgba(0,0,0,0.07)"}`,
+              overflow: "hidden",
+              transition: "border-color 0.2s",
+            }}
+          >
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls={`faq-answer-${i}`}
+              id={`faq-question-${i}`}
+              onClick={() => setOpenIndex(isOpen ? null : i)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "18px 20px",
+                background: "transparent",
+                border: "none",
+                textAlign: "left",
+                cursor: "pointer",
+                color: "var(--brand-dark)",
+              }}
+            >
+              <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35, fontFamily: "'Outfit', sans-serif" }}>
+                {item.q}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                style={{
+                  flexShrink: 0,
+                  width: 18,
+                  height: 18,
+                  color: "var(--brand-orange)",
+                  transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.25s",
+                }}
+              />
+            </button>
+            {isOpen && (
+              <div
+                id={`faq-answer-${i}`}
+                role="region"
+                aria-labelledby={`faq-question-${i}`}
+                style={{
+                  padding: "0 20px 18px",
+                  fontSize: 15,
+                  color: "var(--brand-muted-text)",
+                  lineHeight: 1.7,
+                }}
+              >
+                {item.aNode ?? item.a}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -429,6 +588,12 @@ export default function Intro() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
+      <PageMeta
+        title="My Impact — Calculate the social value of your volunteering and community work"
+        description="Free tool to measure, track, and share the social value you create through volunteering, community work, and positive actions. Powered by SROI methodology and Social Value Engine data."
+        canonical="https://myimpact.uk/"
+        jsonLd={HOMEPAGE_JSON_LD}
+      />
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
       {isLoggedIn ? <CalendarHomeWidget /> : null}
       {/* ── ANNUAL RECAP DISCOVERY ── */}
@@ -604,7 +769,7 @@ export default function Intro() {
             letterSpacing: 1.5, textTransform: "uppercase" as const,
             marginBottom: 28,
           }}>
-            <span className="mi-dot" /> Powered by the Social Value Engine
+            <span className="mi-dot" /> Uses Social Value Engine data
           </div>
 
           <h1
@@ -636,6 +801,15 @@ export default function Intro() {
               Inspire me
             </Link>
           </div>
+          <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+            Measuring the impact of a group or programme?{" "}
+            <a
+              href="/#for-organisations"
+              style={{ color: "rgba(255,255,255,0.75)", textDecoration: "underline", textUnderlineOffset: 3 }}
+            >
+              See the organisation dashboard →
+            </a>
+          </p>
         </div>
 
 
@@ -885,8 +1059,11 @@ export default function Intro() {
       <section id="stories" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <p className="mi-section-label">Real stories</p>
+            <p className="mi-section-label">Illustrative examples</p>
             <p className="mi-section-title">What does social value look like?</p>
+            <p style={{ fontSize: 14, color: "var(--brand-muted-text)", lineHeight: 1.6, marginTop: 4, marginBottom: 12, maxWidth: 620 }}>
+              These examples are illustrative and show the kinds of contributions people make. Values are calculated using our standard SROI methodology. They are not verified testimonials.
+            </p>
           </FadeIn>
           <div style={{ paddingBottom: 40 }}>
             <TestimonialsCarousel />
@@ -899,10 +1076,10 @@ export default function Intro() {
           <FadeIn>
             <div>
               <h2 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
-                Your impact is your proof.
+                Turn your contribution into evidence.
               </h2>
               <p style={{ fontSize: 17, color: "var(--brand-muted-text)", lineHeight: 1.7, marginBottom: 16 }}>
-                Employers want evidence. Funders want outcomes. Commissioners want data. My Impact gives you something most people don't have: a verified, quantified record of the difference you make.
+                Employers want evidence. Funders want outcomes. Commissioners want data. My Impact gives you a documented, quantified record of the difference you make — built on peer-reviewed social value methodology.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 10, marginTop: 28 }}>
                 {[
@@ -939,13 +1116,13 @@ export default function Intro() {
                 <span style={{ padding: "4px 12px", borderRadius: 100, background: "var(--brand-olive-chip)", fontSize: 12, fontWeight: 600, color: C.dark }}>🌱 Environment</span>
                 <span style={{ padding: "4px 12px", borderRadius: 100, background: "var(--brand-light-blue-chip)", fontSize: 12, fontWeight: 600, color: C.dark }}>🏘️ Community</span>
               </div>
-              <p style={{ marginTop: 16, fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Powered by Social Value Engine methodology</p>
+              <p style={{ marginTop: 16, fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Social value calculations use Social Value Engine methodology</p>
             </div>
           </FadeIn>
         </div>
       </section>
       {/* ── FOR ORGANISATIONS ── */}
-      <section id="orgs" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
+      <section id="for-organisations" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label" style={{ color: C.orange }}>For organisations</p>
@@ -960,7 +1137,7 @@ export default function Intro() {
             {[
               { title: "Evidence outcomes", desc: "Credible social value data from the same methodology used by councils and housing associations.", comingSoon: false },
               { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme.", comingSoon: false },
-              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Feeds directly into SVE for SROI analysis.", comingSoon: false },
+              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Uses the same Social Value Engine methodology trusted by local authorities.", comingSoon: false },
               { title: "Track in real time", desc: "See how your whole programme is progressing at a glance. No chasing spreadsheets, no waiting for reports.", comingSoon: false },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
@@ -1021,6 +1198,18 @@ export default function Intro() {
           </FadeIn>
         </div>
       </section>
+      {/* ── FAQ ── */}
+      <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
+        <div style={{ maxWidth: 860, margin: "0 auto" }}>
+          <FadeIn>
+            <p className="mi-section-label">Frequently asked questions</p>
+            <h2 style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 40, letterSpacing: -0.5, fontFamily: "'Outfit', sans-serif" }}>
+              Commonly asked questions (and the answers to them)
+            </h2>
+          </FadeIn>
+          <HomeFAQ />
+        </div>
+      </section>
       {/* ── CTA ── */}
       <section className="mi-cta-section">
         <FadeIn>
@@ -1056,7 +1245,7 @@ export default function Intro() {
           <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
         </div>
         <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-          Powered by Social Value Engine methodology · Secure cloud hosting
+          Social value calculations use Social Value Engine methodology · Secure cloud hosting
         </p>
       </footer>
     </div>

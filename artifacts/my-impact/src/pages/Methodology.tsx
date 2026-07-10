@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -12,8 +13,6 @@ const C = {
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const LAST_UPDATED = "2 May 2026";
-const SITE_ORIGIN = typeof window !== "undefined" ? window.location.origin : "https://myimpact.uk";
-const PAGE_URL = `${SITE_ORIGIN}${BASE_URL}/methodology`;
 
 function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -209,75 +208,6 @@ export default function Methodology() {
     window.scrollTo(0, 0);
   }, []);
 
-  // SEO meta tags. Set on mount, restore on unmount so other pages aren't affected.
-  useEffect(() => {
-    const prevTitle = document.title;
-    const title = "Methodology and Evidence, How My Impact calculates social value";
-    const description = "How My Impact calculates social value: SROI methodology, Social Value Engine proxies, UN SDG mapping, verification approach, and the citations behind every number.";
-    const ogImage = `${SITE_ORIGIN}${BASE_URL}/opengraph.jpg`;
-    document.title = title;
-
-    function setMeta(selector: string, attrName: "name" | "property", attrValue: string, content: string) {
-      let el = document.head.querySelector<HTMLMetaElement>(selector);
-      let created = false;
-      if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute(attrName, attrValue);
-        document.head.appendChild(el);
-        created = true;
-      }
-      const previous = el.getAttribute("content");
-      el.setAttribute("content", content);
-      return () => {
-        if (created) {
-          el?.remove();
-        } else if (previous !== null) {
-          el?.setAttribute("content", previous);
-        }
-      };
-    }
-
-    function setLink(rel: string, href: string) {
-      let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-      let created = false;
-      if (!el) {
-        el = document.createElement("link");
-        el.setAttribute("rel", rel);
-        document.head.appendChild(el);
-        created = true;
-      }
-      const previous = el.getAttribute("href");
-      el.setAttribute("href", href);
-      return () => {
-        if (created) {
-          el?.remove();
-        } else if (previous !== null) {
-          el?.setAttribute("href", previous);
-        }
-      };
-    }
-
-    const restorers = [
-      setMeta('meta[name="description"]', "name", "description", description),
-      setMeta('meta[name="robots"]', "name", "robots", "index, follow"),
-      setMeta('meta[property="og:title"]', "property", "og:title", title),
-      setMeta('meta[property="og:description"]', "property", "og:description", description),
-      setMeta('meta[property="og:image"]', "property", "og:image", ogImage),
-      setMeta('meta[property="og:url"]', "property", "og:url", PAGE_URL),
-      setMeta('meta[property="og:type"]', "property", "og:type", "article"),
-      setMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image"),
-      setMeta('meta[name="twitter:title"]', "name", "twitter:title", title),
-      setMeta('meta[name="twitter:description"]', "name", "twitter:description", description),
-      setMeta('meta[name="twitter:image"]', "name", "twitter:image", ogImage),
-      setLink("canonical", PAGE_URL),
-    ];
-
-    return () => {
-      document.title = prevTitle;
-      for (const restore of restorers) restore();
-    };
-  }, []);
-
   function toggle(id: string) {
     setOpen(o => ({ ...o, [id]: !o[id] }));
   }
@@ -311,6 +241,12 @@ export default function Methodology() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
+      <PageMeta
+        title="Methodology & Evidence — How My Impact calculates social value"
+        description="How My Impact calculates social value: SROI methodology, Social Value Engine proxies, UN SDG mapping, verification approach, and the citations behind every number."
+        canonical="https://myimpact.uk/methodology"
+        ogType="article"
+      />
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>

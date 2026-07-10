@@ -497,6 +497,15 @@ export function Navbar() {
                     {isHighContrast ? t("navbar.standardContrast") : t("navbar.highContrastMode")}
                   </div>
                 </div>
+                <a
+                  href="/#for-organisations"
+                  className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+                  style={{ color: "rgba(255,255,255,0.75)" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "white")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
+                >
+                  For organisations
+                </a>
                 <Link
                   href={`/login?from=${encodeURIComponent(location)}`}
                   className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:-translate-y-px"
@@ -568,6 +577,18 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* For organisations link — mobile, logged-out only */}
+            {!isLoggedIn && (
+              <a
+                href="/#for-organisations"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
+              >
+                <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                For organisations
+              </a>
+            )}
 
             {/* Calculate CTA on mobile. Hidden for org managers (their nav
                 already covers the org jobs). Org members keep it so the

@@ -14,6 +14,7 @@
 // `BADGE_COLORS`, or add a new badge if it genuinely fits better.
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { PageMeta } from "@/components/PageMeta";
 import {
   Wand2, BookMarked, FileDown, Smartphone, Building2, Users, LayoutDashboard,
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
@@ -406,6 +407,11 @@ export default function WhatsNew() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
+      <PageMeta
+        title="What's New — My Impact"
+        description="The latest features, improvements, and updates to My Impact. See what's been shipped for individuals and organisations."
+        canonical="https://myimpact.uk/whats-new"
+      />
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 72, paddingTop: 72 }}>

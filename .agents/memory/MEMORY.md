@@ -1,0 +1,1 @@
+- [SEO meta pattern](seo-meta.md) — react-helmet-async with PageMeta/NoIndexMeta; HelmetProvider in App.tsx wraps everything; private routes noindexed via PrivateRoute + NOINDEX_PATH_PREFIXES list in AppRouter.
