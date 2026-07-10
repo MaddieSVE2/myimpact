@@ -759,19 +759,6 @@ export default function Intro() {
         </div>
 
         <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: 860 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.13)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 18px", borderRadius: 100,
-            color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700,
-            letterSpacing: 1.5, textTransform: "uppercase" as const,
-            marginBottom: 28,
-          }}>
-            <span className="mi-dot" /> Uses Social Value Engine data
-          </div>
-
           <h1
             className="mi-fraunces"
             style={{
