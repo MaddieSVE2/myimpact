@@ -14,7 +14,7 @@ import { QuickLog } from "@/components/QuickLog";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { ManagerHome } from "@/components/ManagerHome";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
-import { useListRecurringTemplates } from "@workspace/api-client-react";
+import { useListRecurringTemplates, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -472,8 +472,8 @@ export default function Intro() {
   const showRecapBanner =
     isLoggedIn && isInRecapWindow() && !isRecapViewed(getRecapYear());
 
-  const templatesQuery = useListRecurringTemplates(undefined, {
-    query: { enabled: isLoggedIn },
+  const templatesQuery = useListRecurringTemplates({
+    query: { enabled: isLoggedIn, queryKey: getListRecurringTemplatesQueryKey() },
   });
   const hasQuickLogContent =
     isLoggedIn && (templatesQuery.data?.templates?.length ?? 0) > 0;

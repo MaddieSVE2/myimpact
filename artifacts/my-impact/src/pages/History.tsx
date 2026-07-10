@@ -1116,16 +1116,17 @@ export default function History() {
                           />
                         </div>
                         <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
-                          {record.impactResult && record.activities?.length > 0 && (
+                          {record.impactResult && (record as LocalRecord).activities?.length > 0 && (
                             <button
                               onClick={() => {
+                                const lr = record as LocalRecord;
                                 const histRecord: HistoryRecord = {
                                   impactResult: record.impactResult,
-                                  activities: record.activities,
-                                  region: record.region ?? null,
-                                  outwardCode: record.outwardCode ?? null,
-                                  lat: record.lat ?? null,
-                                  lng: record.lng ?? null,
+                                  activities: lr.activities,
+                                  region: lr.region ?? null,
+                                  outwardCode: lr.outwardCode ?? null,
+                                  lat: lr.lat ?? null,
+                                  lng: lr.lng ?? null,
                                   entryDate: (record as { entryDate?: string | null }).entryDate ?? null,
                                 };
                                 loadFromRecord(histRecord);

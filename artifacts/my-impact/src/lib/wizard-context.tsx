@@ -325,6 +325,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
         outwardCode: record.outwardCode,
         lat: record.lat,
         lng: record.lng,
+        adminDistrict: record.region ?? '',
       });
     } else {
       setLocationState('');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useGetImpactHistory, useGetActivities } from "@workspace/api-client-react";
+import { useGetImpactHistory, useGetActivities, getGetImpactHistoryQueryKey, type SelectedActivity } from "@workspace/api-client-react";
 import { computeBadges } from "@/lib/badges";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
@@ -26,7 +26,7 @@ export default function Milestones() {
   const gamificationEnabled = user?.gamificationEnabled ?? true;
   const { data, isLoading, isError } = useGetImpactHistory(
     { userId: user?.id ?? "" },
-    { query: { enabled: !!user?.id } }
+    { query: { enabled: !!user?.id, queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) } }
   );
   const { data: activitiesData } = useGetActivities();
   const [isOrgMember, setIsOrgMember] = useState(false);
@@ -72,7 +72,8 @@ export default function Milestones() {
   );
 
   const cumulativePeopleSupported = records.reduce((sum: number, r) => {
-    const recordPeople = (r.activities ?? []).reduce((s: number, a) => {
+    const rr = r as typeof r & { activities?: SelectedActivity[] };
+    const recordPeople = (rr.activities ?? []).reduce((s: number, a) => {
       if (personUnitActivityIds.has(a.activityId)) {
         return s + (a.quantity ?? 0);
       }

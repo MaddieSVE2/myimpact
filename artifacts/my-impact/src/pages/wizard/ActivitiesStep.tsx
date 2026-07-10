@@ -649,7 +649,7 @@ export default function ActivitiesStep() {
                             {sortedActivities.filter(a =>
                               a.shortName.toLowerCase().includes(pickSearch.toLowerCase()) ||
                               a.category.toLowerCase().includes(pickSearch.toLowerCase()) ||
-                              (a.group ?? '').toLowerCase().includes(pickSearch.toLowerCase())
+                              ((a as ActivityItem & { group?: string }).group ?? '').toLowerCase().includes(pickSearch.toLowerCase())
                             ).map(a => {
                               const selected = selectedIds.has(a.id);
                               const isPreferred = preferredCategories.has(a.category);
@@ -677,7 +677,7 @@ export default function ActivitiesStep() {
                                   <div className="w-0.5 h-7 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor }} />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground leading-snug">{a.shortName}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">{a.group ?? a.category}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{(a as ActivityItem & { group?: string }).group ?? a.category}</p>
                                   </div>
                                 </button>
                               );
@@ -687,13 +687,13 @@ export default function ActivitiesStep() {
                           const activitiesToShow = showAll ? sortedActivities : primaryActivities;
                           const groups: string[] = [];
                           activitiesToShow.forEach(a => {
-                            const g = a.group ?? a.category;
+                            const g = (a as ActivityItem & { group?: string }).group ?? a.category;
                             if (!groups.includes(g)) groups.push(g);
                           });
                           return (
                             <div className="mb-3">
                               {groups.map(group => {
-                                const groupActivities = activitiesToShow.filter(a => (a.group ?? a.category) === group);
+                                const groupActivities = activitiesToShow.filter(a => ((a as ActivityItem & { group?: string }).group ?? a.category) === group);
                                 return (
                                   <div key={group} className="mb-4">
                                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">{group}</p>
