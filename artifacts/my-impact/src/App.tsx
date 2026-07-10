@@ -46,6 +46,9 @@ const NOINDEX_PATH_PREFIXES = [
   "/profile",
 ];
 
+// Paths that must be indexable even though a prefix above would catch them.
+const NOINDEX_PATH_EXCLUSIONS = ["/org/demo"];
+
 // Layout & Pages
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
@@ -288,7 +291,10 @@ function AppRouter() {
     (p) => location === p || location.startsWith(p + "/")
   );
 
-  const shouldNoIndex = NOINDEX_PATH_PREFIXES.some(
+  const isExcludedFromNoIndex = NOINDEX_PATH_EXCLUSIONS.some(
+    (p) => location === p || location.startsWith(p + "?")
+  );
+  const shouldNoIndex = !isExcludedFromNoIndex && NOINDEX_PATH_PREFIXES.some(
     (p) => location === p || location.startsWith(p + "/") || location.startsWith(p + "?")
   );
 

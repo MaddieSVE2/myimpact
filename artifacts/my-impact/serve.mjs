@@ -20,6 +20,7 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".xml": "application/xml",
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
@@ -123,10 +124,10 @@ const server = createServer(async (req, res) => {
     resolvedStat = resolvedStat.stat;
   }
 
-  // SPA fallback: any non-file, non-asset request serves index.html so the
-  // client router takes over. Don't fall back for hashed asset 404s — those
-  // should remain 404 so missing-bundle errors are visible instead of being
-  // masked by HTML being returned with a 200.
+  // SPA fallback: any non-file, non-asset request checks for pre-rendered
+  // pages first, then falls back to index.html for client-side routing.
+  // Don't fall back for hashed asset 404s — those should remain 404 so
+  // missing-bundle errors are visible instead of being masked by HTML.
   if (!resolvedStat) {
     if (isHashedAsset(pathname) || /\.[a-zA-Z0-9]+$/.test(pathname)) {
       res.statusCode = 404;
@@ -134,6 +135,29 @@ const server = createServer(async (req, res) => {
       res.end("Not Found");
       return;
     }
+
+    // Serve the pre-rendered 404 page with a real HTTP 404 status for any
+    // route that has no matching pre-rendered file. react-snap writes the
+    // NotFound shell to 404/index.html; a bare 404.html is also accepted.
+    const not404Candidates = [join(ROOT, "404.html"), join(ROOT, "404", "index.html")];
+    let not404Path = null;
+    let not404Stat = null;
+    for (const candidate of not404Candidates) {
+      try {
+        const s = statSync(candidate);
+        if (s.isFile()) { not404Path = candidate; not404Stat = s; break; }
+      } catch {}
+    }
+    if (not404Path && not404Stat) {
+      applyHeaders(res, "/404.html", not404Path, not404Stat);
+      res.statusCode = 404;
+      if (req.method === "HEAD") { res.end(); return; }
+      createReadStream(not404Path).pipe(res);
+      return;
+    }
+
+    // Final SPA fallback: serve index.html so the client router handles the
+    // route. This path is taken when react-snap hasn't run (dev builds).
     const indexPath = join(ROOT, "index.html");
     try {
       resolvedStat = statSync(indexPath);
