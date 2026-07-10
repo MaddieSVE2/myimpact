@@ -3,6 +3,7 @@ import { createReadStream, statSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isKnownRoute } from "./valid-routes.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 // Allow tests to point the static server at an arbitrary build output
@@ -136,36 +137,49 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    // Serve the pre-rendered 404 page with a real HTTP 404 status for any
-    // route that has no matching pre-rendered file. react-snap writes the
-    // NotFound shell to 404/index.html; a bare 404.html is also accepted.
-    const not404Candidates = [join(ROOT, "404.html"), join(ROOT, "404", "index.html")];
-    let not404Path = null;
-    let not404Stat = null;
-    for (const candidate of not404Candidates) {
-      try {
-        const s = statSync(candidate);
-        if (s.isFile()) { not404Path = candidate; not404Stat = s; break; }
-      } catch {}
-    }
-    if (not404Path && not404Stat) {
-      applyHeaders(res, "/404.html", not404Path, not404Stat);
-      res.statusCode = 404;
-      if (req.method === "HEAD") { res.end(); return; }
-      createReadStream(not404Path).pipe(res);
-      return;
-    }
-
-    // Final SPA fallback: serve index.html so the client router handles the
-    // route. This path is taken when react-snap hasn't run (dev builds).
+    // Decide whether this is a known React Router route or a genuine 404.
+    // Known routes get index.html with HTTP 200 so the client router handles
+    // them; everything else gets the pre-rendered 404 page with HTTP 404.
     const indexPath = join(ROOT, "index.html");
-    try {
-      resolvedStat = statSync(indexPath);
-      resolvedPath = indexPath;
-    } catch {
-      res.statusCode = 404;
-      res.end("Not Found");
-      return;
+
+    if (isKnownRoute(pathname)) {
+      // Valid SPA route — hand off to the client-side router.
+      try {
+        resolvedStat = statSync(indexPath);
+        resolvedPath = indexPath;
+      } catch {
+        res.statusCode = 404;
+        res.end("Not Found");
+        return;
+      }
+    } else {
+      // Unknown path — serve the pre-rendered 404 page with a real HTTP 404.
+      const not404Candidates = [join(ROOT, "404.html"), join(ROOT, "404", "index.html")];
+      let not404Path = null;
+      let not404Stat = null;
+      for (const candidate of not404Candidates) {
+        try {
+          const s = statSync(candidate);
+          if (s.isFile()) { not404Path = candidate; not404Stat = s; break; }
+        } catch {}
+      }
+      if (not404Path && not404Stat) {
+        applyHeaders(res, "/404.html", not404Path, not404Stat);
+        res.statusCode = 404;
+        if (req.method === "HEAD") { res.end(); return; }
+        createReadStream(not404Path).pipe(res);
+        return;
+      }
+      // No pre-rendered 404 page yet (dev build) — fall back to index.html
+      // so the client router can render the NotFound component.
+      try {
+        resolvedStat = statSync(indexPath);
+        resolvedPath = indexPath;
+      } catch {
+        res.statusCode = 404;
+        res.end("Not Found");
+        return;
+      }
     }
   }
 
