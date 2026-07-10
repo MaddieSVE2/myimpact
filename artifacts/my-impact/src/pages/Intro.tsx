@@ -4,6 +4,7 @@ import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { HOME_META } from "@/lib/page-metadata";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
@@ -589,9 +590,9 @@ export default function Intro() {
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "var(--brand-dark)", overflowX: "hidden" }}>
       <PageMeta
-        title="My Impact — Calculate the social value of your volunteering and community work"
-        description="Free tool to measure, track, and share the social value you create through volunteering, community work, and positive actions. Powered by SROI methodology and Social Value Engine data."
-        canonical="https://myimpact.uk/"
+        title={HOME_META.title}
+        description={HOME_META.description}
+        canonical={HOME_META.canonical}
         jsonLd={HOMEPAGE_JSON_LD}
       />
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}

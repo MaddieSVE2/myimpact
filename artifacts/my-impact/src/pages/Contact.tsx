@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, CheckCircle, Mail } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { CONTACT_META } from "@/lib/page-metadata";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -45,9 +46,9 @@ export default function Contact() {
     return (
       <div className="min-h-screen bg-muted/20 flex flex-col">
         <PageMeta
-          title="Contact Us — My Impact"
-          description="Get in touch with the My Impact team. We'll respond within 1–2 working days."
-          canonical="https://myimpact.uk/contact"
+          title={CONTACT_META.title}
+          description={CONTACT_META.description}
+          canonical={CONTACT_META.canonical}
         />
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="max-w-md w-full text-center">
@@ -76,9 +77,9 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col">
       <PageMeta
-        title="Contact Us — My Impact"
-        description="Get in touch with the My Impact team. We'll respond within 1–2 working days."
-        canonical="https://myimpact.uk/contact"
+        title={CONTACT_META.title}
+        description={CONTACT_META.description}
+        canonical={CONTACT_META.canonical}
       />
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-10">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors">

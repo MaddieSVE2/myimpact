@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { METHODOLOGY_META } from "@/lib/page-metadata";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -242,9 +243,9 @@ export default function Methodology() {
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
       <PageMeta
-        title="Methodology & Evidence — How My Impact calculates social value"
-        description="How My Impact calculates social value: SROI methodology, Social Value Engine proxies, UN SDG mapping, verification approach, and the citations behind every number."
-        canonical="https://myimpact.uk/methodology"
+        title={METHODOLOGY_META.title}
+        description={METHODOLOGY_META.description}
+        canonical={METHODOLOGY_META.canonical}
         ogType="article"
       />
 

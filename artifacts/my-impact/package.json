@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
-    "postbuild": "node prerender.mjs",
+    "postbuild": "tsx prerender.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "start": "node serve.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "tsx": "catalog:",
     "@replit/vite-plugin-cartographer": "catalog:",
     "@replit/vite-plugin-dev-banner": "catalog:",
     "@replit/vite-plugin-runtime-error-modal": "catalog:",

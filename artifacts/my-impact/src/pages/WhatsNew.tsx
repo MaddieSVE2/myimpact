@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
+import { WHATS_NEW_META } from "@/lib/page-metadata";
 import {
   Wand2, BookMarked, FileDown, Smartphone, Building2, Users, LayoutDashboard,
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
@@ -408,9 +409,9 @@ export default function WhatsNew() {
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
       <PageMeta
-        title="What's New — My Impact"
-        description="The latest features, improvements, and updates to My Impact. See what's been shipped for individuals and organisations."
-        canonical="https://myimpact.uk/whats-new"
+        title={WHATS_NEW_META.title}
+        description={WHATS_NEW_META.description}
+        canonical={WHATS_NEW_META.canonical}
       />
 
       {/* ── HERO ── */}
