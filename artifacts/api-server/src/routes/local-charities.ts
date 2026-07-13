@@ -115,7 +115,7 @@ router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, asyn
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_completion_tokens: 500,
+      max_completion_tokens: 800,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -129,7 +129,7 @@ Return a JSON object with a "places" array. Each item has:
 - website (string | null): the organisation's own website URL (e.g. "https://example.org") — only include if you are confident it is correct; otherwise return null
 
 Rules:
-- First, identify the specific local authority or council area for the given location (e.g. Fife Council, Glasgow City Council, Leeds City Council)
+- First, identify the specific local authority or council area for the given location (e.g. Fife Council, Glasgow City Council, Leeds City Council, City of Lincoln Council)
 - Only suggest organisations that operate specifically within that identified local authority — not neighbouring councils or regions
 - Do NOT expand to neighbouring areas, even if it would produce more results — strict boundary adherence is required
 - If you cannot confidently find 2 or more real organisations within that specific local authority, return only the ones you are confident about (even just 1, or an empty array)
@@ -146,8 +146,13 @@ Rules:
       ],
     });
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(raw);
+    const raw = completion.choices[0]?.message?.content?.trim() || "{}";
+    let parsed: { places?: unknown[] };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
     const places = Array.isArray(parsed.places)
       ? parsed.places.map(({ name, description, howToJoin, website }: {
           name: string;

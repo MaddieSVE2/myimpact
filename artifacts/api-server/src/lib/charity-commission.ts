@@ -156,9 +156,13 @@ export async function searchCharities(
     top.map(c => getCharityDetails(c.reg_charity_number, c.group_subsid_suffix, apiKey))
   );
 
+  // Strip common civic words that appear in many charity names/addresses and
+  // would cause false-positive location matches (e.g. "city" matching
+  // "Farms for City Children" when searching for "City of Lincoln").
+  const CIVIC_STOP_WORDS = new Set(["city", "town", "of", "the", "and", "new", "old", "great", "royal"]);
   const locationWords = locationParts
     .split(/\s+/)
-    .filter(w => w.length > 2)
+    .filter(w => w.length > 2 && !CIVIC_STOP_WORDS.has(w.toLowerCase()))
     .map(w => w.toLowerCase());
 
   function addressMatchesLocation(d: CCDetails | null): boolean {
@@ -185,21 +189,25 @@ export async function searchCharities(
     local: addressMatchesLocation(detailed[i]),
   }));
 
-  enriched.sort((a, b) => Number(b.local) - Number(a.local));
+  // Only keep charities whose address actually places them in the requested
+  // location. Non-local results are worse than falling back to AI suggestions,
+  // so we return an empty array if nothing genuinely local is found.
+  const localOnly = enriched.filter(e => e.local);
+
+  if (localOnly.length === 0) return [];
 
   const results: CCCharity[] = [];
-  for (let i = 0; i < enriched.length && results.length < maxResults; i++) {
-    const { candidate: c, detail: d, local } = enriched[i];
+  for (let i = 0; i < localOnly.length && results.length < maxResults; i++) {
+    const { candidate: c, detail: d } = localOnly[i];
     const regNum = String(c.reg_charity_number);
     const registerUrl = `https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/${regNum}/`;
-    const addressParts = [d?.address_line_one, d?.address_line_two, d?.address_post_code]
+    const postcode = d?.address_post_code ?? null;
+    const town = [d?.address_line_two, d?.address_line_three]
       .filter(Boolean)
-      .join(", ");
-    const description = addressParts
-      ? `Registered charity based in ${addressParts}`
-      : local
-      ? `Registered charity working in ${location}`
-      : `Registered UK charity working in ${activityName.toLowerCase()}`;
+      .find(p => p && p.trim().length > 0);
+    const description = town
+      ? `Registered charity based in ${town} supporting ${activityName.toLowerCase()}`
+      : `Registered charity in ${location} supporting ${activityName.toLowerCase()}`;
 
     results.push({
       name: c.charity_name,
@@ -207,7 +215,7 @@ export async function searchCharities(
       description,
       website: d?.web && d.web.startsWith("http") ? d.web : null,
       registerUrl,
-      postcode: d?.address_post_code ?? null,
+      postcode,
     });
   }
 
