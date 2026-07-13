@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
 import { ABOUT_META } from "@/lib/page-metadata";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -75,7 +76,7 @@ const IMPACT_CATEGORIES = [
 
 export default function About() {
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }, []);
 
   return (

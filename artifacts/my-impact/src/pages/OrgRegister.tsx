@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft, FileText, Award, Briefcase } from "lucide-react";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -170,7 +171,7 @@ function WhatMembersSeeCallout({ type }: { type: OrgType }) {
 
 export default function OrgRegister() {
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }, []);
 
   const [step, setStep] = useState<"info" | "form" | "done">("info");

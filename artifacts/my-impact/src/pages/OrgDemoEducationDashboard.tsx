@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, GraduationCap, Lightbulb, Award, BookOpen, Coins } from "lucide-react";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -143,7 +144,7 @@ function AnimatedSkillBar({ pct, delay = 0 }: { pct: number; delay?: number }) {
 }
 
 export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { scrollContentToTop(); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
   const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
 

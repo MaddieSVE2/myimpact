@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import { cn } from "@/lib/utils";
 import {
   Sparkles, History, Lightbulb, BookOpen, Award,
@@ -291,7 +292,7 @@ export function Navbar() {
           <Link
             href="/"
             className="flex items-center gap-2 shrink-0"
-            onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
+            onClick={() => scrollContentToTop()}
           >
             <img src={`${import.meta.env.BASE_URL}images/myimpact.png`} alt="My Impact" className="h-10 my-3" />
           </Link>

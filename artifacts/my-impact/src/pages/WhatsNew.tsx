@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
 import { WHATS_NEW_META } from "@/lib/page-metadata";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import {
   Wand2, BookMarked, FileDown, Smartphone, Building2, Users, LayoutDashboard,
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
@@ -399,7 +400,7 @@ export default function WhatsNew() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }, []);
 
   const togglePrev = (id: string) => {

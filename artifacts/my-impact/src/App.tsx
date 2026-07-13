@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { updateNavHistory } from "@/lib/nav-history";
+import { scrollContentToTop, CONTENT_SCROLL_ID } from "@/lib/scroll-utils";
 import { captureException as captureSentryException } from "@/lib/sentry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -285,6 +286,10 @@ function AppRouter() {
     locationRef.current = location;
   }
 
+  useEffect(() => {
+    scrollContentToTop();
+  }, [location]);
+
   usePageViewTracking();
 
   const showFooter = !NO_FOOTER_PATHS.some(
@@ -310,7 +315,7 @@ function AppRouter() {
       {/* ── Content row: fills remaining height on desktop ── */}
       <div className="flex flex-row flex-1 lg:min-h-0">
         {/* ── Main content column: scrolls independently on desktop ── */}
-        <div className="flex flex-col flex-grow min-w-0 lg:overflow-y-auto">
+        <div id={CONTENT_SCROLL_ID} className="flex flex-col flex-grow min-w-0 lg:overflow-y-auto">
           <OrgMemberSubNav />
           <GuestBanner />
           <main className="flex-grow">

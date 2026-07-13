@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, MapPin, Lightbulb, GraduationCap, Briefcase, Flag, ClipboardList, Lock } from "lucide-react";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -186,7 +187,7 @@ function StatCard({ icon: Icon, label, value, rawValue, decimals, prefix, sub, h
 }
 
 export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { scrollContentToTop(); }, []);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
   const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
   const socialValuePerHourFormatted = `£${socialValuePerHour.toLocaleString("en-GB")}`;

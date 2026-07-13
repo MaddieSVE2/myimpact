@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import { Building2, GraduationCap, Heart, Landmark } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
 import { ORG_DEMO_META } from "@/lib/page-metadata";
@@ -20,7 +21,7 @@ function isValidOrgType(type: string | null): type is OrgType {
 }
 
 function ComingSoonDashboard({ typeName }: { typeName: string }) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { scrollContentToTop(); }, []);
   return (
     <div className="min-h-screen bg-muted/20 flex items-center justify-center px-4">
       <div className="max-w-md text-center py-24">
@@ -52,7 +53,7 @@ export default function OrgDemoPage() {
 
   function switchType(type: OrgType) {
     setLocation(`/org/demo?type=${type}`);
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }
 
   return (

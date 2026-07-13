@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -234,7 +235,7 @@ const SECTIONS: Section[] = [
 
 export default function Security() {
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }, []);
 
   return (

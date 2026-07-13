@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
+import { scrollContentToTop } from "@/lib/scroll-utils";
 import { PageMeta } from "@/components/PageMeta";
 import { METHODOLOGY_META } from "@/lib/page-metadata";
 
@@ -206,7 +207,7 @@ export default function Methodology() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContentToTop();
   }, []);
 
   function toggle(id: string) {
