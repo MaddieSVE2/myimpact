@@ -51,6 +51,16 @@ function formatDistance(miles: number): string {
   return `${Math.round(miles)} mi`;
 }
 
+const SCOTTISH_TERMS = new Set([
+  "aberdeen", "aberdeenshire", "angus", "argyll", "bute", "clackmannanshire",
+  "dumfries", "galloway", "dundee", "east ayrshire", "east dunbartonshire",
+  "east lothian", "east renfrewshire", "edinburgh", "eilean siar", "falkirk",
+  "fife", "glasgow", "highland", "highlands", "inverclyde", "midlothian",
+  "moray", "north ayrshire", "north lanarkshire", "orkney", "perth", "kinross",
+  "renfrewshire", "scottish borders", "shetland", "south ayrshire",
+  "south lanarkshire", "stirling", "west dunbartonshire", "west lothian", "scotland",
+]);
+
 export default function Suggestions() {
   const { input, interests, location, locationMeta, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
@@ -70,6 +80,11 @@ export default function Suggestions() {
   const profilePostcode = profileData?.profile?.postcode?.trim() ?? "";
   const profileInterests = profileData?.profile?.interests ?? [];
   const interestsForNearby = profileInterests.length > 0 ? profileInterests : interests;
+
+  // Derive whether the user's location is Scottish (no CC register) using the
+  // same term list the API uses so register links match server-side routing.
+  const adminDistrict = (locationMeta?.adminDistrict || "").toLowerCase();
+  const isScottish = Array.from(SCOTTISH_TERMS).some(t => adminDistrict.includes(t));
 
   const interestLabels = interests
     .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
@@ -431,6 +446,16 @@ export default function Suggestions() {
                                     className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
                                   >
                                     {place.website ? "Visit website" : "Search online"} <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                                {place.source !== "register" && !isScottish && (
+                                  <a
+                                    href={`https://register-of-charities.charitycommission.gov.uk/charity-search?q=${encodeURIComponent(place.name)}${profilePostcode ? `&postcode=${encodeURIComponent(profilePostcode)}` : ""}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all text-emerald-700"
+                                  >
+                                    Check register <ExternalLink className="w-2.5 h-2.5" />
                                   </a>
                                 )}
                                 {place.source === "register" && place.website && place.website !== place.registerUrl && (
