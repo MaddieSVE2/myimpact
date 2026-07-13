@@ -598,13 +598,7 @@ export default function Intro() {
       {/* ── CALENDAR UPCOMING + POST-EVENT PROMPTS (logged-in only) ── */}
       {isLoggedIn ? <CalendarHomeWidget /> : null}
       {/* ── ANNUAL RECAP DISCOVERY ── */}
-      {showRecapBanner && !isOrgManager && (
-        <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
-          <div style={{ maxWidth: 980, margin: "0 auto" }}>
-            <RecapBanner variant="hero" />
-          </div>
-        </div>
-      )}
+      {showRecapBanner && !isOrgManager && <RecapBanner variant="hero" />}
       {/* ── HERO ──
           Logged-out: marketing pitch as before.
           Logged-in: personalised welcome + quick CTAs in the same vertical slot.
