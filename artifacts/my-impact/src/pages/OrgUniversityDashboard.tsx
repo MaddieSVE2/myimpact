@@ -16,6 +16,7 @@ import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeli
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { computeSdgBreakdown, type DemoActivity } from "@/lib/org-demo-mock";
+import { computeSkillsBreakdown } from "@/lib/skills";
 import { BASE } from "@/lib/org-export";
 
 export interface UniversityStats {
@@ -131,6 +132,9 @@ export default function OrgUniversityDashboard({
     () => computeSdgBreakdown(activities as unknown as DemoActivity[]),
     [activities],
   );
+
+  // Skills inferred from the type of each logged activity.
+  const skillsBreakdown = useMemo(() => computeSkillsBreakdown(activities), [activities]);
 
   return (
     <div className="min-h-screen bg-muted/20" data-testid="org-university-dashboard-root">
@@ -279,6 +283,41 @@ export default function OrgUniversityDashboard({
             </div>
           )}
           <p className="text-[11px] text-muted-foreground mt-3">All data is anonymised. Member-level detail lives in <Link href="/org/activities" className="underline">Activities</Link>.</p>
+        </div>
+
+        {/* Skills & development */}
+        <div className="bg-white border border-border rounded-xl p-6" data-testid="section-skills-development">
+          <SectionLabel>Skills &amp; development</SectionLabel>
+          <SectionTitle>Top skills your students are building</SectionTitle>
+          <p className="text-sm text-muted-foreground -mt-4 mb-6">
+            Skills are inferred from the types of activities students log. The percentage shows the share of actively logging students building each skill, directly relevant to employability and personal statements.
+          </p>
+          {activitiesLoading ? (
+            <div className="py-6 flex justify-center">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : skillsBreakdown.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground py-6 text-center">No activity has been logged in this period yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4" data-testid="list-top-skills">
+              {skillsBreakdown.map((s, idx) => (
+                <div key={s.skill} className="flex items-center gap-3" data-testid={`skill-row-${idx}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground truncate">{s.skill}</p>
+                      <p className="text-sm font-bold text-foreground shrink-0">{s.pct}%</p>
+                    </div>
+                    <div className="h-2 mt-1.5 rounded-full bg-muted overflow-hidden">
+                      <AnimatedBar pct={s.pct} delay={idx * 80} />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {s.students} students · {s.hours.toLocaleString("en-GB")} hours · {s.activities} activities
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* SDG alignment */}
