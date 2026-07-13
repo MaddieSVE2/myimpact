@@ -109,6 +109,28 @@
   --brand-orange-chip: rgba(232, 99, 58, 0.10);
 }
 
+/* ── Scrollbar styling ──────────────────────────────────────────────────────── */
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(208 18% 78%);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(208 22% 62%);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(208 18% 78%) transparent;
+}
+
 /* ── High-contrast theme overrides ─────────────────────────────────────────── */
 [data-theme="high-contrast"] {
   /* Near-black on white */
