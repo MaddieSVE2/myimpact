@@ -5,7 +5,9 @@ import {
   useGetActivities,
   useCalculateImpact,
   useSaveImpact,
+  useCreateRecurringTemplate,
   getGetImpactHistoryQueryKey,
+  getListRecurringTemplatesQueryKey,
   type ActivityItem,
   type SelectedActivity,
   type CustomActivityInput,
@@ -19,9 +21,11 @@ import {
   Sparkles,
   PenLine,
   ListChecks,
-  CalendarDays,
   Trophy,
 } from "lucide-react";
+import { TimescalePresetPicker } from "@/components/TimescalePresetPicker";
+import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateDialog";
+import { type TimescalePresetId } from "@/lib/timescale-presets";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -246,6 +250,57 @@ export default function QuickLogActivity() {
   const [quantity, setQuantity] = useState<number>(1);
   const [entryDate, setEntryDate] = useState<string>(todayIso());
 
+  const createTemplateMutation = useCreateRecurringTemplate();
+  const [activePreset, setActivePreset] = useState<TimescalePresetId>("today");
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [tplLabel, setTplLabel] = useState("");
+  const [tplCadence, setTplCadence] = useState<"weekly" | "fortnightly" | "monthly">("weekly");
+  const [tplDay, setTplDay] = useState<number>(new Date().getDay());
+
+  const handleOngoing = () => {
+    const label = mode === "pick" && selectedActivity
+      ? selectedActivity.shortName
+      : mode === "describe" && analysed
+      ? analysed.name
+      : "";
+    setTplLabel(label);
+    setShowRecurring(true);
+  };
+
+  const handleCloseRecurring = () => {
+    setShowRecurring(false);
+    setActivePreset("today");
+    setEntryDate(todayIso());
+  };
+
+  const handleSaveRecurring = async () => {
+    if (!tplLabel.trim()) return;
+    let activities: SelectedActivity[] = [];
+    if (mode === "pick" && selectedActivity) {
+      activities = [{ activityId: selectedActivity.id, quantity: 1, hoursPerYear: 1 }];
+    }
+    try {
+      await createTemplateMutation.mutateAsync({
+        data: {
+          label: tplLabel.trim(),
+          cadence: tplCadence,
+          dayOfPeriod: tplDay,
+          defaultActivities: activities,
+          defaultDonationsGBP: 0,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      setShowRecurring(false);
+      toast({
+        title: "Saved as a regular activity",
+        description: "You'll see a quick-log card on your home page when it's next due.",
+      });
+      setLocation(returnPathRef.current || "/");
+    } catch {
+      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
+    }
+  };
+
   // Describe mode
   const [describeText, setDescribeText] = useState("");
   const [describeLoading, setDescribeLoading] = useState(false);
@@ -257,13 +312,13 @@ export default function QuickLogActivity() {
   // keep in sync with the user's edits.
   useEffect(() => {
     if (selectedActivity) {
-      setQuantity(selectedActivity.defaultQuantity ?? 1);
+      setQuantity(1);
     }
   }, [selectedActivity]);
 
   useEffect(() => {
     if (analysed) {
-      setQuantity(analysed.analysed.defaultQuantity);
+      setQuantity(1);
     }
   }, [analysed]);
 
@@ -309,6 +364,7 @@ export default function QuickLogActivity() {
   const submitting = calcMutation.isPending || saveMutation.isPending;
 
   const canSubmit =
+    activePreset !== "ongoing" &&
     !!entryDate &&
     ((mode === "pick" && !!selectedActivity) || (mode === "describe" && !!analysed));
 
@@ -608,28 +664,17 @@ export default function QuickLogActivity() {
       )}
 
       {/* Date */}
-      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5">
-        <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-          <CalendarDays className="w-4 h-4 text-muted-foreground" /> When did you do this?
+      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5" data-testid="quick-log-entry-date">
+        <label className="block text-sm font-medium text-foreground mb-2">
+          What date does this entry count toward?
         </label>
-        <input
-          type="date"
-          value={entryDate}
-          max={todayIso()}
-          onChange={e => {
-            const v = e.target.value;
-            if (!v) return;
-            const max = todayIso();
-            // Defensively clamp future dates that bypass the picker UI
-            // (mobile browsers sometimes ignore the max attribute).
-            setEntryDate(v > max ? max : v);
-          }}
-          className="w-full md:w-auto px-3 py-2.5 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
-          data-testid="quick-log-entry-date"
+        <TimescalePresetPicker
+          entryDate={entryDate}
+          onChange={setEntryDate}
+          onOngoing={handleOngoing}
+          activePreset={activePreset}
+          onActivePresetChange={setActivePreset}
         />
-        <p className="text-xs text-muted-foreground mt-1.5">
-          Defaults to today. You can backdate to any past date.
-        </p>
       </div>
 
       {/* Submit */}
@@ -655,6 +700,20 @@ export default function QuickLogActivity() {
           )}
         </button>
       </div>
+
+      {showRecurring && (
+        <RecurringTemplateDialog
+          tplLabel={tplLabel}
+          tplCadence={tplCadence}
+          tplDay={tplDay}
+          setTplLabel={setTplLabel}
+          setTplCadence={setTplCadence}
+          setTplDay={setTplDay}
+          onClose={handleCloseRecurring}
+          onSave={handleSaveRecurring}
+          isSaving={createTemplateMutation.isPending}
+        />
+      )}
     </div>
   );
 }

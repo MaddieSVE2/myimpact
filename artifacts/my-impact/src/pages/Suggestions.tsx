@@ -14,6 +14,7 @@ interface LocalPlace {
   howToJoin: string;
   website: string | null;
   source?: "register" | "ai";
+  verified?: boolean;
   registrationNumber?: string;
   registerUrl?: string;
 }
@@ -176,6 +177,7 @@ export default function Suggestions() {
       const searchLocation = locationMeta?.adminDistrict || location?.trim();
       const res = await fetch(`${base}/api/local-charities/suggest`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ location: searchLocation, activityName }),
       });
@@ -442,13 +444,17 @@ export default function Suggestions() {
                                     <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                                       ✓ Registered charity
                                     </span>
+                                  ) : place.verified ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      ✓ Verified charity
+                                    </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                                       Suggested
                                     </span>
                                   )}
                                 </div>
-                                {place.source === "register" && place.registrationNumber && (
+                                {(place.source === "register" || place.verified) && place.registrationNumber && (
                                   <p className="text-[10px] text-muted-foreground/70 mb-0.5">
                                     Reg. no. {place.registrationNumber}
                                   </p>

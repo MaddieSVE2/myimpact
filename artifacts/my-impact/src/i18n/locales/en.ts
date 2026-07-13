@@ -271,6 +271,7 @@ export const en = {
     sroiRatioSub: "for every £1 invested",
     sroiCardLabel: "SROI ratio",
     sroiCardSub: "for every £1 invested",
+    sdgKey: "Sustainable Development Goals key",
     sroiCsvAssumptionCost: "SROI assumption: {{costPerVolunteer}} per volunteer (recruitment, onboarding, support, admin)",
     sroiCsvAssumptionTotal: "Total investment: {{totalInvestment}} across {{members}} members",
     sroiCsvAssumptionRatio: "SROI ratio: {{ratio}} of social value per £1 invested",
@@ -313,6 +314,11 @@ export const en = {
     challengesHoursUnit: "hrs",
     challengesProgressOf: "of",
     challengesParticipants: "members participating",
+  },
+  metricHelp: {
+    totalValue: "Your total social value is the sum of four things: the impact of your activities, the value of your time, your donations, and the skills you gain. It's an estimate in pounds of the difference you make, using recognised Social Value Engine proxies.",
+    totalSocialValue: "The total estimated social value your members have created, in pounds. Each logged activity is matched to a recognised Social Value Engine proxy and summed. Verified figures are hours an organisation manager has confirmed.",
+    sroi: "Social Return on Investment: the social value created for every £1 your organisation invests in its volunteers (recruitment, onboarding, support and admin). An SROI of £4 means £4 of social value for every £1 spent.",
   },
 } as const;
 

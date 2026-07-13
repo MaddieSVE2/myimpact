@@ -13,6 +13,8 @@ import {
 
 export type { OrgBranding, PreloadedLogo, RenderOrgPdfArgs, PdfSections } from "@/lib/org-pdf-render";
 export { DEFAULT_PDF_SECTIONS } from "@/lib/org-pdf-render";
+import { getSdgByNumber, getSdgText } from "@/lib/sdg";
+import type { Locale } from "@/i18n";
 
 export const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -156,16 +158,24 @@ export function activityExportRows(
   });
 }
 
-export function sdgExportRows(sdgs: SdgBreakdownPoint[]): Array<Record<string, string | number>> {
-  return sdgs.map(s => ({
-    "SDG number": s.number,
-    "SDG label": s.label,
-    "Social value (GBP)": s.value,
-    "Share (%)": s.pct,
-    Hours: Math.round(s.hours * 10) / 10,
-    Activities: s.activities,
-    Members: s.members,
-  }));
+export function sdgExportRows(
+  sdgs: SdgBreakdownPoint[],
+  locale: Locale = "en",
+): Array<Record<string, string | number>> {
+  return sdgs.map(s => {
+    const goal = getSdgByNumber(s.number);
+    const description = goal ? getSdgText(goal, locale).description : "";
+    return {
+      "SDG number": s.number,
+      "SDG label": s.label,
+      Description: description,
+      "Social value (GBP)": s.value,
+      "Share (%)": s.pct,
+      Hours: Math.round(s.hours * 10) / 10,
+      Activities: s.activities,
+      Members: s.members,
+    };
+  });
 }
 
 // Best-effort async loader: fetch a remote image (e.g. an org logo), convert

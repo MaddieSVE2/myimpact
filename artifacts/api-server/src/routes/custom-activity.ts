@@ -103,7 +103,7 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
       .join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 400,
       response_format: { type: "json_object" },
       messages: [
@@ -185,7 +185,7 @@ router.post("/parse-description", authenticate, customActivityRateLimit, textAiQ
     const activityList = ACTIVITIES.map(a => `- id: "${a.id}" | name: "${a.shortName}" | category: ${a.category}`).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 600,
       response_format: { type: "json_object" },
       messages: [

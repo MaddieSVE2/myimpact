@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
+import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompts";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -91,6 +92,7 @@ export default function ActivitiesStep() {
 
   // Describe mode state
   const [describeText, setDescribeText] = useState("");
+  const describeRef = useRef<HTMLTextAreaElement>(null);
   const [describeLoading, setDescribeLoading] = useState(false);
   const [describeError, setDescribeError] = useState("");
 
@@ -525,6 +527,7 @@ export default function ActivitiesStep() {
                     </p>
 
                     <textarea
+                      ref={describeRef}
                       value={describeText}
                       onChange={e => { setDescribeText(e.target.value); setDescribeError(""); }}
                       placeholder="e.g. I cycle to work, help at a food bank and donate blood"
@@ -532,6 +535,23 @@ export default function ActivitiesStep() {
                       disabled={describeLoading}
                       className="w-full p-3 rounded-lg border border-border bg-background text-sm focus:border-primary outline-none resize-none leading-relaxed disabled:opacity-60"
                     />
+
+                    {!describeLoading && (
+                      <ReflectionPrompts
+                        text={describeText}
+                        onPick={(q) => {
+                          setDescribeText(prev => seedReflection(prev, q));
+                          setTimeout(() => {
+                            const el = describeRef.current;
+                            if (el) {
+                              el.focus();
+                              const len = el.value.length;
+                              el.setSelectionRange(len, len);
+                            }
+                          }, 0);
+                        }}
+                      />
+                    )}
 
                     {describeError && (
                       <div className="mt-3 px-4 py-3 rounded-lg bg-destructive/8 border border-destructive/20">

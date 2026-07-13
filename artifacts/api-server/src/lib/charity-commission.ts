@@ -1,3 +1,5 @@
+import { isConfidentNameMatch } from "./charity-name.js";
+
 const CC_BASE = "https://api.charitycommission.gov.uk/register/api";
 
 export interface CCCharity {
@@ -220,4 +222,26 @@ export async function searchCharities(
   }
 
   return results;
+}
+
+/**
+ * Attempt to verify an AI-suggested organisation name against the Charity
+ * Commission register for England & Wales. Returns the registered charity's
+ * details when a confident name match is found among the (registered) search
+ * results, or null otherwise. Never throws — verification is best-effort.
+ */
+export async function verifyCharityName(
+  name: string,
+  apiKey: string,
+): Promise<{ registrationNumber: string } | null> {
+  if (!name?.trim()) return null;
+  try {
+    const rows = await searchByName(name.trim(), apiKey);
+    const registered = rows.filter(r => r.reg_status === "R" || r.reg_status === "Registered");
+    const match = registered.find(r => isConfidentNameMatch(name, r.charity_name));
+    if (!match) return null;
+    return { registrationNumber: String(match.reg_charity_number) };
+  } catch {
+    return null;
+  }
 }

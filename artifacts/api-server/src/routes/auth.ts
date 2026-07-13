@@ -245,24 +245,30 @@ router.get("/verify", async (req, res) => {
     return;
   }
 
-  const record = await db.query.magicTokensTable.findFirst({
-    where: eq(magicTokensTable.token, token),
-  });
+  try {
+    const record = await db.query.magicTokensTable.findFirst({
+      where: eq(magicTokensTable.token, token),
+    });
 
-  if (!record) {
-    res.status(400).json({ error: "Invalid token" });
-    return;
-  }
-  if (record.confirmed) {
-    res.status(400).json({ error: "This link has already been used" });
-    return;
-  }
-  if (new Date() > record.expiresAt) {
-    res.status(400).json({ error: "This link has expired. Please request a new one." });
-    return;
-  }
+    if (!record) {
+      res.status(400).json({ error: "Invalid token" });
+      return;
+    }
+    if (record.confirmed) {
+      res.status(400).json({ error: "This link has already been used" });
+      return;
+    }
+    if (new Date() > record.expiresAt) {
+      res.status(400).json({ error: "This link has expired. Please request a new one." });
+      return;
+    }
 
-  res.json({ ok: true, email: (await db.query.usersTable.findFirst({ where: eq(usersTable.id, record.userId) }))?.email });
+    const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, record.userId) });
+    res.json({ ok: true, email: user?.email });
+  } catch (err) {
+    console.error("[auth/verify] error:", err);
+    res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
 });
 
 router.post("/confirm", async (req, res) => {
@@ -278,63 +284,63 @@ router.post("/confirm", async (req, res) => {
     return;
   }
 
-  const record = await db.query.magicTokensTable.findFirst({
-    where: eq(magicTokensTable.token, token),
-  });
-
-  if (!record) {
-    res.status(400).json({ error: "Invalid token" });
-    return;
-  }
-  if (record.confirmed) {
-    res.status(400).json({ error: "This link has already been used" });
-    return;
-  }
-  if (new Date() > record.expiresAt) {
-    res.status(400).json({ error: "This link has expired. Please request a new one." });
-    return;
-  }
-
-  // Detect first-ever confirmation BEFORE we mark this token confirmed,
-  // so we can fire signup_complete on a brand-new account.
-  const priorConfirmed = await db.query.magicTokensTable.findFirst({
-    where: and(
-      eq(magicTokensTable.userId, record.userId),
-      eq(magicTokensTable.confirmed, true),
-    ),
-  });
-  const isFirstConfirm = !priorConfirmed;
-
-  await db
-    .update(magicTokensTable)
-    .set({ confirmed: true, usedAt: new Date() })
-    .where(eq(magicTokensTable.token, token));
-
-  const user = await db.query.usersTable.findFirst({
-    where: eq(usersTable.id, record.userId),
-  });
-
-  if (!user) {
-    res.status(500).json({ error: "User not found" });
-    return;
-  }
-
-  await db
-    .update(magicTokensTable)
-    .set({ confirmed: true, usedAt: new Date() })
-    .where(eq(magicTokensTable.token, token));
-
-  if (isFirstConfirm) {
-    trackServerEvent({
-      eventName: "signup_complete",
-      userId: user.id,
-      surface: "member",
-      props: { method: "magic_link" },
+  try {
+    const record = await db.query.magicTokensTable.findFirst({
+      where: eq(magicTokensTable.token, token),
     });
-  }
 
-  issueSession(res, user);
-  res.json({ ok: true, user: { id: user.id, email: user.email } });
+    if (!record) {
+      res.status(400).json({ error: "Invalid token" });
+      return;
+    }
+    if (record.confirmed) {
+      res.status(400).json({ error: "This link has already been used" });
+      return;
+    }
+    if (new Date() > record.expiresAt) {
+      res.status(400).json({ error: "This link has expired. Please request a new one." });
+      return;
+    }
+
+    // Detect first-ever confirmation BEFORE we mark this token confirmed,
+    // so we can fire signup_complete on a brand-new account.
+    const priorConfirmed = await db.query.magicTokensTable.findFirst({
+      where: and(
+        eq(magicTokensTable.userId, record.userId),
+        eq(magicTokensTable.confirmed, true),
+      ),
+    });
+    const isFirstConfirm = !priorConfirmed;
+
+    await db
+      .update(magicTokensTable)
+      .set({ confirmed: true, usedAt: new Date() })
+      .where(eq(magicTokensTable.token, token));
+
+    const user = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, record.userId),
+    });
+
+    if (!user) {
+      res.status(500).json({ error: "User not found" });
+      return;
+    }
+
+    if (isFirstConfirm) {
+      trackServerEvent({
+        eventName: "signup_complete",
+        userId: user.id,
+        surface: "member",
+        props: { method: "magic_link" },
+      });
+    }
+
+    issueSession(res, user);
+    res.json({ ok: true, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    console.error("[auth/confirm] error:", err);
+    res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
 });
 
 const DEMO_ORG_ID = "demo-org-0000000000000";

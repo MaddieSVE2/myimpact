@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { TagEditor } from "@/components/TagEditor";
+import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompts";
 import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
 
@@ -197,6 +198,7 @@ function ActivityCardItem({
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(!!card.reflectionText);
   const [text, setText] = useState(card.reflectionText || "");
+  const cardDraftRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSaveReflection = () => {
     if (!draft.trim()) return;
@@ -251,12 +253,28 @@ function ActivityCardItem({
           ) : (
             <>
               <textarea
+                ref={cardDraftRef}
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
                 placeholder="Write freely. This is just for you…"
                 rows={3}
                 className="w-full p-2.5 rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 resize-none"
                 style={{ borderColor: "rgba(240,97,39,0.3)" }}
+              />
+              <ReflectionPrompts
+                text={draft}
+                context={`Reflection prompt: ${card.reflectionPrompt}. Activity: ${card.summary}`}
+                onPick={(q) => {
+                  setDraft(prev => seedReflection(prev, q));
+                  setTimeout(() => {
+                    const el = cardDraftRef.current;
+                    if (el) {
+                      el.focus();
+                      const len = el.value.length;
+                      el.setSelectionRange(len, len);
+                    }
+                  }, 0);
+                }}
               />
               <div className="flex justify-end mt-2">
                 <button
@@ -294,6 +312,7 @@ export default function Journal() {
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt] = useState(randomPrompt);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
   const migrated = useRef(false);
@@ -575,12 +594,28 @@ export default function Journal() {
             <p className="text-sm font-medium text-foreground mb-1">Reflect on this…</p>
             <p className="text-sm text-primary italic mb-3">"{prompt}"</p>
             <textarea
+              ref={draftRef}
               value={draft}
               onChange={e => setDraft(e.target.value)}
               placeholder="Write freely. This is just for you…"
               rows={4}
               className="w-full p-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
               autoFocus
+            />
+            <ReflectionPrompts
+              text={draft}
+              context={`Reflection prompt: ${prompt}`}
+              onPick={(q) => {
+                setDraft(prev => seedReflection(prev, q));
+                setTimeout(() => {
+                  const el = draftRef.current;
+                  if (el) {
+                    el.focus();
+                    const len = el.value.length;
+                    el.setSelectionRange(len, len);
+                  }
+                }, 0);
+              }}
             />
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-muted-foreground">{draft.length} characters</p>

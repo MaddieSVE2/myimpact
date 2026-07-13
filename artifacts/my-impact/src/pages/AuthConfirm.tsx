@@ -24,14 +24,19 @@ export default function AuthConfirm() {
     }
 
     fetch(`${BASE}/api/auth/verify?token=${encodeURIComponent(token)}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        let data: Record<string, unknown> = {};
+        try {
+          data = await r.json();
+        } catch {
+          throw new Error("non-json");
+        }
         if (data.ok) {
-          setEmail(data.email ?? null);
+          setEmail((data.email as string) ?? null);
           setStatus("ready");
         } else {
           setStatus("error");
-          setErrorMsg(data.error ?? "This link is invalid or expired.");
+          setErrorMsg((data.error as string) ?? "This link is invalid or expired.");
         }
       })
       .catch(() => {
@@ -49,7 +54,12 @@ export default function AuthConfirm() {
         credentials: "include",
         body: JSON.stringify({ token }),
       });
-      const data = await res.json();
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("non-json");
+      }
       if (data.ok) {
         const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -72,7 +82,7 @@ export default function AuthConfirm() {
         window.location.href = base + safeReturnTo;
       } else {
         setStatus("error");
-        setErrorMsg(data.error ?? "Failed to confirm sign-in.");
+        setErrorMsg((data.error as string) ?? "Failed to confirm sign-in.");
       }
     } catch {
       setStatus("error");

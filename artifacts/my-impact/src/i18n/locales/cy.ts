@@ -273,6 +273,7 @@ export const cy: Catalogue = {
     sroiRatioSub: "am bob £1 a fuddsoddwyd",
     sroiCardLabel: "Cymhareb SROI",
     sroiCardSub: "am bob £1 a fuddsoddwyd",
+    sdgKey: "Allwedd Nodau Datblygu Cynaliadwy",
     sroiCsvAssumptionCost: "Tybiaeth SROI: {{costPerVolunteer}} y gwirfoddolwr (recriwtio, sefydlu, cefnogaeth, gweinyddu)",
     sroiCsvAssumptionTotal: "Cyfanswm buddsoddiad: {{totalInvestment}} ar draws {{members}} aelod",
     sroiCsvAssumptionRatio: "Cymhareb SROI: {{ratio}} o werth cymdeithasol am bob £1 a fuddsoddwyd",
@@ -315,5 +316,10 @@ export const cy: Catalogue = {
     challengesHoursUnit: "oriau",
     challengesProgressOf: "o",
     challengesParticipants: "aelodau'n cymryd rhan",
+  },
+  metricHelp: {
+    totalValue: "Eich cyfanswm gwerth cymdeithasol yw swm pedwar peth: effaith eich gweithgareddau, gwerth eich amser, eich rhoddion, a'r sgiliau rydych yn eu hennill. Amcangyfrif mewn punnoedd ydyw o'r gwahaniaeth a wnewch, gan ddefnyddio dirprwyon cydnabyddedig y Social Value Engine.",
+    totalSocialValue: "Cyfanswm y gwerth cymdeithasol amcangyfrifedig y mae eich aelodau wedi'i greu, mewn punnoedd. Mae pob gweithgaredd a gofnodir yn cael ei baru â dirprwy cydnabyddedig gan y Social Value Engine a'i grynhoi. Mae ffigurau gwiriedig yn oriau y mae rheolwr sefydliad wedi'u cadarnhau.",
+    sroi: "Adenillion Cymdeithasol ar Fuddsoddiad: y gwerth cymdeithasol a grëir am bob £1 y mae eich sefydliad yn ei fuddsoddi yn ei wirfoddolwyr (recriwtio, sefydlu, cefnogaeth a gweinyddu). Mae SROI o £4 yn golygu £4 o werth cymdeithasol am bob £1 a werir.",
   },
 };

@@ -3,8 +3,8 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { textAiQuota } from "../lib/textAiUsage.js";
-import { searchCharities } from "../lib/charity-commission";
-import { searchOSCRCharities } from "../lib/oscr";
+import { searchCharities, verifyCharityName } from "../lib/charity-commission";
+import { searchOSCRCharities, verifyOSCRCharityName } from "../lib/oscr";
 import { geocodePostcode, geocodePostcodes, haversineMiles } from "../lib/postcode.js";
 
 const router = Router();
@@ -34,6 +34,46 @@ function isScottishLocation(location: string): boolean {
 const MAX_LOCATION_CHARS = 100;
 const MAX_ACTIVITY_NAME_CHARS = 200;
 
+const BLOCKED_NAME_TERMS = [
+  "council", "county council", "city council", "borough council",
+  "district council", "local authority", "government", "job centre",
+  "jobcentre", "job center", "dwp", "department for work",
+  "nhs ", " nhs", "hmrc", "home office", "police", "fire service",
+];
+
+function isBlockedOrganisation(name: string): boolean {
+  const lower = name.toLowerCase();
+  return BLOCKED_NAME_TERMS.some(t => lower.includes(t));
+}
+
+type Verification = { registrationNumber: string } | null;
+
+/**
+ * Best-effort verify a batch of AI-suggested organisation names against the
+ * relevant official register (OSCR for Scotland, Charity Commission for E&W).
+ * Returns one result per input name, in order; null where no confident match.
+ * Never throws — verification only ever adds a trust badge, it must not block
+ * AI suggestions from being returned.
+ */
+async function verifyMany(names: string[], scotland: boolean): Promise<Verification[]> {
+  const ccApiKey = process.env.CHARITY_COMMISSION_API_KEY;
+  const oscrApiKey = process.env.OSCR_API_KEY;
+
+  return Promise.all(
+    names.map(async (name): Promise<Verification> => {
+      try {
+        if (scotland) {
+          return await verifyOSCRCharityName(name, oscrApiKey);
+        }
+        if (!ccApiKey) return null;
+        return await verifyCharityName(name, ccApiKey);
+      } catch {
+        return null;
+      }
+    })
+  );
+}
+
 router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, async (req, res) => {
   try {
     const { location, activityName } = req.body as {
@@ -56,87 +96,31 @@ router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, asyn
       return;
     }
 
-    const ccApiKey = process.env.CHARITY_COMMISSION_API_KEY;
-    const oscrApiKey = process.env.OSCR_API_KEY;
-
-    let registerPlaces: Array<{
-      name: string;
-      description: string;
-      howToJoin: string;
-      website: string | null;
-      source: "register";
-      registrationNumber: string;
-      registerUrl: string;
-    }> = [];
-
     const scotland = isScottishLocation(location);
 
-    if (scotland) {
-      try {
-        const oscrResults = await Promise.race([
-          searchOSCRCharities(location, activityName, oscrApiKey, 3),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("OSCR timeout")), 12000)
-          ),
-        ]);
-        registerPlaces = oscrResults.map(c => ({
-          name: c.name,
-          description: c.description,
-          howToJoin: `Visit their official OSCR register page to find out how to get involved`,
-          website: c.website ?? c.registerUrl,
-          source: "register" as const,
-          registrationNumber: c.registrationNumber,
-          registerUrl: c.registerUrl,
-        }));
-      } catch (err) {
-        console.error("OSCR search error:", err);
-      }
-    } else if (!scotland && ccApiKey) {
-      try {
-        const ccResults = await searchCharities(location, activityName, ccApiKey, 3);
-        registerPlaces = ccResults.map(c => ({
-          name: c.name,
-          description: c.description,
-          howToJoin: `Visit their official Charity Commission page to find out how to get involved`,
-          website: c.website ?? c.registerUrl,
-          source: "register" as const,
-          registrationNumber: c.registrationNumber,
-          registerUrl: c.registerUrl,
-        }));
-      } catch (err) {
-        console.error("Charity Commission search error:", err);
-      }
-    }
-
-    if (registerPlaces.length > 0) {
-      res.json({ places: registerPlaces });
-      return;
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 800,
-      response_format: { type: "json_object" },
+    const baseParams = {
+      model: "gpt-5-mini" as const,
+      max_completion_tokens: 1000,
+      response_format: { type: "json_object" as const },
       messages: [
         {
           role: "system",
-          content: `You are a UK volunteering expert. Given a location and a specific volunteering activity, suggest up to 3 real local organisations, groups, or charities where someone could do that specific activity within the user's local authority/council area.
+          content: `You are a UK volunteering expert. Given a location and a specific volunteering activity, suggest up to 3 real charities or voluntary organisations where someone could do that specific activity in the user's local area.
 
 Return a JSON object with a "places" array. Each item has:
-- name (string): the real name of the organisation or group
+- name (string): the real name of the charity or voluntary organisation
 - description (string): one sentence, max 15 words, explaining what they do — specific to the activity
 - howToJoin (string): one concrete action to get started, max 12 words
-- website (string | null): the organisation's own website URL (e.g. "https://example.org") — only include if you are confident it is correct; otherwise return null
 
 Rules:
-- First, identify the specific local authority or council area for the given location (e.g. Fife Council, Glasgow City Council, Leeds City Council, City of Lincoln Council)
-- Only suggest organisations that operate specifically within that identified local authority — not neighbouring councils or regions
-- Do NOT expand to neighbouring areas, even if it would produce more results — strict boundary adherence is required
-- If you cannot confidently find 2 or more real organisations within that specific local authority, return only the ones you are confident about (even just 1, or an empty array)
+- Only suggest registered charities or voluntary/community organisations — never suggest councils, local authorities, government bodies, job centres, or DWP services
+- Suggest organisations that actually operate in the given area — this INCLUDES local branches or projects of larger charities that run there, judged by where they deliver services, NOT by where they are registered
+- First identify the specific local authority area for the given location so you can stay genuinely local
+- Do NOT expand to clearly distant regions — keep suggestions local to the identified area
+- If you cannot confidently find 2 or more real charities serving that area, return only the ones you are confident about (even just 1, or an empty array)
 - Be specific — e.g. for "community garden" suggest actual named community gardens, not generic charities
-- If the location is vague (e.g. "England"), suggest well-known national networks for that activity
+- If the location is vague (e.g. "England"), suggest well-known national charitable networks for that activity
 - Skip any entry you are not reasonably confident about — quality over quantity
-- Only provide a website URL if you are highly confident it is the correct, real URL for that organisation — return null if unsure
 - Use British English`,
         },
         {
@@ -144,7 +128,18 @@ Rules:
           content: `Location: ${location.trim()}\nActivity: ${activityName.trim()}`,
         },
       ],
-    });
+    };
+
+    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      completion = await openai.chat.completions.create({
+        ...baseParams,
+        reasoning_effort: "low",
+      } as Parameters<typeof openai.chat.completions.create>[0]);
+    } catch (err) {
+      console.warn("Local charities: reasoning_effort not accepted, retrying without it:", err);
+      completion = await openai.chat.completions.create(baseParams);
+    }
 
     const raw = completion.choices[0]?.message?.content?.trim() || "{}";
     let parsed: { places?: unknown[] };
@@ -153,20 +148,31 @@ Rules:
     } catch {
       parsed = {};
     }
-    const places = Array.isArray(parsed.places)
-      ? parsed.places.map(({ name, description, howToJoin, website }: {
-          name: string;
-          description: string;
-          howToJoin: string;
-          website?: string | null;
-        }) => ({
-          name,
-          description,
-          howToJoin,
-          website: typeof website === "string" && website.startsWith("http") ? website : null,
-          source: "ai" as const,
-        }))
+    const aiPlaces = Array.isArray(parsed.places)
+      ? parsed.places
+          .filter((p: unknown): p is { name: string } =>
+            !!p && typeof p === "object" && typeof (p as { name?: unknown }).name === "string" &&
+            !isBlockedOrganisation((p as { name: string }).name)
+          )
+          .map(({ name, description, howToJoin }: {
+            name: string;
+            description?: string;
+            howToJoin?: string;
+          }) => ({
+            name,
+            description: typeof description === "string" ? description : "",
+            howToJoin: typeof howToJoin === "string" ? howToJoin : "",
+          }))
       : [];
+
+    const verifications = await verifyMany(aiPlaces.map((p: { name: string }) => p.name), scotland);
+
+    const places = aiPlaces.map((p: { name: string; description: string; howToJoin: string }, i: number) => ({
+      ...p,
+      source: "ai" as const,
+      verified: verifications[i] !== null,
+      registrationNumber: verifications[i]?.registrationNumber,
+    }));
 
     res.json({ places });
   } catch (err) {

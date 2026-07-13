@@ -167,7 +167,11 @@ export default function OrgExport() {
   // Shared assumption note printed at the top of every CSV so funders see
   // the same per-volunteer cost the dashboard and PDF use. Localised so
   // Welsh exports stay consistent with the Welsh dashboard explainer.
+  // Lead with plain-language explanations of the headline metrics, mirroring
+  // the on-screen metric tooltips so the context isn't lost in the raw export.
   const csvAssumptions = [
+    t("metricHelp.totalSocialValue"),
+    t("metricHelp.sroi"),
     t("orgDashboard.sroiCsvAssumptionCost", {
       costPerVolunteer: `£${sroiCostPerVolunteer.toLocaleString("en-GB")}`,
     }),
@@ -209,7 +213,7 @@ export default function OrgExport() {
   }
   function handleCsvSdg() {
     if (sdgs.length === 0) return;
-    downloadCsv(sdgExportRows(sdgs), `${slug}-sdg-breakdown.csv`, csvAssumptions);
+    downloadCsv(sdgExportRows(sdgs, locale), `${slug}-sdg-breakdown.csv`, csvAssumptions);
   }
   const pdfArgs = useMemo(() => {
     if (!orgData?.org) return null;

@@ -1,96 +1,14 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { useGetProfile, useUpdateProfile, useAckStreakMilestone } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
-import { Lock, ChevronRight, Loader2, Check, AlertCircle, Trophy, Plus } from "lucide-react";
+import { Lock, ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
 import RecapBanner from "@/components/RecapBanner";
 import StreakChip from "@/components/StreakChip";
 import StreakCelebration from "@/components/StreakCelebration";
 import { useAuth } from "@/lib/auth-context";
-import { formatCurrency } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-interface ProfileChallenge {
-  id: string;
-  name: string;
-  goalType: "social_value" | "hours";
-  target: number;
-  endDate: string;
-  progressTotal: number;
-  progressPercent: number;
-  isActive: boolean;
-  hasEnded: boolean;
-  hasStarted: boolean;
-}
-
-function ActiveChallengesCard() {
-  const { data, isLoading } = useQuery<{ challenges: ProfileChallenge[] }>({
-    queryKey: ["challenges-mine"],
-    queryFn: async () => {
-      const res = await fetch(`${BASE}/api/challenges/mine`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-  });
-
-  if (isLoading) return null;
-  const active = (data?.challenges ?? []).filter(c => c.isActive || (!c.hasStarted && !c.hasEnded)).slice(0, 3);
-
-  return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border mb-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Your active challenges</h2>
-        </div>
-        <Link
-          href="/challenges"
-          className="text-xs text-primary font-semibold hover:underline shrink-0"
-        >
-          View all
-        </Link>
-      </div>
-      {active.length === 0 ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-muted-foreground mb-3">No active challenges right now.</p>
-          <Link
-            href="/challenges"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
-            style={{ background: "#F06127" }}
-          >
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Start one
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {active.map(c => (
-            <Link
-              key={c.id}
-              href={`/challenges/${c.id}`}
-              className="block p-3 rounded-lg border border-border hover:border-primary/40 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3 mb-1.5">
-                <p className="text-sm font-semibold text-foreground truncate">{c.name}</p>
-                <p className="text-xs font-bold text-foreground shrink-0">{c.progressPercent}%</p>
-              </div>
-              <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-1.5">
-                <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, c.progressPercent)}%` }} />
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {c.goalType === "hours"
-                  ? `${Math.round(c.progressTotal).toLocaleString()} of ${Math.round(c.target).toLocaleString()} hrs`
-                  : `${formatCurrency(c.progressTotal)} of ${formatCurrency(c.target)}`}
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },
@@ -250,8 +168,6 @@ export default function Profile() {
       <div className="mb-6">
         <RecapBanner variant="card" />
       </div>
-
-      <ActiveChallengesCard />
 
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-8">
         <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100">

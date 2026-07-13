@@ -6,6 +6,7 @@ import {
 } from "@/lib/org-demo-mock";
 import { makeT } from "@/i18n/t";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { getSdgByNumber, getSdgText } from "@/lib/sdg";
 
 export interface OrgBranding {
   logoUrl: string | null;
@@ -109,7 +110,16 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     if (typeof sroiCostBreakdown.support === "number")     breakdownLines.push({ label: "Support",     value: sroiCostBreakdown.support });
     if (typeof sroiCostBreakdown.admin === "number")       breakdownLines.push({ label: "Admin",       value: sroiCostBreakdown.admin });
   }
-  const t = makeT(locale ?? DEFAULT_LOCALE);
+  const loc = locale ?? DEFAULT_LOCALE;
+  const t = makeT(loc);
+
+  // Localised short goal label for an SDG number, reusing the shared SDG
+  // reference data (EN/CY). Falls back to the English label baked into the
+  // activity/breakdown data if the number isn't recognised.
+  const sdgLabelFor = (number: number, fallback: string): string => {
+    const goal = getSdgByNumber(number);
+    return goal ? getSdgText(goal, loc).label : fallback;
+  };
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -235,7 +245,13 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
       doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
       doc.text(c.sub, x + 16, y + 66);
     });
-    y += cardH + 26;
+    y += cardH + 14;
+    // Plain-language explanation of the headline social value figure, mirroring
+    // the on-screen metric tooltip so the context isn't lost in the export.
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+    const totalValueHelp = doc.splitTextToSize(t("metricHelp.totalSocialValue"), contentW) as string[];
+    doc.text(totalValueHelp, margin, y);
+    y += totalValueHelp.length * 10 + 14;
   } else {
     y += 16;
   }
@@ -364,7 +380,7 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
         const bw = doc.getTextWidth(badgeT);
         doc.text(badgeT, margin + 8 + badgeSize / 2 - bw / 2, badgeY + badgeSize / 2 + 3.5);
         doc.setFont("helvetica", "bold"); doc.setFontSize(10); setText(INK);
-        doc.text(s.label, margin + 38, y + 14);
+        doc.text(sdgLabelFor(s.number, s.label), margin + 38, y + 14);
         doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
         doc.text(`${s.activities} activities  ·  ${s.members} members`, margin + 38, y + 24);
         const trackY = y + rowH / 2 - 4;
@@ -393,6 +409,13 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     y = drawSectionHeading(y, t("orgDashboard.sroiTitle"));
     const totalInvestment = sroi.totalMembers * sroi.costPerVolunteer;
     const ratio = totalInvestment > 0 ? totals.value / totalInvestment : 0;
+
+    // Plain-language explanation of the SROI metric, mirroring the on-screen
+    // metric tooltip so funders reading the PDF get the same context.
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); setText(MUTED);
+    const sroiHelp = doc.splitTextToSize(t("metricHelp.sroi"), contentW) as string[];
+    doc.text(sroiHelp, margin, y);
+    y += sroiHelp.length * 10 + 10;
 
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
     const body = t("orgDashboard.sroiBody", {
@@ -477,6 +500,55 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     y = ensureSpace(y, 110);
     y = drawSectionHeading(y, "Activity log");
 
+    // Compact SDG key so the numbered/colour-coded badges in the SDG column
+    // are self-explanatory to readers skimming the log — each number is shown
+    // next to its localised goal label.
+    const legendSdgs = (() => {
+      const seen = new Map<number, { number: number; color: string; label: string }>();
+      for (const { activity } of rows) {
+        const sdg = SDG_BY_CATEGORY[activity.category];
+        if (sdg && !seen.has(sdg.number)) {
+          seen.set(sdg.number, { number: sdg.number, color: sdg.color, label: sdg.label });
+        }
+      }
+      return [...seen.values()].sort((a, b) => a.number - b.number);
+    })();
+
+    if (legendSdgs.length > 0) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8); setText(MUTED);
+      doc.text(t("orgDashboard.sdgKey").toUpperCase(), margin, y);
+      y += 12;
+
+      const chip = 12;
+      const gapAfterChip = 4;
+      const itemGap = 14;
+      const lineH = 17;
+      let lx = margin;
+      doc.setFontSize(8.5);
+      legendSdgs.forEach((g) => {
+        const label = sdgLabelFor(g.number, g.label);
+        doc.setFont("helvetica", "normal");
+        const labelW = doc.getTextWidth(label);
+        const itemW = chip + gapAfterChip + labelW;
+        if (lx > margin && lx + itemW > margin + contentW) {
+          lx = margin;
+          y += lineH;
+        }
+        y = ensureSpace(y, lineH);
+        const chipColor = hexToRgb(g.color);
+        setFill(chipColor);
+        doc.roundedRect(lx, y - chip + 2.5, chip, chip, 2.5, 2.5, "F");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); setText(WHITE);
+        const num = String(g.number);
+        const nw = doc.getTextWidth(num);
+        doc.text(num, lx + chip / 2 - nw / 2, y - chip + 2.5 + chip / 2 + 2.4);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); setText(INK);
+        doc.text(label, lx + chip + gapAfterChip, y);
+        lx += itemW + itemGap;
+      });
+      y += 12;
+    }
+
     autoTable(doc, {
       startY: y,
       head: [["Date", "Member", "Category", "SDG", "Activity", "Hours", "£"]],
@@ -509,6 +581,20 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
         4: { cellWidth: 207 },
         5: { cellWidth: 32, halign: "right" },
         6: { cellWidth: 38, halign: "right" },
+      },
+      // Colour-code the SDG cell with the goal's official colour and white
+      // numeral, so each activity carries the same numbered/colour badge style
+      // used on screen and in the SDG breakdown section above.
+      didParseCell: (data) => {
+        if (data.section !== "body" || data.column.index !== 3) return;
+        const row = rows[data.row.index];
+        const sdg = row ? SDG_BY_CATEGORY[row.activity.category] : undefined;
+        if (!sdg) return;
+        data.cell.styles.fillColor = hexToRgb(sdg.color);
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.halign = "center";
+        data.cell.styles.valign = "middle";
       },
       margin: { left: margin, right: margin, top: margin + 8, bottom: FOOTER_RESERVE + 8 },
       showHead: "everyPage",

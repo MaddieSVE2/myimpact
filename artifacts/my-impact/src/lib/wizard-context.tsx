@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
 
 export const INTEREST_OPTIONS = [
@@ -146,7 +147,7 @@ const defaultState: WizardState = {
 
 const DRAFT_KEY = 'wizard_draft_v1';
 
-type StoredDraft = Partial<WizardState> & { interests?: string[]; situation?: string | null };
+type StoredDraft = Partial<WizardState> & { interests?: string[]; situation?: string | null; userId?: string | null };
 
 function loadDraft(): StoredDraft | null {
   try {
@@ -160,9 +161,9 @@ function loadDraft(): StoredDraft | null {
   }
 }
 
-function saveDraft(state: WizardState) {
+function saveDraft(state: WizardState, userId?: string | null) {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...state, userId: userId ?? null }));
   } catch {
     // ignore storage errors
   }
@@ -212,6 +213,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
 }
 
 export function WizardProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
   const [{ state: initialState, hasDraft: initialHasDraft }] = useState(getInitialState);
 
   const [hasDraft, setHasDraft] = useState(initialHasDraft);
@@ -240,12 +242,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate });
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate }, user?.id);
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, user?.id]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -403,6 +405,19 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     removeDraft();
     setHasDraft(false);
   }, []);
+
+  // When auth resolves, discard any draft that was saved by a different user.
+  // This prevents user A's localStorage draft from leaking into user B's session.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return; // guest — keep any existing draft
+    const draft = loadDraft();
+    if (!draft) return;
+    const storedUserId = (draft as StoredDraft).userId;
+    if (storedUserId && storedUserId !== user.id) {
+      clearDraft();
+    }
+  }, [authLoading, user?.id, clearDraft]);
 
   return (
     <WizardContext.Provider value={{

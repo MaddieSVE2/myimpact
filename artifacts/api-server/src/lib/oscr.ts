@@ -18,6 +18,8 @@
  * back to AI suggestions.
  */
 
+import { normalizeCharityName, isConfidentNameMatch } from "./charity-name.js";
+
 const OSCR_API_BASE = "https://oscrapi.azurewebsites.net/api";
 const BATCH_SIZE = 4;
 const MAX_PAGES = 4;
@@ -252,5 +254,102 @@ export async function searchOSCRCharities(
   } catch (err) {
     console.error("OSCR API error:", err);
     return [];
+  }
+}
+
+/**
+ * OSCR has no name/keyword search — its API is a paginated bulk export. To
+ * verify AI-suggested Scottish organisations by name we build an in-memory
+ * index of the whole register (normalised name → registration number) and
+ * cache it. The register is large but static, so a single load serves many
+ * verification lookups.
+ */
+const OSCR_INDEX_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const OSCR_INDEX_BATCH = 5;
+const OSCR_INDEX_MAX_PAGES = 30; // register is ~25 pages; cap as a safety net
+
+interface OSCRIndexEntry {
+  regNum: string;
+  name: string;
+}
+
+let oscrIndex: Map<string, OSCRIndexEntry> | null = null;
+let oscrIndexExpiry = 0;
+let oscrIndexLoading: Promise<Map<string, OSCRIndexEntry>> | null = null;
+
+async function loadOSCRIndex(apiKey: string): Promise<Map<string, OSCRIndexEntry>> {
+  const index = new Map<string, OSCRIndexEntry>();
+  let totalPages = MAX_PAGES;
+  let nextPage = 1;
+
+  while (nextPage <= Math.min(totalPages, OSCR_INDEX_MAX_PAGES)) {
+    const batchNums = Array.from(
+      { length: Math.min(OSCR_INDEX_BATCH, Math.min(totalPages, OSCR_INDEX_MAX_PAGES) - nextPage + 1) },
+      (_, i) => nextPage + i,
+    );
+    const pages = await Promise.all(batchNums.map(p => fetchPage(p, apiKey)));
+    for (const page of pages) {
+      if (page.totalPages) totalPages = page.totalPages;
+      const records = Array.isArray(page.data) ? page.data : [];
+      for (const r of records) {
+        const name = r.charityName;
+        const regNum = r.charityNumber;
+        if (!name || !regNum) continue;
+        const key = normalizeCharityName(name);
+        if (key && !index.has(key)) {
+          index.set(key, { regNum, name });
+        }
+      }
+    }
+    nextPage += OSCR_INDEX_BATCH;
+  }
+
+  return index;
+}
+
+async function getOSCRIndex(apiKey: string): Promise<Map<string, OSCRIndexEntry>> {
+  if (oscrIndex && oscrIndexExpiry > Date.now()) return oscrIndex;
+  if (oscrIndexLoading) return oscrIndexLoading;
+
+  oscrIndexLoading = (async () => {
+    try {
+      const index = await loadOSCRIndex(apiKey);
+      oscrIndex = index;
+      oscrIndexExpiry = Date.now() + OSCR_INDEX_TTL_MS;
+      return index;
+    } finally {
+      oscrIndexLoading = null;
+    }
+  })();
+
+  return oscrIndexLoading;
+}
+
+/**
+ * Attempt to verify an AI-suggested organisation name against the OSCR
+ * register for Scotland. Returns the registration number when a confident
+ * name match is found, or null otherwise. Never throws — best-effort.
+ */
+export async function verifyOSCRCharityName(
+  name: string,
+  apiKey: string | undefined,
+): Promise<{ registrationNumber: string } | null> {
+  if (!apiKey || !name?.trim()) return null;
+  try {
+    const index = await getOSCRIndex(apiKey);
+    const key = normalizeCharityName(name);
+    if (!key) return null;
+
+    const exact = index.get(key);
+    if (exact) return { registrationNumber: exact.regNum };
+
+    for (const entry of index.values()) {
+      if (isConfidentNameMatch(name, entry.name)) {
+        return { registrationNumber: entry.regNum };
+      }
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
