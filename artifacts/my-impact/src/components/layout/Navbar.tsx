@@ -287,7 +287,7 @@ export function Navbar() {
 
   return (
     <>
-      <nav style={{ background: DARK }} className="sticky top-0 z-50 w-full border-b border-white/10">
+      <nav data-testid="main-navbar" style={{ background: DARK }} className="sticky top-0 z-50 w-full border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
 
           {/* Logo */}

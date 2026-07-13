@@ -42,6 +42,7 @@ export function OrgMemberSubNav() {
 
   return (
     <div
+      data-testid="org-member-subnav"
       className="block sticky top-20 lg:top-0 z-40 w-full border-b border-white/10"
       style={{ background: ORG_SUBNAV_BG }}
       role="navigation"
