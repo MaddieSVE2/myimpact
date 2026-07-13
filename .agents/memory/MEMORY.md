@@ -1,1 +1,2 @@
 - [SEO meta pattern](seo-meta.md) — react-helmet-async with PageMeta/NoIndexMeta; HelmetProvider in App.tsx wraps everything; private routes noindexed via PrivateRoute + NOINDEX_PATH_PREFIXES list in AppRouter.
+- [Orphaned workflow process](orphaned-workflow-process.md) — workflow restart can leave an old tsx process holding the API port, serving stale code; check ps for duplicate index.ts processes.

@@ -341,6 +341,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       membershipStatus: membership.status,
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
+      autoVerifyActivities: org.autoVerifyActivities ?? false,
       sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
       sroiCostBreakdown: {
         recruitment: org.sroiCostRecruitment ?? null,

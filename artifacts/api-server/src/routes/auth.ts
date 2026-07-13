@@ -342,6 +342,11 @@ const DEMO_ORG_NAME = "Demo Organisation";
 const DEMO_ORG_TYPE = "corporate";
 const DEMO_INVITE_CODE = "DEMO-0000";
 
+const UNI_ORG_ID = "uni-org-0000000000000";
+const UNI_ORG_NAME = "My Impact University";
+const UNI_ORG_TYPE = "university";
+const UNI_INVITE_CODE = "UNI-0000";
+
 const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
   "demo@demo.org": { situation: [] },
   "volunteer@volunteer.org": { situation: ["volunteer"] },
@@ -351,12 +356,73 @@ const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
   "apprentice@apprentice.org": { situation: ["apprenticeship"] },
   "jobseeker@jobseeker.org": { situation: ["job_seeking"] },
   "organisation@organisation.org": { situation: [] },
+  "university@university.org": { situation: [] },
 };
 
+// Personas that land on the org dashboard after login.
 const ORG_PERSONA_EMAILS = new Set<string>([
   "demo@demo.org",
   "organisation@organisation.org",
+  "university@university.org",
 ]);
+
+// Personas that get a Demo Organisation membership on login. The student
+// persona belongs to BOTH the demo org and the university.
+const DEMO_ORG_MEMBER_EMAILS = new Set<string>([
+  "demo@demo.org",
+  "organisation@organisation.org",
+  "student@student.org",
+]);
+
+// Personas that get a My Impact University membership on login. The student
+// persona belongs to BOTH the demo org and the university.
+const UNI_ORG_MEMBER_EMAILS = new Set<string>([
+  "university@university.org",
+  "student@student.org",
+]);
+
+// Ensure the given persona org exists and the user has an active membership
+// with (at least) the desired role. Used for both the Demo Organisation and
+// My Impact University on persona login, so the demo environment self-heals.
+async function ensurePersonaOrgMembership(opts: {
+  orgId: string;
+  orgValues: typeof organisationsTable.$inferInsert;
+  userId: string;
+  role: "member" | "manager";
+}) {
+  const { orgId, orgValues, userId, role } = opts;
+
+  const existingOrg = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, orgId),
+  });
+  if (!existingOrg) {
+    await db.insert(organisationsTable).values(orgValues).onConflictDoNothing();
+  }
+
+  const existingMembership = await db.query.orgMembersTable.findFirst({
+    where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.userId, userId)),
+  });
+
+  if (!existingMembership) {
+    await db
+      .insert(orgMembersTable)
+      .values({ orgId, userId, role, status: "active" })
+      .onConflictDoNothing();
+    return;
+  }
+
+  const needsRoleUpdate = role === "manager" && existingMembership.role !== "manager";
+  const needsStatusFix = existingMembership.status !== "active";
+  if (needsRoleUpdate || needsStatusFix) {
+    await db
+      .update(orgMembersTable)
+      .set({
+        ...(needsRoleUpdate ? { role: "manager" } : {}),
+        ...(needsStatusFix ? { status: "active" } : {}),
+      })
+      .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)));
+  }
+}
 
 async function loginPersonaAccount(res: any, normalizedEmail: string) {
   const persona = PERSONA_ACCOUNTS[normalizedEmail];
@@ -384,41 +450,33 @@ async function loginPersonaAccount(res: any, normalizedEmail: string) {
       set: { situation: persona.situation },
     });
 
-  if (ORG_PERSONA_EMAILS.has(normalizedEmail)) {
-    const existingOrg = await db.query.organisationsTable.findFirst({
-      where: eq(organisationsTable.id, DEMO_ORG_ID),
-    });
-
-    if (!existingOrg) {
-      await db.insert(organisationsTable).values({
+  if (DEMO_ORG_MEMBER_EMAILS.has(normalizedEmail)) {
+    await ensurePersonaOrgMembership({
+      orgId: DEMO_ORG_ID,
+      orgValues: {
         id: DEMO_ORG_ID,
         name: DEMO_ORG_NAME,
         type: DEMO_ORG_TYPE,
         inviteCode: DEMO_INVITE_CODE,
-      }).onConflictDoNothing();
-    }
-
-    const desiredRole = normalizedEmail === "organisation@organisation.org" ? "manager" : "member";
-
-    const existingMembership = await db.query.orgMembersTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, DEMO_ORG_ID), eq(t.userId, user!.id)),
+      },
+      userId: user.id,
+      role: normalizedEmail === "organisation@organisation.org" ? "manager" : "member",
     });
+  }
 
-    if (!existingMembership) {
-      await db.insert(orgMembersTable).values({ orgId: DEMO_ORG_ID, userId: user.id, role: desiredRole, status: "active" }).onConflictDoNothing();
-    } else {
-      const needsRoleUpdate = desiredRole === "manager" && existingMembership.role !== "manager";
-      const needsStatusFix = existingMembership.status !== "active";
-      if (needsRoleUpdate || needsStatusFix) {
-        await db
-          .update(orgMembersTable)
-          .set({
-            ...(needsRoleUpdate ? { role: "manager" } : {}),
-            ...(needsStatusFix ? { status: "active" } : {}),
-          })
-          .where(and(eq(orgMembersTable.orgId, DEMO_ORG_ID), eq(orgMembersTable.userId, user.id)));
-      }
-    }
+  if (UNI_ORG_MEMBER_EMAILS.has(normalizedEmail)) {
+    await ensurePersonaOrgMembership({
+      orgId: UNI_ORG_ID,
+      orgValues: {
+        id: UNI_ORG_ID,
+        name: UNI_ORG_NAME,
+        type: UNI_ORG_TYPE,
+        inviteCode: UNI_INVITE_CODE,
+        autoVerifyActivities: true,
+      },
+      userId: user.id,
+      role: normalizedEmail === "university@university.org" ? "manager" : "member",
+    });
   }
 
   issueSession(res, user);

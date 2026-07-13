@@ -249,6 +249,45 @@ function startOfMonthUTC(year: number, monthIndex: number): Date {
   return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0));
 }
 
+// Auto-verification hook. Some organisations (e.g. universities) count every
+// member activity toward their totals without a manager approval step. For
+// each org the user actively belongs to where `autoVerifyActivities` is true,
+// insert an approved record_verifications row for each freshly created
+// impact record. The (recordId, orgId) unique constraint plus
+// onConflictDoNothing makes this idempotent and safe against races with a
+// manual verification request. Failures are logged but never block the save.
+async function autoVerifyRecordsForUser(userId: string, recordIds: number[]): Promise<void> {
+  if (recordIds.length === 0) return;
+  try {
+    const autoOrgs = await db
+      .select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .innerJoin(organisationsTable, eq(organisationsTable.id, orgMembersTable.orgId))
+      .where(
+        and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.status, "active"),
+          eq(organisationsTable.autoVerifyActivities, true),
+        ),
+      );
+    if (autoOrgs.length === 0) return;
+
+    const now = new Date();
+    const values = autoOrgs.flatMap(({ orgId }) =>
+      recordIds.map((recordId) => ({
+        recordId,
+        orgId,
+        status: "approved" as const,
+        decidedAt: now,
+        reason: "auto-verified",
+      })),
+    );
+    await db.insert(recordVerificationsTable).values(values).onConflictDoNothing();
+  } catch (err) {
+    console.error("[impact] auto-verify failed:", err);
+  }
+}
+
 router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const body = SaveImpactBody.parse(req.body);
   const userId = req.user!.id;
@@ -390,6 +429,10 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       .values({ userId, ...newValues })
       .returning();
     record = inserted;
+
+    // Auto-approve this record for any of the user's orgs that skip the
+    // manual verification step (e.g. universities).
+    await autoVerifyRecordsForUser(userId, [record.id]);
   }
 
   if (isFirstRecord) {
@@ -1385,7 +1428,11 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     });
   }
   if (inserts.length > 0) {
-    await db.insert(impactRecordsTable).values(inserts);
+    const created = await db
+      .insert(impactRecordsTable)
+      .values(inserts)
+      .returning({ id: impactRecordsTable.id });
+    await autoVerifyRecordsForUser(userId, created.map((r) => r.id));
   }
 
   const [updated] = await db
@@ -1634,7 +1681,11 @@ router.post("/year-rollover", authenticate, async (req: AuthenticatedRequest, re
   }
 
   if (inserts.length > 0) {
-    await db.insert(impactRecordsTable).values(inserts);
+    const created = await db
+      .insert(impactRecordsTable)
+      .values(inserts)
+      .returning({ id: impactRecordsTable.id });
+    await autoVerifyRecordsForUser(userId, created.map((r) => r.id));
   }
 
   res.json({ entriesCreated: inserts.length, year });

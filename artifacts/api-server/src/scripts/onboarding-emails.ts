@@ -50,7 +50,19 @@ const PERSONA_EMAILS = new Set<string>([
   "apprentice@apprentice.org",
   "jobseeker@jobseeker.org",
   "organisation@organisation.org",
+  "university@university.org",
 ]);
+
+// Synthetic seeded accounts (never real inboxes) are excluded by pattern.
+function isSyntheticSeedEmail(email: string): boolean {
+  const e = email.toLowerCase();
+  return (
+    e.startsWith("synth-member-") ||
+    e.startsWith("uni-synth-") ||
+    e.endsWith("@demo-organisation.org") ||
+    e.endsWith("@myimpact-university.org")
+  );
+}
 
 const ACTIVITY_BY_ID = new Map(ACTIVITIES.map((a) => [a.id, a]));
 
@@ -117,7 +129,9 @@ async function findEligibleUsersForStep(step: OnboardingStep, now: Date): Promis
       )
     );
 
-  return rows.filter((r) => !PERSONA_EMAILS.has(r.email.toLowerCase()));
+  return rows.filter(
+    (r) => !PERSONA_EMAILS.has(r.email.toLowerCase()) && !isSyntheticSeedEmail(r.email)
+  );
 }
 
 async function loadActivitySummary(userId: string): Promise<OnboardingActivity> {

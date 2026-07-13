@@ -42,6 +42,11 @@ export const organisationsTable = pgTable("organisations", {
   // financial (04-01), or any custom month-day.
   summaryYearStart: text("summary_year_start").notNull().default("01-01"),
   allowedDomain: text("allowed_domain"),
+  // When true, every activity a member logs is automatically approved into
+  // the org's verified totals (an approved record_verifications row is
+  // created at save time) — no manager verification queue step needed.
+  // Journal entries live in a separate table and are never shared.
+  autoVerifyActivities: boolean("auto_verify_activities").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -52,7 +57,6 @@ export const orgMembersTable = pgTable("org_members", {
   status: text("status").notNull().default("pending"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (table) => ({
-  userUnique: unique("org_members_user_unique").on(table.userId),
   membershipUnique: unique("org_members_membership_unique").on(table.orgId, table.userId),
 }));
 
