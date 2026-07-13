@@ -278,6 +278,7 @@ const NO_FOOTER_PATHS = [
   "/log",
 ];
 
+
 function AppRouter() {
   const [location] = useLocation();
   const locationRef = useRef<string | undefined>(undefined);
