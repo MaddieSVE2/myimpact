@@ -240,11 +240,13 @@ export function Navbar() {
   const isOrgManager = inOrg && orgData?.org?.role === "manager";
   const aiDisabledByOrg = inOrg && orgData?.org?.aiSidekickEnabled === false;
   const isDemoOrgManager = isOrgManager && orgData?.org?.id === "demo-org-0000000000000";
-  // Only the demo-org manager has the new dashboard/settings pages today.
-  const orgHomeHref = isDemoOrgManager ? "/org/dashboard" : "/org";
+  const isUniversityManager = isOrgManager && orgData?.org?.type === "university";
+  // Managers of the demo org and university orgs have the dashboard/settings pages.
+  const isOrgDashboardManager = isDemoOrgManager || isUniversityManager;
+  const orgHomeHref = isOrgDashboardManager ? "/org/dashboard" : "/org";
 
   const isOrgMemberOnly = inOrg && !isOrgManager;
-  const navItems = isDemoOrgManager
+  const navItems = isOrgDashboardManager
     ? [
         { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
         { href: "/org/activities", label: "Activities", icon: UsersIcon },
@@ -447,7 +449,7 @@ export function Navbar() {
                             {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
                           </Link>
                         )}
-                        {isDemoOrgManager && (
+                        {isOrgDashboardManager && (
                           <Link
                             href="/org/settings"
                             onClick={() => setUserMenuOpen(false)}
@@ -733,7 +735,7 @@ export function Navbar() {
               </Link>
             )}
 
-            {isDemoOrgManager && (
+            {isOrgDashboardManager && (
               <Link
                 href="/org/settings"
                 onClick={() => setMobileOpen(false)}

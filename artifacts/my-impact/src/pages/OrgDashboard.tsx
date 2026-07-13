@@ -27,6 +27,7 @@ import {
 } from "@/lib/summaryPeriod";
 import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
+import OrgUniversityDashboard from "@/pages/OrgUniversityDashboard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
@@ -95,7 +96,7 @@ export default function OrgDashboard() {
   }, [orgData?.org?.summaryYearStart, isDemoOrg]);
 
   // ── Period bounds (shared via sessionStorage so selection persists across pages) ──
-  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod } = useOrgPeriod(summaryYearStart, isDemoOrg);
+  const { periodOffset, setPeriodOffset, periodBounds, isCurrentPeriod, periodFrom, periodTo } = useOrgPeriod(summaryYearStart, isDemoOrg);
 
   // ── Period type derived from summaryYearStart ──
   const periodType = detectPeriodType(summaryYearStart);
@@ -242,6 +243,24 @@ export default function OrgDashboard() {
       <p className="text-sm text-muted-foreground">The organisation dashboard is only available to your organisation manager.</p>
       <Link href="/org" className="text-primary text-sm underline mt-3 inline-block">Back to your organisation page</Link>
     </div>;
+  }
+
+  // University orgs get a purpose-built education layout driven by the same
+  // live data (org-stats + monthly + activities). Corporate layout unchanged.
+  if (orgData.org.type === "university") {
+    return (
+      <OrgUniversityDashboard
+        orgName={orgData.org.name}
+        stats={realStats}
+        timeline={timelineData}
+        periodOffset={periodOffset}
+        setPeriodOffset={setPeriodOffset}
+        periodLabel={periodBounds.label}
+        isCurrentPeriod={isCurrentPeriod}
+        periodFrom={periodFrom}
+        periodTo={periodTo}
+      />
+    );
   }
 
   const inviteCode = isDemoOrg ? getOrgInviteCode(DEMO_ORG_ID, DEMO_INVITE_CODE) : null;

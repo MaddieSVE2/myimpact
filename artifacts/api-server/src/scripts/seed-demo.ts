@@ -5,7 +5,7 @@ import {
   challengesTable, challengeParticipantsTable,
   impactRecordsTable, recordVerificationsTable,
 } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { calculateImpact } from "../lib/impactData.js";
 
 const DEMO_USER_ID = "demo-user-000000000000";
@@ -652,10 +652,22 @@ async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ 
         entryDate: spec.entryDate,
         source: "user",
         createdAt: spec.entryDate,
+        submittedToOrgId: UNI_ORG_ID,
+        submittedToOrgAt: spec.entryDate,
       })
       .returning({ id: impactRecordsTable.id });
     existing = created;
     inserted = true;
+  } else {
+    // Backfill records seeded before submittedToOrgId was set, so the
+    // org activities feed picks them up.
+    await db
+      .update(impactRecordsTable)
+      .set({ submittedToOrgId: UNI_ORG_ID, submittedToOrgAt: spec.entryDate })
+      .where(and(
+        eq(impactRecordsTable.id, existing.id),
+        isNull(impactRecordsTable.submittedToOrgId),
+      ));
   }
 
   await db
