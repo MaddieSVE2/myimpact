@@ -11,3 +11,4 @@ description: Port collisions, process reaping, and the validation-runner workaro
 - Playwright chromium is not preinstalled: `pnpm --filter @workspace/e2e exec playwright install chromium` after dependency reinstalls.
 - The magic-link endpoint rate-limits repeat requests per email — tests that sign in more than once must use a unique email per sign-in or they flake with "a sign-in link was just sent".
 - **How to apply:** whenever running or registering e2e checks (e.g. the `subnav-alignment` validation), reuse the port overrides and per-sign-in unique emails.
+- Quick authenticated dev verification without test mode: seed a user + magic token directly in the dev DB and drive the auth-confirm page with a one-off Playwright script against the localhost:80 proxy; launch chromium with `executablePath: process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE` (nix-provided). Clean up seeded rows afterwards.
