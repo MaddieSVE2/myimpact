@@ -2708,6 +2708,21 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       .where(sql`(${memberCond}) OR (${attestedCond})`)
       .orderBy(desc(impactRecordsTable.createdAt));
 
+    // Approved verifications for these records, so member-submitted lines can
+    // be flagged verified even without an org attestation.
+    const recordIdList = records.map(r => r.id);
+    const approvedVerifications = recordIdList.length > 0
+      ? await db
+          .select({ recordId: recordVerificationsTable.recordId })
+          .from(recordVerificationsTable)
+          .where(and(
+            eq(recordVerificationsTable.orgId, orgId),
+            eq(recordVerificationsTable.status, "approved"),
+            inArray(recordVerificationsTable.recordId, recordIdList),
+          ))
+      : [];
+    const approvedRecordIds = new Set(approvedVerifications.map(v => v.recordId));
+
     const userIds = Array.from(new Set(records.map(r => r.userId)));
     const users = userIds.length > 0
       ? await db
@@ -2834,7 +2849,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             description,
             hours,
             socialValueGBP: isSomethingElse ? 0 : socialValueGBP,
-            verified: !!r.attestedAt,
+            verified: !!r.attestedAt || approvedRecordIds.has(r.id),
             valuePerUnit: actDef?.valuePerUnit ?? 0,
             unitLabel: actDef?.unitLabel ?? "hrs",
             proxy: actDef?.proxy ?? "",

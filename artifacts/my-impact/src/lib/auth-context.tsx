@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { setSentryUser } from "@/lib/sentry";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -62,6 +63,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     fetch(`${BASE}/api/auth/me`, { credentials: "include" })
@@ -96,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (data.instantLogin && data.user) {
       const u: User = { ...data.user, displayName: data.user.displayName ?? null };
+      // Clear cached queries before switching accounts so no data from a
+      // previously signed-in user can leak into the new session.
+      queryClient.clear();
       setUser(u);
       return { instantLogin: true, user: u, orgRedirect: !!data.orgRedirect };
     }
@@ -121,6 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw err;
     }
     const u: User = { ...data.user, displayName: data.user.displayName ?? null };
+    // Clear cached queries before switching accounts so no data from a
+    // previously signed-in user can leak into the new session.
+    queryClient.clear();
     setUser(u);
     return { user: u, orgRedirect: !!data.orgRedirect };
   };
@@ -149,6 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await fetch(`${BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
+    // Drop all cached query data so the next account never sees the previous
+    // account's organisation members, activities or stats.
+    queryClient.clear();
   };
 
   return (

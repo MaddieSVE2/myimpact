@@ -74,7 +74,27 @@ export function hexToHslVar(hex: string | null | undefined): string | null {
   return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-export function memberLabel(memberId: string, anon: boolean): { name: string; email: string } {
+// Optional directory of real members for live-data exports. When provided,
+// labels come from here instead of the demo member list. `anonIndex` gives a
+// stable 0-based index per member id for "Member 001" style anonymisation.
+export interface MemberDirectory {
+  byId: Map<string, { name: string; email: string }>;
+  anonIndex: Map<string, number>;
+}
+
+export function memberLabel(
+  memberId: string,
+  anon: boolean,
+  directory?: MemberDirectory,
+): { name: string; email: string } {
+  if (directory) {
+    if (anon) {
+      const idx = directory.anonIndex.get(memberId) ?? -1;
+      return { name: `Member ${String(idx + 1).padStart(3, "0")}`, email: "Not set" };
+    }
+    const m = directory.byId.get(memberId);
+    return { name: m?.name ?? memberId, email: m?.email ?? "" };
+  }
   if (anon) {
     const idx = DEMO_MEMBERS.findIndex(m => m.id === memberId);
     return { name: `Member ${String(idx + 1).padStart(3, "0")}`, email: "Not set" };
@@ -115,9 +135,10 @@ export function downloadCsv(
 export function activityExportRows(
   activities: DemoActivity[],
   anonymise: boolean,
+  directory?: MemberDirectory,
 ): Array<Record<string, string | number>> {
   return activities.map(a => {
-    const m = memberLabel(a.memberId, anonymise);
+    const m = memberLabel(a.memberId, anonymise, directory);
     const sdg = SDG_BY_CATEGORY[a.category];
     return {
       Date: a.occurredAt,

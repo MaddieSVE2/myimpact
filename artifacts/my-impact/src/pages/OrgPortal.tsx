@@ -1704,12 +1704,13 @@ export default function OrgPortal() {
   const isManager = orgData?.org?.role === "manager";
   const [, setLocation] = useLocation();
 
-  // Demo org managers always land on the new mock-data dashboard.
+  // Demo org managers always land on the new mock-data dashboard, and
+  // university managers go straight to their live dashboard.
   useEffect(() => {
-    if (inOrg && isManager && orgData?.org?.id === DEMO_ORG_ID) {
+    if (inOrg && isManager && (orgData?.org?.id === DEMO_ORG_ID || orgData?.org?.type === "university")) {
       setLocation("/org/dashboard", { replace: true });
     }
-  }, [inOrg, isManager, orgData?.org?.id, setLocation]);
+  }, [inOrg, isManager, orgData?.org?.id, orgData?.org?.type, setLocation]);
 
   const [preset, setPreset] = useState<PresetKey>("all");
   const [customFrom, setCustomFrom] = useState("");

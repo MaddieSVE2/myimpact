@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Download, FileSpreadsheet, FileText, EyeOff, AlertCircle, CheckCircle2,
 } from "lucide-react";
@@ -9,19 +10,36 @@ import {
   DEMO_ORG_ID, DEMO_ACTIVITIES,
   computeDemoAggregates, computeMonthlyTrend, computeSdgBreakdown,
   getRemovedMemberIds,
+  type DemoActivity, type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import {
   useMyOrg, memberLabel, downloadCsv, activityExportRows, sdgExportRows, buildOrgPdf,
   buildOrgPdfBlobAsync, DEFAULT_SROI_COST_PER_VOLUNTEER, DEFAULT_PDF_SECTIONS,
-  type PdfSections,
+  type PdfSections, type MemberDirectory,
 } from "@/lib/org-export";
 import { PdfPager } from "@/components/PdfPager";
 import { useLocale } from "@/i18n/context";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// Shape returned by GET /api/org/activities for real (non-demo) organisations.
+interface LiveOrgActivity {
+  id: string;
+  occurredAt: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string | null;
+  category: string;
+  activity: string;
+  description: string;
+  hours: number;
+  socialValueGBP: number;
+  verified: boolean;
+}
+
 export default function OrgExport() {
   const { data: orgData, isLoading, isError } = useMyOrg();
   const { locale, t } = useLocale();
-  const [, setLocation] = useLocation();
 
   const [anonymise, setAnonymise] = useState(true);
   const [from, setFrom] = useState<string>("");
@@ -40,58 +58,93 @@ export default function OrgExport() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFrom, periodTo]);
 
-  useEffect(() => {
-    if (orgData?.org && isManager && !isDemoOrg) {
-      setLocation("/org", { replace: true });
+  // Live data for real (non-demo) organisations. Fetch all activities once
+  // and filter client-side so the From/To inputs behave like the demo path.
+  const isRealOrgManager = !!orgData?.org && isManager && !isDemoOrg;
+  const {
+    data: liveData,
+    isLoading: liveLoading,
+    isError: liveError,
+  } = useQuery<{ activities: LiveOrgActivity[]; members: Array<{ id: string; name: string; email: string | null }> }>({
+    queryKey: ["org-activities-all", orgData?.org?.id],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/activities`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load activities");
+      return res.json();
+    },
+    enabled: isRealOrgManager,
+  });
+
+  // Real member count for the SROI assumptions (mirrors the dashboard).
+  const { data: liveStats } = useQuery({
+    queryKey: ["org-stats", orgData?.org?.id, periodOffset, summaryYearStart],
+    queryFn: async () => {
+      const res = await fetch(
+        `${BASE}/api/impact/org-stats?periodOffset=${periodOffset}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("Failed to load org stats");
+      return res.json() as Promise<{ totalMemberCount: number }>;
+    },
+    enabled: isRealOrgManager,
+  });
+
+  // Map live activities into the DemoActivity shape so the whole aggregate,
+  // CSV and PDF pipeline is shared between the demo and real orgs.
+  const liveActivities = useMemo<DemoActivity[]>(() => {
+    return (liveData?.activities ?? []).map(a => ({
+      id: a.id,
+      memberId: a.memberId,
+      occurredAt: a.occurredAt,
+      category: a.category as ActivityCategory,
+      activity: a.activity,
+      description: a.description,
+      hours: a.hours,
+      socialValueGBP: a.socialValueGBP,
+      verified: a.verified,
+    }));
+  }, [liveData?.activities]);
+
+  // Directory of real members for name/email columns and stable anonymised
+  // numbering (Member 001, 002, ... in a fixed order regardless of filters).
+  const memberDirectory = useMemo<MemberDirectory | undefined>(() => {
+    if (isDemoOrg || !liveData) return undefined;
+    const byId = new Map<string, { name: string; email: string }>();
+    for (const m of liveData.members ?? []) {
+      byId.set(m.id, { name: m.name, email: m.email ?? "" });
     }
-  }, [orgData?.org, isManager, isDemoOrg, setLocation]);
+    for (const a of liveData.activities ?? []) {
+      if (!byId.has(a.memberId)) {
+        byId.set(a.memberId, { name: a.memberName, email: a.memberEmail ?? "" });
+      }
+    }
+    const anonIndex = new Map<string, number>();
+    Array.from(byId.keys()).sort().forEach((id, i) => anonIndex.set(id, i));
+    return { byId, anonIndex };
+  }, [isDemoOrg, liveData]);
 
   const removedIds = useMemo(
     () => isDemoOrg ? new Set(getRemovedMemberIds(DEMO_ORG_ID)) : new Set<string>(),
     [isDemoOrg],
   );
+  const sourceActivities = isDemoOrg ? DEMO_ACTIVITIES : liveActivities;
   const filtered = useMemo(() => {
-    return DEMO_ACTIVITIES.filter(a => {
+    return sourceActivities.filter(a => {
       if (removedIds.has(a.memberId)) return false;
       if (from && a.occurredAt < from) return false;
       if (to && a.occurredAt > to) return false;
       return true;
     }).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-  }, [removedIds, from, to]);
+  }, [sourceActivities, removedIds, from, to]);
 
   const aggregates = useMemo(() => computeDemoAggregates(filtered), [filtered]);
   const trend = useMemo(() => computeMonthlyTrend(filtered), [filtered]);
   const sdgs = useMemo(() => computeSdgBreakdown(filtered), [filtered]);
 
-  if (isLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-    </div>;
-  }
-  if (isError) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-      <p className="text-base font-semibold">Could not load your organisation</p>
-    </div>;
-  }
-  if (!orgData?.org) {
-    return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-      <p className="text-base font-semibold mb-2">You're not in an organisation yet.</p>
-      <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
-    </div>;
-  }
-  if (!isManager) {
-    return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-      <p className="text-base font-semibold mb-2">Manager access required</p>
-    </div>;
-  }
-  if (!isDemoOrg) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 flex justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-    </div>;
-  }
-
-  const orgName = orgData.org.name;
+  // NOTE: no early returns above or between hooks. All conditional loading /
+  // error states are rendered after every hook has run, so the hook order
+  // stays stable while queries resolve.
+  const orgName = orgData?.org?.name ?? "";
   const slug = orgName.replace(/\s+/g, "-").toLowerCase();
 
   function rangeSummary(): string {
@@ -103,8 +156,12 @@ export default function OrgExport() {
   }
 
   const sroiCostPerVolunteer =
-    orgData.org.sroiCostPerVolunteer ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
-  const totalMembers = aggregates.totalMembers;
+    orgData?.org?.sroiCostPerVolunteer ?? DEFAULT_SROI_COST_PER_VOLUNTEER;
+  // Demo orgs use the mock member list; real orgs use the live member count
+  // (falling back to the number of members who have logged activities).
+  const totalMembers = isDemoOrg
+    ? aggregates.totalMembers
+    : (liveStats?.totalMemberCount ?? memberDirectory?.byId.size ?? 0);
   const totalInvestment = totalMembers * sroiCostPerVolunteer;
   const sroiRatio = totalInvestment > 0 ? aggregates.totalSocialValue / totalInvestment : 0;
   // Shared assumption note printed at the top of every CSV so funders see
@@ -125,7 +182,7 @@ export default function OrgExport() {
   // Append auditable per-volunteer cost sub-amounts when the org has entered
   // them. Labels match the dashboard and PDF ("Recruitment / Onboarding /
   // Support / Admin"). Lines are omitted cleanly when no breakdown is stored.
-  const costBreakdown = orgData.org.sroiCostBreakdown ?? null;
+  const costBreakdown = orgData?.org?.sroiCostBreakdown ?? null;
   if (costBreakdown) {
     const isCy = locale === "cy";
     const breakdownItems: Array<{ value: number | null; en: string; cy: string }> = [
@@ -148,7 +205,7 @@ export default function OrgExport() {
 
   function handleCsvActivity() {
     if (filtered.length === 0) return;
-    downloadCsv(activityExportRows(filtered, anonymise), `${slug}-activity.csv`, csvAssumptions);
+    downloadCsv(activityExportRows(filtered, anonymise, memberDirectory), `${slug}-activity.csv`, csvAssumptions);
   }
   function handleCsvSdg() {
     if (sdgs.length === 0) return;
@@ -156,7 +213,7 @@ export default function OrgExport() {
   }
   const pdfArgs = useMemo(() => {
     if (!orgData?.org) return null;
-    const rowsForPdf = filtered.map(a => ({ activity: a, member: memberLabel(a.memberId, anonymise) }));
+    const rowsForPdf = filtered.map(a => ({ activity: a, member: memberLabel(a.memberId, anonymise, memberDirectory) }));
     const highlights = [...rowsForPdf]
       .sort((a, b) => b.activity.socialValueGBP - a.activity.socialValueGBP)
       .slice(0, 5);
@@ -180,7 +237,7 @@ export default function OrgExport() {
       sections,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgData?.org, orgName, filtered, anonymise, aggregates, trend, sdgs, from, to, sroiCostPerVolunteer, totalMembers, locale, sections]);
+  }, [orgData?.org, orgName, filtered, anonymise, memberDirectory, aggregates, trend, sdgs, from, to, sroiCostPerVolunteer, totalMembers, locale, sections]);
 
   function handlePdf() {
     if (!pdfArgs || filtered.length === 0 || noSectionsSelected) return;
@@ -268,6 +325,40 @@ export default function OrgExport() {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, []);
+
+  if (isLoading) {
+    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+    </div>;
+  }
+  if (isError) {
+    return <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+      <p className="text-base font-semibold">Could not load your organisation</p>
+    </div>;
+  }
+  if (!orgData?.org) {
+    return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <p className="text-base font-semibold mb-2">You're not in an organisation yet.</p>
+      <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
+    </div>;
+  }
+  if (!isManager) {
+    return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <p className="text-base font-semibold mb-2">Manager access required</p>
+    </div>;
+  }
+  if (!isDemoOrg && liveLoading) {
+    return <div className="max-w-2xl mx-auto px-4 py-16 flex justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+    </div>;
+  }
+  if (!isDemoOrg && liveError) {
+    return <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+      <p className="text-base font-semibold">Could not load your organisation's activities</p>
+    </div>;
+  }
 
   return (
     <>
