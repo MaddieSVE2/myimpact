@@ -119,16 +119,16 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(208 18% 78%);
+  background: hsl(208 20% 42%);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(208 22% 62%);
+  background: hsl(208 25% 30%);
 }
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(208 18% 78%) transparent;
+  scrollbar-color: hsl(208 20% 42%) transparent;
 }
 
 /* ── High-contrast theme overrides ─────────────────────────────────────────── */
