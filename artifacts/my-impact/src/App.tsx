@@ -299,133 +299,137 @@ function AppRouter() {
   );
 
   return (
-    <div className="flex flex-row min-h-screen">
+    <div className="flex flex-col min-h-screen lg:h-screen">
       {shouldNoIndex && (
         <Helmet>
           <meta name="robots" content="noindex, nofollow" />
         </Helmet>
       )}
-      {/* ── Main content column ── */}
-      <div className="flex flex-col flex-grow min-w-0">
-        <Navbar />
-        <OrgMemberSubNav />
-        <GuestBanner />
-        <main className="flex-grow">
-          <ErrorBoundary>
-          <Switch>
-            <Route path="/" component={Intro} />
+      {/* ── Top nav: full-width, always visible above content ── */}
+      <Navbar />
+      {/* ── Content row: fills remaining height on desktop ── */}
+      <div className="flex flex-row flex-1 lg:min-h-0">
+        {/* ── Main content column: scrolls independently on desktop ── */}
+        <div className="flex flex-col flex-grow min-w-0 lg:overflow-y-auto">
+          <OrgMemberSubNav />
+          <GuestBanner />
+          <main className="flex-grow">
+            <ErrorBoundary>
+            <Switch>
+              <Route path="/" component={Intro} />
 
-            {/* Auth routes, no navbar chrome needed */}
-            <Route path="/login" component={Login} />
-            <Route path="/auth/confirm" component={AuthConfirm} />
-            <Route path="/about" component={About} />
-            <Route path="/methodology" component={Methodology} />
-            <Route path="/whats-new" component={WhatsNew} />
-            <Route path="/privacy" component={Privacy} />
-            <Route path="/terms" component={Terms} />
-            <Route path="/security" component={Security} />
-            <Route path="/pricing" component={Pricing} />
+              {/* Auth routes, no navbar chrome needed */}
+              <Route path="/login" component={Login} />
+              <Route path="/auth/confirm" component={AuthConfirm} />
+              <Route path="/about" component={About} />
+              <Route path="/methodology" component={Methodology} />
+              <Route path="/whats-new" component={WhatsNew} />
+              <Route path="/privacy" component={Privacy} />
+              <Route path="/terms" component={Terms} />
+              <Route path="/security" component={Security} />
+              <Route path="/pricing" component={Pricing} />
 
-            {/* Wizard routes, open to all */}
-            <Route path="/wizard/actions" component={ActionsStep} />
-            <Route path="/wizard/activities" component={ActivitiesStep} />
-            <Route path="/wizard/contributions" component={ContributionsStep} />
-            <Route path="/results" component={Results} />
-            <Route path="/suggestions" component={Suggestions} />
+              {/* Wizard routes, open to all */}
+              <Route path="/wizard/actions" component={ActionsStep} />
+              <Route path="/wizard/activities" component={ActivitiesStep} />
+              <Route path="/wizard/contributions" component={ContributionsStep} />
+              <Route path="/results" component={Results} />
+              <Route path="/suggestions" component={Suggestions} />
 
-            {/* Profile routes */}
-            <Route path="/profile/setup">
-              {() => <PrivateRoute component={ProfileSetup} />}
-            </Route>
-            <Route path="/profile">
-              {() => <PrivateRoute component={Profile} />}
-            </Route>
+              {/* Profile routes */}
+              <Route path="/profile/setup">
+                {() => <PrivateRoute component={ProfileSetup} />}
+              </Route>
+              <Route path="/profile">
+                {() => <PrivateRoute component={Profile} />}
+              </Route>
 
-            {/* Protected routes */}
-            <Route path="/settings">
-              {() => <PrivateRoute component={Settings} />}
-            </Route>
-            <Route path="/history">
-              {() => <PrivateRoute component={History} />}
-            </Route>
-            <Route path="/journal">
-              {() => <PrivateRoute component={Journal} />}
-            </Route>
-            <Route path="/milestones">
-              {() => <PrivateRoute component={Milestones} />}
-            </Route>
-            <Route path="/recap">
-              {() => <PrivateRoute component={AnnualRecap} />}
-            </Route>
-            <Route path="/quick-log">
-              {() => <PrivateRoute component={QuickLogPhoto} />}
-            </Route>
-            <Route path="/log" component={QuickLogActivity} />
-            <Route path="/badges">
-              {() => <Redirect to="/milestones" />}
-            </Route>
-            <Route path="/org/demo/education">
-              {() => <Redirect to="/org/demo?type=education" />}
-            </Route>
-            <Route path="/org/demo" component={OrgDemoPage} />
-            <Route path="/org/register" component={OrgRegister} />
-            <Route path="/org/share/:slug" component={OrgSharePage} />
-            <Route path="/org/submit">
-              {() => <PrivateRoute component={OrgMemberSubmit} />}
-            </Route>
-            <Route path="/org/dashboard">
-              {() => <PrivateRoute component={OrgDashboard} />}
-            </Route>
-            <Route path="/org/activities">
-              {() => <PrivateRoute component={OrgActivities} />}
-            </Route>
-            <Route path="/org/challenges">
-              {() => <PrivateRoute component={OrgChallenges} />}
-            </Route>
-            <Route path="/org/member/challenges">
-              {() => <PrivateRoute component={OrgMemberChallenges} />}
-            </Route>
-            <Route path="/org/member/pulse">
-              {() => <PrivateRoute component={OrgMemberPulse} />}
-            </Route>
-            <Route path="/org/pulse">
-              {() => <PrivateRoute component={OrgPulse} />}
-            </Route>
-            <Route path="/org/export">
-              {() => <PrivateRoute component={OrgExport} />}
-            </Route>
-            <Route path="/org/settings">
-              {() => <PrivateRoute component={OrgSettings} />}
-            </Route>
-            <Route path="/org">
-              {() => <OrgGuestRoute />}
-            </Route>
+              {/* Protected routes */}
+              <Route path="/settings">
+                {() => <PrivateRoute component={Settings} />}
+              </Route>
+              <Route path="/history">
+                {() => <PrivateRoute component={History} />}
+              </Route>
+              <Route path="/journal">
+                {() => <PrivateRoute component={Journal} />}
+              </Route>
+              <Route path="/milestones">
+                {() => <PrivateRoute component={Milestones} />}
+              </Route>
+              <Route path="/recap">
+                {() => <PrivateRoute component={AnnualRecap} />}
+              </Route>
+              <Route path="/quick-log">
+                {() => <PrivateRoute component={QuickLogPhoto} />}
+              </Route>
+              <Route path="/log" component={QuickLogActivity} />
+              <Route path="/badges">
+                {() => <Redirect to="/milestones" />}
+              </Route>
+              <Route path="/org/demo/education">
+                {() => <Redirect to="/org/demo?type=education" />}
+              </Route>
+              <Route path="/org/demo" component={OrgDemoPage} />
+              <Route path="/org/register" component={OrgRegister} />
+              <Route path="/org/share/:slug" component={OrgSharePage} />
+              <Route path="/org/submit">
+                {() => <PrivateRoute component={OrgMemberSubmit} />}
+              </Route>
+              <Route path="/org/dashboard">
+                {() => <PrivateRoute component={OrgDashboard} />}
+              </Route>
+              <Route path="/org/activities">
+                {() => <PrivateRoute component={OrgActivities} />}
+              </Route>
+              <Route path="/org/challenges">
+                {() => <PrivateRoute component={OrgChallenges} />}
+              </Route>
+              <Route path="/org/member/challenges">
+                {() => <PrivateRoute component={OrgMemberChallenges} />}
+              </Route>
+              <Route path="/org/member/pulse">
+                {() => <PrivateRoute component={OrgMemberPulse} />}
+              </Route>
+              <Route path="/org/pulse">
+                {() => <PrivateRoute component={OrgPulse} />}
+              </Route>
+              <Route path="/org/export">
+                {() => <PrivateRoute component={OrgExport} />}
+              </Route>
+              <Route path="/org/settings">
+                {() => <PrivateRoute component={OrgSettings} />}
+              </Route>
+              <Route path="/org">
+                {() => <OrgGuestRoute />}
+              </Route>
 
-            {/* Challenges */}
-            <Route path="/challenges/join" component={ChallengeJoin} />
-            <Route path="/challenges/:id">
-              {() => <PrivateRoute component={ChallengeDetail} />}
-            </Route>
-            <Route path="/challenges">
-              {() => <PrivateRoute component={Challenges} />}
-            </Route>
+              {/* Challenges */}
+              <Route path="/challenges/join" component={ChallengeJoin} />
+              <Route path="/challenges/:id">
+                {() => <PrivateRoute component={ChallengeDetail} />}
+              </Route>
+              <Route path="/challenges">
+                {() => <PrivateRoute component={Challenges} />}
+              </Route>
 
-            <Route path="/admin" component={Admin} />
-            <Route path="/contact" component={Contact} />
+              <Route path="/admin" component={Admin} />
+              <Route path="/contact" component={Contact} />
 
-            <Route path="/feedback" component={Feedback} />
+              <Route path="/feedback" component={Feedback} />
 
-            {/* Public profile, no login required */}
-            <Route path="/profile/:slug" component={PublicProfile} />
+              {/* Public profile, no login required */}
+              <Route path="/profile/:slug" component={PublicProfile} />
 
-            <Route component={NotFound} />
-          </Switch>
-          </ErrorBoundary>
-        </main>
-        {showFooter && <Footer />}
+              <Route component={NotFound} />
+            </Switch>
+            </ErrorBoundary>
+          </main>
+          {showFooter && <Footer />}
+        </div>
+        {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
+        <Sidekick />
       </div>
-      {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
-      <Sidekick />
       <FeedbackWidget />
       <YearRolloverModal />
     </div>

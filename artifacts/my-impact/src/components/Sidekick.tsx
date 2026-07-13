@@ -327,7 +327,7 @@ function AiDisabledByOrgRail({ userId }: { userId?: string | null }) {
   if (dismissed) return null;
   return (
     <div
-      className="hidden lg:flex sticky top-0 h-screen flex-col items-center justify-start pt-16 px-2 gap-3 bg-white flex-shrink-0"
+      className="hidden lg:flex h-full flex-col items-center justify-start px-2 gap-3 bg-white flex-shrink-0"
       style={{ width: 48, borderLeft: "1px solid #e5e7eb" }}
       role="status"
       aria-live="polite"
@@ -1341,7 +1341,7 @@ export function Sidekick() {
     <>
       {/* ── Desktop: right sidebar (hidden on mobile) ── */}
       <div
-        className="hidden lg:flex sticky top-0 h-screen flex-col bg-white transition-all duration-300 ease-in-out flex-shrink-0"
+        className="hidden lg:flex h-full flex-col bg-white transition-all duration-300 ease-in-out flex-shrink-0"
         style={{
           width: open ? 380 : 48,
           borderLeft: "1px solid #e5e7eb",
