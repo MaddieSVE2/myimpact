@@ -2,7 +2,12 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { textAiQuota } from "../lib/textAiUsage.js";
+import type { AuthenticatedRequest } from "../middleware/authenticate.js";
+import {
+  atomicIncrementTextAiUsage,
+  TEXT_AI_CAP_REACHED_MESSAGE,
+} from "../lib/textAiUsage.js";
+import { TtlCache } from "../lib/ttlCache.js";
 import { searchCharities, verifyCharityName } from "../lib/charity-commission";
 import { searchOSCRCharities, verifyOSCRCharityName } from "../lib/oscr";
 import { geocodePostcode, geocodePostcodes, haversineMiles } from "../lib/postcode.js";
@@ -49,6 +54,28 @@ function isBlockedOrganisation(name: string): boolean {
 type Verification = { registrationNumber: string } | null;
 
 /**
+ * Caches for AI/register lookups so repeat Ideas page loads don't burn AI
+ * quota or hammer the charity registers. Keyed per user + normalised inputs;
+ * results are cached AFTER register verification so trust badges are
+ * preserved on cache hits. 24h TTL keeps suggestions reasonably fresh.
+ */
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+type SuggestPlace = {
+  name: string;
+  description: string;
+  howToJoin: string;
+  source: "ai";
+  verified: boolean;
+  registrationNumber?: string;
+};
+const suggestCache = new TtlCache<{ places: SuggestPlace[] }>(CACHE_TTL_MS);
+
+function suggestCacheKey(userId: string, location: string, activityName: string): string {
+  return `${userId}|${location.trim().toLowerCase()}|${activityName.trim().toLowerCase()}`;
+}
+
+/**
  * Best-effort verify a batch of AI-suggested organisation names against the
  * relevant official register (OSCR for Scotland, Charity Commission for E&W).
  * Returns one result per input name, in order; null where no confident match.
@@ -74,8 +101,14 @@ async function verifyMany(names: string[], scotland: boolean): Promise<Verificat
   );
 }
 
-router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, async (req, res) => {
+router.post("/suggest", authenticate, localCharitiesRateLimit, async (req, res) => {
   try {
+    const userId = (req as AuthenticatedRequest).user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorised" });
+      return;
+    }
+
     const { location, activityName } = req.body as {
       location: string;
       activityName: string;
@@ -93,6 +126,25 @@ router.post("/suggest", authenticate, localCharitiesRateLimit, textAiQuota, asyn
 
     if (activityName.length > MAX_ACTIVITY_NAME_CHARS) {
       res.status(400).json({ error: `activityName must be at most ${MAX_ACTIVITY_NAME_CHARS} characters.` });
+      return;
+    }
+
+    // Serve cached results without touching the AI provider or the user's
+    // monthly quota. Verification badges were computed before caching.
+    const cacheKey = suggestCacheKey(userId, location, activityName);
+    const cached = suggestCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    // Only count against the monthly AI quota when we actually call the AI.
+    const allowed = await atomicIncrementTextAiUsage(userId);
+    if (!allowed) {
+      res.status(429).json({
+        error: TEXT_AI_CAP_REACHED_MESSAGE,
+        code: "text_ai_cap_reached",
+      });
       return;
     }
 
@@ -174,6 +226,12 @@ Rules:
       registrationNumber: verifications[i]?.registrationNumber,
     }));
 
+    // Only cache non-empty results — an empty answer is often transient
+    // (truncated AI output, register hiccup) and shouldn't stick for 24h.
+    if (places.length > 0) {
+      suggestCache.set(cacheKey, { places });
+    }
+
     res.json({ places });
   } catch (err) {
     console.error("Local charities error:", err);
@@ -230,8 +288,35 @@ function activitiesForInterests(interests: string[]): string[] {
   return result;
 }
 
+type NearbyResponse = {
+  nearby: Array<{
+    name: string;
+    activityType: string;
+    distanceMiles: number;
+    description: string;
+    website: string | null;
+    registerUrl: string;
+    registrationNumber: string;
+    source: "register";
+  }>;
+  location: { postcode: string; adminDistrict: string; country: string };
+};
+const nearbyCache = new TtlCache<NearbyResponse>(CACHE_TTL_MS);
+
+function nearbyCacheKey(userId: string, postcode: string, interests: string[]): string {
+  const pc = postcode.replace(/\s+/g, "").toUpperCase();
+  const ints = [...interests].sort().join(",");
+  return `${userId}|${pc}|${ints}`;
+}
+
 router.post("/nearby", authenticate, localCharitiesRateLimit, async (req, res) => {
   try {
+    const userId = (req as AuthenticatedRequest).user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorised" });
+      return;
+    }
+
     const { postcode, interests } = req.body as {
       postcode?: string;
       interests?: string[];
@@ -242,16 +327,24 @@ router.post("/nearby", authenticate, localCharitiesRateLimit, async (req, res) =
       return;
     }
 
+    const interestListForKey = Array.isArray(interests)
+      ? interests.filter((i): i is string => typeof i === "string")
+      : [];
+
+    const cacheKey = nearbyCacheKey(userId, postcode, interestListForKey);
+    const cachedNearby = nearbyCache.get(cacheKey);
+    if (cachedNearby) {
+      res.json(cachedNearby);
+      return;
+    }
+
     const userGeo = await geocodePostcode(postcode);
     if (!userGeo) {
       res.status(404).json({ error: "Could not look up that postcode" });
       return;
     }
 
-    const interestList = Array.isArray(interests)
-      ? interests.filter((i): i is string => typeof i === "string")
-      : [];
-    const activities = activitiesForInterests(interestList);
+    const activities = activitiesForInterests(interestListForKey);
 
     const ccApiKey = process.env.CHARITY_COMMISSION_API_KEY;
     const oscrApiKey = process.env.OSCR_API_KEY;
@@ -360,14 +453,22 @@ router.post("/nearby", authenticate, localCharitiesRateLimit, async (req, res) =
       if (nearby.length >= MAX_NEARBY_RESULTS) break;
     }
 
-    res.json({
+    const response: NearbyResponse = {
       nearby,
       location: {
         postcode: postcode.trim().toUpperCase(),
         adminDistrict: userGeo.adminDistrict,
         country: userGeo.country,
       },
-    });
+    };
+
+    // Only cache non-empty results so a transient register outage doesn't
+    // pin an empty "near you" section for a full day.
+    if (nearby.length > 0) {
+      nearbyCache.set(cacheKey, response);
+    }
+
+    res.json(response);
   } catch (err) {
     console.error("Local charities nearby error:", err);
     res.status(500).json({ error: "Failed to find nearby organisations" });
