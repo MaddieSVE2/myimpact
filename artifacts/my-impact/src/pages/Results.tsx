@@ -35,6 +35,7 @@ function clearChallengeContext() {
 }
 import { Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsDesktop } from "@/hooks/use-desktop";
 
 import { useAuth } from "@/lib/auth-context";
 import { paintResultsShareCard } from "@/lib/share-cards";
@@ -951,7 +952,8 @@ export default function Results() {
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
-  const { setOpen: openSidekick } = useSidekick();
+  const { open: sidekickOpen, setOpen: openSidekick } = useSidekick();
+  const isDesktop = useIsDesktop();
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1621,7 +1623,17 @@ export default function Results() {
       </motion.div>
 
       {/* Fixed action bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border" style={{ background: "white", boxShadow: "0 -4px 24px rgba(0,0,0,0.10)" }}>
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border transition-all duration-300 ease-in-out"
+        style={{
+          background: "white",
+          boxShadow: "0 -4px 24px rgba(0,0,0,0.10)",
+          // On desktop the Sidekick column (48px closed, 380px open) sits on
+          // the right edge; stop the fixed bar before it so the tab/panel
+          // stays clickable. Mobile Sidekick is a z-[60] overlay, unaffected.
+          right: isDesktop ? (sidekickOpen ? 380 : 48) : 0,
+        }}
+      >
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
 
           {/* Save, primary action, always prominent */}
