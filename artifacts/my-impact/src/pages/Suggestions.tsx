@@ -61,6 +61,25 @@ function GoVoSearchCard({ postcode }: { postcode: string }) {
   );
 }
 
+function VolunteerScotlandSearchCard() {
+  return (
+    <a
+      href="https://www.volunteerscotland.net/volunteer/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between gap-3 bg-white border border-border rounded-lg px-4 py-3 hover:border-foreground/30 transition-colors"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-primary">Search Volunteer Scotland</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+          Browse volunteering opportunities across Scotland
+        </p>
+      </div>
+      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+    </a>
+  );
+}
+
 function formatActivityType(activity: string): string {
   return activity.replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -312,6 +331,7 @@ export default function Suggestions() {
                     </div>
                   </motion.a>
                 ))}
+                {nearbyState.data.location.country === "Scotland" && <VolunteerScotlandSearchCard />}
                 <GoVoSearchCard postcode={profilePostcode} />
                 <p className="text-[10px] text-muted-foreground/70 pt-1">
                   Sorted by distance from {nearbyState.data.location.postcode}. Results from the official UK charity register.
@@ -324,6 +344,7 @@ export default function Suggestions() {
                     We couldn't find any registered charities matching your interests within 30 miles of {profilePostcode} right now. Browse the broader suggestions below for more ideas.
                   </p>
                 </div>
+                {nearbyState.data.location.country === "Scotland" && <VolunteerScotlandSearchCard />}
                 <GoVoSearchCard postcode={profilePostcode} />
               </div>
             ) : null}
