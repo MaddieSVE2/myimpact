@@ -139,16 +139,22 @@ test.describe("Spec 8 — org prompts", () => {
     };
     expect(mMyJson.org?.role).toBe("manager");
 
+    // The section's visibility is gated on /api/org/my, so wait for that
+    // response (networkidle is flaky — background polling keeps the network
+    // busy indefinitely).
+    let orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-full")).toHaveCount(0);
 
+    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/challenges");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
+    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/journal");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
     await ctx.close();
@@ -165,16 +171,19 @@ test.describe("Spec 8 — org prompts", () => {
     };
     expect(myJson.org).toBeNull();
 
+    let orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-full")).toHaveCount(0);
 
+    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/challenges");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
+    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/journal");
-    await page.waitForLoadState("networkidle");
+    await orgMyResponse;
     await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
     await ctx.close();

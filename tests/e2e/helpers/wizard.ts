@@ -34,10 +34,16 @@ export async function completeWizardWithExtraHours(
   }
 
   // Step 1: postcode is enough to satisfy canProceed.
+  // A late-resolving profile fetch can re-seed the form and clobber a value
+  // typed too early, so retry the fill until the Next button is enabled.
   const postcodeInput = page.getByPlaceholder(/manchester|postcode|m1/i).first();
   await postcodeInput.waitFor({ state: "visible" });
-  await postcodeInput.fill(postcode);
-  await page.getByRole("button", { name: /next:\s*add activities/i }).click();
+  const nextButton = page.getByRole("button", { name: /next:\s*add activities/i });
+  await expect(async () => {
+    await postcodeInput.fill(postcode);
+    await expect(nextButton).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  await nextButton.click();
 
   // Step 2: skip activity selection entirely.
   await page.waitForURL(/\/wizard\/activities/);
@@ -52,9 +58,10 @@ export async function completeWizardWithExtraHours(
   await numberInputs.nth(1).fill(String(hours));
   await page.getByRole("button", { name: /reveal my impact/i }).click();
 
-  // Land on /results.
+  // Land on /results. The hero copy is situation-specific, so assert on the
+  // stable currency headline (e.g. "£1,234") instead of any fixed phrase.
   await page.waitForURL(/\/results/, { timeout: 30_000 });
-  await expect(page.getByText(/total verified social impact/i)).toBeVisible();
+  await expect(page.locator("h1").filter({ hasText: "£" }).first()).toBeVisible();
 
   // Persist the calculated impact to the user's history. The Results page
   // does NOT auto-save: it shows a "Save progress" CTA which opens a

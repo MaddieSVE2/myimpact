@@ -90,11 +90,12 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
 
     await page.getByTestId("member-submit-next-details").click();
 
-    // ── Step 2: fill details ─────────────────────────────────────────────
-    await page.getByTestId("member-submit-period-label").fill("E2E April 2026");
+    // ── Step 2: fill details (the period-label field no longer exists) ────
     const quantityInput = page.getByTestId("member-submit-quantity-tree_planting");
     await expect(quantityInput).toBeVisible();
     await quantityInput.fill("3");
+    // Hours must be non-zero for the Review button to enable.
+    await page.getByTestId("member-submit-hours-tree_planting").fill("3");
     await page.getByTestId("member-submit-title-tree_planting").fill("Earth day planting");
     await page.getByTestId("member-submit-detail-tree_planting").fill("Local park weekend session");
 
@@ -107,7 +108,9 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     // listing for that org.
     await expect(page.getByTestId("member-submit-success")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/sent to/i)).toBeVisible();
-    await expect(page.getByText(created.orgName)).toBeVisible();
+    await expect(
+      page.getByTestId("member-submit-success").getByText(created.orgName).first(),
+    ).toBeVisible();
 
     await ctx.close();
   });

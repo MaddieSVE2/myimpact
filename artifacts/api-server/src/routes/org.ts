@@ -55,6 +55,13 @@ router.post("/register", orgRegisterRateLimit, async (req, res) => {
     return;
   }
 
+  // E2E test mode: skip the notification email. The registration row is
+  // saved above and can be approved via the test-only endpoints.
+  if (process.env.E2E_TEST_MODE === "1") {
+    res.json({ ok: true });
+    return;
+  }
+
   try {
     const { client, fromEmail } = await getUncachableResendClient();
     const { error: sendError } = await client.emails.send({

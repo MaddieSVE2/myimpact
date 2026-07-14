@@ -34,6 +34,13 @@ export function createRateLimiter(options: RateLimiterOptions) {
   }
 
   return function rateLimitMiddleware(req: Request, res: Response, next: NextFunction) {
+    // E2E test mode: the whole Playwright suite hammers the API from a single
+    // IP (localhost), so per-IP limits trip constantly and fail tests with
+    // spurious 429s. Test mode is never enabled in production.
+    if (process.env.E2E_TEST_MODE === "1") {
+      next();
+      return;
+    }
     const key = req.ip ?? req.socket.remoteAddress ?? "unknown";
     const now = Date.now();
 

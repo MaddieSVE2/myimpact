@@ -163,11 +163,16 @@ test.describe("GDPR self-service", () => {
     await signInWithMagicLink(page, api, email);
 
     // Seed one impact record + one journal entry + one recurring template.
-    const recRes = await context.request.post("/api/impact/records", {
+    // The server recomputes impact from activities/donations, so a
+    // donations-only body is the simplest valid record.
+    const recRes = await context.request.post("/api/impact/save", {
       data: {
+        userId: "e2e",
         name: "GDPR wipe test",
-        activities: [{ id: "donation", hours: 1 }],
-        periodLabel: "today",
+        period: "today",
+        activities: [],
+        donationsGBP: 10,
+        additionalVolunteerHours: 0,
       },
     });
     expect(recRes.ok()).toBe(true);
@@ -177,14 +182,20 @@ test.describe("GDPR self-service", () => {
     });
     expect(jRes.ok()).toBe(true);
 
-    const tRes = await context.request.post("/api/recurring-templates", {
-      data: { name: "GDPR template", activities: [{ id: "donation", hours: 1 }] },
+    const tRes = await context.request.post("/api/impact/templates", {
+      data: {
+        label: "GDPR template",
+        cadence: "monthly",
+        dayOfPeriod: 1,
+        defaultActivities: [],
+        defaultDonationsGBP: 5,
+      },
     });
     // Some envs may not have this route; only assert wipe if it created.
     const seededTemplate = tRes.ok();
 
     // Confirm seeds present.
-    const beforeRecs = await (await context.request.get("/api/impact/records")).json();
+    const beforeRecs = await (await context.request.get("/api/impact/history")).json();
     expect(beforeRecs.records?.length ?? beforeRecs.length ?? 0).toBeGreaterThan(0);
 
     // Hit the wipe endpoint.
@@ -192,12 +203,12 @@ test.describe("GDPR self-service", () => {
     expect(wipe.ok()).toBe(true);
 
     // Records, journal entries and (if seeded) templates are now empty.
-    const afterRecs = await (await context.request.get("/api/impact/records")).json();
+    const afterRecs = await (await context.request.get("/api/impact/history")).json();
     expect(afterRecs.records?.length ?? afterRecs.length ?? 0).toBe(0);
     const afterJournal = await (await context.request.get("/api/journal")).json();
     expect(afterJournal.entries?.length ?? afterJournal.length ?? 0).toBe(0);
     if (seededTemplate) {
-      const afterTpl = await (await context.request.get("/api/recurring-templates")).json();
+      const afterTpl = await (await context.request.get("/api/impact/templates")).json();
       expect(afterTpl.templates?.length ?? afterTpl.length ?? 0).toBe(0);
     }
   });

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Trophy, Plus, Users, Calendar, Target, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -373,6 +374,7 @@ export default function Challenges() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <OrgPromptsSection variant="compact" />
       <div className="flex items-start justify-between gap-3 mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">

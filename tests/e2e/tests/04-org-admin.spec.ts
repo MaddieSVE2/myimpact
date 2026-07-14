@@ -61,7 +61,9 @@ test.describe("Spec 4 — org admin registers, member joins, hours visible in da
 
     // The org dashboard renders for managers and surfaces the join link.
     await managerPage.goto("/org");
-    await expect(managerPage.getByText(approval.orgName)).toBeVisible({ timeout: 15_000 });
+    await expect(
+      managerPage.getByRole("heading", { name: approval.orgName }),
+    ).toBeVisible({ timeout: 15_000 });
 
     // ── Member: sign up, log impact, join org with the invite code ────────
     const memberCtx = await browser.newContext();
@@ -76,6 +78,17 @@ test.describe("Spec 4 — org admin registers, member joins, hours visible in da
       data: { inviteCode: approval.inviteCode, orgId: approval.orgId },
     });
     expect(memberJoin.ok()).toBe(true);
+
+    // Regular members join as "pending" and only count toward org stats
+    // once a manager approves them — do that from the manager session.
+    const pendingRes = await managerPage.request.get("/api/org/my/members?status=pending");
+    expect(pendingRes.ok()).toBe(true);
+    const pendingBody = (await pendingRes.json()) as { members: Array<{ userId: string }> };
+    expect(pendingBody.members.length).toBeGreaterThanOrEqual(1);
+    for (const m of pendingBody.members) {
+      const approveRes = await managerPage.request.post(`/api/org/my/members/${m.userId}/approve`);
+      expect(approveRes.ok()).toBe(true);
+    }
 
     // ── Manager dashboard: aggregated hours include the member ────────────
     // Hit the org stats API; the dashboard graphs hang off the same data.

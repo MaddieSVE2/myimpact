@@ -168,7 +168,9 @@ router.post("/request", async (req, res) => {
     )
     .orderBy(desc(magicTokensTable.expiresAt))
     .limit(1);
-  if (newestToken && newestToken.expiresAt.getTime() - Date.now() > 14 * 60 * 1000) {
+  // E2E tests sign the same user in repeatedly within seconds, so the
+  // per-email cooldown is skipped in test mode.
+  if (process.env.E2E_TEST_MODE !== "1" && newestToken && newestToken.expiresAt.getTime() - Date.now() > 14 * 60 * 1000) {
     res.status(429).json({ error: "A sign-in link was just sent. Please check your email or wait a moment before requesting another." });
     return;
   }

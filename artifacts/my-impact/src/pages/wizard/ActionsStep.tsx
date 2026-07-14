@@ -127,12 +127,16 @@ export default function ActionsStep() {
           ? rawSituation.filter(Boolean)
           : (typeof rawSituation === "string" && rawSituation ? [rawSituation] : []);
         const hasAnyData = data.profile.postcode || (data.profile.interests ?? []).length > 0 || loadedSituations.length > 0;
+        // Only seed when the profile actually has data — an empty profile
+        // would otherwise clobber values the user has already typed while
+        // the fetch was in flight.
+        if (!hasAnyData) return;
         seedFromProfile({
           postcode: data.profile.postcode ?? null,
           interests: data.profile.interests ?? [],
           situations: loadedSituations,
         });
-        if (hasAnyData) setProfileLoaded(true);
+        setProfileLoaded(true);
       });
   }, [authLoading, isLoggedIn, hasDraft, seedFromProfile]);
 

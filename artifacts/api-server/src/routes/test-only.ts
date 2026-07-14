@@ -180,6 +180,15 @@ router.post("/delete-org", async (req, res) => {
     res.status(400).json({ error: "orgId required" });
     return;
   }
+  // Challenges reference organisations without ON DELETE CASCADE, so remove
+  // them first (challenge_participants cascade off challenges). Other
+  // non-cascading FK tables (record_verifications, org_audit_log,
+  // org_share_links) are cleaned via raw SQL so the delete never trips a
+  // foreign-key violation mid-suite.
+  await db.delete(challengesTable).where(eq(challengesTable.orgId, orgId));
+  await db.execute(sql`delete from record_verifications where org_id = ${orgId}`);
+  await db.execute(sql`delete from org_audit_log where org_id = ${orgId}`);
+  await db.execute(sql`delete from org_share_links where org_id = ${orgId}`);
   await db.delete(orgMembersTable).where(eq(orgMembersTable.orgId, orgId));
   await db.delete(organisationsTable).where(eq(organisationsTable.id, orgId));
   res.json({ ok: true });

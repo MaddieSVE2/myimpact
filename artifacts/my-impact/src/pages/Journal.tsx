@@ -9,6 +9,7 @@ import { TagEditor } from "@/components/TagEditor";
 import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompts";
 import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
+import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 
 interface JournalEntry {
   id: string;
@@ -554,6 +555,7 @@ export default function Journal() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
+      <OrgPromptsSection variant="compact" />
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
