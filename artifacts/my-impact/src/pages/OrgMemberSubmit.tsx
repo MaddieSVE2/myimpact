@@ -1092,7 +1092,16 @@ export default function OrgMemberSubmit() {
               <p className="text-sm text-muted-foreground mb-1">
                 Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are now part of your organisation's totals.
               </p>
-              <p className="text-xs text-muted-foreground mb-4">Your organisation manager can see them flagged as member-submitted.</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Your organisation manager can see them flagged as member-submitted.{" "}
+                <Link
+                  href="/org/submit/history"
+                  className="text-primary underline font-medium"
+                  data-testid="member-submit-history-link"
+                >
+                  View all your submissions
+                </Link>
+              </p>
               {saveToPersonal && !withdrawn && (
                 <div className="flex items-center justify-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4" data-testid="member-submit-personal-confirmation">
                   <Check className="w-3.5 h-3.5 shrink-0" />
