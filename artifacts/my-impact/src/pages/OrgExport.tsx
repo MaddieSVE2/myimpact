@@ -236,7 +236,11 @@ export default function OrgExport() {
       sroiCostPerVolunteer: orgData.org.sroiCostPerVolunteer ?? null,
       sroiCostBreakdown: orgData.org.sroiCostBreakdown ?? null,
       branding: orgData.org.branding ?? null,
-      sroi: { costPerVolunteer: sroiCostPerVolunteer, totalMembers },
+      sroi: {
+        costPerVolunteer: sroiCostPerVolunteer,
+        totalMembers,
+        costConfigured: orgData.org.sroiCostPerVolunteer != null,
+      },
       locale,
       sections,
     };

@@ -66,6 +66,9 @@ export interface RenderOrgPdfArgs {
   sroi?: {
     costPerVolunteer: number;
     totalMembers: number;
+    // True only when the org has explicitly configured a cost-per-volunteer
+    // (i.e. not the platform default fallback). Gates the headline SROI cell.
+    costConfigured?: boolean;
   } | null;
   // Active app locale; defaults to English. Used to keep the SROI section
   // copy aligned with the dashboard explainer in EN/CY.
@@ -225,13 +228,25 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     y += 12;
 
     const cardGap = 14;
-    const cardW = (contentW - cardGap * 2) / 3;
     const cardH = 80;
     const statCards = [
       { label: "Social value", value: `£${totals.value.toLocaleString("en-GB")}`, sub: "Total generated" },
       { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member volunteer time" },
       { label: "Activities",   value: totals.activities.toLocaleString("en-GB"),       sub: "Logged in this period" },
     ];
+    // Surface the SROI ratio in the headline row when cost-per-volunteer is
+    // configured, using the same calculation as the dashboard and the SROI
+    // assumptions section below. Omitted cleanly otherwise.
+    if (sroi && sroi.costConfigured && sroi.totalMembers > 0 && sroi.costPerVolunteer > 0) {
+      const headlineInvestment = sroi.totalMembers * sroi.costPerVolunteer;
+      const headlineRatio = totals.value / headlineInvestment;
+      statCards.push({
+        label: "SROI",
+        value: `£${headlineRatio.toFixed(2)}`,
+        sub: "Value per £1 invested",
+      });
+    }
+    const cardW = (contentW - cardGap * (statCards.length - 1)) / statCards.length;
     statCards.forEach((c, i) => {
       const x = margin + i * (cardW + cardGap);
       setFill(brandTint);
@@ -240,7 +255,8 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
       doc.roundedRect(x, y, 4, cardH, 2, 2, "F");
       doc.setFont("helvetica", "bold"); doc.setFontSize(8); setText(MUTED);
       doc.text(c.label.toUpperCase(), x + 16, y + 18);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(22); setText(INK);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(statCards.length > 3 ? 18 : 22); setText(INK);
       doc.text(c.value, x + 16, y + 48);
       doc.setFont("helvetica", "normal"); doc.setFontSize(9); setText(MUTED);
       doc.text(c.sub, x + 16, y + 66);
