@@ -17,6 +17,8 @@ export const ANALYTICS_EVENTS = [
   "org_invite_accepted",
   "org_member_submit_started",
   "org_member_submit_completed",
+  "org_member_submit_edited",
+  "org_member_submit_withdrawn",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

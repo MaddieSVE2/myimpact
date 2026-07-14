@@ -19,6 +19,12 @@ const state = vi.hoisted(() => ({
   // Recorded enqueueOrgEvent / trackServerEvent calls.
   enqueued: [] as Array<{ orgId: string; eventType: string; payload: unknown }>,
   tracked: [] as Array<{ eventName: string; userId?: string }>,
+  // db.query.impactRecordsTable.findFirst() result (for DELETE/PATCH routes).
+  impactRecord: null as Record<string, unknown> | null,
+  // Recorded db.update(table).set(values) calls.
+  updates: [] as Array<{ table: string; values: unknown }>,
+  // Recorded db.delete(table) calls.
+  deletes: [] as string[],
 }));
 
 // ── @workspace/db mock ───────────────────────────────────────────────────────
@@ -67,18 +73,34 @@ vi.mock("@workspace/db", () => {
       orgMembersTable: {
         findFirst: vi.fn(async () => state.membership),
       },
+      impactRecordsTable: {
+        findFirst: vi.fn(async () => state.impactRecord),
+      },
     },
     insert: (table: { __tableName: string }) => insertFor(table),
     select: (_cols?: unknown) =>
       builderFor(() => state.selectQueue.shift() ?? []),
-    update: () => ({
-      set: () => ({
-        where: () => ({
-          returning: async () => [{}],
-        }),
-      }),
+    update: (table: { __tableName: string }) => ({
+      set: (values: unknown) => {
+        state.updates.push({ table: table.__tableName, values });
+        return {
+          where: () => {
+            const chain = {
+              returning: async () => [{}],
+              then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+                Promise.resolve(undefined).then(resolve, reject),
+            };
+            return chain;
+          },
+        };
+      },
     }),
-    delete: () => ({ where: async () => undefined }),
+    delete: (table: { __tableName: string }) => ({
+      where: () => {
+        state.deletes.push(table.__tableName);
+        return Promise.resolve(undefined);
+      },
+    }),
     transaction: async (cb: (tx: unknown) => unknown) => cb({}),
   };
 
@@ -142,6 +164,9 @@ vi.mock("../src/lib/oidc.js", () => ({
   isProviderConfigured: () => false,
   normalizeDomain: (d: string) => d,
 }));
+vi.mock("../src/lib/attachmentCleanup.js", () => ({
+  deleteAttachmentsForRecord: vi.fn(async () => 0),
+}));
 vi.mock("../src/lib/objectStorage.js", () => ({
   generateOrgLogoKey: () => "stub",
   getUploadURL: vi.fn(async () => "https://stub"),
@@ -169,6 +194,9 @@ beforeEach(() => {
   state.enqueued.length = 0;
   state.tracked.length = 0;
   state.insertedRecordId = 4242;
+  state.impactRecord = null;
+  state.updates.length = 0;
+  state.deletes.length = 0;
 });
 
 describe("POST /api/org/member-submit", () => {
@@ -411,5 +439,194 @@ describe("GET /api/org/member-submissions", () => {
     expect(s.lines[0].category).toBe("Environment");
     expect(s.lines[0].title).toBe("Earth day");
     expect(s.lines[0].quantity).toBe(4);
+  });
+});
+
+// ── Shared fixture for DELETE / PATCH tests ──────────────────────────────────
+function memberRecord(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const submittedAt = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+  return {
+    id: 7,
+    userId: "user-1",
+    name: "April submission",
+    periodLabel: "April 2026",
+    totalHours: 10,
+    totalValue: "1234.5",
+    source: "member-submitted",
+    submittedToOrgId: "org-1",
+    submittedToOrgAt: submittedAt,
+    createdAt: submittedAt,
+    activitiesJson: [{ activityId: "tree_planting", quantity: 4, hoursPerYear: 0, title: null, detail: null }],
+    resultJson: {},
+    ...overrides,
+  };
+}
+
+describe("DELETE /api/org/member-submissions/:recordId", () => {
+  it("lets the submitting member withdraw within the 24h window and fires hours.withdrawn", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.impactRecord = memberRecord();
+
+    const app = makeApp();
+    const res = await request(app)
+      .delete("/api/org/member-submissions/7")
+      .send({ reason: "Sent by mistake" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(state.deletes).toContain("impact_records");
+
+    // Audit log written with reason.
+    const audit = state.inserts.find(i => i.table === "org_audit_log");
+    expect(audit).toBeTruthy();
+    const auditValues = audit!.values as Record<string, unknown>;
+    expect(auditValues.action).toBe("member.submit.withdraw");
+    const meta = auditValues.metadata as Record<string, unknown>;
+    expect(meta.actorRole).toBe("member");
+    expect(meta.reason).toBe("Sent by mistake");
+
+    // Webhook re-fired.
+    expect(state.enqueued).toHaveLength(1);
+    expect(state.enqueued[0].eventType).toBe("hours.withdrawn");
+    const payload = state.enqueued[0].payload as Record<string, unknown>;
+    expect(payload.recordId).toBe("7");
+    expect(payload.reason).toBe("Sent by mistake");
+  });
+
+  it("blocks the member after the 24h window with 403", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    state.impactRecord = memberRecord({ submittedToOrgAt: old, createdAt: old });
+
+    const app = makeApp();
+    const res = await request(app).delete("/api/org/member-submissions/7").send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/24 hours/i);
+    expect(state.deletes).toHaveLength(0);
+    expect(state.enqueued).toHaveLength(0);
+  });
+
+  it("lets a manager withdraw any time, even after the window", async () => {
+    state.authUser = { id: "manager-1", email: "manager@example.com" };
+    state.membership = { orgId: "org-1", userId: "manager-1", role: "manager" };
+    const old = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    state.impactRecord = memberRecord({ submittedToOrgAt: old, createdAt: old });
+
+    const app = makeApp();
+    const res = await request(app)
+      .delete("/api/org/member-submissions/7")
+      .send({ reason: "Duplicate entry" });
+
+    expect(res.status).toBe(200);
+    expect(state.deletes).toContain("impact_records");
+    expect(state.enqueued[0].eventType).toBe("hours.withdrawn");
+    const payload = state.enqueued[0].payload as Record<string, unknown>;
+    expect((payload.withdrawnBy as Record<string, unknown>).role).toBe("manager");
+  });
+
+  it("rejects an unrelated user (not owner, not manager) with 403", async () => {
+    state.authUser = { id: "user-2", email: "user2@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-2", role: "member" };
+    state.impactRecord = memberRecord(); // owned by user-1
+
+    const app = makeApp();
+    const res = await request(app).delete("/api/org/member-submissions/7").send({});
+
+    expect(res.status).toBe(403);
+    expect(state.deletes).toHaveLength(0);
+  });
+});
+
+describe("PATCH /api/org/member-submissions/:recordId", () => {
+  it("lets the submitting member edit within the window, updates the record, and fires hours.updated", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.impactRecord = memberRecord();
+
+    const app = makeApp();
+    const res = await request(app)
+      .patch("/api/org/member-submissions/7")
+      .send({
+        reason: "Wrong number of trees",
+        activities: [{ activityId: "tree_planting", quantity: 2 }],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.record.id).toBe(7);
+    expect(res.body.record.activityCount).toBe(1);
+
+    // Record updated in place.
+    const update = state.updates.find(u => u.table === "impact_records");
+    expect(update).toBeTruthy();
+    const values = update!.values as Record<string, unknown>;
+    expect(Array.isArray(values.activitiesJson)).toBe(true);
+    expect((values.activitiesJson as unknown[]).length).toBe(1);
+
+    // Audit log written with before/after figures and reason.
+    const audit = state.inserts.find(i => i.table === "org_audit_log");
+    expect(audit).toBeTruthy();
+    const auditValues = audit!.values as Record<string, unknown>;
+    expect(auditValues.action).toBe("member.submit.edit");
+    const meta = auditValues.metadata as Record<string, unknown>;
+    expect(meta.previousTotalHours).toBe(10);
+    expect(meta.reason).toBe("Wrong number of trees");
+
+    // Webhook fired with old + new figures.
+    expect(state.enqueued).toHaveLength(1);
+    expect(state.enqueued[0].eventType).toBe("hours.updated");
+    const payload = state.enqueued[0].payload as Record<string, unknown>;
+    expect(payload.recordId).toBe("7");
+    expect(payload.previousHours).toBe(10);
+  });
+
+  it("blocks edits after the 24h window with 403", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    state.impactRecord = memberRecord({ submittedToOrgAt: old, createdAt: old });
+
+    const app = makeApp();
+    const res = await request(app)
+      .patch("/api/org/member-submissions/7")
+      .send({ activities: [{ activityId: "tree_planting", quantity: 2 }] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/24 hours/i);
+    expect(state.updates).toHaveLength(0);
+    expect(state.enqueued).toHaveLength(0);
+  });
+
+  it("rejects edits by anyone other than the submitting member (including managers) with 403", async () => {
+    state.authUser = { id: "manager-1", email: "manager@example.com" };
+    state.membership = { orgId: "org-1", userId: "manager-1", role: "manager" };
+    state.impactRecord = memberRecord(); // owned by user-1
+
+    const app = makeApp();
+    const res = await request(app)
+      .patch("/api/org/member-submissions/7")
+      .send({ activities: [{ activityId: "tree_planting", quantity: 2 }] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/your own/i);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it("validates the replacement activities like a fresh submission", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.impactRecord = memberRecord();
+
+    const app = makeApp();
+    const res = await request(app)
+      .patch("/api/org/member-submissions/7")
+      .send({ activities: [{ activityId: "not_real", quantity: 1 }] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/unknown activity/i);
+    expect(state.updates).toHaveLength(0);
   });
 });

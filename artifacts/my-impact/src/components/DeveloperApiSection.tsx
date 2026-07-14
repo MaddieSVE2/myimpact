@@ -256,7 +256,7 @@ function LiveDeveloperApiSection() {
   });
 
   const supportedEvents = webhooksQuery.data?.supportedEvents ?? [
-    "member.joined", "hours.logged", "hours.attested", "hours.verified", "milestone.earned",
+    "member.joined", "hours.logged", "hours.attested", "hours.verified", "hours.updated", "hours.withdrawn", "milestone.earned",
   ];
 
   function toggleEvent(ev: string) {
@@ -560,6 +560,8 @@ function LiveDeveloperApiSection() {
               <li><code className="font-mono">hours.logged</code>: a member logged hours via the app</li>
               <li><code className="font-mono">hours.attested</code>: hours pushed via your API key</li>
               <li><code className="font-mono">hours.verified</code>: hours marked verified</li>
+              <li><code className="font-mono">hours.updated</code>: a member corrected a submission they'd sent</li>
+              <li><code className="font-mono">hours.withdrawn</code>: a submission was withdrawn by the member or a manager</li>
               <li><code className="font-mono">milestone.earned</code>: member earned a milestone</li>
             </ul>
           </div>

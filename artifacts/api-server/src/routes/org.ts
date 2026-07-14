@@ -2264,6 +2264,77 @@ interface MemberSubmitBody {
   activities?: unknown;
 }
 
+// How long a member can edit or withdraw their own submission after sending
+// it. Managers can withdraw at any time.
+const MEMBER_SUBMISSION_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+type CleanedMemberActivity = {
+  activityId: string;
+  quantity: number;
+  hoursPerYear: number;
+  title: string | null;
+  detail: string | null;
+  isSomethingElse: boolean;
+};
+
+// Validates and normalises the `activities` payload shared by the member
+// submit (POST) and member edit (PATCH) endpoints. Returns either the cleaned
+// lines or a client-facing error message.
+function cleanMemberActivities(activitiesRaw: unknown): { cleaned: CleanedMemberActivity[] } | { error: string } {
+  if (!Array.isArray(activitiesRaw) || activitiesRaw.length === 0) {
+    return { error: "At least one activity is required." };
+  }
+  if (activitiesRaw.length > 100) {
+    return { error: "You can submit at most 100 activities at once." };
+  }
+
+  const cleaned: CleanedMemberActivity[] = [];
+  for (const raw of activitiesRaw as MemberSubmitActivity[]) {
+    const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
+    const isSomethingElse = id === "something_else";
+
+    if (isSomethingElse) {
+      const hoursNum = Number(raw.hoursPerYear);
+      const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
+      if (safeHours <= 0) {
+        return { error: "Custom activity ('Something else') needs a positive hours value." };
+      }
+      if (safeHours > 24 * 365) {
+        return { error: "Custom activity has an unreasonably large hours value." };
+      }
+      const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
+      if (!title) {
+        return { error: "A 'Something else' activity must include a description of what you did." };
+      }
+      const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
+      cleaned.push({ activityId: "something_else", quantity: 0, hoursPerYear: safeHours, title, detail, isSomethingElse: true });
+      continue;
+    }
+
+    const def = ACTIVITIES.find(a => a.id === id);
+    if (!def) {
+      return { error: `Unknown activity id '${id}'. Only standard activities are allowed.` };
+    }
+    const quantityNum = Number(raw.quantity);
+    const hoursNum = Number(raw.hoursPerYear);
+    const safeQuantity = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
+    const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
+    // For unit=hour activities the SVE proxy is multiplied by hoursPerYear,
+    // so safeHours must be > 0; for unit-based activities safeQuantity must
+    // be > 0. Reject empty rows so we never insert a zero-value record.
+    if (def.unit === "hour" ? safeHours <= 0 : safeQuantity <= 0) {
+      return { error: `Activity '${def.name}' needs a positive quantity or hours value.` };
+    }
+    if (safeHours > 24 * 365 || safeQuantity > 100_000) {
+      return { error: `Activity '${def.name}' has an unreasonably large value.` };
+    }
+    const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
+    const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
+    cleaned.push({ activityId: id, quantity: safeQuantity, hoursPerYear: safeHours, title, detail, isSomethingElse: false });
+  }
+  return { cleaned };
+}
+
 router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -2308,65 +2379,12 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
 
     const saveToPersonal = body.saveToPersonal === true;
 
-    if (!Array.isArray(body.activities) || body.activities.length === 0) {
-      res.status(400).json({ error: "At least one activity is required." });
+    const parsed = cleanMemberActivities(body.activities);
+    if ("error" in parsed) {
+      res.status(400).json({ error: parsed.error });
       return;
     }
-    if (body.activities.length > 100) {
-      res.status(400).json({ error: "You can submit at most 100 activities at once." });
-      return;
-    }
-
-    const cleaned: Array<{ activityId: string; quantity: number; hoursPerYear: number; title: string | null; detail: string | null; isSomethingElse: boolean }> = [];
-    for (const raw of body.activities as MemberSubmitActivity[]) {
-      const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
-      const isSomethingElse = id === "something_else";
-
-      if (isSomethingElse) {
-        const hoursNum = Number(raw.hoursPerYear);
-        const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
-        if (safeHours <= 0) {
-          res.status(400).json({ error: "Custom activity ('Something else') needs a positive hours value." });
-          return;
-        }
-        if (safeHours > 24 * 365) {
-          res.status(400).json({ error: "Custom activity has an unreasonably large hours value." });
-          return;
-        }
-        const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
-        if (!title) {
-          res.status(400).json({ error: "A 'Something else' activity must include a description of what you did." });
-          return;
-        }
-        const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
-        cleaned.push({ activityId: "something_else", quantity: 0, hoursPerYear: safeHours, title, detail, isSomethingElse: true });
-        continue;
-      }
-
-      const def = ACTIVITIES.find(a => a.id === id);
-      if (!def) {
-        res.status(400).json({ error: `Unknown activity id '${id}'. Only standard activities are allowed.` });
-        return;
-      }
-      const quantityNum = Number(raw.quantity);
-      const hoursNum = Number(raw.hoursPerYear);
-      const safeQuantity = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
-      const safeHours = Number.isFinite(hoursNum) && hoursNum > 0 ? hoursNum : 0;
-      // For unit=hour activities the SVE proxy is multiplied by hoursPerYear,
-      // so safeHours must be > 0; for unit-based activities safeQuantity must
-      // be > 0. Reject empty rows so we never insert a zero-value record.
-      if (def.unit === "hour" ? safeHours <= 0 : safeQuantity <= 0) {
-        res.status(400).json({ error: `Activity '${def.name}' needs a positive quantity or hours value.` });
-        return;
-      }
-      if (safeHours > 24 * 365 || safeQuantity > 100_000) {
-        res.status(400).json({ error: `Activity '${def.name}' has an unreasonably large value.` });
-        return;
-      }
-      const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : null;
-      const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
-      cleaned.push({ activityId: id, quantity: safeQuantity, hoursPerYear: safeHours, title, detail, isSomethingElse: false });
-    }
+    const cleaned = parsed.cleaned;
 
     // Separate standard activities (have SVE proxy) from custom "something_else" ones
     const standardCleaned = cleaned.filter(c => !c.isSomethingElse);
@@ -2645,18 +2663,35 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
       )!)
       .orderBy(desc(impactRecordsTable.submittedToOrgAt));
 
+    const nowMs = Date.now();
     const items = records.map(r => {
       const lines = Array.isArray(r.activitiesJson)
-        ? (r.activitiesJson as Array<{ activityId?: string }>)
+        ? (r.activitiesJson as Array<{ activityId?: string; quantity?: number; hoursPerYear?: number; title?: string | null; detail?: string | null }>)
         : [];
+      const submittedAt = r.submittedToOrgAt ?? r.createdAt;
+      const editableUntil = new Date(submittedAt.getTime() + MEMBER_SUBMISSION_EDIT_WINDOW_MS);
       return {
         recordId: r.id,
         name: r.name,
         period: r.periodLabel,
         totalHours: r.totalHours,
         totalValue: Number(r.totalValue),
-        submittedAt: (r.submittedToOrgAt ?? r.createdAt).toISOString(),
+        submittedAt: submittedAt.toISOString(),
         activityCount: lines.length,
+        editableUntil: editableUntil.toISOString(),
+        canEdit: nowMs < editableUntil.getTime(),
+        lines: lines.map(l => {
+          const def = ACTIVITIES.find(a => a.id === l.activityId);
+          return {
+            activityId: l.activityId ?? "",
+            activityName: l.activityId === "something_else" ? (l.title ?? "Something else") : (def?.name ?? l.activityId ?? "Activity"),
+            unit: def?.unit ?? "hour",
+            quantity: l.quantity ?? 0,
+            hoursPerYear: l.hoursPerYear ?? 0,
+            title: l.title ?? null,
+            detail: l.detail ?? null,
+          };
+        }),
       };
     });
 
@@ -2704,17 +2739,24 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
 
     const orgId = record.submittedToOrgId;
     const isOwner = record.userId === userId;
-    let actorRole: "member" | "manager" = "member";
 
-    if (!isOwner) {
-      const membership = await db.query.orgMembersTable.findFirst({
-        where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId)),
-      });
-      if (!membership || membership.role !== "manager") {
-        res.status(403).json({ error: "You don't have permission to withdraw this submission." });
+    // Managers can withdraw at any time; members only within the edit window.
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId)),
+    });
+    const isManager = membership?.role === "manager";
+    const actorRole: "member" | "manager" = isManager ? "manager" : "member";
+
+    if (!isOwner && !isManager) {
+      res.status(403).json({ error: "You don't have permission to withdraw this submission." });
+      return;
+    }
+    if (!isManager) {
+      const submittedAtMs = (record.submittedToOrgAt ?? record.createdAt).getTime();
+      if (Date.now() - submittedAtMs > MEMBER_SUBMISSION_EDIT_WINDOW_MS) {
+        res.status(403).json({ error: "This submission is more than 24 hours old. Ask an organisation manager to withdraw it." });
         return;
       }
-      actorRole = "manager";
     }
 
     await deleteAttachmentsForRecord(record.userId, recordId);
@@ -2726,7 +2768,23 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
       totalHours: record.totalHours,
       totalValue: Number(record.totalValue),
       submittedAt: (record.submittedToOrgAt ?? record.createdAt).toISOString(),
-      ...(actorRole === "manager" && reason ? { reason } : {}),
+      ...(reason ? { reason } : {}),
+    });
+
+    // Re-fire a webhook event so downstream systems that consumed the
+    // original hours.logged event can re-balance their totals.
+    await enqueueOrgEvent({
+      orgId,
+      eventType: "hours.withdrawn",
+      payload: {
+        recordId: String(recordId),
+        member: { ref: record.userId },
+        withdrawnBy: { ref: userId, role: actorRole },
+        hours: record.totalHours,
+        socialValueGBP: Number(record.totalValue),
+        reason: reason ?? null,
+        occurredAt: new Date().toISOString(),
+      },
     });
 
     trackServerEvent({
@@ -2740,6 +2798,148 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
   } catch (err) {
     console.error("Withdraw member submission error:", err);
     res.status(500).json({ error: "Failed to withdraw submission." });
+  }
+});
+
+// ─── PATCH /api/org/member-submissions/:recordId ──────────────────────────
+// Edit a member submission. Only the submitting member may edit, and only
+// within the 24-hour edit window. Accepts a replacement `activities` array
+// (same validation as /member-submit), recalculates the impact figures, and
+// updates the record in place. The auto-approved verification row is left
+// untouched, so org totals simply reflect the new figures. Writes an audit
+// entry and fires an hours.updated webhook so downstream systems re-sync.
+router.patch("/member-submissions/:recordId", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const recordId = parseInt(req.params.recordId as string, 10);
+    if (!Number.isFinite(recordId)) {
+      res.status(400).json({ error: "Invalid record id." });
+      return;
+    }
+
+    const rawReason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (rawReason.length > 500) {
+      res.status(400).json({ error: "Reason must be 500 characters or fewer." });
+      return;
+    }
+    const reason = rawReason.length > 0 ? rawReason : null;
+
+    const record = await db.query.impactRecordsTable.findFirst({
+      where: eq(impactRecordsTable.id, recordId),
+    });
+    if (!record) {
+      res.status(404).json({ error: "Submission not found." });
+      return;
+    }
+    if (record.source !== "member-submitted" || !record.submittedToOrgId) {
+      res.status(400).json({ error: "Only member submissions can be edited here." });
+      return;
+    }
+    if (record.userId !== userId) {
+      res.status(403).json({ error: "You can only edit your own submissions." });
+      return;
+    }
+    const submittedAtMs = (record.submittedToOrgAt ?? record.createdAt).getTime();
+    if (Date.now() - submittedAtMs > MEMBER_SUBMISSION_EDIT_WINDOW_MS) {
+      res.status(403).json({ error: "This submission is more than 24 hours old and can no longer be edited. Ask an organisation manager to withdraw it if it's wrong." });
+      return;
+    }
+
+    const parsed = cleanMemberActivities(req.body?.activities);
+    if ("error" in parsed) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const cleaned = parsed.cleaned;
+
+    const standardCleaned = cleaned.filter(c => !c.isSomethingElse);
+    const somethingElseHours = cleaned
+      .filter(c => c.isSomethingElse)
+      .reduce((sum, c) => sum + c.hoursPerYear, 0);
+
+    const calc = calculateImpact(
+      standardCleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
+      0,
+      somethingElseHours,
+      [],
+    );
+
+    const memberLines = cleaned.map(c => ({
+      activityId: c.activityId,
+      quantity: c.quantity,
+      hoursPerYear: c.hoursPerYear,
+      title: c.title,
+      detail: c.detail,
+    }));
+
+    const orgId = record.submittedToOrgId;
+    const now = new Date();
+
+    await db.update(impactRecordsTable)
+      .set({
+        totalValue: String(calc.totalValue),
+        impactValue: String(calc.impactValue),
+        contributionValue: String(calc.contributionValue),
+        personalDevelopmentValue: String(calc.personalDevelopmentValue),
+        totalHours: Math.round(calc.totalHours),
+        activitiesJson: memberLines,
+        resultJson: {
+          ...calc,
+          source: "member-submitted",
+          submittedToOrgId: orgId,
+          submittedToOrgAt: (record.submittedToOrgAt ?? record.createdAt).toISOString(),
+          editedAt: now.toISOString(),
+          memberLines,
+        },
+      })
+      .where(eq(impactRecordsTable.id, recordId));
+
+    await writeAuditLog(orgId, userId, "member.submit.edit", "impact_record", String(recordId), {
+      actorRole: "member",
+      previousTotalHours: record.totalHours,
+      previousTotalValue: Number(record.totalValue),
+      newTotalHours: calc.totalHours,
+      newTotalValue: calc.totalValue,
+      activityCount: cleaned.length,
+      ...(reason ? { reason } : {}),
+    });
+
+    await enqueueOrgEvent({
+      orgId,
+      eventType: "hours.updated",
+      payload: {
+        recordId: String(recordId),
+        member: { ref: userId, email: req.user!.email },
+        source: "member-submitted",
+        activityCount: cleaned.length,
+        hours: calc.totalHours,
+        socialValueGBP: calc.totalValue,
+        previousHours: record.totalHours,
+        previousSocialValueGBP: Number(record.totalValue),
+        reason: reason ?? null,
+        occurredAt: now.toISOString(),
+      },
+    });
+
+    trackServerEvent({
+      eventName: "org_member_submit_edited",
+      userId,
+      surface: "org",
+      props: { orgId, recordId, activityCount: cleaned.length, totalHours: calc.totalHours },
+    });
+
+    res.json({
+      ok: true,
+      record: {
+        id: recordId,
+        totalValue: calc.totalValue,
+        totalHours: calc.totalHours,
+        activityCount: cleaned.length,
+      },
+    });
+  } catch (err) {
+    console.error("Edit member submission error:", err);
+    res.status(500).json({ error: "Failed to update submission." });
   }
 });
 

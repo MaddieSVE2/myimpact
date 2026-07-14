@@ -58,6 +58,8 @@ export type WebhookEvent =
   | "hours.logged"
   | "hours.attested"
   | "hours.verified"
+  | "hours.updated"
+  | "hours.withdrawn"
   | "milestone.earned";
 
 export const SUPPORTED_EVENTS: WebhookEvent[] = [
@@ -65,6 +67,8 @@ export const SUPPORTED_EVENTS: WebhookEvent[] = [
   "hours.logged",
   "hours.attested",
   "hours.verified",
+  "hours.updated",
+  "hours.withdrawn",
   "milestone.earned",
 ];
 

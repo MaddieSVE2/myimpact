@@ -38,6 +38,16 @@ function todayIso(): string {
 
 type Step = "select" | "details" | "review" | "done";
 
+interface MySubmissionLine {
+  activityId: string;
+  activityName: string;
+  unit: string;
+  quantity: number;
+  hoursPerYear: number;
+  title: string | null;
+  detail: string | null;
+}
+
 interface MySubmission {
   recordId: number;
   name: string;
@@ -46,6 +56,9 @@ interface MySubmission {
   totalValue: number;
   submittedAt: string;
   activityCount: number;
+  editableUntil?: string;
+  canEdit?: boolean;
+  lines?: MySubmissionLine[];
 }
 
 function formatGBP(n: number): string {
@@ -102,6 +115,15 @@ export default function OrgMemberSubmit() {
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawn, setWithdrawn] = useState(false);
   const [detailsAttempted, setDetailsAttempted] = useState(false);
+
+  // Editing / withdrawing a past submission from the history list.
+  const [editingSubId, setEditingSubId] = useState<number | null>(null);
+  const [editLines, setEditLines] = useState<MySubmissionLine[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
+  const [historyReason, setHistoryReason] = useState("");
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     track(ANALYTICS_EVENTS.ORG_MEMBER_SUBMIT_STARTED);
@@ -228,6 +250,69 @@ export default function OrgMemberSubmit() {
     });
   }
 
+  function startEditSub(s: MySubmission) {
+    setHistoryError(null);
+    setHistoryConfirmId(null);
+    setEditingSubId(s.recordId);
+    setEditLines((s.lines ?? []).map(l => ({ ...l })));
+  }
+
+  function updateEditLine(idx: number, patch: Partial<MySubmissionLine>) {
+    setEditLines(prev => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  }
+
+  async function saveEditSub(recordId: number) {
+    setHistoryError(null);
+    setEditSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/member-submissions/${recordId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          activities: editLines.map(l => ({
+            activityId: l.activityId,
+            quantity: l.quantity,
+            hoursPerYear: l.hoursPerYear,
+            title: l.title,
+            detail: l.detail,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to update submission.");
+      setEditingSubId(null);
+      setEditLines([]);
+      await loadMySubs();
+    } catch (err) {
+      setHistoryError((err as Error).message);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function withdrawHistorySub(recordId: number) {
+    setHistoryError(null);
+    setHistoryBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/member-submissions/${recordId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reason: historyReason.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to withdraw submission.");
+      setHistoryConfirmId(null);
+      setHistoryReason("");
+      await loadMySubs();
+    } catch (err) {
+      setHistoryError((err as Error).message);
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
   async function withdrawSubmission() {
     if (createdRecordId == null) return;
     setWithdrawError(null);
@@ -352,29 +437,147 @@ export default function OrgMemberSubmit() {
             <h3 className="text-sm font-semibold text-foreground">Your recent submissions to {orgName}</h3>
             <span className="text-[10px] font-medium text-muted-foreground">({mySubs.length})</span>
           </div>
-          <ul className="divide-y divide-border max-h-60 overflow-y-auto">
+          <ul className="divide-y divide-border max-h-96 overflow-y-auto">
             {mySubs.slice(0, 10).map(s => (
               <li
                 key={s.recordId}
-                className="py-2 flex items-center justify-between gap-3 text-sm"
+                className="py-2 text-sm"
                 data-testid={`my-submission-${s.recordId}`}
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">
-                    {s.period || s.name}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                    {" · "}
-                    {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"}
-                    {" · "}
-                    {Math.round(s.totalHours).toLocaleString("en-GB")} hrs
-                  </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground truncate">
+                      {s.period || s.name}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {" · "}
+                      {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"}
+                      {" · "}
+                      {Math.round(s.totalHours).toLocaleString("en-GB")} hrs
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <p className="text-xs font-semibold tabular-nums">{formatGBP(s.totalValue)}</p>
+                    {s.canEdit && editingSubId !== s.recordId && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => startEditSub(s)}
+                          className="text-[11px] font-medium text-primary hover:underline"
+                          data-testid={`edit-my-submission-${s.recordId}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingSubId(null); setHistoryConfirmId(s.recordId); setHistoryReason(""); setHistoryError(null); }}
+                          className="text-[11px] font-medium text-red-600 hover:underline"
+                          data-testid={`withdraw-my-submission-${s.recordId}`}
+                        >
+                          Withdraw
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs font-semibold tabular-nums shrink-0">{formatGBP(s.totalValue)}</p>
+
+                {s.canEdit && editingSubId !== s.recordId && historyConfirmId !== s.recordId && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    You can fix or withdraw this until {new Date(s.editableUntil ?? s.submittedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
+                  </p>
+                )}
+
+                {historyConfirmId === s.recordId && (
+                  <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-3" data-testid={`withdraw-confirm-${s.recordId}`}>
+                    <p className="text-xs text-red-800 mb-2">Withdraw this submission? It will be removed from {orgName}'s totals.</p>
+                    <input
+                      type="text"
+                      value={historyReason}
+                      onChange={e => setHistoryReason(e.target.value)}
+                      placeholder="Reason (optional, e.g. sent by mistake)"
+                      maxLength={500}
+                      disabled={historyBusy}
+                      className="w-full text-xs border border-red-200 rounded-md px-2 py-1.5 mb-2 bg-white outline-none"
+                      data-testid={`withdraw-my-reason-${s.recordId}`}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => withdrawHistorySub(s.recordId)}
+                        disabled={historyBusy}
+                        className="text-[11px] font-semibold bg-red-600 text-white rounded-md px-2.5 py-1.5 disabled:opacity-60"
+                        data-testid={`confirm-withdraw-my-${s.recordId}`}
+                      >
+                        {historyBusy ? "Withdrawing…" : "Yes, withdraw"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setHistoryConfirmId(null); setHistoryReason(""); setHistoryError(null); }}
+                        disabled={historyBusy}
+                        className="text-[11px] font-medium text-foreground border border-border rounded-md px-2.5 py-1.5"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {editingSubId === s.recordId && (
+                  <div className="mt-2 bg-muted/20 border border-border rounded-lg p-3" data-testid={`edit-my-submission-form-${s.recordId}`}>
+                    <p className="text-xs text-muted-foreground mb-2">Fix the numbers below — your organisation's totals will update automatically.</p>
+                    <ul className="space-y-2">
+                      {editLines.map((l, idx) => {
+                        const usesHours = l.unit === "hour" || l.activityId === SOMETHING_ELSE_ID;
+                        return (
+                          <li key={idx} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-foreground truncate">{l.activityName}</span>
+                            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+                              <input
+                                type="number"
+                                min={0}
+                                value={usesHours ? l.hoursPerYear : l.quantity}
+                                onChange={e => {
+                                  const v = Math.max(0, Number(e.target.value) || 0);
+                                  updateEditLine(idx, usesHours ? { hoursPerYear: v } : { quantity: v });
+                                }}
+                                disabled={editSaving}
+                                className="w-20 text-xs border border-border rounded-md px-2 py-1 bg-white outline-none tabular-nums"
+                                data-testid={`edit-line-${s.recordId}-${idx}`}
+                              />
+                              {usesHours ? "hrs" : "qty"}
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => saveEditSub(s.recordId)}
+                        disabled={editSaving}
+                        className="text-[11px] font-semibold bg-primary text-white rounded-md px-2.5 py-1.5 disabled:opacity-60"
+                        data-testid={`save-edit-my-${s.recordId}`}
+                      >
+                        {editSaving ? "Saving…" : "Save changes"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingSubId(null); setEditLines([]); setHistoryError(null); }}
+                        disabled={editSaving}
+                        className="text-[11px] font-medium text-foreground border border-border rounded-md px-2.5 py-1.5"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
+          {historyError && (
+            <p className="mt-2 text-xs text-red-600" data-testid="my-submissions-action-error">{historyError}</p>
+          )}
           {mySubs.length > 10 && (
             <p className="mt-2 text-[11px] text-muted-foreground">Showing your 10 most recent submissions.</p>
           )}
