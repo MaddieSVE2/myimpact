@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { formatCurrency } from "@/lib/utils";
+import { calcResultBreakdown } from "@/lib/formula";
 import { computeBadges, getNextMilestone } from "@/lib/badges";
 import { motion } from "framer-motion";
 import {
@@ -280,32 +281,8 @@ function PersonalDevelopmentDetail({
 
 // ── Proxy methodology ─────────────────────────────────────────────────────────
 
-function calcResultBreakdown(b: {
-  unit?: string;
-  unitLabel?: string;
-  valuePerUnit?: number;
-  quantity?: number;
-  hours: number;
-  impactValue: number;
-}): string {
-  const vpu = b.valuePerUnit;
-  if (!vpu) return "";
-  const rate = `£${vpu % 1 === 0 ? vpu.toFixed(0) : vpu.toFixed(2)}`;
-  if (b.unit === "hour" || !b.unit) {
-    return `${Math.round(b.hours).toLocaleString("en-GB")} hrs × ${rate}/hr`;
-  }
-  const qty = b.quantity ?? (vpu > 0 ? Math.round(b.impactValue / vpu) : 0);
-  const unitLabel = b.unitLabel ?? b.unit;
-  let sing = unitLabel;
-  if (unitLabel === "hours") sing = "hr";
-  else if (unitLabel === "miles") sing = "mile";
-  else if (unitLabel === "weeks per year") sing = "week";
-  else if (unitLabel === "people helped" || unitLabel === "people") sing = "person";
-  else if (unitLabel === "young people") sing = "young person";
-  else if (unitLabel === "children") sing = "child";
-  else if (unitLabel.endsWith("s") && unitLabel.length > 2) sing = unitLabel.slice(0, -1);
-  return `${qty.toLocaleString("en-GB")} ${unitLabel} × ${rate}/${sing}`;
-}
+// calcResultBreakdown lives in @/lib/formula so the History page can render
+// the same formula strings for saved records.
 
 function ProxyMethodology({ breakdowns }: {
   breakdowns: Array<{

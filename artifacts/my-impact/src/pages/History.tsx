@@ -10,8 +10,9 @@ import { formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
-  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX,
+  HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX, Info,
 } from "lucide-react";
+import { calcResultBreakdown } from "@/lib/formula";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
@@ -66,7 +67,75 @@ type Breakdown = {
   sdgColor: string;
   impactValue: number;
   hours: number;
+  quantity?: number;
+  valuePerUnit?: number;
+  unit?: string;
+  unitLabel?: string;
 };
+
+// Small "?"-style toggle that reveals the proxy citation for one activity
+// without cluttering the breakdown list. Click (or keyboard-activate) to
+// show/hide; kept as plain state so it also works on touch devices where
+// hover tooltips don't.
+function BreakdownRow({ b }: { b: Breakdown }) {
+  const [showProxy, setShowProxy] = useState(false);
+  const formula = calcResultBreakdown(b);
+  const hasProxy = !!b.proxy;
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-0.5 self-stretch rounded-full shrink-0"
+          style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-foreground leading-snug truncate">{b.activityName}</p>
+            {hasProxy && (
+              <button
+                type="button"
+                onClick={() => setShowProxy(s => !s)}
+                aria-expanded={showProxy}
+                aria-label={showProxy ? "Hide proxy citation" : "Show proxy citation"}
+                className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              >
+                <Info className="w-3 h-3" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          {formula ? (
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug tabular-nums font-medium">
+              {formula}
+            </p>
+          ) : null}
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] text-muted-foreground">{b.category}</span>
+            {!formula && b.hours > 0 && (
+              <>
+                <span className="text-[10px] text-muted-foreground/40">·</span>
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <Clock className="w-2.5 h-2.5" aria-hidden="true" /> {b.hours} hrs
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <p className="text-xs font-bold shrink-0" style={{ color: "#F06127" }}>
+          {formatCurrency(b.impactValue)}
+        </p>
+      </div>
+      {showProxy && hasProxy && (
+        <div className="mt-2 ml-3.5 px-3 py-2 rounded-md bg-muted/20 border border-border">
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            <span className="font-medium text-foreground/70">Proxy: </span>
+            {b.proxy}
+            {b.proxyYear && <span className="text-muted-foreground/60"> ({b.proxyYear})</span>}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function RecordDetail({ result, recordId, hasDonations }: { result: any; recordId?: number; hasDonations?: boolean }) {
   if (!result) {
@@ -100,33 +169,19 @@ function RecordDetail({ result, recordId, hasDonations }: { result: any; recordI
       {breakdowns.length > 0 ? (
         <div className="divide-y divide-border">
           {breakdowns.map(b => (
-            <div key={b.activityId} className="flex items-center gap-3 px-4 py-3">
-              <div
-                className="w-0.5 self-stretch rounded-full shrink-0"
-                style={{ backgroundColor: b.sdgColor || "#7E8FAD", minHeight: 20 }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground leading-snug truncate">{b.activityName}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground">{b.category}</span>
-                  {b.hours > 0 && (
-                    <>
-                      <span className="text-[10px] text-muted-foreground/40">·</span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                        <Clock className="w-2.5 h-2.5" aria-hidden="true" /> {b.hours} hrs
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs font-bold shrink-0" style={{ color: "#F06127" }}>
-                {formatCurrency(b.impactValue)}
-              </p>
-            </div>
+            <BreakdownRow key={b.activityId} b={b} />
           ))}
         </div>
       ) : (
         <p className="px-4 py-3 text-xs text-muted-foreground italic">No activity breakdown recorded.</p>
+      )}
+
+      {breakdowns.length > 0 && (
+        <div className="px-4 py-2.5 border-t border-border">
+          <Link href="/methodology" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+            <Info className="w-3 h-3" aria-hidden="true" /> Learn about our methodology →
+          </Link>
+        </div>
       )}
 
       <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border">
