@@ -943,6 +943,12 @@ components:
           type: number
         recommendedHoursPerWeek:
           type: number
+        unit:
+          type: string
+        unitLabel:
+          type: string
+        defaultQuantity:
+          type: number
       required:
         - activityId
         - activityName

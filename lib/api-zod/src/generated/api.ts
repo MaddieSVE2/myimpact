@@ -128,6 +128,9 @@ export const GetSuggestionsResponse = zod.object({
       reason: zod.string(),
       estimatedImpactPerYear: zod.number(),
       recommendedHoursPerWeek: zod.number(),
+      unit: zod.string().optional(),
+      unitLabel: zod.string().optional(),
+      defaultQuantity: zod.number().optional(),
     }),
   ),
 });

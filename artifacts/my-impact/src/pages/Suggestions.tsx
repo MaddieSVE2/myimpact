@@ -4,7 +4,7 @@ import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { PageMeta } from "@/components/PageMeta";
 import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/i18n";
 
@@ -99,6 +99,36 @@ const SCOTTISH_TERMS = new Set([
   "renfrewshire", "scottish borders", "shetland", "south ayrshire",
   "south lanarkshire", "stirling", "west dunbartonshire", "west lothian", "scotland",
 ]);
+
+// Short plural noun per catalogue unit, used to build "26 bins/year"-style labels
+const UNIT_PLURALS: Record<string, string> = {
+  bin: "bins",
+  tree: "trees",
+  mile_per_year: "miles",
+  session: "sessions",
+  bag: "bags",
+  person: "people",
+  young_person: "young people",
+  event: "events",
+  participant: "participants",
+  week: "weeks",
+  child: "children",
+  child_week: "child weeks",
+  donation: "donations",
+  workshop: "workshops",
+};
+
+function effortLabel(sug: { unit?: string; defaultQuantity?: number; recommendedHoursPerWeek: number }): string {
+  const { unit, defaultQuantity } = sug;
+  if (!unit || unit === "hour" || defaultQuantity == null) {
+    return `${sug.recommendedHoursPerWeek} hrs/wk`;
+  }
+  if (unit === "household") {
+    return "household activity";
+  }
+  const noun = UNIT_PLURALS[unit] ?? unit.replace(/_/g, " ") + "s";
+  return `${defaultQuantity} ${noun}/year`;
+}
 
 export default function Suggestions() {
   const { input, interests, location, locationMeta, result } = useWizard();
@@ -417,8 +447,12 @@ export default function Suggestions() {
                       </p>
                       <p className="text-[10px] text-muted-foreground whitespace-nowrap">est. per year</p>
                       <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-muted-foreground">
-                        <Clock className="w-2.5 h-2.5" />
-                        {sug.recommendedHoursPerWeek} hrs/wk
+                        {!sug.unit || sug.unit === "hour" ? (
+                          <Clock className="w-2.5 h-2.5" />
+                        ) : (
+                          <Repeat className="w-2.5 h-2.5" />
+                        )}
+                        {effortLabel(sug)}
                       </div>
                     </div>
                   </div>

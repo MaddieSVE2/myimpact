@@ -220,6 +220,9 @@ export interface SuggestionItem {
   reason: string;
   estimatedImpactPerYear: number;
   recommendedHoursPerWeek: number;
+  unit?: string;
+  unitLabel?: string;
+  defaultQuantity?: number;
 }
 
 export interface SuggestionsResponse {
