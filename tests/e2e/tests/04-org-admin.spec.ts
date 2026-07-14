@@ -61,9 +61,9 @@ test.describe("Spec 4 — org admin registers, member joins, hours visible in da
 
     // The org dashboard renders for managers and surfaces the join link.
     await managerPage.goto("/org");
-    await expect(
-      managerPage.getByRole("heading", { name: approval.orgName }),
-    ).toBeVisible({ timeout: 15_000 });
+    // The org name can appear more than once (e.g. header + join-link card),
+    // so assert on the first occurrence to avoid strict-mode violations.
+    await expect(managerPage.getByText(approval.orgName).first()).toBeVisible({ timeout: 15_000 });
 
     // ── Member: sign up, log impact, join org with the invite code ────────
     const memberCtx = await browser.newContext();
@@ -79,16 +79,15 @@ test.describe("Spec 4 — org admin registers, member joins, hours visible in da
     });
     expect(memberJoin.ok()).toBe(true);
 
-    // Regular members join as "pending" and only count toward org stats
-    // once a manager approves them — do that from the manager session.
-    const pendingRes = await managerPage.request.get("/api/org/my/members?status=pending");
-    expect(pendingRes.ok()).toBe(true);
-    const pendingBody = (await pendingRes.json()) as { members: Array<{ userId: string }> };
-    expect(pendingBody.members.length).toBeGreaterThanOrEqual(1);
-    for (const m of pendingBody.members) {
-      const approveRes = await managerPage.request.post(`/api/org/my/members/${m.userId}/approve`);
-      expect(approveRes.ok()).toBe(true);
-    }
+    // Regular members start as "pending" and only count towards org stats
+    // once a manager approves them — mirror that approval step here.
+    const meRes = await memberPage.request.get("/api/auth/me");
+    const meBody = (await meRes.json()) as { user: { id: string } | null };
+    expect(meBody.user?.id).toBeTruthy();
+    const approveRes = await managerPage.request.post(
+      `/api/org/my/members/${meBody.user!.id}/approve`,
+    );
+    expect(approveRes.ok()).toBe(true);
 
     // ── Manager dashboard: aggregated hours include the member ────────────
     // Hit the org stats API; the dashboard graphs hang off the same data.

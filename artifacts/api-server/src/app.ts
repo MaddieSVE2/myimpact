@@ -47,9 +47,13 @@ app.use(cookieParser());
 
 // Global per-IP rate limit: 200 requests per minute across all /api routes.
 // This is a broad backstop; individual routes apply stricter limits.
+// The e2e suite drives the whole app from a single IP and can legitimately
+// exceed the backstop, so the limit is raised in test-only mode (the same
+// flag that mounts the /api/test routes — never set in production).
+const isE2ETestMode = process.env.E2E_TEST_MODE === "1";
 const globalApiRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 200,
+  max: isE2ETestMode ? 10_000 : 200,
   message: "Too many requests. Please slow down.",
 });
 

@@ -24,9 +24,8 @@ test.describe("Spec 1 — magic-link sign-up + first wizard completion", () => {
     // Either way, we can navigate straight to the wizard.
     await completeWizardWithExtraHours(page, { donationsGBP: 100, hours: 10 });
 
-    // Results page must show the user's total impact. The hero copy is
-    // situation-specific, so assert on the stable currency headline.
-    await expect(page.locator("h1").filter({ hasText: "£" }).first()).toBeVisible();
+    // Results page must show the user's total impact as a currency headline.
+    await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: "£" })).toBeVisible();
 
     // The history page should now contain the just-saved record. We verify
     // via the API rather than by selector hunting because the page renders

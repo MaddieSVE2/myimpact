@@ -162,17 +162,15 @@ test.describe("GDPR self-service", () => {
     await api.resetUser(email);
     await signInWithMagicLink(page, api, email);
 
-    // Seed one impact record + one journal entry + one recurring template.
-    // The server recomputes impact from activities/donations, so a
-    // donations-only body is the simplest valid record.
+    // Seed one impact record + one journal entry + one recurring template
+    // through the real product routes.
     const recRes = await context.request.post("/api/impact/save", {
       data: {
-        userId: "e2e",
+        userId: email,
         name: "GDPR wipe test",
-        period: "today",
         activities: [],
         donationsGBP: 10,
-        additionalVolunteerHours: 0,
+        additionalVolunteerHours: 1,
       },
     });
     expect(recRes.ok()).toBe(true);
@@ -185,32 +183,31 @@ test.describe("GDPR self-service", () => {
     const tRes = await context.request.post("/api/impact/templates", {
       data: {
         label: "GDPR template",
-        cadence: "monthly",
+        cadence: "weekly",
         dayOfPeriod: 1,
         defaultActivities: [],
         defaultDonationsGBP: 5,
       },
     });
-    // Some envs may not have this route; only assert wipe if it created.
-    const seededTemplate = tRes.ok();
+    expect(tRes.ok()).toBe(true);
 
     // Confirm seeds present.
     const beforeRecs = await (await context.request.get("/api/impact/history")).json();
-    expect(beforeRecs.records?.length ?? beforeRecs.length ?? 0).toBeGreaterThan(0);
+    expect(beforeRecs.records?.length ?? 0).toBeGreaterThan(0);
+    const beforeTpl = await (await context.request.get("/api/impact/templates")).json();
+    expect(beforeTpl.templates?.length ?? 0).toBeGreaterThan(0);
 
     // Hit the wipe endpoint.
     const wipe = await context.request.delete("/api/impact/all");
     expect(wipe.ok()).toBe(true);
 
-    // Records, journal entries and (if seeded) templates are now empty.
+    // Records, journal entries and templates are now empty.
     const afterRecs = await (await context.request.get("/api/impact/history")).json();
-    expect(afterRecs.records?.length ?? afterRecs.length ?? 0).toBe(0);
+    expect(afterRecs.records?.length ?? 0).toBe(0);
     const afterJournal = await (await context.request.get("/api/journal")).json();
     expect(afterJournal.entries?.length ?? afterJournal.length ?? 0).toBe(0);
-    if (seededTemplate) {
-      const afterTpl = await (await context.request.get("/api/impact/templates")).json();
-      expect(afterTpl.templates?.length ?? afterTpl.length ?? 0).toBe(0);
-    }
+    const afterTpl = await (await context.request.get("/api/impact/templates")).json();
+    expect(afterTpl.templates?.length ?? 0).toBe(0);
   });
 
   test("/terms page is reachable from the footer", async ({ page }) => {

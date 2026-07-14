@@ -4,15 +4,21 @@ import { signInWithMagicLink } from "../helpers/auth";
 
 test.describe("Spec 7 — org member submits activities via /org/submit", () => {
   let api: TestApi;
+  // Each test signs in once with its own email: the magic-link endpoint
+  // rate-limits repeat requests per address, so sharing one email across
+  // tests makes the second sign-in flake.
+  const somethingElseEmail = uniqueEmail("submitter-se");
   const memberEmail = uniqueEmail("submitter");
   let orgId: string | undefined;
 
   test.beforeAll(async ({ baseURL }) => {
     api = await TestApi.create({ baseURL: baseURL! });
+    await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
   });
 
   test.afterAll(async () => {
+    await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
     if (orgId) await api.deleteOrg(orgId);
     await api.dispose();
@@ -25,7 +31,7 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     const ctx = await browser.newContext();
     try {
       const page = await ctx.newPage();
-      await signInWithMagicLink(page, api, memberEmail);
+      await signInWithMagicLink(page, api, somethingElseEmail);
 
       const join = await page.request.post("/api/org/join", {
         data: { inviteCode: created.inviteCode, orgId: seOrgId },
@@ -90,12 +96,15 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
 
     await page.getByTestId("member-submit-next-details").click();
 
-    // ── Step 2: fill details (the period-label field no longer exists) ────
+    // ── Step 2: fill details ─────────────────────────────────────────────
+    // The date-of-activity input defaults to today, which is fine here —
+    // the old free-text "period label" field no longer exists.
+    await expect(page.getByTestId("member-submit-activity-date")).toBeVisible({ timeout: 15_000 });
     const quantityInput = page.getByTestId("member-submit-quantity-tree_planting");
     await expect(quantityInput).toBeVisible();
     await quantityInput.fill("3");
-    // Hours must be non-zero for the Review button to enable.
-    await page.getByTestId("member-submit-hours-tree_planting").fill("3");
+    // Hours must be non-zero or the Next button stays disabled.
+    await page.getByTestId("member-submit-hours-tree_planting").fill("2");
     await page.getByTestId("member-submit-title-tree_planting").fill("Earth day planting");
     await page.getByTestId("member-submit-detail-tree_planting").fill("Local park weekend session");
 
@@ -108,9 +117,9 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     // listing for that org.
     await expect(page.getByTestId("member-submit-success")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/sent to/i)).toBeVisible();
-    await expect(
-      page.getByTestId("member-submit-success").getByText(created.orgName).first(),
-    ).toBeVisible();
+    // The org name appears in several places (header, success copy, etc.)
+    // so assert on the first match to avoid strict-mode violations.
+    await expect(page.getByText(created.orgName).first()).toBeVisible();
 
     await ctx.close();
   });

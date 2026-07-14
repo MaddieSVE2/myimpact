@@ -33,12 +33,12 @@ export async function completeWizardWithExtraHours(
     await page.goto("/wizard/actions");
   }
 
-  // Step 1: postcode is enough to satisfy canProceed.
-  // A late-resolving profile fetch can re-seed the form and clobber a value
-  // typed too early, so retry the fill until the Next button is enabled.
+  // Step 1: postcode is enough to satisfy canProceed. The page seeds
+  // fields from /api/profile shortly after mount, which can race a fill
+  // issued too early — so re-fill until the Next button actually enables.
   const postcodeInput = page.getByPlaceholder(/manchester|postcode|m1/i).first();
-  await postcodeInput.waitFor({ state: "visible" });
   const nextButton = page.getByRole("button", { name: /next:\s*add activities/i });
+  await postcodeInput.waitFor({ state: "visible" });
   await expect(async () => {
     await postcodeInput.fill(postcode);
     await expect(nextButton).toBeEnabled({ timeout: 2_000 });
@@ -58,10 +58,12 @@ export async function completeWizardWithExtraHours(
   await numberInputs.nth(1).fill(String(hours));
   await page.getByRole("button", { name: /reveal my impact/i }).click();
 
-  // Land on /results. The hero copy is situation-specific, so assert on the
-  // stable currency headline (e.g. "£1,234") instead of any fixed phrase.
+  // Land on /results. The hero renders the total as a large currency
+  // heading; the exact headline copy varies by user situation, so assert
+  // on the stable pieces: the £-value h1 and the "Save progress" CTA.
   await page.waitForURL(/\/results/, { timeout: 30_000 });
-  await expect(page.locator("h1").filter({ hasText: "£" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: "£" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^save progress$|^saved!$/i })).toBeVisible();
 
   // Persist the calculated impact to the user's history. The Results page
   // does NOT auto-save: it shows a "Save progress" CTA which opens a

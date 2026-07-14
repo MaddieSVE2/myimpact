@@ -9,8 +9,11 @@ import {
   orgSurveysTable,
   challengesTable,
   challengeParticipantsTable,
+  recordVerificationsTable,
+  orgShareLinksTable,
+  orgAuditLogTable,
 } from "@workspace/db";
-import { eq, like, gt, desc, and, sql } from "drizzle-orm";
+import { eq, like, gt, desc, and, sql, inArray } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
 import { eraseUserData } from "../lib/userDeletion.js";
 
@@ -172,7 +175,12 @@ router.post("/create-org", async (req, res) => {
 });
 
 /**
- * Delete an org and cascade all members. Used to clean up between runs.
+ * Delete an org and all its dependents. Used to clean up between runs.
+ *
+ * Order matters: several tables reference organisations without ON DELETE
+ * CASCADE (challenges, record_verifications, org_share_links, org_audit_log,
+ * org_members), so they must be removed before the organisation row itself
+ * or Postgres raises a foreign-key violation.
  */
 router.post("/delete-org", async (req, res) => {
   const orgId = typeof req.body?.orgId === "string" ? req.body.orgId : "";
@@ -180,12 +188,27 @@ router.post("/delete-org", async (req, res) => {
     res.status(400).json({ error: "orgId required" });
     return;
   }
-  // Challenges reference organisations without ON DELETE CASCADE, so remove
-  // them first (challenge_participants cascade off challenges). Other
-  // non-cascading FK tables (record_verifications, org_audit_log,
-  // org_share_links) are cleaned via raw SQL so the delete never trips a
-  // foreign-key violation mid-suite.
-  await db.delete(challengesTable).where(eq(challengesTable.orgId, orgId));
+  // Order matters: several tables reference organisations without ON DELETE
+  // CASCADE, so they must be removed before the organisation row itself
+  // or Postgres raises a foreign-key violation.
+
+  // 1. Challenges reference organisations. Challenge participants cascade off challenges.
+  const orgChallenges = await db
+    .select({ id: challengesTable.id })
+    .from(challengesTable)
+    .where(eq(challengesTable.orgId, orgId));
+  if (orgChallenges.length > 0) {
+    await db.delete(challengeParticipantsTable).where(
+      inArray(
+        challengeParticipantsTable.challengeId,
+        orgChallenges.map((c) => c.id),
+      ),
+    );
+    await db.delete(challengesTable).where(eq(challengesTable.orgId, orgId));
+  }
+
+  // 2. Other non-cascading FK tables are cleaned via raw SQL or Drizzle
+  // to ensure the delete never trips a foreign-key violation.
   await db.execute(sql`delete from record_verifications where org_id = ${orgId}`);
   await db.execute(sql`delete from org_audit_log where org_id = ${orgId}`);
   await db.execute(sql`delete from org_share_links where org_id = ${orgId}`);

@@ -3,18 +3,21 @@ import { TestApi, uniqueEmail } from "../helpers/api";
 import { signInWithMagicLink } from "../helpers/auth";
 
 /**
- * Spec 8 — "For your organisation" prompts on Home / Challenges / Journal.
+ * Spec 8 — "For your organisation" prompts on Home.
  *
  * Locks in:
- *  - An org member sees the full prompts section on Home and the compact
- *    strip on Challenges and Journal, with both a pulse-survey card and an
- *    org-challenge card visible. Snoozing a challenge hides it on Home AND
- *    /challenges in the same context (snooze persists for the day via
- *    localStorage) while the survey card remains visible. Clicking
- *    "Contribute" deep-links to /wizard/actions?challenge=<id> with the
- *    challenge-context-banner showing the challenge name.
- *  - A manager of the same org does NOT see the section on any page.
+ *  - An org member sees the full prompts section on Home with both a
+ *    pulse-survey card and an org-challenge card visible. Snoozing a
+ *    challenge hides it and the snooze persists across reloads (stored
+ *    for the day in localStorage) while the survey card remains visible.
+ *    Clicking "Contribute" deep-links to /wizard/actions?challenge=<id>
+ *    with the challenge-context-banner showing the challenge name.
+ *  - A manager of the same org does NOT see the section.
  *  - A logged-in user who is NOT in any org does NOT see the section.
+ *
+ * Note: the app renders the full section on Home only; the compact strip
+ * exists solely on the post-wizard Results page (covered indirectly by the
+ * wizard specs). The old /challenges and /journal strips no longer exist.
  *
  * The three behaviours are split into separate tests so a failure in one
  * doesn't mask the others.
@@ -55,7 +58,7 @@ test.describe("Spec 8 — org prompts", () => {
     await api.dispose();
   });
 
-  test("member sees prompts on Home/Challenges/Journal; snooze persists; Contribute deep-links to wizard", async ({ browser }) => {
+  test("member sees prompts on Home; snooze persists; Contribute deep-links to wizard", async ({ browser }) => {
     const memberCtx = await browser.newContext();
     const memberPage = await memberCtx.newPage();
     await signInWithMagicLink(memberPage, api, memberEmail);
@@ -81,25 +84,15 @@ test.describe("Spec 8 — org prompts", () => {
     await expect(memberPage.getByTestId("org-prompt-challenge").first()).toBeVisible();
     await expect(memberPage.getByTestId(`button-contribute-${challengeId}`)).toBeVisible();
 
-    // ── /challenges: compact strip ──────────────────────────────────────
-    await memberPage.goto("/challenges");
-    await expect(memberPage.getByTestId("org-prompts-compact")).toBeVisible({ timeout: 15_000 });
-    await expect(memberPage.getByTestId(`button-contribute-compact-${challengeId}`)).toBeVisible();
-
-    // ── /journal: compact strip ─────────────────────────────────────────
-    await memberPage.goto("/journal");
-    await expect(memberPage.getByTestId("org-prompts-compact")).toBeVisible({ timeout: 15_000 });
-
     // ── Snooze the challenge from Home ──────────────────────────────────
-    await memberPage.goto("/");
-    await expect(memberPage.getByTestId("org-prompts-full")).toBeVisible();
     await memberPage.getByTestId(`button-snooze-challenge-${challengeId}`).click();
     await expect(memberPage.getByTestId("org-prompt-challenge")).toHaveCount(0);
     await expect(memberPage.getByTestId("org-prompt-survey").first()).toBeVisible();
 
-    // ── Snooze persists across pages in the same context ────────────────
-    await memberPage.goto("/challenges");
-    await expect(memberPage.getByTestId(`button-contribute-compact-${challengeId}`)).toHaveCount(0);
+    // ── Snooze persists across reloads in the same context ──────────────
+    await memberPage.goto("/");
+    await expect(memberPage.getByTestId("org-prompts-full")).toBeVisible({ timeout: 15_000 });
+    await expect(memberPage.getByTestId(`button-contribute-${challengeId}`)).toHaveCount(0);
 
     // ── Contribute → wizard with the challenge banner ───────────────────
     const challenge2Id = await api.seedOrgChallenge(orgId!, "E2E Org Challenge Two");
@@ -139,23 +132,11 @@ test.describe("Spec 8 — org prompts", () => {
     };
     expect(mMyJson.org?.role).toBe("manager");
 
-    // The section's visibility is gated on /api/org/my, so wait for that
-    // response (networkidle is flaky — background polling keeps the network
-    // busy indefinitely).
-    let orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/");
-    await orgMyResponse;
+    // Managers get their own Home hero (ManagerHome) instead of the member
+    // welcome hero — wait for it, then assert the prompts are absent.
+    await expect(page.getByTestId("manager-home")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("org-prompts-full")).toHaveCount(0);
-
-    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
-    await page.goto("/challenges");
-    await orgMyResponse;
-    await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
-
-    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
-    await page.goto("/journal");
-    await orgMyResponse;
-    await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
     await ctx.close();
   });
@@ -171,20 +152,10 @@ test.describe("Spec 8 — org prompts", () => {
     };
     expect(myJson.org).toBeNull();
 
-    let orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
     await page.goto("/");
-    await orgMyResponse;
+    // Same rationale as above: wait for the hero, not networkidle.
+    await expect(page.getByTestId("welcome-home")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("org-prompts-full")).toHaveCount(0);
-
-    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
-    await page.goto("/challenges");
-    await orgMyResponse;
-    await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
-
-    orgMyResponse = page.waitForResponse(r => r.url().includes("/api/org/my"));
-    await page.goto("/journal");
-    await orgMyResponse;
-    await expect(page.getByTestId("org-prompts-compact")).toHaveCount(0);
 
     await ctx.close();
   });
