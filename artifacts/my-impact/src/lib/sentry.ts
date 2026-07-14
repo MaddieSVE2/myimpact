@@ -27,9 +27,25 @@ function isBenign(message: string | undefined): boolean {
   return BENIGN_ERROR_PATTERNS.some((re) => re.test(message));
 }
 
+// A Sentry DSN looks like: https://<publicKey>@<host>/<projectId>
+// Guard against misconfigured values (e.g. an access token pasted into the
+// env var) so we never pass them to Sentry.init, which would echo the raw
+// value into the browser console via its "Invalid Sentry Dsn" error.
+const DSN_PATTERN = /^https?:\/\/[0-9a-f]+@[a-z0-9.-]+(?::\d+)?\/\d+$/i;
+
+function isValidDsn(value: string): boolean {
+  return DSN_PATTERN.test(value);
+}
+
 export function initSentry(): void {
   if (initialized) return;
   if (!DSN) return;
+  if (!isValidDsn(DSN)) {
+    console.warn(
+      "[sentry] VITE_SENTRY_DSN is not a valid Sentry DSN; error monitoring is disabled. (Value withheld from logs.)"
+    );
+    return;
+  }
 
   Sentry.init({
     dsn: DSN,

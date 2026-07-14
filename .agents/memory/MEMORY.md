@@ -3,4 +3,5 @@
 - [Org export shared pipeline](org-export-live.md) — real orgs reuse the demo export pipeline via DemoActivity mapping; hooks above early returns; query cache cleared on login/logout to stop PII leaks.
 - [Resend verified sender](resend-verified-sender.md) — only socialvalueengine.com is verified in Resend; sends from @myimpact.uk are rejected. Sender lives in the shared Resend helper.
 - [Dependency audit overrides](dependency-audit-overrides.md) — audit fixes go in root pnpm.overrides, but catalog deps (vite) must be bumped in pnpm-workspace.yaml catalog; verify with build+smoke validations.
+- [Sentry DSN token exposure](sentry-dsn-incident.md) — leaked ghp_ token revoked; VITE_* vars bake into bundle so republish needed; DSN inits now validate format before echoing.
 - [E2E run quirks](e2e-run-quirks.md) — run Playwright suite with E2E_API_PORT=5000 E2E_WEB_PORT=3000 via the validation runner; shell reaps background servers; magic-link sign-in rate-limits per email.
