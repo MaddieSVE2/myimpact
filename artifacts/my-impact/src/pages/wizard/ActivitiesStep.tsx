@@ -311,12 +311,19 @@ export default function ActivitiesStep() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: customName.trim() }),
       });
-      if (!res.ok) throw new Error("API error");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.code === "ai_unavailable" ? "ai_unavailable" : "API error");
+      }
       const data: AnalysedActivity = await res.json();
       setAnalysed(data);
       setCustomQuantity(data.defaultQuantity);
-    } catch {
-      setAnalyseError("Couldn't analyse that activity. Try a different description.");
+    } catch (err) {
+      setAnalyseError(
+        err instanceof Error && err.message === "ai_unavailable"
+          ? "Our analysis service is having a moment. Please try again shortly."
+          : "Couldn't analyse that activity. Try adding a bit more detail, like what you do and who it helps.",
+      );
     } finally {
       setAnalysing(false);
     }
@@ -367,7 +374,10 @@ export default function ActivitiesStep() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: describeText.trim() }),
       });
-      if (!parseRes.ok) throw new Error("parse error");
+      if (!parseRes.ok) {
+        const body = await parseRes.json().catch(() => null);
+        throw new Error(body?.code === "ai_unavailable" ? "ai_unavailable" : "parse error");
+      }
       const { matchedIds, unmatchedLabels } = await parseRes.json() as {
         matchedIds: string[];
         unmatchedLabels: string[];
@@ -395,6 +405,7 @@ export default function ActivitiesStep() {
 
       // Step 3: analyse unmatched labels in parallel
       const newPending: PendingCustomActivity[] = [];
+      let aiUnavailable = false;
       if (unmatchedLabels.slice(0, 5).length > 0) {
         const analyseResults = await Promise.all(
           unmatchedLabels.slice(0, 5).map(label =>
@@ -402,7 +413,12 @@ export default function ActivitiesStep() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ name: label }),
-            }).then(r => r.ok ? r.json() as Promise<AnalysedActivity> : null).catch(() => null)
+            }).then(async r => {
+              if (r.ok) return await (r.json() as Promise<AnalysedActivity>);
+              const body = await r.json().catch(() => null);
+              if (body?.code === "ai_unavailable") aiUnavailable = true;
+              return null;
+            }).catch(() => null)
           )
         );
 
@@ -419,7 +435,11 @@ export default function ActivitiesStep() {
       const totalUsable = matchedIds.length + newPending.length;
       if (totalUsable === 0) {
         // All downstream analyses failed, nothing usable was added
-        setDescribeError("We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.");
+        setDescribeError(
+          aiUnavailable
+            ? "Our analysis service is having a moment. Please try again shortly."
+            : "We couldn't match any activities from your description. Try adding more detail, or switch to picking activities manually.",
+        );
         return;
       }
 
@@ -433,8 +453,12 @@ export default function ActivitiesStep() {
 
       // Always enter quantify phase so the user confirms volume for every activity
       setActivitySelection({ quantifyIndex: 0, phase: "quantify" });
-    } catch {
-      setDescribeError("Something went wrong while analysing your description. Please try again.");
+    } catch (err) {
+      setDescribeError(
+        err instanceof Error && err.message === "ai_unavailable"
+          ? "Our analysis service is having a moment. Please try again shortly."
+          : "Something went wrong while analysing your description. Please try again.",
+      );
       setDescribeLoading(false);
     }
   };

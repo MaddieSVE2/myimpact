@@ -55,6 +55,40 @@ function candidateProxies(activityName: string, limit = 20): ProxyEntry[] {
 
 const FUNDRAISING_RE = /fund[\s-]?rais/i;
 
+type ChatMessage = { role: "system" | "user"; content: string };
+
+async function completeJson(
+  messages: ChatMessage[],
+  maxCompletionTokens: number,
+): Promise<Record<string, unknown> | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5-mini",
+        max_completion_tokens: maxCompletionTokens,
+        reasoning_effort: "low",
+        response_format: { type: "json_object" },
+        messages,
+      });
+      const content = completion.choices[0]?.message?.content;
+      if (!content?.trim()) {
+        console.warn(`completeJson: empty model output (attempt ${attempt + 1})`);
+        continue;
+      }
+      try {
+        return JSON.parse(content) as Record<string, unknown>;
+      } catch {
+        console.warn(`completeJson: unparseable model output (attempt ${attempt + 1})`);
+        continue;
+      }
+    } catch (err) {
+      console.error(`completeJson: model call failed (attempt ${attempt + 1}):`, err);
+      if (attempt === 1) throw err;
+    }
+  }
+  return null;
+}
+
 const router = Router();
 
 const customActivityRateLimit = createRateLimiter({
@@ -102,11 +136,8 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
       .map((p, i) => `${i + 1}. "${p.title}" | £${p.value} per ${p.unit}`)
       .join("\n");
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 400,
-      response_format: { type: "json_object" },
-      messages: [
+    const parsed = (await completeJson(
+      [
         {
           role: "system",
           content: `You are a social value measurement assistant. Given an activity name, return a JSON object with:
@@ -136,9 +167,8 @@ ${candidateList || "No candidates found."}`,
           content: `Activity: "${name.trim()}"`,
         },
       ],
-    });
-
-    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+      2000,
+    )) ?? {};
 
     let proxyMatch: { title: string; proxyYear: string; valuePerUnit: number; unit: string } | null = null;
     if (typeof parsed.proxyIndex === "number" && parsed.proxyIndex >= 1) {
@@ -149,22 +179,25 @@ ${candidateList || "No candidates found."}`,
           title: picked.title,
           proxyYear: yearMatch ? yearMatch[1] : "",
           valuePerUnit: picked.value,
-          unit: parsed.unit ?? "hour",
+          unit: typeof parsed.unit === "string" ? parsed.unit : "hour",
         };
       }
     }
 
     res.json({
-      friendlyQuestion: parsed.friendlyQuestion ?? `How many hours a year do you spend on ${name}?`,
-      unit: parsed.unit ?? "hour",
-      unitLabel: parsed.unitLabel ?? "hours per year",
+      friendlyQuestion:
+        typeof parsed.friendlyQuestion === "string" && parsed.friendlyQuestion.trim()
+          ? parsed.friendlyQuestion
+          : `How many hours a year do you spend on ${name}?`,
+      unit: typeof parsed.unit === "string" ? parsed.unit : "hour",
+      unitLabel: typeof parsed.unitLabel === "string" ? parsed.unitLabel : "hours per year",
       defaultQuantity: typeof parsed.defaultQuantity === "number" ? parsed.defaultQuantity : 20,
-      sdgHint: parsed.sdgHint ?? "",
+      sdgHint: typeof parsed.sdgHint === "string" ? parsed.sdgHint : "",
       proxyMatch,
     });
   } catch (err) {
     console.error("Custom activity analyse error:", err);
-    res.status(500).json({ error: "Failed to analyse activity" });
+    res.status(503).json({ error: "Failed to analyse activity", code: "ai_unavailable" });
   }
 });
 
@@ -184,11 +217,8 @@ router.post("/parse-description", authenticate, customActivityRateLimit, textAiQ
 
     const activityList = ACTIVITIES.map(a => `- id: "${a.id}" | name: "${a.shortName}" | category: ${a.category}`).join("\n");
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 600,
-      response_format: { type: "json_object" },
-      messages: [
+    const parsed = (await completeJson(
+      [
         {
           role: "system",
           content: `You are a social impact assistant. A user will describe what they do in plain English. Your job is to match their description to the predefined activities listed below, and identify any activities they mention that don't match any predefined activity.
@@ -216,9 +246,8 @@ ${activityList}`,
           content: `User description: "${description.trim()}"`,
         },
       ],
-    });
-
-    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+      2000,
+    )) ?? {};
 
     const matchedIds: string[] = Array.isArray(parsed.matchedIds)
       ? parsed.matchedIds.filter((id: unknown) => typeof id === "string" && ACTIVITIES.some(a => a.id === id))
@@ -231,7 +260,7 @@ ${activityList}`,
     res.json({ matchedIds, unmatchedLabels });
   } catch (err) {
     console.error("Parse description error:", err);
-    res.status(500).json({ error: "Failed to parse description" });
+    res.status(503).json({ error: "Failed to parse description", code: "ai_unavailable" });
   }
 });
 

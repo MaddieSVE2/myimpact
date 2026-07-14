@@ -39,7 +39,8 @@ router.post("/questions", authenticate, reflectionRateLimit, textAiQuota, async 
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
-      max_completion_tokens: 200,
+      max_completion_tokens: 1000,
+      reasoning_effort: "low",
       response_format: { type: "json_object" },
       messages: [
         {
@@ -62,7 +63,15 @@ Rules:
       ],
     });
 
-    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+    let parsed: { questions?: unknown } = {};
+    const content = completion.choices[0]?.message?.content;
+    if (content?.trim()) {
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        console.warn("Reflection questions: unparseable model output, returning no questions");
+      }
+    }
 
     const questions: string[] = Array.isArray(parsed.questions)
       ? parsed.questions

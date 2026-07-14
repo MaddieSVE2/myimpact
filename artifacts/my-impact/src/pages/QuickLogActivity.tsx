@@ -344,11 +344,18 @@ export default function QuickLogActivity() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: describeText.trim() }),
       });
-      if (!res.ok) throw new Error("analyse_failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.code === "ai_unavailable" ? "ai_unavailable" : "analyse_failed");
+      }
       const data: AnalysedActivity = await res.json();
       setAnalysed({ name: describeText.trim(), analysed: data });
-    } catch {
-      setDescribeError("Couldn't analyse that activity. Try a different description.");
+    } catch (err) {
+      setDescribeError(
+        err instanceof Error && err.message === "ai_unavailable"
+          ? "Our analysis service is having a moment. Please try again shortly."
+          : "Couldn't analyse that activity. Try adding a bit more detail, like what you do and who it helps.",
+      );
     } finally {
       setDescribeLoading(false);
     }
