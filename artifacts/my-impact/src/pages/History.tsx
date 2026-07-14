@@ -156,7 +156,7 @@ export default function History() {
   const gamificationEnabled = user?.gamificationEnabled ?? true;
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const { loadFromRecord } = useWizard();
+  const { loadFromRecord, loadRecordForEdit } = useWizard();
 
   const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
   const currentYear = new Date().getUTCFullYear();
@@ -391,6 +391,72 @@ export default function History() {
   const handleCancelEdit = () => {
     setEditingId(null);
   };
+
+  // Open an existing entry for in-place editing in the wizard. We load its
+  // saved activities (plus date/location and derived contribution inputs)
+  // into the wizard and remember its id so the eventual save targets the
+  // same row — the server recomputes the social value and updates the entry
+  // instead of inserting a duplicate. The record's period label is carried
+  // along so the edit doesn't silently relabel it.
+  const handleEditActivities = (r: AnyRecord) => {
+    if (!r.impactResult) return;
+    const activities = ((r as { activities?: SelectedActivity[] }).activities ?? []) as SelectedActivity[];
+    // Recover the contribution inputs the entry was saved with. The raw inputs
+    // aren't stored, but both are derivable from the saved result:
+    //  - donationsGBP === donationsValue (the engine stores donations 1:1)
+    //  - additionalVolunteerHours === totalHours minus the summed activity
+    //    hours, where "activity hours" covers BOTH predefined activities and
+    //    custom ("describe your own") ones — the engine adds custom hours to
+    //    totalHours too, and the edit flow restores custom activities
+    //    separately, so leaving them in here would double-count them as
+    //    extra hours. Custom hours live in the stored result's breakdowns
+    //    under category "Custom".
+    // Clamp to avoid a tiny negative from rounding when there are no extras.
+    const predefinedHours = activities.reduce((sum, a) => sum + (a.hoursPerYear ?? 0), 0);
+    const breakdowns = (r.impactResult.activityBreakdowns ?? []) as Array<{ category?: string; hours?: number }>;
+    const customHours = breakdowns
+      .filter(b => b.category === "Custom")
+      .reduce((sum, b) => sum + (b.hours ?? 0), 0);
+    const donationsGBP = Math.max(0, r.impactResult.donationsValue ?? 0);
+    const additionalVolunteerHours = Math.max(0, (r.impactResult.totalHours ?? 0) - predefinedHours - customHours);
+    const histRecord: HistoryRecord = {
+      impactResult: r.impactResult,
+      activities,
+      region: (r as { region?: string | null }).region ?? null,
+      outwardCode: (r as { outwardCode?: string | null }).outwardCode ?? null,
+      lat: (r as { lat?: number | null }).lat ?? null,
+      lng: (r as { lng?: number | null }).lng ?? null,
+      entryDate: (r as { entryDate?: string | null }).entryDate ?? null,
+      donationsGBP,
+      additionalVolunteerHours,
+    };
+    loadRecordForEdit(histRecord, String(r.id), r.period ?? null);
+    navigate("/wizard/activities");
+  };
+
+  // Deep link from the Results habit-conflict dialog: /history?edit=<id>
+  // jumps straight into the wizard edit flow for that record once the
+  // history data has loaded. The param is consumed exactly once.
+  const [pendingEditId, setPendingEditId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("edit");
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (!pendingEditId || !isAuthenticated) return;
+    const recs = serverData?.records ?? [];
+    if (recs.length === 0) return;
+    const target = recs.find(r => String(r.id) === pendingEditId);
+    setPendingEditId(null);
+    if (target) {
+      handleEditActivities(target as AnyRecord);
+    } else {
+      toast({ title: "Entry not found", description: "The entry you tried to edit may be in a different year.", variant: "destructive" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEditId, isAuthenticated, serverData]);
 
   const handleConfirmDelete = async (recordId: string) => {
     if (isAuthenticated) {
@@ -1116,6 +1182,17 @@ export default function History() {
                           />
                         </div>
                         <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
+                          {isAuthenticated && record.impactResult && (
+                            <button
+                              onClick={() => handleEditActivities(record)}
+                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all"
+                              style={{ borderColor: "#213547", color: "#213547" }}
+                              data-testid={`button-edit-activities-${record.id}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                              Edit activities
+                            </button>
+                          )}
                           {record.impactResult && (record as LocalRecord).activities?.length > 0 && (
                             <button
                               onClick={() => {

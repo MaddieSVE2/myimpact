@@ -70,6 +70,13 @@ interface WizardState {
   // Defaults to today; the user can backdate it from the Contributions step
   // when logging a past activity. Drives the calendar-year bucketing.
   entryDate: string;
+  // When set, the wizard is editing an existing saved record in place rather
+  // than creating a new one. On save, Results passes this as `targetRecordId`
+  // so the server updates the same row (re-running the social-value engine)
+  // instead of inserting a duplicate. `editPeriod` preserves the record's
+  // original period label so an edit doesn't silently relabel it.
+  editRecordId: string | null;
+  editPeriod: string | null;
 }
 
 export interface HistoryRecord {
@@ -85,6 +92,14 @@ export interface HistoryRecord {
   // can keep the entry on its original calendar day unless the user
   // deliberately changes it.
   entryDate?: string | null;
+  // Optional contribution inputs the entry was originally saved with.
+  // These aren't stored as raw columns, but both are recoverable from
+  // the saved result: donationsGBP === impactResult.donationsValue, and
+  // additionalVolunteerHours === totalHours minus the summed activity
+  // hours. When provided, the edit flow pre-fills the Contributions step
+  // so they aren't reset to 0 on save.
+  donationsGBP?: number | null;
+  additionalVolunteerHours?: number | null;
 }
 
 interface WizardContextType extends WizardState {
@@ -102,6 +117,8 @@ interface WizardContextType extends WizardState {
   removeCustomActivity: (activityId: string) => void;
   setResult: (result: ImpactResult) => void;
   loadFromRecord: (record: HistoryRecord) => void;
+  loadRecordForEdit: (record: HistoryRecord, recordId: string, period?: string | null) => void;
+  setEditRecordId: (id: string | null) => void;
   loadFromTemplate: (activities: SelectedActivity[], donationsGBP: number) => void;
   reset: () => void;
   clearDraft: () => void;
@@ -130,6 +147,45 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Rebuild the wizard's separate customActivities array from a saved record's
+// stored result. Custom ("describe your own") activities are persisted inside
+// the result's activityBreakdowns under category "Custom"; the stored jsonb
+// keeps the extra fields (quantity, valuePerUnit, unit) that the typed
+// ImpactResult breakdown doesn't declare, so we read them through a cast.
+function restoreCustomActivities(result: ImpactResult | null | undefined): CustomActivityDetail[] {
+  const breakdowns = (result?.activityBreakdowns ?? []) as unknown as Array<Record<string, unknown>>;
+  return breakdowns
+    .filter(b => b.category === 'Custom')
+    .map(b => {
+      const impactValue = Number(b.impactValue ?? 0);
+      let quantity = Number(b.quantity ?? 0);
+      let valuePerUnit = Number(b.valuePerUnit ?? 0);
+      let unit = typeof b.unit === 'string' && b.unit ? b.unit : '';
+      // Older records were saved before the engine persisted the raw pricing
+      // inputs (quantity/valuePerUnit/unit) in the breakdown. For those,
+      // reconstruct a pricing that re-values to exactly the stored
+      // impactValue (1 item × impactValue), so an edit round-trip never
+      // silently drops or changes the custom activity's value.
+      if (!unit || valuePerUnit <= 0) {
+        quantity = 1;
+        valuePerUnit = impactValue;
+        unit = 'item';
+      }
+      return {
+        activityId: String(b.activityId ?? `custom_${Date.now()}`),
+        name: String(b.activityName ?? 'Custom activity'),
+        quantity,
+        hoursPerYear: Number(b.hours ?? 0),
+        valuePerUnit,
+        unit,
+        proxy: String(b.proxy ?? ''),
+        proxyYear: String(b.proxyYear ?? ''),
+        sdg: String(b.sdg ?? ''),
+        sdgColor: String(b.sdgColor ?? ''),
+      };
+    });
+}
+
 const defaultState: WizardState = {
   location: '',
   locationMeta: null,
@@ -143,6 +199,8 @@ const defaultState: WizardState = {
   activitySelection: defaultActivitySelection,
   activityMode: 'pick',
   entryDate: todayIso(),
+  editRecordId: null,
+  editPeriod: null,
 };
 
 const DRAFT_KEY = 'wizard_draft_v1';
@@ -205,6 +263,8 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         activitySelection: draft.activitySelection ?? defaultActivitySelection,
         activityMode: (draft.activityMode as ActivityMode | undefined) ?? 'pick',
         entryDate: typeof draft.entryDate === 'string' && draft.entryDate ? draft.entryDate : todayIso(),
+        editRecordId: typeof draft.editRecordId === 'string' ? draft.editRecordId : null,
+        editPeriod: typeof draft.editPeriod === 'string' ? draft.editPeriod : null,
       },
       hasDraft: true,
     };
@@ -230,6 +290,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [activityMode, setActivityModeState] = useState<ActivityMode>(initialState.activityMode);
   const [entryDate, setEntryDateState] = useState<string>(initialState.entryDate);
   const setEntryDate = useCallback((iso: string) => setEntryDateState(iso || todayIso()), []);
+  const [editRecordId, setEditRecordIdState] = useState<string | null>(initialState.editRecordId);
+  const [editPeriod, setEditPeriodState] = useState<string | null>(initialState.editPeriod);
+  const setEditRecordId = useCallback((id: string | null) => {
+    setEditRecordIdState(id);
+    if (id === null) setEditPeriodState(null);
+  }, []);
 
   const setActivitySelection = useCallback((sel: Partial<ActivitySelectionDraft>) => {
     setActivitySelectionState(prev => ({ ...prev, ...sel }));
@@ -242,12 +308,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate }, user?.id);
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod }, user?.id);
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, user?.id]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, user?.id]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -344,6 +410,69 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setHasDraft(false);
   }, []);
 
+  const loadRecordForEdit = useCallback((record: HistoryRecord, recordId: string, period?: string | null) => {
+    // Editing an existing entry in place: load its activities and mirror them
+    // into the activity-selection draft (so the activities step shows them as
+    // already chosen), preserve the entry's date and location, and remember the
+    // record id so the eventual save targets the same row instead of inserting
+    // a duplicate. result is cleared so the user re-runs the calculator and the
+    // server recomputes the social value from the edited activities.
+    setResultState(null);
+    setInput({
+      description: '',
+      activities: record.activities,
+      // Restore the original donation amount and extra volunteer hours so an
+      // edit doesn't silently zero them out. Both are optional on the record
+      // (older callers omit them); fall back to 0 and clamp negatives in case
+      // a derived value underflows.
+      donationsGBP: Math.max(0, record.donationsGBP ?? 0),
+      additionalVolunteerHours: Math.max(0, record.additionalVolunteerHours ?? 0),
+    });
+    // Restore any "describe your own" activities saved on this record so they
+    // are re-valued (and re-shown) on edit rather than silently dropped. They
+    // live in the stored result's breakdowns under category "Custom"; the
+    // jsonb preserves the extra fields (quantity, valuePerUnit, unit) the
+    // typed ImpactResult doesn't declare, so we read them via a cast. Predefined
+    // activities come from record.activities, so there's no double-counting.
+    setCustomActivities(restoreCustomActivities(record.impactResult));
+    const recs = record.situation ? [record.situation] : [];
+    setSituationsState(recs);
+    setCareerBreakState(record.situation === 'career_break');
+    setInterests([]);
+    setCustomInterestState('');
+    if (record.region != null && record.lat != null && record.lng != null && record.outwardCode != null) {
+      setLocationState(record.outwardCode);
+      setLocationMetaState({
+        region: record.region,
+        outwardCode: record.outwardCode,
+        lat: record.lat,
+        lng: record.lng,
+        adminDistrict: '',
+      });
+    } else {
+      setLocationState('');
+      setLocationMetaState(null);
+    }
+    const selectedIds = record.activities.map(a => a.activityId);
+    const quantities: Record<string, number> = {};
+    const hours: Record<string, number> = {};
+    for (const a of record.activities) {
+      quantities[a.activityId] = a.quantity;
+      hours[a.activityId] = a.hoursPerYear;
+    }
+    setActivitySelectionState({
+      selectedIds,
+      quantities,
+      hours,
+      phase: 'select',
+      quantifyIndex: 0,
+    });
+    setActivityModeState('pick');
+    setEntryDateState(record.entryDate || todayIso());
+    setEditRecordIdState(recordId);
+    setEditPeriodState(period ?? null);
+  }, []);
+
   const loadFromTemplate = useCallback((activities: SelectedActivity[], donationsGBP: number) => {
     setResultState(null);
     setInput({
@@ -385,6 +514,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
     setEntryDateState(todayIso());
+    setEditRecordIdState(null);
+    setEditPeriodState(null);
     removeDraft();
     setHasDraft(false);
   };
@@ -402,6 +533,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
     setEntryDateState(todayIso());
+    setEditRecordIdState(null);
+    setEditPeriodState(null);
     removeDraft();
     setHasDraft(false);
   }, []);
@@ -421,9 +554,9 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate,
+      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
-      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadFromTemplate, reset,
+      addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadRecordForEdit, setEditRecordId, loadFromTemplate, reset,
       clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate,
     }}>
       {children}

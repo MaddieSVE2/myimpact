@@ -945,7 +945,7 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, locationMeta, interests, careerBreak, situations, entryDate } = useWizard();
+  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, editRecordId, editPeriod, setEditRecordId } = useWizard();
   const situation = situations[0] ?? null;
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
@@ -955,6 +955,11 @@ export default function Results() {
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Whether the completed save was an in-place edit of an existing record.
+  // editRecordId itself is cleared right after a successful edit-save (so a
+  // follow-up save creates a new entry), so this keeps the CTA reading
+  // "Updated!" instead of flipping to "Saved!".
+  const [savedWasEdit, setSavedWasEdit] = useState(false);
   const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -1024,6 +1029,12 @@ export default function Results() {
       setLocation("/login?from=/results");
       return;
     }
+    // When the user opened an existing entry to edit it (from History),
+    // editRecordId is set. Forward it as targetRecordId so the server updates
+    // that same row in place — recomputing the social value — instead of
+    // inserting a duplicate. An explicit opts.targetRecordId (e.g. the habit
+    // conflict dialog) still takes precedence.
+    const targetRecordId = opts?.targetRecordId ?? editRecordId ?? undefined;
     try {
       const savedRecord: SavedImpact = await saveMutation.mutateAsync({
         data: {
@@ -1033,9 +1044,14 @@ export default function Results() {
           entryDate: entryDate || undefined,
           impactResult: result,
           activities: input.activities,
+          // Persist any "describe your own" activities so the server recomputes
+          // (and stores) the same social value the user saw on-screen. Without
+          // these the server only re-values predefined activities and the
+          // custom ones are silently dropped from the saved record.
+          ...(customActivities.length > 0 ? { customActivities } : {}),
           donationsGBP: input.donationsGBP,
           additionalVolunteerHours: input.additionalVolunteerHours,
-          ...(opts?.targetRecordId ? { targetRecordId: opts.targetRecordId } : {}),
+          ...(targetRecordId ? { targetRecordId } : {}),
           ...(opts?.force ? { force: true } : {}),
           ...(locationMeta ? {
             region: locationMeta.region,
@@ -1117,7 +1133,17 @@ export default function Results() {
       const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
       setShowSaveDialog(false);
-      toast({ title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." });
+      // Once a save targeting an existing record succeeds, drop the edit target
+      // so any later save on this page creates a fresh entry rather than
+      // silently overwriting the one we just updated.
+      const wasEdit = !!targetRecordId;
+      setSavedWasEdit(wasEdit);
+      if (editRecordId) setEditRecordId(null);
+      toast(
+        wasEdit
+          ? { title: "Entry updated!", description: "Your changes have been saved and the value recalculated." }
+          : { title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." }
+      );
 
       // If the user came from an org-challenge "Contribute" prompt, refresh
       // the prompts and return them to the home screen so they can see the
@@ -1133,8 +1159,10 @@ export default function Results() {
       }
 
       // Offer to make this a recurring activity. Default the label to the
-      // period (or first activity name if no period was chosen).
-      if (!recurringTemplateSaved) {
+      // period (or first activity name if no period was chosen). Skip this for
+      // in-place edits — the user is adjusting an existing entry, not logging a
+      // new routine.
+      if (!wasEdit && !recurringTemplateSaved) {
         const firstActivity = result.activityBreakdowns?.[0]?.activityName ?? "My regular activity";
         setTplLabel(period || firstActivity);
         setShowRecurringPrompt(true);
@@ -1598,16 +1626,27 @@ export default function Results() {
 
           {/* Save, primary action, always prominent */}
           <button
-            onClick={() => !saved && setShowSaveDialog(true)}
+            onClick={() => {
+              if (saved) return;
+              // In edit mode we already know which entry and period this maps
+              // to, so update it directly rather than re-asking for the period.
+              if (editRecordId) handleSave(editPeriod ?? "");
+              else setShowSaveDialog(true);
+            }}
             disabled={saveMutation.isPending || saved}
             className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
             style={{
               background: saved ? "#22c55e" : "#213547",
               boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
             }}
+            data-testid="results-save-button"
           >
             {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
-            {saveMutation.isPending ? "Saving…" : saved ? "Saved!" : "Save progress"}
+            {saveMutation.isPending
+              ? (editRecordId ? "Updating…" : "Saving…")
+              : saved
+                ? (savedWasEdit ? "Updated!" : "Saved!")
+                : (editRecordId ? "Update entry" : "Save progress")}
           </button>
 
           {/* Divider */}

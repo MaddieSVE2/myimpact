@@ -1095,6 +1095,14 @@ export function calculateImpact(
       sdgColor: ca.sdgColor || "#4C9F38",
       impactValue: Math.round(impactValue * 100) / 100,
       hours: ca.hoursPerYear,
+      // Persist the raw pricing inputs alongside the computed value so the
+      // History "edit" flow can rebuild the custom activity (and re-value it
+      // identically) from the stored result. Older records lack these fields;
+      // the client falls back to reconstructing from impactValue.
+      quantity: ca.quantity,
+      valuePerUnit: ca.valuePerUnit,
+      unit: ca.unit,
+      unitLabel: ca.unit,
     });
   }
 

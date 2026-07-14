@@ -127,9 +127,11 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     // ---- 4. Resolve via the "edit existing" path ------------------------
     await page.getByTestId("conflict-replace").click();
 
-    // The Save CTA flips to "Saved!" once the targetRecordId update
+    // The Save CTA flips to "Updated!" once the targetRecordId update
     // succeeds — that's our signal the conflict was resolved cleanly.
-    await expect(page.getByRole("button", { name: /^saved!$/i })).toBeVisible({
+    // (In-place updates read "Updated!" rather than "Saved!" so users can
+    // tell an edit apart from a fresh save.)
+    await expect(page.getByRole("button", { name: /^updated!$/i })).toBeVisible({
       timeout: 15_000,
     });
 
