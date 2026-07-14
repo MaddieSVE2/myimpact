@@ -28,8 +28,11 @@ interface OrgInfo {
   name: string;
   type: string;
   role: string;
+  membershipStatus?: string;
   branding?: OrgBranding;
 }
+
+const PENDING_JOIN_KEY = "org-join-pending";
 
 // Convert "#RRGGBB" → "H S% L%" Tailwind HSL CSS-variable string.
 function hexToHslVar(hex: string | null | undefined): string | null {
@@ -759,6 +762,14 @@ function JoinOrgPanel() {
   const [code, setCode] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<OrgListItem | null>(null);
   const [step, setStep] = useState<"entry" | "consent" | "joined" | "pending">("entry");
+  const [rejectedOrgName, setRejectedOrgName] = useState<string | null>(() => {
+    try { return localStorage.getItem(PENDING_JOIN_KEY); } catch { return null; }
+  });
+
+  function dismissRejectedNotice() {
+    try { localStorage.removeItem(PENDING_JOIN_KEY); } catch { /* ignore */ }
+    setRejectedOrgName(null);
+  }
   const [orgName, setOrgName] = useState("");
   const [allowedDomain, setAllowedDomain] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -836,7 +847,12 @@ function JoinOrgPanel() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-org"] });
       queryClient.invalidateQueries({ queryKey: ["org-stats"] });
-      setStep(data.status === "pending" ? "pending" : "joined");
+      if (data.status === "pending") {
+        try { localStorage.setItem(PENDING_JOIN_KEY, data.orgName ?? orgName); } catch { /* ignore */ }
+        setStep("pending");
+      } else {
+        setStep("joined");
+      }
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -936,6 +952,24 @@ function JoinOrgPanel() {
 
   return (
     <motion.div className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      {rejectedOrgName && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3" data-testid="notice-join-rejected">
+          <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-900">Your request to join {rejectedOrgName} wasn't approved</p>
+            <p className="text-xs text-red-800 mt-1">An organisation manager declined your join request. If you think this was a mistake, contact your organisation admin or try joining again with a valid invite code.</p>
+          </div>
+          <button
+            onClick={dismissRejectedNotice}
+            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
+            aria-label="Dismiss"
+            data-testid="button-dismiss-rejected"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="bg-white border border-border rounded-xl p-6">
         <div className="flex items-center gap-2 mb-1">
           <KeyRound className="w-4 h-4 text-primary" />
@@ -1702,7 +1736,23 @@ export default function OrgPortal() {
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const inOrg = !!orgData?.org;
   const isManager = orgData?.org?.role === "manager";
+  const isPendingMember = inOrg && orgData?.org?.membershipStatus === "pending";
   const [, setLocation] = useLocation();
+
+  // Keep a local marker while membership is pending so that, if the request
+  // is rejected (the membership row is removed), we can show a clear
+  // "not approved" message instead of silently returning to the join screen.
+  useEffect(() => {
+    if (!orgData) return;
+    try {
+      if (isPendingMember && orgData.org) {
+        localStorage.setItem(PENDING_JOIN_KEY, orgData.org.name);
+      } else if (orgData.org) {
+        // Active membership — approved, clear any pending marker.
+        localStorage.removeItem(PENDING_JOIN_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [orgData, isPendingMember]);
 
   // Demo org managers always land on the new mock-data dashboard, and
   // university managers go straight to their live dashboard.
@@ -1729,7 +1779,7 @@ export default function OrgPortal() {
   const { data: regionsData, isLoading: regionsLoading } = useOrgRegions(inOrg && isManager, from, to);
   const { data: joinLinkData } = useJoinLink(inOrg && isManager);
 
-  const isMemberView = inOrg && !isManager;
+  const isMemberView = inOrg && !isManager && !isPendingMember;
   const orgPromptsQuery = useQuery<{ inOrg: boolean; surveys: Array<{ id: string }>; challenges: Array<{ id: string }> }>({
     queryKey: ["org-prompts"],
     queryFn: async () => {
@@ -1818,6 +1868,22 @@ export default function OrgPortal() {
 
       {!inOrg ? (
         <JoinOrgPanel />
+      ) : isPendingMember ? (
+        <motion.div
+          className="bg-white border border-border rounded-xl p-8 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="panel-membership-pending"
+        >
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-6 h-6 text-amber-600" />
+          </div>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-2">Your request is pending approval</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Your request to join <strong>{orgData!.org!.name}</strong> is waiting for a manager to approve it. You'll get access to the organisation portal as soon as it's approved.
+          </p>
+          <p className="text-xs text-muted-foreground">Check back later — this page will show your organisation once your request has been approved.</p>
+        </motion.div>
       ) : !isManager ? (
         <div className="space-y-4" data-testid="org-member-jobs">
           <motion.div
