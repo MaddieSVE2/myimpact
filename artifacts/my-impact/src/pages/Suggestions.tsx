@@ -453,7 +453,16 @@ export default function Suggestions() {
                           </div>
                         ) : local?.places.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">
-                            No specific local groups found. Try searching online for "{sug.activityName} {location}".
+                            No specific local groups found.{" "}
+                            <a
+                              href={`https://www.google.com/search?q=${encodeURIComponent(`${sug.activityName} ${location} volunteer charity`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2 hover:text-foreground/70 transition-colors"
+                            >
+                              Search online <ExternalLink className="w-2.5 h-2.5" />
+                            </a>{" "}
+                            for "{sug.activityName} {location}".
                           </p>
                         ) : (
                           local.places.map((place, pi) => (
