@@ -124,4 +124,3 @@ VITE_ENABLE_DEMO_LOGIN = "true"
 ENABLE_DEMO_LOGIN = "true"
 
 [userenv.development]
-E2E_TEST_MODE = "1"
