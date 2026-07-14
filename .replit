@@ -30,6 +30,14 @@ args = "subnav-alignment"
 task = "workflow.run"
 args = "e2e"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "build"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "smoke"
+
 [[workflows.workflow]]
 name = "subnav-alignment"
 author = "agent"
@@ -48,6 +56,28 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5000 E2E_WEB_PORT=3000 pnpm --filter @workspace/e2e exec playwright test"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "build"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm -r --if-present run build"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "smoke"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5000 E2E_WEB_PORT=3000 pnpm --filter @workspace/e2e exec playwright test tests/01-magic-link-signup.spec.ts tests/03-journal-crud.spec.ts"
 
 [workflows.workflow.metadata]
 isValidation = true
