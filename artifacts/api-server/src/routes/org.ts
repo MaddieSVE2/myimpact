@@ -1390,6 +1390,38 @@ router.post("/my/members/:userId/approve", authenticate, async (req: Authenticat
     },
   }).catch(err => console.error("[org.approve] failed to enqueue member.joined:", err));
 
+  if (targetUser?.email) {
+    (async () => {
+      try {
+        const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, membership.orgId) });
+        const orgName = org?.name ?? "your organisation";
+        const { client, fromEmail } = await getUncachableResendClient();
+        const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
+        const { error } = await client.emails.send({
+          from: fromEmail,
+          to: targetUser.email,
+          subject: `You're in! Your request to join ${orgName} was approved`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+              <h2 style="color:#213547;margin-top:0;">Welcome to ${escHtml(orgName)}</h2>
+              <p style="color:#444;font-size:15px;line-height:1.5;">
+                Good news — a manager at <strong>${escHtml(orgName)}</strong> has approved your request to join.
+                You now have full access as a member of the organisation.
+              </p>
+              <div style="margin-top:24px;">
+                <a href="${appUrl}/dashboard" style="display:inline-block;background:#E8633A;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:600;">Go to My Impact</a>
+              </div>
+              <p style="color:#aaa;font-size:11px;margin-top:32px;">My Impact · myimpact.uk</p>
+            </div>
+          `,
+        });
+        if (error) console.error("[org.approve] Resend rejected approval email:", error);
+      } catch (err) {
+        console.error("[org.approve] failed to send approval email:", err);
+      }
+    })();
+  }
+
   res.json({ ok: true });
 });
 
@@ -1412,6 +1444,41 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
 
   await db.delete(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "pending")));
+
+  (async () => {
+    try {
+      const [targetUser, org] = await Promise.all([
+        db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) }),
+        db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, membership.orgId) }),
+      ]);
+      if (!targetUser?.email) return;
+      const orgName = org?.name ?? "the organisation";
+      const { client, fromEmail } = await getUncachableResendClient();
+      const { error } = await client.emails.send({
+        from: fromEmail,
+        to: targetUser.email,
+        subject: `Update on your request to join ${orgName}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+            <h2 style="color:#213547;margin-top:0;">About your join request</h2>
+            <p style="color:#444;font-size:15px;line-height:1.5;">
+              Thanks for your interest in joining <strong>${escHtml(orgName)}</strong>.
+              Unfortunately, a manager has reviewed your request and it wasn't approved this time.
+            </p>
+            <p style="color:#444;font-size:15px;line-height:1.5;">
+              If you think this was a mistake, please get in touch with the organisation directly —
+              they may be able to send you a fresh invite. You can still use My Impact to track your
+              volunteering and giving on your own.
+            </p>
+            <p style="color:#aaa;font-size:11px;margin-top:32px;">My Impact · myimpact.uk</p>
+          </div>
+        `,
+      });
+      if (error) console.error("[org.reject] Resend rejected decline email:", error);
+    } catch (err) {
+      console.error("[org.reject] failed to send decline email:", err);
+    }
+  })();
 
   res.json({ ok: true });
 });

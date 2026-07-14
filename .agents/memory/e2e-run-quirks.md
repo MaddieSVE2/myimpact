@@ -25,3 +25,7 @@ description: Port collisions, process reaping, and the validation-runner workaro
 - Quick authenticated dev verification without test mode: seed a user + magic token directly in the dev DB and drive the auth-confirm page with a one-off Playwright script against the localhost:80 proxy; launch chromium with `executablePath: process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE` (nix-provided). Clean up seeded rows afterwards.
 - Even with unique port pairs, running all five validation suites concurrently (mark_task_complete) can crash browsers with "Resource temporarily unavailable" / "Page crashed" — resource exhaustion, not app regressions. If the full `e2e` suite passed in the same run, re-run the crashed suites individually via `startValidationRun` to confirm before treating them as failures.
 - Playwright chromium must be reinstalled after environment resets (`pnpm --filter @workspace/e2e exec playwright install chromium`); missing browser shows as "Executable doesn't exist at .cache/ms-playwright/...".
+
+- If validation e2e fails with "Executable doesn't exist at .cache/ms-playwright/...", run `pnpm --filter @workspace/e2e exec playwright install chromium` first — fresh task environments lack browsers.
+
+- If a validation run fails with "http://localhost:500X is already used" or /login navigation timeouts, kill orphaned servers on ports 5000-5003/3000-3003 (fuser -k PORT/tcp) — a reaped local playwright run leaves them behind.
