@@ -191,6 +191,13 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request, res: Response) =
     admin: org.sroiCostAdmin ?? null,
   } : null;
 
+  // ── SROI ratio (social value per £1 invested) ───────────────────────────────
+  const costPerVolunteer = org.sroiCostPerVolunteer ?? null;
+  const totalInvestment = costPerVolunteer !== null ? memberIds.length * costPerVolunteer : 0;
+  const sroiRatio = costPerVolunteer !== null && totalInvestment > 0
+    ? Math.round((totalSocialValue / totalInvestment) * 100) / 100
+    : null;
+
   res.json({
     share: {
       slug: link.slug,
@@ -199,8 +206,9 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request, res: Response) =
       expiresAt: link.expiresAt ? link.expiresAt.toISOString() : null,
       orgName: org.name,
       orgType: org.type,
-      sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
+      sroiCostPerVolunteer: costPerVolunteer,
       sroiCostBreakdown: costBreakdown,
+      sroiRatio,
     },
     sections: {
       summary: includeSummary ? summary : null,

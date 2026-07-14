@@ -27,6 +27,7 @@ interface ShareInfo {
   orgType: string;
   sroiCostPerVolunteer: number | null;
   sroiCostBreakdown: CostBreakdown | null;
+  sroiRatio: number | null;
 }
 
 interface SummarySection {
@@ -214,6 +215,21 @@ export default function OrgSharePage() {
             <p className="text-[13px] text-muted-foreground mb-1">per volunteer</p>
           </div>
           <CostBreakdownTable breakdown={share.sroiCostBreakdown} />
+        </div>
+      )}
+
+      {/* SROI ratio */}
+      {share.sroiRatio !== null && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Social return on investment</h3>
+          </div>
+          <p className="text-[13px] text-muted-foreground mb-3">Social value created for every £1 this organisation invests in its volunteers.</p>
+          <p className="text-3xl font-display font-bold text-primary">
+            £{share.sroiRatio.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-base font-semibold text-foreground"> social value per £1 invested</span>
+          </p>
         </div>
       )}
 
