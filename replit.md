@@ -6,6 +6,8 @@ The My Impact web application is a pnpm workspace monorepo designed to help user
 
 I prefer iterative development and welcome early feedback. Please use clear and concise language in your explanations. For significant changes or architectural decisions, please ask for approval before proceeding. Ensure all code is well-documented and follows best practices for maintainability and readability. Do not make changes to the `lib/api-spec/openapi.yaml` file.
 
+**Code safety:** The user lost significant work in May 2026 when code was overwritten. GitHub (MaddieSVE2/myimpact, `main` branch) is the off-site backup; `main` has branch protection (no force pushes, no deletions). Push to GitHub after significant milestones, and never rewrite git history.
+
 **Copy style:** No em dashes (`—`) in any user-facing copy (UI strings, locale catalogues, emails, modals, tooltips). Use commas, full stops, or parentheses instead. Em dashes are fine in code comments and internal docs. Member-facing copy should be plain English: state what is being submitted, when it goes, who sees it, and what value it has.
 
 # System Architecture
