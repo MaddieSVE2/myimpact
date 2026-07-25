@@ -77,6 +77,8 @@ const OrgMemberChallenges = lazy(() => import("@/pages/OrgMemberChallenges"));
 const OrgExport = lazy(() => import("@/pages/OrgExport"));
 const OrgSettings = lazy(() => import("@/pages/OrgSettings"));
 const OrgRegister = lazy(() => import("@/pages/OrgRegister"));
+const OrgTypeExplicitSubmission = lazy(() => import("@/pages/OrgTypeExplicitSubmission"));
+const OrgTypeConsentedLogging = lazy(() => import("@/pages/OrgTypeConsentedLogging"));
 const OrgDemoPage = lazy(() => import("@/pages/OrgDemoPage"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -381,6 +383,8 @@ function AppRouter() {
               </Route>
               <Route path="/org/demo" component={OrgDemoPage} />
               <Route path="/org/register" component={OrgRegister} />
+              <Route path="/org/types/explicit-submission" component={OrgTypeExplicitSubmission} />
+              <Route path="/org/types/consented-logging" component={OrgTypeConsentedLogging} />
               <Route path="/org/share/:slug" component={OrgSharePage} />
               <Route path="/org/submit/history">
                 {() => <PrivateRoute component={OrgMemberSubmitHistory} />}

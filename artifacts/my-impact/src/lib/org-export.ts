@@ -35,6 +35,7 @@ export interface MyOrgResponse {
     sroiCostPerVolunteer?: number | null;
     sroiCostBreakdown?: SroiCostBreakdown;
     summaryYearStart?: string;
+    dashboardSections?: Record<string, boolean>;
     branding?: OrgBranding;
   } | null;
 }

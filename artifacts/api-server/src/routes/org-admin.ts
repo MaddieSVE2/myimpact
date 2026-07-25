@@ -5,6 +5,7 @@ import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { generateApiKey } from "../lib/orgApiKey.js";
 import { SUPPORTED_EVENTS, type WebhookEvent } from "../lib/webhookDispatcher.js";
+import { getOrgSharingContext, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,11 @@ async function requireOrgManager(req: AuthenticatedRequest, res: Response) {
   }
   if (membership.role !== "manager") {
     res.status(403).json({ error: "Only organisation managers can manage developer settings." });
+    return null;
+  }
+  const sharingCtx = await getOrgSharingContext(membership.orgId);
+  if (sharingCtx.revoked) {
+    res.status(403).json({ error: REVOKED_ORG_MESSAGE });
     return null;
   }
   return membership;

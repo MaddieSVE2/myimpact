@@ -8,6 +8,7 @@ import {
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
+import { getOrgSharingContext, sharedRecordsCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -748,12 +749,16 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
 
   const memberIds = members.map(m => m.userId);
 
+  // For consented-logging orgs, only records from consenting members within
+  // each member's shared window count. Explicit orgs keep legacy behaviour.
+  const sharingCtx = await getOrgSharingContext(orgId);
+  const sharedCondition = sharedRecordsCondition(sharingCtx);
+
   let records: typeof impactRecordsTable.$inferSelect[] = [];
-  if (memberIds.length > 0) {
-    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+  if (sharedCondition) {
     const fromCondition = from ? gte(impactRecordsTable.entryDate, from) : undefined;
     const toCondition = to ? lt(impactRecordsTable.entryDate, to) : undefined;
-    records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+    records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
   }
 
   const totalRecords = records.length;
@@ -805,6 +810,12 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
+    const sharingCtx = await getOrgSharingContext(membership.orgId);
+    if (sharingCtx.revoked) {
+      res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+      return;
+    }
+
     // Resolve period bounds: prefer explicit from/to, otherwise use
     // the org's saved summaryYearStart + periodOffset query param.
     let from: Date | undefined;
@@ -833,7 +844,12 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
       getVerifiedTotalsForOrg(membership.orgId, from, to),
     ]);
 
-    res.json({ ...stats, ...verified, recentActivity: [] });
+    // Server-side dashboard-section gating (super-admin controlled).
+    const gated: Record<string, unknown> = { ...stats, ...verified, recentActivity: [] };
+    if (!sharingCtx.sections.categories) gated.valueByCategory = [];
+    if (!sharingCtx.sections.valuePerMember) gated.averageValuePerPerson = null;
+    gated.dashboardSections = sharingCtx.sections;
+    res.json(gated);
   } catch (err) {
     res.status(500).json({ error: "Failed to compute org stats" });
   }

@@ -59,6 +59,8 @@ export const ROUTE_PATTERNS = [
   "/org/pulse",
   "/org/export",
   "/org/settings",
+  "/org/types/explicit-submission",
+  "/org/types/consented-logging",
 
   // ── Challenges ───────────────────────────────────────────────────────────
   "/challenges",

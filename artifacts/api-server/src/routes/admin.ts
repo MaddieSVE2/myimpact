@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, voiceUsageTable } from "@workspace/db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable } from "@workspace/db";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { randomUUID } from "crypto";
@@ -305,6 +306,208 @@ router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => 
   }
   const report = await getMonthlyUsageReport();
   res.json({ ...report, budgetAlertUsd: AI_BUDGET_ALERT_USD });
+});
+
+// ── Super-admin organisation management ──────────────────────────────────────
+
+function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCount = 0) {
+  return {
+    id: org.id,
+    name: org.name,
+    type: org.type,
+    dataSharingMode: org.dataSharingMode,
+    contactName: org.contactName ?? null,
+    contactEmail: org.contactEmail ?? null,
+    inviteCode: org.inviteCode,
+    dashboardSections: normalizeDashboardSections(org.dashboardSections),
+    revokedAt: org.revokedAt ? org.revokedAt.toISOString() : null,
+    createdAt: org.createdAt.toISOString(),
+    memberCount,
+  };
+}
+
+router.get("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const orgs = await db.select().from(organisationsTable).orderBy(desc(organisationsTable.createdAt));
+  const counts = orgs.length > 0
+    ? await db
+        .select({ orgId: orgMembersTable.orgId, count: sql<number>`count(*)::int` })
+        .from(orgMembersTable)
+        .where(and(inArray(orgMembersTable.orgId, orgs.map(o => o.id)), eq(orgMembersTable.status, "active")))
+        .groupBy(orgMembersTable.orgId)
+    : [];
+  const countMap = new Map(counts.map(c => [c.orgId, c.count]));
+  res.json({ orgs: orgs.map(o => serializeAdminOrg(o, countMap.get(o.id) ?? 0)) });
+});
+
+router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const type = typeof body.type === "string" ? body.type.trim() : "";
+  const contactName = typeof body.contactName === "string" ? body.contactName.trim() : "";
+  const contactEmail = typeof body.contactEmail === "string" ? body.contactEmail.trim().toLowerCase() : "";
+  const dataSharingMode = body.dataSharingMode;
+
+  if (!name || !type || !contactName || !contactEmail) {
+    res.status(400).json({ error: "name, type, contactName and contactEmail are required" });
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    res.status(400).json({ error: "contactEmail must be a valid email address" });
+    return;
+  }
+  if (dataSharingMode !== "explicit_submission" && dataSharingMode !== "consented_logging") {
+    res.status(400).json({ error: "dataSharingMode must be 'explicit_submission' or 'consented_logging'" });
+    return;
+  }
+  const sections = parseDashboardSectionsInput(body.dashboardSections);
+  if (sections === "invalid") {
+    res.status(400).json({ error: "dashboardSections must be an object of booleans" });
+    return;
+  }
+
+  const orgId = randomUUID();
+  let inviteCode = generateInviteCode();
+  let created: typeof organisationsTable.$inferSelect | null = null;
+  for (let attempt = 0; attempt < 5 && !created; attempt++) {
+    if (attempt > 0) inviteCode = generateInviteCode();
+    try {
+      const [row] = await db.insert(organisationsTable).values({
+        id: orgId,
+        name,
+        type,
+        inviteCode,
+        dataSharingMode,
+        contactName,
+        contactEmail,
+        dashboardSections: sections,
+      }).returning();
+      created = row ?? null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt < 4 && msg.includes("unique")) continue;
+      throw err;
+    }
+  }
+  if (!created) {
+    res.status(500).json({ error: "Failed to generate a unique invite code. Please try again." });
+    return;
+  }
+  res.json({ ok: true, org: serializeAdminOrg(created) });
+});
+
+// Edit contact details and dashboard sections. The data-sharing mode is
+// deliberately NOT editable after creation.
+router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const { id } = req.params;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+
+  const updates: Partial<{ contactName: string; contactEmail: string; dashboardSections: unknown }> = {};
+  if ("contactName" in body) {
+    if (typeof body.contactName !== "string" || !body.contactName.trim()) {
+      res.status(400).json({ error: "contactName must be a non-empty string" });
+      return;
+    }
+    updates.contactName = body.contactName.trim();
+  }
+  if ("contactEmail" in body) {
+    const v = typeof body.contactEmail === "string" ? body.contactEmail.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      res.status(400).json({ error: "contactEmail must be a valid email address" });
+      return;
+    }
+    updates.contactEmail = v;
+  }
+  if ("dashboardSections" in body) {
+    const sections = parseDashboardSectionsInput(body.dashboardSections);
+    if (sections === "invalid") {
+      res.status(400).json({ error: "dashboardSections must be an object of booleans" });
+      return;
+    }
+    updates.dashboardSections = sections;
+  }
+  if ("dataSharingMode" in body) {
+    res.status(400).json({ error: "An organisation's data-sharing type cannot be changed after creation." });
+    return;
+  }
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  const [updated] = await db.update(organisationsTable).set(updates).where(eq(organisationsTable.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  res.json({ ok: true, org: serializeAdminOrg(updated) });
+});
+
+router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const { id } = req.params;
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, id) });
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  if (org.revokedAt) {
+    res.status(400).json({ error: "Organisation is already revoked" });
+    return;
+  }
+
+  const revokedAt = new Date();
+  const [updated] = await db.update(organisationsTable)
+    .set({ revokedAt })
+    .where(eq(organisationsTable.id, id))
+    .returning();
+
+  let emailWarning: string | undefined;
+  if (org.contactEmail && process.env.E2E_TEST_MODE !== "1") {
+    const deletionDate = new Date(revokedAt.getTime() + 180 * 24 * 60 * 60 * 1000);
+    const deletionDateStr = deletionDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    try {
+      const { client, fromEmail } = await getUncachableResendClient();
+      await client.emails.send({
+        from: fromEmail,
+        to: org.contactEmail,
+        subject: `Your organisation's My Impact access has been revoked`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+            <h2 style="color:#213547;margin-top:0;">Access revoked for ${escHtmlAdmin(org.name)}</h2>
+            <p style="color:#444;line-height:1.6;">Hello${org.contactName ? " " + escHtmlAdmin(org.contactName) : ""},</p>
+            <p style="color:#444;line-height:1.6;">Access to the My Impact organisation dashboard and API for <strong>${escHtmlAdmin(org.name)}</strong> has been revoked. Your managers can no longer sign in to the organisation dashboard.</p>
+            <div style="background:white;border-radius:8px;padding:20px;margin:24px 0;border:2px solid #E8633A;">
+              <p style="color:#213547;font-size:14px;line-height:1.6;margin:0;"><strong>Your data is retained for 180 days.</strong> You can request a copy of your organisation's data at any time before <strong>${deletionDateStr}</strong>, after which it becomes eligible for deletion.</p>
+            </div>
+            <p style="color:#444;line-height:1.6;">To request your data or if you believe this was a mistake, reply to this email or contact <a href="mailto:hello@myimpact.uk" style="color:#E8633A;">hello@myimpact.uk</a>.</p>
+            <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="https://myimpact.uk" style="color:#aaa;">myimpact.uk</a></p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send revocation email:", emailErr);
+      emailWarning = "Organisation revoked but the notification email could not be sent. Please contact the organisation manually.";
+    }
+  } else if (!org.contactEmail) {
+    emailWarning = "Organisation revoked, but no contact email is on file — please notify them manually.";
+  }
+
+  res.json({ ok: true, org: updated ? serializeAdminOrg(updated) : null, ...(emailWarning ? { warning: emailWarning } : {}) });
 });
 
 export default router;

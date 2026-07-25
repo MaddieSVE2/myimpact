@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import AdminFunnels from "@/components/AdminFunnels";
+import AdminOrganisations from "@/components/AdminOrganisations";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -569,6 +570,8 @@ export default function Admin() {
       <p className="mt-6 text-xs text-muted-foreground">
         {orgRequests.length} request{orgRequests.length !== 1 ? "s" : ""} total
       </p>
+
+      <AdminOrganisations />
 
       <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Top voice users</h2>
       <p className="text-sm text-muted-foreground mb-6">

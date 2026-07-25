@@ -18,6 +18,8 @@ import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, get
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
+import { getOrgSharingContext, sharedRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { orgMemberConsentsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -129,6 +131,11 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     return;
   }
 
+  if (org.revokedAt) {
+    res.status(403).json({ error: "This organisation is no longer active on My Impact." });
+    return;
+  }
+
   const userId = req.user!.id;
 
   const otherMembership = await db.query.orgMembersTable.findFirst({
@@ -139,7 +146,13 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     return;
   }
 
-  res.json({ ok: true, orgName: org.name, orgId: org.id, allowedDomain: org.allowedDomain ?? null });
+  res.json({
+    ok: true,
+    orgName: org.name,
+    orgId: org.id,
+    allowedDomain: org.allowedDomain ?? null,
+    dataSharingMode: org.dataSharingMode ?? "explicit_submission",
+  });
 });
 
 router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -165,8 +178,39 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
+  if (org.revokedAt) {
+    res.status(403).json({ error: "This organisation is no longer active on My Impact." });
+    return;
+  }
+
   const userId = req.user!.id;
   const userEmail = req.user!.email;
+
+  // Consented-logging orgs: joining requires an explicit consent choice.
+  // 'historic' shares activities dated on/after the member-chosen date;
+  // 'from_join' shares only activities from the join moment onwards.
+  const isConsentedOrg = org.dataSharingMode === "consented_logging";
+  let consentShareFrom: Date | null = null;
+  let consentScope: "historic" | "from_join" | null = null;
+  if (isConsentedOrg) {
+    const scope = (req.body as Record<string, unknown>).consentScope;
+    if (scope === "from_join") {
+      consentScope = "from_join";
+      consentShareFrom = new Date();
+    } else if (scope === "historic") {
+      const raw = (req.body as Record<string, unknown>).consentHistoricFrom;
+      const parsed = typeof raw === "string" && raw ? new Date(raw) : null;
+      if (!parsed || isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+        res.status(400).json({ error: "Please choose a valid past date to share historic activity from." });
+        return;
+      }
+      consentScope = "historic";
+      consentShareFrom = parsed;
+    } else {
+      res.status(400).json({ error: "This organisation uses consented logging — you must choose how your activity is shared before joining." });
+      return;
+    }
+  }
 
   // Domain restriction: if the org has allowedDomain set, reject emails that don't match.
   if (org.allowedDomain) {
@@ -215,6 +259,24 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   await db.insert(orgMembersTable).values({ orgId: org.id, userId, role, status: memberStatus });
+
+  if (isConsentedOrg && consentScope && consentShareFrom) {
+    await db.insert(orgMemberConsentsTable).values({
+      id: randomUUID(),
+      orgId: org.id,
+      userId,
+      status: "active",
+      shareFrom: consentShareFrom,
+      shareScope: consentScope,
+    }).onConflictDoUpdate({
+      target: [orgMemberConsentsTable.orgId, orgMemberConsentsTable.userId],
+      set: { status: "active", shareFrom: consentShareFrom, shareScope: consentScope, grantedAt: new Date(), withdrawnAt: null },
+    });
+    await writeAuditLog(org.id, userId, "consent.granted", "member", userId, {
+      shareScope: consentScope,
+      shareFrom: consentShareFrom.toISOString(),
+    }).catch(err => console.error("[org.join] failed to write consent audit log:", err));
+  }
 
   if (shouldBeManager) {
     enqueueOrgEvent({
@@ -339,6 +401,9 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     }
   }
 
+  // Server-side dashboard-section gating: when the SROI section is disabled
+  // by the super-admin, the cost inputs that drive SROI panels are withheld.
+  const mySections = normalizeDashboardSections(org.dashboardSections);
   res.json({
     org: {
       id: org.id,
@@ -349,15 +414,18 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       autoVerifyActivities: org.autoVerifyActivities ?? false,
-      sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
-      sroiCostBreakdown: {
+      sroiCostPerVolunteer: mySections.sroi ? (org.sroiCostPerVolunteer ?? null) : null,
+      sroiCostBreakdown: mySections.sroi ? {
         recruitment: org.sroiCostRecruitment ?? null,
         onboarding: org.sroiCostOnboarding ?? null,
         support: org.sroiCostSupport ?? null,
         admin: org.sroiCostAdmin ?? null,
-      },
+      } : { recruitment: null, onboarding: null, support: null, admin: null },
       summaryYearStart: org.summaryYearStart ?? "01-01",
       allowedDomain: org.allowedDomain ?? null,
+      dataSharingMode: org.dataSharingMode ?? "explicit_submission",
+      dashboardSections: normalizeDashboardSections(org.dashboardSections),
+      revoked: !!org.revokedAt,
       branding: {
         logoUrl,
         logoKey: org.logoKey ?? null,
@@ -366,6 +434,55 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       },
     },
   });
+});
+
+// ── Member data-sharing consent (consented-logging orgs) ────────────────────
+
+// View my consent for my current org.
+router.get("/my/consent", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.json({ consent: null }); return; }
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+    columns: { dataSharingMode: true, name: true },
+  });
+  if (!org || org.dataSharingMode !== "consented_logging") { res.json({ consent: null }); return; }
+  const consent = await db.query.orgMemberConsentsTable.findFirst({
+    where: and(eq(orgMemberConsentsTable.orgId, membership.orgId), eq(orgMemberConsentsTable.userId, userId)),
+  });
+  res.json({
+    consent: consent ? {
+      status: consent.status,
+      shareScope: consent.shareScope,
+      shareFrom: consent.shareFrom.toISOString(),
+      grantedAt: consent.grantedAt.toISOString(),
+      withdrawnAt: consent.withdrawnAt ? consent.withdrawnAt.toISOString() : null,
+      orgName: org.name,
+    } : null,
+  });
+});
+
+// Withdraw my consent — immediately removes my activities from org aggregates.
+router.post("/my/consent/withdraw", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  const consent = await db.query.orgMemberConsentsTable.findFirst({
+    where: and(eq(orgMemberConsentsTable.orgId, membership.orgId), eq(orgMemberConsentsTable.userId, userId)),
+  });
+  if (!consent || consent.status !== "active") {
+    res.status(400).json({ error: "You don't have an active data-sharing consent to withdraw." });
+    return;
+  }
+  const withdrawnAt = new Date();
+  await db.update(orgMemberConsentsTable)
+    .set({ status: "withdrawn", withdrawnAt })
+    .where(eq(orgMemberConsentsTable.id, consent.id));
+  await writeAuditLog(membership.orgId, userId, "consent.withdrawn", "member", userId, {
+    withdrawnAt: withdrawnAt.toISOString(),
+  }).catch(err => console.error("[org.consent] failed to write audit log:", err));
+  res.json({ ok: true });
 });
 
 // ── Branding (logo + colours) ─────────────────────────────────────────────────
@@ -815,18 +932,25 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
     const from = fromRaw;
     const to = toRaw ? endOfDay(toRaw) : undefined;
 
+    if (org.revokedAt) {
+      res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+      return;
+    }
+
     const members = await db.query.orgMembersTable.findMany({
       where: and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.status, "active")),
     });
 
     const memberIds = members.map(m => m.userId);
 
+    const sharingCtx = await getOrgSharingContext(org.id);
+    const sharedCondition = sharedRecordsCondition(sharingCtx);
+
     let records: typeof impactRecordsTable.$inferSelect[] = [];
-    if (memberIds.length > 0) {
-      const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+    if (sharedCondition) {
       const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
       const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
-      records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+      records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
     }
 
     let totalSocialValue = 0;
@@ -939,12 +1063,14 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
 
-    const members = await db.query.orgMembersTable.findMany({
-      where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")),
-    });
-    const memberIds = members.map(m => m.userId);
+    const sharingCtx = await getOrgSharingContext(membership.orgId);
+    if (sharingCtx.revoked) {
+      res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+      return;
+    }
+    const sharedCondition = sharedRecordsCondition(sharingCtx);
 
-    if (memberIds.length === 0) {
+    if (!sharedCondition) {
       res.json({ monthly: [] });
       return;
     }
@@ -972,14 +1098,13 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
       to = bounds.end;
     }
 
-    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
     const fromCondition = gte(impactRecordsTable.entryDate, from);
     const toCondition = lt(impactRecordsTable.entryDate, to);
 
     const records = await db.select({
       entryDate: impactRecordsTable.entryDate,
       resultJson: impactRecordsTable.resultJson,
-    }).from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
 
     const monthMap: Record<string, number> = {};
     for (const r of records) {
@@ -1214,12 +1339,18 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
 
-    const members = await db.query.orgMembersTable.findMany({
-      where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")),
-    });
-    const memberIds = members.map(m => m.userId);
+    const sharingCtx = await getOrgSharingContext(membership.orgId);
+    if (sharingCtx.revoked) {
+      res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+      return;
+    }
+    if (!sharingCtx.sections.locationMap) {
+      res.status(403).json({ error: "The location map is disabled for this organisation." });
+      return;
+    }
+    const sharedCondition = sharedRecordsCondition(sharingCtx);
 
-    if (memberIds.length === 0) {
+    if (!sharedCondition) {
       res.json({ regions: [] });
       return;
     }
@@ -1247,7 +1378,6 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
       to = bounds.end;
     }
 
-    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
     const fromCondition = from ? gte(impactRecordsTable.entryDate, from) : undefined;
     const toCondition = to ? lt(impactRecordsTable.entryDate, to) : undefined;
 
@@ -1255,7 +1385,7 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
       userId: impactRecordsTable.userId,
       region: impactRecordsTable.region,
       resultJson: impactRecordsTable.resultJson,
-    }).from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
+    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
 
     const regionMap: Record<string, { userIds: Set<string>; hours: number; value: number }> = {};
     for (const r of records) {
@@ -1500,6 +1630,14 @@ async function requireOrgManager(req: AuthenticatedRequest, res: import("express
   }
   if (membership.role !== "manager") {
     res.status(403).json({ error: "Only organisation managers can perform this action." });
+    return null;
+  }
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+    columns: { revokedAt: true },
+  });
+  if (org?.revokedAt) {
+    res.status(403).json({ error: REVOKED_ORG_MESSAGE });
     return null;
   }
   return membership;
@@ -2976,10 +3114,24 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
       : sql`FALSE`;
 
+    // Consented-logging orgs additionally see all activities from consenting
+    // members within each member's shared window (never journals or pulse).
+    const sharingCtx = await getOrgSharingContext(orgId);
+    // Server-side dashboard-section gating (super-admin controlled).
+    if (!sharingCtx.sections.topActivities) {
+      res.status(403).json({ error: "The activities section is disabled for this organisation." });
+      return;
+    }
+    const consentedCond = sharingCtx.mode === "consented_logging"
+      ? sharedRecordsCondition(sharingCtx)
+      : undefined;
+
     const records = await db
       .select()
       .from(impactRecordsTable)
-      .where(sql`(${memberCond}) OR (${attestedCond})`)
+      .where(consentedCond
+        ? sql`(${memberCond}) OR (${attestedCond}) OR (${consentedCond})`
+        : sql`(${memberCond}) OR (${attestedCond})`)
       .orderBy(desc(impactRecordsTable.createdAt));
 
     // Approved verifications for these records, so member-submitted lines can

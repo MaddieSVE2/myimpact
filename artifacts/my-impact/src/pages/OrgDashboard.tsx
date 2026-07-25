@@ -197,6 +197,10 @@ export default function OrgDashboard() {
   const totalInvestment = headlineStats.totalMembers * sroiCostPerVolunteer;
   const sroiRatio = totalInvestment > 0 ? headlineStats.totalSocialValue / totalInvestment : 0;
 
+  // Super-admin controlled dashboard sections (server also enforces these).
+  const dashboardSections = orgData?.org?.dashboardSections as Record<string, boolean> | undefined;
+  const showSroi = isDemoOrg || dashboardSections?.sroi !== false;
+
   const timelineData = useMemo<MonthlyDataPoint[]>(() => {
     if (isDemoOrg) return demoTrend.map(p => ({ month: p.label.split(" ")[0]!, value: p.value }));
     return realMonthly?.monthly ?? [];
@@ -501,7 +505,7 @@ export default function OrgDashboard() {
       {/* Aggregated stats */}
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <StatCard icon={TrendingUp} label="Total social value" value={headlineStats.totalSocialValue} prefix="£" sub={`£${headlineStats.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
-        <StatCard icon={BarChart2} label={t("orgDashboard.sroiCardLabel")} value={sroiRatio} prefix="£" decimals={2} sub={t("orgDashboard.sroiCardSub")} />
+        {showSroi && <StatCard icon={BarChart2} label={t("orgDashboard.sroiCardLabel")} value={sroiRatio} prefix="£" decimals={2} sub={t("orgDashboard.sroiCardSub")} />}
         <StatCard icon={Users} label="Active members" value={headlineStats.activeMembers} sub={`of ${headlineStats.totalMembers} total`} />
         <StatCard icon={Clock} label="Hours logged" value={headlineStats.totalHours} sub={`${headlineStats.totalActivities} activities`} />
       </motion.div>
@@ -511,7 +515,7 @@ export default function OrgDashboard() {
       </motion.div>
 
       {/* SROI explainer */}
-      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-sroi-explainer">
+      {showSroi && <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-sroi-explainer">
         <div className="flex items-center gap-2 mb-2">
           <BarChart2 className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("orgDashboard.sroiTitle")}</h3>
@@ -567,7 +571,7 @@ export default function OrgDashboard() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Pulse summary — donut + sparkline aggregate of active surveys */}
       <OrgPulseSummaryCard />

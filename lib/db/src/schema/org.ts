@@ -47,8 +47,44 @@ export const organisationsTable = pgTable("organisations", {
   // created at save time) — no manager verification queue step needed.
   // Journal entries live in a separate table and are never shared.
   autoVerifyActivities: boolean("auto_verify_activities").notNull().default(false),
+  // Data-sharing model, fixed at creation and never editable afterwards:
+  //   'explicit_submission' — members choose which activities to submit to the org (default / legacy behaviour).
+  //   'consented_logging'   — all activities (never journals or pulse/wellbeing answers) are shared automatically
+  //                           for members who gave consent at join time.
+  dataSharingMode: text("data_sharing_mode").notNull().default("explicit_submission"),
+  // Org contact (set by super-admin at creation; also backfilled from org_registrations).
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  // Set when a super-admin revokes the organisation. Revoked orgs lose all
+  // dashboard/API access immediately; data is retained for 180 days from this
+  // timestamp before becoming eligible for deletion.
+  revokedAt: timestamp("revoked_at"),
+  // Per-org dashboard section visibility, managed by the super-admin. NULL =
+  // all sections visible. Shape: { locationMap, categories, sroi,
+  // valuePerMember, topActivities, pulseSummary } — each boolean.
+  dashboardSections: jsonb("dashboard_sections"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// One row per member of a consented-logging org recording their data-sharing
+// consent. `shareFrom` is the earliest entry date shared (their chosen
+// historic date, or their join moment when they opted to share from join
+// onwards). Withdrawing sets status='withdrawn' + withdrawnAt and immediately
+// removes the member's activities from org aggregates.
+export const orgMemberConsentsTable = pgTable("org_member_consents", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => usersTable.id),
+  status: text("status").notNull().default("active"), // 'active' | 'withdrawn'
+  shareFrom: timestamp("share_from").notNull(),
+  // 'historic' (member picked a past date) | 'from_join'
+  shareScope: text("share_scope").notNull(),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  withdrawnAt: timestamp("withdrawn_at"),
+}, (t) => ({
+  memberUnique: unique("org_member_consents_member_unique").on(t.orgId, t.userId),
+  orgIdx: index("org_member_consents_org_idx").on(t.orgId),
+}));
 
 export const orgMembersTable = pgTable("org_members", {
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
@@ -273,6 +309,7 @@ export const orgAuditLogTable = pgTable("org_audit_log", {
 }));
 
 export type Organisation = typeof organisationsTable.$inferSelect;
+export type OrgMemberConsent = typeof orgMemberConsentsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
 export type OrgMatchRate = typeof orgMatchRatesTable.$inferSelect;

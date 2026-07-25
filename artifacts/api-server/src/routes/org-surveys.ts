@@ -10,6 +10,7 @@ import {
 import { and, eq, isNull, desc, asc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { getOrgSharingContext, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 
 const router: IRouter = Router();
 
@@ -78,6 +79,11 @@ async function requireManager(req: AuthenticatedRequest, res: Response) {
   if (!m) return null;
   if (m.role !== "manager") {
     res.status(403).json({ error: "Only organisation managers can manage surveys." });
+    return null;
+  }
+  const sharingCtx = await getOrgSharingContext(m.orgId);
+  if (sharingCtx.revoked) {
+    res.status(403).json({ error: REVOKED_ORG_MESSAGE });
     return null;
   }
   return m;
@@ -242,6 +248,18 @@ router.post("/surveys/:id/archive", authenticate, async (req: AuthenticatedReque
 router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedRequest, res) => {
   const m = await requireManager(req, res);
   if (!m) return;
+
+  // Server-side dashboard-section gating: pulse results are hidden when the
+  // super-admin has disabled the pulse summary section for this org.
+  const sharingCtx = await getOrgSharingContext(m.orgId);
+  if (sharingCtx.revoked) {
+    res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+    return;
+  }
+  if (!sharingCtx.sections.pulseSummary) {
+    res.status(403).json({ error: "Pulse survey results are disabled for this organisation." });
+    return;
+  }
   const id = req.params.id as string;
 
   const survey = await db.query.orgSurveysTable.findFirst({

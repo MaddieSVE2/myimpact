@@ -758,6 +758,95 @@ function OrgSelector({ selected, onSelect }: { selected: OrgListItem | null; onS
   );
 }
 
+function MemberConsentCard({ orgName }: { orgName: string }) {
+  const queryClient = useQueryClient();
+  const consentQuery = useQuery<{
+    consent: {
+      status: "active" | "withdrawn";
+      shareScope: "from_join" | "historic";
+      shareFrom: string | null;
+      grantedAt: string;
+      withdrawnAt: string | null;
+    } | null;
+    dataSharingMode?: string;
+  }>({
+    queryKey: ["my-org-consent"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/my/consent`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load consent");
+      return res.json();
+    },
+    retry: false,
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/org/my/consent/withdraw`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to withdraw consent");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-org-consent"] });
+    },
+  });
+
+  const consent = consentQuery.data?.consent;
+  if (consentQuery.isLoading || !consent) return null;
+
+  const active = !consent.withdrawnAt;
+  return (
+    <motion.div
+      className="bg-white border border-border rounded-xl p-5"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      data-testid="member-consent-card"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <ShieldCheck className={`w-4 h-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
+        <p className="text-sm font-semibold text-foreground">Your data-sharing consent</p>
+      </div>
+      {active ? (
+        <>
+          <p className="text-xs text-muted-foreground mb-1">
+            {orgName} uses consented logging: activities you log are shared with it automatically (never your journals or pulse answers).{" "}
+            <Link href="/org/types/consented-logging" className="text-primary hover:underline">How this works</Link>
+          </p>
+          <p className="text-xs text-foreground mb-3" data-testid="text-consent-scope">
+            {consent.shareScope === "historic" && consent.shareFrom
+              ? <>You're sharing activities dated on or after <strong>{new Date(consent.shareFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong> (including past activities).</>
+              : <>You're sharing activities from the date you joined onwards.</>}
+            {" "}Consent given {new Date(consent.grantedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Withdraw your data-sharing consent for ${orgName}?\n\nNew activities will no longer be shared automatically. This is recorded in the audit log.`)) {
+                withdrawMutation.mutate();
+              }
+            }}
+            disabled={withdrawMutation.isPending}
+            className="px-3 py-2 rounded-lg border border-destructive/30 text-destructive text-xs font-semibold hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            data-testid="button-withdraw-consent"
+          >
+            {withdrawMutation.isPending ? "Withdrawing…" : "Withdraw consent"}
+          </button>
+          {withdrawMutation.isError && (
+            <p className="text-xs text-red-600 mt-2">{(withdrawMutation.error as Error).message}</p>
+          )}
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground" data-testid="text-consent-withdrawn">
+          You withdrew your data-sharing consent on {new Date(consent.withdrawnAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. New activities are no longer shared automatically with {orgName}.
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
 function JoinOrgPanel() {
   const [code, setCode] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<OrgListItem | null>(null);
@@ -772,6 +861,9 @@ function JoinOrgPanel() {
   }
   const [orgName, setOrgName] = useState("");
   const [allowedDomain, setAllowedDomain] = useState<string | null>(null);
+  const [dataSharingMode, setDataSharingMode] = useState<"explicit_submission" | "consented_logging">("explicit_submission");
+  const [consentScope, setConsentScope] = useState<"from_join" | "historic">("from_join");
+  const [consentHistoricFrom, setConsentHistoricFrom] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fromInviteLink, setFromInviteLink] = useState(false);
   const queryClient = useQueryClient();
@@ -814,11 +906,12 @@ function JoinOrgPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
-      return data as { ok: boolean; orgName: string; allowedDomain: string | null };
+      return data as { ok: boolean; orgName: string; allowedDomain: string | null; dataSharingMode?: "explicit_submission" | "consented_logging" };
     },
     onSuccess: (data) => {
       setOrgName(data.orgName);
       setAllowedDomain(data.allowedDomain ?? null);
+      setDataSharingMode(data.dataSharingMode ?? "explicit_submission");
       setStep("consent");
     },
     onError: (err: Error) => {
@@ -834,11 +927,16 @@ function JoinOrgPanel() {
 
   const joinMutation = useMutation({
     mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
+      const body: Record<string, string> = { inviteCode, orgId };
+      if (dataSharingMode === "consented_logging") {
+        body.consentScope = consentScope;
+        if (consentScope === "historic") body.consentHistoricFrom = consentHistoricFrom;
+      }
       const res = await fetch(`${BASE}/api/org/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ inviteCode, orgId }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
@@ -906,14 +1004,23 @@ function JoinOrgPanel() {
           </div>
         )}
         <div className="px-6 pb-4 space-y-2">
-          {[
-            { shared: true, label: "Your total social value (£ amount)" },
-            { shared: true, label: "Activity breakdown by category" },
-            { shared: true, label: "Total volunteer hours" },
-            { shared: false, label: "Your journal entries" },
-            { shared: false, label: "Your personal notes and ideas" },
-            { shared: false, label: "Your name or any identifying information" },
-          ].map(({ shared, label }) => (
+          {(dataSharingMode === "consented_logging"
+            ? [
+                { shared: true, label: "Activities you log (automatically, from the date you choose)" },
+                { shared: true, label: "Your total social value (£ amount)" },
+                { shared: true, label: "Total volunteer hours" },
+                { shared: false, label: "Your journal entries" },
+                { shared: false, label: "Your pulse survey answers" },
+              ]
+            : [
+                { shared: true, label: "Your total social value (£ amount)" },
+                { shared: true, label: "Activity breakdown by category" },
+                { shared: true, label: "Total volunteer hours" },
+                { shared: false, label: "Your journal entries" },
+                { shared: false, label: "Your personal notes and ideas" },
+                { shared: false, label: "Your name or any identifying information" },
+              ]
+          ).map(({ shared, label }) => (
             <div key={label} className="flex items-center gap-3">
               <div className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${shared ? "bg-green-100" : "bg-red-50"}`}>
                 {shared
@@ -925,6 +1032,41 @@ function JoinOrgPanel() {
             </div>
           ))}
         </div>
+        {dataSharingMode === "consented_logging" && (
+          <div className="px-6 pb-4" data-testid="consent-scope-options">
+            <p className="text-xs font-semibold text-foreground mb-2">
+              This organisation uses consented logging: activities you log are shared with it automatically.{" "}
+              <Link href="/org/types/consented-logging" className="text-primary hover:underline">Learn how this works</Link>
+            </p>
+            <div className="space-y-2">
+              <label className={`flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer text-sm transition-colors ${consentScope === "from_join" ? "border-primary bg-primary/5" : "border-border"}`}>
+                <input type="radio" name="consentScope" className="mt-0.5" checked={consentScope === "from_join"} onChange={() => setConsentScope("from_join")} data-testid="radio-consent-from-join" />
+                <span>
+                  <span className="font-medium text-foreground block">Share activities from today onwards</span>
+                  <span className="text-xs text-muted-foreground">Only activities dated on or after the day you join.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer text-sm transition-colors ${consentScope === "historic" ? "border-primary bg-primary/5" : "border-border"}`}>
+                <input type="radio" name="consentScope" className="mt-0.5" checked={consentScope === "historic"} onChange={() => setConsentScope("historic")} data-testid="radio-consent-historic" />
+                <span className="flex-1">
+                  <span className="font-medium text-foreground block">Also include past activities</span>
+                  <span className="text-xs text-muted-foreground">Share activities from a date you choose.</span>
+                  {consentScope === "historic" && (
+                    <input
+                      type="date"
+                      value={consentHistoricFrom}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={e => setConsentHistoricFrom(e.target.value)}
+                      className="mt-2 block px-3 py-1.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                      data-testid="input-consent-historic-from"
+                    />
+                  )}
+                </span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">You can view or withdraw this consent at any time from your organisation settings.</p>
+          </div>
+        )}
         <div className="border-t border-border px-6 py-4 bg-muted/20">
           <p className="text-xs text-muted-foreground mb-4">Your data is anonymised: the organisation sees totals and categories, never individual names or accounts.</p>
           <div className="flex gap-3">
@@ -936,8 +1078,9 @@ function JoinOrgPanel() {
             </button>
             <button
               onClick={() => joinMutation.mutate({ inviteCode: code, orgId: selectedOrg!.id })}
-              disabled={joinMutation.isPending}
+              disabled={joinMutation.isPending || (dataSharingMode === "consented_logging" && consentScope === "historic" && !consentHistoricFrom)}
               className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              data-testid="button-confirm-join"
             >
               {joinMutation.isPending ? "Joining..." : "Yes, join organisation"}
             </button>
@@ -2018,6 +2161,8 @@ export default function OrgPortal() {
               </Link>
             </motion.div>
           </div>
+
+          <MemberConsentCard orgName={orgData!.org!.name} />
         </div>
       ) : statsLoading ? (
         <div className="py-16 flex justify-center">

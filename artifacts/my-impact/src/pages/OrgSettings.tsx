@@ -1375,6 +1375,15 @@ export default function OrgSettings() {
       <div className="mb-6">
         <h1 className="text-2xl font-display font-semibold text-foreground">Organisation settings</h1>
         <p className="text-sm text-muted-foreground">{orgData.org.name}</p>
+        <p className="text-xs text-muted-foreground mt-1" data-testid="text-data-sharing-mode">
+          Data-sharing type:{" "}
+          {(orgData.org as { dataSharingMode?: string }).dataSharingMode === "consented_logging" ? (
+            <Link href="/org/types/consented-logging" className="text-primary hover:underline font-medium">Consented logging</Link>
+          ) : (
+            <Link href="/org/types/explicit-submission" className="text-primary hover:underline font-medium">Explicit submission</Link>
+          )}{" "}
+          (fixed at creation)
+        </p>
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1" role="tablist">
