@@ -9,3 +9,4 @@ The dev database has drifted from the Drizzle schema. `pnpm --filter @workspace/
 
 **How to apply:** for new tables/columns, create them directly with psql SQL matching the schema (defaults/nullability included), or reconcile the drift deliberately (archive/drop `opportunities`) so push runs clean. Several `organisations` columns (data_sharing_mode, contact_*, revoked_at, dashboard_sections) were added manually this way.
 - analytics_daily_summary was missing from dev DB (drizzle push aborts); created via psql to match lib/db schema — same pattern as other drift tables.
+- users.voice_accent was also missing (broke demo seed + persona login with "column does not exist"); added via psql with the schema default. If demo login fails oddly, suspect drift first.

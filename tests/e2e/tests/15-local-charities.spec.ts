@@ -41,6 +41,7 @@ const SEEDED_PLACES: SeedCharityPlace[] = [
     source: "ai",
     verified: true,
     registrationNumber: "1234567",
+    recruitingVolunteers: true,
   },
   {
     name: "Testford Community Circle",
@@ -134,10 +135,19 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
     await expect(page.getByText("Testford Community Circle").first()).toBeVisible();
     await expect(page.getByText(/^Suggested$/i).first()).toBeVisible();
 
-    // The registration number lives inside the place card's expandable detail.
+    // Expanding the verified place's detail view reveals the how-to-join
+    // copy, the registration number, and the "Looking for volunteers" badge.
     await page.getByTestId("place-card-Testford Verified Trust").first().click();
     await expect(page.getByText(/how to get involved/i).first()).toBeVisible();
     await expect(page.getByText(/Registered charity no\. 1234567/).first()).toBeVisible();
+    await expect(
+      page.getByTestId("place-recruiting-Testford Verified Trust").first(),
+    ).toBeVisible();
+
+    // The unverified place has no recruiting signal, so no badge is shown.
+    await page.getByTestId("place-card-Testford Community Circle").first().click();
+    await expect(page.getByText(/Drop in on a Saturday morning/).first()).toBeVisible();
+    await expect(page.getByTestId("place-recruiting-Testford Community Circle")).toHaveCount(0);
 
     // Collapse works too.
     await page.getByRole("button", { name: /hide local places/i }).first().click();

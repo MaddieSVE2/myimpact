@@ -40,6 +40,11 @@ export interface StoredCharityPlace {
   source: "ai";
   verified: boolean;
   registrationNumber?: string;
+  /**
+   * True when a lightweight fetch of the charity's website found clear
+   * volunteer-recruitment signals; undefined when unknown/undetermined.
+   */
+  recruitingVolunteers?: boolean;
 }
 
 /** One row per (local authority × main activity category) with verified results. */

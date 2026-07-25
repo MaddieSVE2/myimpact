@@ -23,6 +23,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { CATEGORIES } from "./impactData.js";
 import { verifyCharityName } from "./charity-commission";
 import { verifyOSCRCharityName } from "./oscr";
+import { detectVolunteerRecruitment } from "./volunteerRecruitment.js";
 
 /** Main categories to pre-map; "Custom" holds user-defined activities only. */
 export const MAIN_CATEGORIES: string[] = CATEGORIES.filter((c) => c !== "Custom");
@@ -189,13 +190,25 @@ Rules:
         }))
     : [];
 
-  const verifications = await verifyMany(aiPlaces.map((p) => p.name), isScottish(country));
+  const [verifications, recruitingSignals] = await Promise.all([
+    verifyMany(aiPlaces.map((p) => p.name), isScottish(country)),
+    Promise.all(
+      aiPlaces.map(async (p) => {
+        try {
+          return await detectVolunteerRecruitment(p.website);
+        } catch {
+          return undefined;
+        }
+      })
+    ),
+  ]);
 
   return aiPlaces.map((p, i) => ({
     ...p,
     source: "ai" as const,
     verified: verifications[i] !== null,
     registrationNumber: verifications[i]?.registrationNumber,
+    recruitingVolunteers: recruitingSignals[i],
   }));
 }
 

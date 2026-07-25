@@ -26,6 +26,7 @@ export interface SeedCharityPlace {
   source: "ai";
   verified: boolean;
   registrationNumber?: string;
+  recruitingVolunteers?: boolean;
 }
 
 export interface ApiClientOpts {

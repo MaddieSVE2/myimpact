@@ -16,6 +16,7 @@ interface LocalPlace {
   source?: "ai";
   verified?: boolean;
   registrationNumber?: string;
+  recruitingVolunteers?: boolean;
 }
 
 interface PremappedResponse {
@@ -138,6 +139,15 @@ function PlaceCard({
           >
             <div className="border-t border-border" />
             <div className="px-3 py-3 space-y-3">
+              {place.recruitingVolunteers && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded bg-sky-50 text-sky-700 border border-sky-200"
+                  data-testid={`place-recruiting-${place.name}`}
+                >
+                  <Sparkles className="w-3 h-3" aria-hidden="true" /> Looking for volunteers
+                </span>
+              )}
+
               {/* How to join — emphasised */}
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
