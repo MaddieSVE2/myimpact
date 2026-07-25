@@ -14,4 +14,5 @@
 - [Prod seeding constraints](prod-seeding-constraints.md) — prod DB is read-only from dev and prod DATABASE_URL is hidden; seed/backfill jobs must run inside the deployed app (startup sweep pattern), landing on next publish.
 - [E2E email suppression](e2e-email-suppression.md) — Resend sends are now stubbed centrally in the resend helper when E2E_TEST_MODE=1; task merges adding columns via ad-hoc SQL must also ship a numbered migration or e2e reset-user 500s.
 - [Vite manualChunks white screen](vite-manualchunks-whitescreen.md) — never split React into a manual vendor chunk in my-impact; it caused a prod-only chunk-init cycle and a white screen at myimpact.uk.
+- [Stale composite dist](stale-composite-dist.md) — my-impact tsc reads api-client-react dist .d.ts via project refs; phantom type errors mean rebuild with `tsc -b lib/api-client-react` first.
 - [Interactive AI latency](interactive-ai-latency.md) — gpt-5-mini is too slow for interactive UI suggestions even at low effort; use gpt-4.1-mini with an AbortSignal.timeout and curated fallbacks.
