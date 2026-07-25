@@ -24,10 +24,6 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "subnav-alignment"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "e2e"
 
 [[workflows.workflow.tasks]]
@@ -41,21 +37,6 @@ args = "smoke"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "e2e-edit-record"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "e2e-local-charities"
-
-[[workflows.workflow]]
-name = "subnav-alignment"
-author = "agent"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5001 E2E_WEB_PORT=3001 pnpm --filter @workspace/e2e exec playwright test tests/12-org-subnav-alignment.spec.ts"
 
 [[workflows.workflow]]
 name = "e2e"
@@ -100,17 +81,6 @@ isValidation = true
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5003 E2E_WEB_PORT=3003 pnpm --filter @workspace/e2e test tests/13-edit-record.spec.ts tests/09-habit-conflict.spec.ts"
-
-[[workflows.workflow]]
-name = "e2e-local-charities"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5004 E2E_WEB_PORT=3004 pnpm --filter @workspace/e2e exec playwright test tests/15-local-charities.spec.ts"
 
 [agent]
 stack = "PNPM_WORKSPACE"

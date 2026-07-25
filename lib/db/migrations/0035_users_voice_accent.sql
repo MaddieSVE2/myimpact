@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS voice_accent TEXT NOT NULL DEFAULT 'neutral';
