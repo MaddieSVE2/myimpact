@@ -301,7 +301,7 @@ export default function OrgActivities() {
   }
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+    return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
@@ -328,14 +328,14 @@ export default function OrgActivities() {
   }
 
   if (!isDemoOrg && realLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+    return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
 
   return (
     <>
-      <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-activities-root">
+      <div className="max-w-6xl mx-auto px-4 py-8" data-testid="org-activities-root">
         <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />

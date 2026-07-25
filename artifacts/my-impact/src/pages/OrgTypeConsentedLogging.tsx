@@ -4,7 +4,7 @@ import { PageMeta } from "@/components/PageMeta";
 
 export default function OrgTypeConsentedLogging() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10" data-testid="page-org-type-consented">
+    <div className="max-w-4xl mx-auto px-4 py-10" data-testid="page-org-type-consented">
       <PageMeta
         title="Consented logging organisations — My Impact"
         description="How consented logging organisations work on My Impact: activities are shared automatically with your recorded consent, never journals or pulse answers."

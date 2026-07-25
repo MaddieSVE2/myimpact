@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
@@ -91,7 +92,7 @@ export default function About() {
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
         <div style={{
           position: "relative", zIndex: 2, padding: "0 5%",
-          maxWidth: 900, width: "100%", margin: "0 auto",
+          maxWidth: SECTION_MAX_WIDTH, width: "100%", margin: "0 auto",
           display: "grid", gridTemplateColumns: "1fr auto",
           gap: "clamp(40px, 6vw, 80px)", alignItems: "center",
         }}>
@@ -158,7 +159,7 @@ export default function About() {
       {/* ── MISSION ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>Our mission</p>
             <p
               style={{ fontSize: "clamp(26px, 4vw, 48px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 28, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}
@@ -175,7 +176,7 @@ export default function About() {
       {/* ── METHODOLOGY ── */}
       <section style={{ background: "white", padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 960, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px, 6vw, 80px)", alignItems: "center" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px, 6vw, 80px)", alignItems: "center" }}>
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>Methodology</p>
               <h2
@@ -263,7 +264,7 @@ export default function About() {
       {/* ── IMPACT CATEGORIES ── */}
       <section style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>What counts as impact</p>
             <h2
               style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: "white", lineHeight: 1.2, marginBottom: 16, letterSpacing: -0.5, fontFamily: "'Outfit', sans-serif" }}

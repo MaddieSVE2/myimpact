@@ -246,7 +246,7 @@ export default function Admin() {
   if (isLoading || (!isAdmin && !fetching)) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-display font-bold text-foreground mb-2">Admin Panel</h1>
       <p className="text-sm text-muted-foreground mb-8">
         Registered users and the pages they have visited.

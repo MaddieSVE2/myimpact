@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Clock, X, ChevronRight, Loader2 } from "lucide-react";
@@ -114,7 +115,7 @@ export default function CalendarHomeWidget() {
 
   return (
     <div style={{ background: "var(--brand-cream)", padding: "16px 5%" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
         {prompts.length > 0 ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden">
             <div className="px-4 py-3 border-b border-amber-200 flex items-center gap-2">

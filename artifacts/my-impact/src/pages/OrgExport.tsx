@@ -335,7 +335,7 @@ export default function OrgExport() {
   }, []);
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+    return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
@@ -370,7 +370,7 @@ export default function OrgExport() {
 
   return (
     <>
-    <div className="max-w-5xl mx-auto px-4 py-8" data-testid="org-export-root">
+    <div className="max-w-6xl mx-auto px-4 py-8" data-testid="org-export-root">
       <div className="flex items-start justify-between gap-3 mb-1">
         <div className="flex items-center gap-2">
           <Download className="w-5 h-5 text-primary" />

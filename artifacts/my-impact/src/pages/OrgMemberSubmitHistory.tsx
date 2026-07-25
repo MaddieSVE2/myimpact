@@ -51,7 +51,7 @@ export default function OrgMemberSubmitHistory() {
 
   if (authLoading || orgLoading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 flex justify-center">
+      <div className="max-w-4xl mx-auto px-4 py-16 flex justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -81,7 +81,7 @@ export default function OrgMemberSubmitHistory() {
   const totalValue = (subs ?? []).reduce((s, x) => s + x.totalValue, 0);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8" data-testid="org-submit-history-root">
+    <div className="max-w-4xl mx-auto px-4 py-8" data-testid="org-submit-history-root">
       <Link
         href="/org/submit"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-4"

@@ -271,7 +271,6 @@ function OrgGuestRoute() {
 }
 
 const NO_FOOTER_PATHS = [
-  "/",
   "/login",
   "/auth/confirm",
   "/wizard",

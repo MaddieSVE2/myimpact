@@ -1273,7 +1273,7 @@ export default function Results() {
   const situationCopy = getSituationCopy(situation);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 pb-28">
+    <div className="max-w-4xl mx-auto px-4 py-10 pb-28">
       <OrgPromptsSection variant="compact" />
       {/* Hero */}
       <motion.div
@@ -1611,7 +1611,7 @@ export default function Results() {
           right: isDesktop ? (sidekickOpen ? 380 : 48) : 0,
         }}
       >
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
 
           {/* Save, primary action, always prominent */}
           <button

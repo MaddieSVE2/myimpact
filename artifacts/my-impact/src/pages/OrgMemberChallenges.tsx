@@ -145,7 +145,7 @@ export default function OrgMemberChallenges() {
 
   if (authLoading || orgLoading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 flex justify-center">
+      <div className="max-w-4xl mx-auto px-4 py-16 flex justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -153,7 +153,7 @@ export default function OrgMemberChallenges() {
 
   if (!orgData?.org) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <p className="text-base font-semibold mb-2">You're not in an organisation yet.</p>
         <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
       </div>
@@ -162,7 +162,7 @@ export default function OrgMemberChallenges() {
 
   if (!isMember) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <p className="text-base font-semibold mb-2">This page is for organisation members.</p>
         <Link href="/org/challenges" className="text-primary underline">Go to the manager challenges view</Link>
       </div>
@@ -170,7 +170,7 @@ export default function OrgMemberChallenges() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8" data-testid="org-member-challenges-root">
+    <div className="max-w-4xl mx-auto px-4 py-8" data-testid="org-member-challenges-root">
       <div className="flex items-center gap-2 mb-1">
         <Trophy className="w-5 h-5 text-primary" />
         <h1 className="text-2xl font-display font-semibold text-foreground">Challenges</h1>

@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH, CONTENT_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { scrollContentToTop } from "@/lib/scroll-utils";
@@ -241,7 +242,7 @@ export default function Security() {
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
-        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: 900, width: "100%", margin: "0 auto" }}>
+        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: SECTION_MAX_WIDTH, width: "100%", margin: "0 auto" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,0.08)",
@@ -271,7 +272,7 @@ export default function Security() {
       </section>
 
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(48px, 7vw, 72px)" }}>
+        <div style={{ maxWidth: CONTENT_MAX_WIDTH, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(48px, 7vw, 72px)" }}>
           {SECTIONS.map((section, i) => (
             <FadeIn key={section.id} delay={i * 0.04}>
               <div id={section.id}>
@@ -312,7 +313,7 @@ export default function Security() {
 
       <section style={{ background: "white", padding: "clamp(56px, 8vw, 80px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", gap: "clamp(32px, 5vw, 64px)", alignItems: "center", flexWrap: "wrap" as const }}>
+          <div style={{ maxWidth: CONTENT_MAX_WIDTH, margin: "0 auto", display: "flex", gap: "clamp(32px, 5vw, 64px)", alignItems: "center", flexWrap: "wrap" as const }}>
             <div style={{ flex: 1, minWidth: 240 }}>
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 12 }}>Need more detail?</p>
               <h2 style={{ fontSize: "clamp(22px, 3.5vw, 32px)", fontWeight: 700, color: C.dark, letterSpacing: -0.5, marginBottom: 14, lineHeight: 1.2, fontFamily: "'Outfit', sans-serif" }}>

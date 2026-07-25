@@ -205,7 +205,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-10">
         {/* Back link */}
         <Link href="/org/register" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to registration

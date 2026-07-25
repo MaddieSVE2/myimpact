@@ -12,6 +12,7 @@
 // icons consistent with the existing style. Group items under one of the
 // existing badges ("For you", "Tools", "Organisations", "All users") via
 // `BADGE_COLORS`, or add a new badge if it genuinely fits better.
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
@@ -417,7 +418,7 @@ export default function WhatsNew() {
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 72, paddingTop: 72 }}>
-        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: 900, width: "100%", margin: "0 auto" }}>
+        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: SECTION_MAX_WIDTH, width: "100%", margin: "0 auto" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,0.08)",
@@ -449,7 +450,7 @@ export default function WhatsNew() {
 
       {/* ── LATEST RELEASE ── */}
       <section style={{ background: C.cream, padding: "clamp(56px, 8vw, 96px) 5% clamp(40px, 6vw, 64px)" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <ReleaseGroups groups={latest.groups} />
         </div>
       </section>
@@ -457,7 +458,7 @@ export default function WhatsNew() {
       {/* ── PREVIOUS UPDATES ── */}
       {previous.length > 0 && (
         <section style={{ background: C.cream, padding: "0 5% clamp(56px, 8vw, 96px)" }}>
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <div style={{
               borderTop: "1px solid rgba(0,0,0,0.08)",
               paddingTop: "clamp(40px, 6vw, 64px)",

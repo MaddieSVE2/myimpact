@@ -138,7 +138,7 @@ export default function OrgUniversityDashboard({
 
   return (
     <div className="min-h-screen bg-muted/20" data-testid="org-university-dashboard-root">
-      <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-10">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3">

@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useMemo } from "react";
 import { Link } from "wouter";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -249,7 +250,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
     <div data-testid="manager-home" style={{ background: "var(--brand-cream)" }}>
       {/* Hero */}
       <section style={{ padding: "clamp(32px, 5vw, 56px) 5% 24px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-4 text-[12px] font-semibold uppercase tracking-wider"
                style={{ background: "rgba(232,99,58,0.10)", color: "var(--brand-orange)" }}>
             <Building2 className="w-3.5 h-3.5" /> Organisation manager
@@ -327,7 +328,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
 
       {/* Quick stats */}
       <section style={{ padding: "0 5% 12px" }} data-testid="manager-quick-stats">
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {isStatsLoading ? (
               <>
@@ -357,7 +358,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
 
       {/* Pulse + cross-link strip */}
       <section style={{ padding: "12px 5% clamp(28px, 4vw, 48px)" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="lg:col-span-2" data-testid="manager-pulse-card">
               {isPulseLoading ? (
@@ -452,7 +453,7 @@ export function ManagerHomeSkeleton() {
   return (
     <div data-testid="manager-home-skeleton" style={{ background: "var(--brand-cream)" }}>
       <section style={{ padding: "clamp(32px, 5vw, 56px) 5% 24px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }} className="animate-pulse">
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }} className="animate-pulse">
           <div className="h-5 w-44 bg-muted rounded-full mb-4" />
           <div className="h-10 w-2/3 bg-muted rounded mb-3" />
           <div className="h-4 w-1/2 bg-muted rounded mb-6" />
@@ -460,14 +461,14 @@ export function ManagerHomeSkeleton() {
         </div>
       </section>
       <section style={{ padding: "0 5% 12px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatSkeleton /><StatSkeleton /><StatSkeleton /><StatSkeleton />
           </div>
         </div>
       </section>
       <section style={{ padding: "12px 5% clamp(28px, 4vw, 48px)" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <PulseSkeleton />
         </div>
       </section>

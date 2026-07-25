@@ -4,7 +4,7 @@ import { PageMeta } from "@/components/PageMeta";
 
 export default function OrgTypeExplicitSubmission() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10" data-testid="page-org-type-explicit">
+    <div className="max-w-4xl mx-auto px-4 py-10" data-testid="page-org-type-explicit">
       <PageMeta
         title="Explicit submission organisations — My Impact"
         description="How explicit submission organisations work on My Impact: members choose exactly which activities to submit, and nothing is shared automatically."

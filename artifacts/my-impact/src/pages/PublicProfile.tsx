@@ -140,7 +140,7 @@ export default function PublicProfile() {
     topCategories.length > 0;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-10">
       <PageMeta title={metaTitle} description={metaDescription} canonical={metaCanonical} />
       {/* Header */}
       <div className="text-center mb-8">

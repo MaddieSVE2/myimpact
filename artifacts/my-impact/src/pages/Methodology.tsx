@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
@@ -252,7 +253,7 @@ export default function Methodology() {
 
       {/* ── HERO ── */}
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
-        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: 900, width: "100%", margin: "0 auto" }}>
+        <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: SECTION_MAX_WIDTH, width: "100%", margin: "0 auto" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,0.08)",
@@ -327,7 +328,7 @@ export default function Methodology() {
       {/* ── PLAIN-ENGLISH SUMMARY ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>
               In plain English
             </p>
@@ -355,7 +356,7 @@ export default function Methodology() {
       {/* ── COLLAPSIBLE TECHNICAL SECTIONS ── */}
       <section style={{ background: "white", padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>
               The technical detail
             </p>
@@ -452,7 +453,7 @@ export default function Methodology() {
       {/* ── EVIDENCE PACK CTA ── */}
       <section style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "clamp(32px, 5vw, 56px)", alignItems: "center" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto", display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "clamp(32px, 5vw, 56px)", alignItems: "center" }}>
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>
                 Evidence pack
@@ -509,7 +510,7 @@ export default function Methodology() {
       {/* ── CITATIONS ── */}
       <section id="citations" style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
         <FadeIn>
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.orange, marginBottom: 16 }}>
               Citations
             </p>

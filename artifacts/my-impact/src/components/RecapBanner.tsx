@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Sparkles, X, ArrowRight } from "lucide-react";
@@ -47,7 +48,7 @@ export default function RecapBanner({ variant = "card", forceShow = false }: Rec
   if (variant === "hero") {
     return (
       <div style={{ background: "var(--brand-cream)", padding: "16px 5% 0" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <Link
             href={`/recap?year=${year}`}
             className="block relative overflow-hidden rounded-2xl group"

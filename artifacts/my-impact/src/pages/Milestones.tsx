@@ -158,7 +158,7 @@ export default function Milestones() {
 
   if (!gamificationEnabled) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10" data-testid="milestones-hidden">
+      <div className="max-w-4xl mx-auto px-4 py-10" data-testid="milestones-hidden">
         <div className="bg-white border border-border rounded-2xl p-8 text-center">
           <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
           <h1 className="text-xl font-display font-semibold text-foreground mb-2">
@@ -185,7 +185,7 @@ export default function Milestones() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-display font-semibold text-foreground mb-1">{t("milestones.title")}</h1>
         <p className="text-sm text-muted-foreground">

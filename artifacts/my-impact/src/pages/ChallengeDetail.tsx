@@ -221,7 +221,7 @@ export default function ChallengeDetail() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       <Link
         href="/challenges"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"

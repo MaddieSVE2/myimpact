@@ -373,7 +373,7 @@ export default function OrgMemberSubmit() {
 
   if (authLoading || orgLoading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 flex justify-center">
+      <div className="max-w-4xl mx-auto px-4 py-16 flex justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -402,7 +402,7 @@ export default function OrgMemberSubmit() {
 
   return (
     <>
-    <div className="max-w-3xl mx-auto px-4 py-8" data-testid="org-member-submit-root">
+    <div className="max-w-4xl mx-auto px-4 py-8" data-testid="org-member-submit-root">
       <div className="flex items-start gap-3 mb-2">
         <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
           <Building2 className="w-5 h-5 text-primary" />

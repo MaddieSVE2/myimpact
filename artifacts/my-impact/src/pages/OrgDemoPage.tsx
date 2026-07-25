@@ -71,7 +71,7 @@ export default function OrgDemoPage() {
       </div>
 
       <div className="bg-white border-b border-border px-4 py-3">
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1 shrink-0">
             Viewing as:
           </span>

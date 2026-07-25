@@ -224,7 +224,7 @@ export default function OrgDashboard() {
   });
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+    return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
@@ -329,7 +329,7 @@ export default function OrgDashboard() {
 
   return (
     <>
-    <div className="max-w-5xl mx-auto px-4 py-8" style={brandStyle} data-testid="org-dashboard-root">
+    <div className="max-w-6xl mx-auto px-4 py-8" style={brandStyle} data-testid="org-dashboard-root">
       {/* Publishable document header */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-start gap-3">

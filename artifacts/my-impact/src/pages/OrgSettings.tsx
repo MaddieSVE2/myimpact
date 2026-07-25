@@ -1340,7 +1340,7 @@ export default function OrgSettings() {
   const [active, setActive] = useState<TabKey>("members");
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 flex justify-center">
+    return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
     </div>;
   }
@@ -1371,7 +1371,7 @@ export default function OrgSettings() {
 
   return (
     <>
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-display font-semibold text-foreground">Organisation settings</h1>
         <p className="text-sm text-muted-foreground">{orgData.org.name}</p>

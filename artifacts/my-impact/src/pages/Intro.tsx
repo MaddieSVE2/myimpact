@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
@@ -578,7 +579,7 @@ export default function Intro() {
             />
           </div>
 
-          <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: 860 }}>
+          <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: SECTION_MAX_WIDTH }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               background: "rgba(255,255,255,0.08)",
@@ -698,7 +699,7 @@ export default function Intro() {
           />
         </div>
 
-        <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: 860 }}>
+        <div className="mi-hero-inner" style={{ position: "relative", zIndex: 2, maxWidth: SECTION_MAX_WIDTH }}>
           <h1
             className="mi-fraunces"
             style={{
@@ -752,7 +753,7 @@ export default function Intro() {
           data-testid="home-org-jobs"
           style={{ background: "white", padding: "32px 5% 16px" }}
         >
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <h2
               className="mi-fraunces"
               style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 700, color: "#0E1922", marginBottom: 6 }}
@@ -910,7 +911,7 @@ export default function Intro() {
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(28px, 4vw, 48px) 5% clamp(60px, 10vw, 120px)" }}>
         <FadeIn>
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <p style={{ fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 24, letterSpacing: -1, fontFamily: "'Outfit', sans-serif" }}>
               Your worth isn't measured in{" "}
               <span style={{ color: C.orange, fontStyle: "italic" }}>GDP.</span>
@@ -923,7 +924,7 @@ export default function Intro() {
       </section>
       {/* ── WHAT COUNTS ── */}
       <section id="how" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label">What counts</p>
             <p className="mi-section-title">If it helps people or planet, it counts.</p>
@@ -952,7 +953,7 @@ export default function Intro() {
       </section>
       {/* ── PROOF IN NUMBERS ── */}
       <section style={{ background: C.dark, padding: "clamp(60px, 10vw, 120px) 5%" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 56 }}>
               <p className="mi-section-label" style={{ color: C.orange }}>The difference we make</p>
@@ -984,7 +985,7 @@ export default function Intro() {
       </section>
       {/* ── STORIES ── */}
       <section id="stories" style={{ background: "white", padding: "clamp(60px, 10vw, 120px) 5%" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label">Illustrative examples</p>
             <p className="mi-section-title">What does social value look like?</p>
@@ -999,7 +1000,7 @@ export default function Intro() {
       </section>
       {/* ── CV / PROOF ── */}
       <section style={{ background: "white", padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <div className="mi-cv-grid" style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+        <div className="mi-cv-grid" style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
           <FadeIn>
             <div>
               <h2 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: C.dark, letterSpacing: -1, marginBottom: 20, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
@@ -1050,7 +1051,7 @@ export default function Intro() {
       </section>
       {/* ── FOR ORGANISATIONS ── */}
       <section id="for-organisations" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label" style={{ color: C.orange }}>For organisations</p>
             <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
@@ -1127,7 +1128,7 @@ export default function Intro() {
       </section>
       {/* ── FAQ ── */}
       <section style={{ background: C.cream, padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label">Frequently asked questions</p>
             <h2 style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 700, color: C.dark, lineHeight: 1.2, marginBottom: 40, letterSpacing: -0.5, fontFamily: "'Outfit', sans-serif" }}>
