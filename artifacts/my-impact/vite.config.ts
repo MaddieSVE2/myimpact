@@ -112,6 +112,31 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: uploadSourceMaps ? "hidden" : false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/scheduler/")
+            ) {
+              return "vendor-react";
+            }
+            if (id.includes("/@tanstack/")) {
+              return "vendor-query";
+            }
+            if (id.includes("/recharts/") || id.includes("/d3-")) {
+              return "vendor-charts";
+            }
+            if (id.includes("/lucide-react/")) {
+              return "vendor-icons";
+            }
+            return "vendor";
+          }
+        },
+      },
+    },
   },
   // ESM worker output so the org PDF worker (which dynamically pulls in jspdf
   // chunks) can be code-split. Vite's default IIFE worker format errors when

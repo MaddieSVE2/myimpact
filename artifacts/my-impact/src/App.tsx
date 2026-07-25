@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Component, type ReactNode } from "react";
+import { useState, useRef, useEffect, Component, lazy, Suspense, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { updateNavHistory } from "@/lib/nav-history";
@@ -21,6 +21,11 @@ import { PrivateRoute } from "@/components/PrivateRoute";
 import { useAuth } from "@/lib/auth-context";
 import { usePageViewTracking } from "@/hooks/usePageViewTracking";
 import { X, LogIn, Building2 } from "lucide-react";
+// Layout (always needed — static imports)
+import { Footer } from "@/components/layout/Footer";
+import { Navbar } from "@/components/layout/Navbar";
+import { OrgMemberSubNav } from "@/components/layout/OrgMemberSubNav";
+import { Sidekick } from "@/components/Sidekick";
 
 const NOINDEX_PATH_PREFIXES = [
   "/login",
@@ -50,57 +55,53 @@ const NOINDEX_PATH_PREFIXES = [
 // Paths that must be indexable even though a prefix above would catch them.
 const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register"];
 
-// Layout & Pages
-import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Navbar";
-import { OrgMemberSubNav } from "@/components/layout/OrgMemberSubNav";
-import { Sidekick } from "@/components/Sidekick";
-import Intro from "@/pages/Intro";
-import ActionsStep from "@/pages/wizard/ActionsStep";
-import ActivitiesStep from "@/pages/wizard/ActivitiesStep";
-import ContributionsStep from "@/pages/wizard/ContributionsStep";
-import Results from "@/pages/Results";
-import Suggestions from "@/pages/Suggestions";
-import History from "@/pages/History";
-import Journal from "@/pages/Journal";
-import Milestones from "@/pages/Milestones";
-import OrgPortal from "@/pages/OrgPortal";
-import OrgMemberSubmit from "@/pages/OrgMemberSubmit";
-import OrgMemberSubmitHistory from "@/pages/OrgMemberSubmitHistory";
-import OrgDashboard from "@/pages/OrgDashboard";
-import OrgActivities from "@/pages/OrgActivities";
-import OrgChallenges from "@/pages/OrgChallenges";
-import OrgPulse from "@/pages/OrgPulse";
-import OrgMemberPulse from "@/pages/OrgMemberPulse";
-import OrgMemberChallenges from "@/pages/OrgMemberChallenges";
-import OrgExport from "@/pages/OrgExport";
-import OrgSettings from "@/pages/OrgSettings";
-import OrgRegister from "@/pages/OrgRegister";
-import OrgDemoPage from "@/pages/OrgDemoPage";
-import Pricing from "@/pages/Pricing";
-import Login from "@/pages/Login";
-import AuthConfirm from "@/pages/AuthConfirm";
-import About from "@/pages/About";
-import Methodology from "@/pages/Methodology";
-import WhatsNew from "@/pages/WhatsNew";
-import Privacy from "@/pages/Privacy";
-import Terms from "@/pages/Terms";
-import Security from "@/pages/Security";
-import Settings from "@/pages/Settings";
-import NotFound from "@/pages/not-found";
-import ProfileSetup from "@/pages/ProfileSetup";
-import Profile from "@/pages/Profile";
-import Admin from "@/pages/Admin";
-import Contact from "@/pages/Contact";
-import Feedback from "@/pages/Feedback";
-import PublicProfile from "@/pages/PublicProfile";
-import OrgSharePage from "@/pages/OrgSharePage";
-import AnnualRecap from "@/pages/AnnualRecap";
-import Challenges from "@/pages/Challenges";
-import ChallengeDetail from "@/pages/ChallengeDetail";
-import ChallengeJoin from "@/pages/ChallengeJoin";
-import QuickLogPhoto from "@/pages/QuickLogPhoto";
-import QuickLogActivity from "@/pages/QuickLogActivity";
+// Pages — lazy-loaded so each route becomes its own split chunk
+const Intro = lazy(() => import("@/pages/Intro"));
+const ActionsStep = lazy(() => import("@/pages/wizard/ActionsStep"));
+const ActivitiesStep = lazy(() => import("@/pages/wizard/ActivitiesStep"));
+const ContributionsStep = lazy(() => import("@/pages/wizard/ContributionsStep"));
+const Results = lazy(() => import("@/pages/Results"));
+const Suggestions = lazy(() => import("@/pages/Suggestions"));
+const History = lazy(() => import("@/pages/History"));
+const Journal = lazy(() => import("@/pages/Journal"));
+const Milestones = lazy(() => import("@/pages/Milestones"));
+const OrgPortal = lazy(() => import("@/pages/OrgPortal"));
+const OrgMemberSubmit = lazy(() => import("@/pages/OrgMemberSubmit"));
+const OrgMemberSubmitHistory = lazy(() => import("@/pages/OrgMemberSubmitHistory"));
+const OrgDashboard = lazy(() => import("@/pages/OrgDashboard"));
+const OrgActivities = lazy(() => import("@/pages/OrgActivities"));
+const OrgChallenges = lazy(() => import("@/pages/OrgChallenges"));
+const OrgPulse = lazy(() => import("@/pages/OrgPulse"));
+const OrgMemberPulse = lazy(() => import("@/pages/OrgMemberPulse"));
+const OrgMemberChallenges = lazy(() => import("@/pages/OrgMemberChallenges"));
+const OrgExport = lazy(() => import("@/pages/OrgExport"));
+const OrgSettings = lazy(() => import("@/pages/OrgSettings"));
+const OrgRegister = lazy(() => import("@/pages/OrgRegister"));
+const OrgDemoPage = lazy(() => import("@/pages/OrgDemoPage"));
+const Pricing = lazy(() => import("@/pages/Pricing"));
+const Login = lazy(() => import("@/pages/Login"));
+const AuthConfirm = lazy(() => import("@/pages/AuthConfirm"));
+const About = lazy(() => import("@/pages/About"));
+const Methodology = lazy(() => import("@/pages/Methodology"));
+const WhatsNew = lazy(() => import("@/pages/WhatsNew"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Security = lazy(() => import("@/pages/Security"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const ProfileSetup = lazy(() => import("@/pages/ProfileSetup"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const Contact = lazy(() => import("@/pages/Contact"));
+const Feedback = lazy(() => import("@/pages/Feedback"));
+const PublicProfile = lazy(() => import("@/pages/PublicProfile"));
+const OrgSharePage = lazy(() => import("@/pages/OrgSharePage"));
+const AnnualRecap = lazy(() => import("@/pages/AnnualRecap"));
+const Challenges = lazy(() => import("@/pages/Challenges"));
+const ChallengeDetail = lazy(() => import("@/pages/ChallengeDetail"));
+const ChallengeJoin = lazy(() => import("@/pages/ChallengeJoin"));
+const QuickLogPhoto = lazy(() => import("@/pages/QuickLogPhoto"));
+const QuickLogActivity = lazy(() => import("@/pages/QuickLogActivity"));
 
 const queryClient = new QueryClient();
 
@@ -322,6 +323,7 @@ function AppRouter() {
           <GuestBanner />
           <main className="flex-grow">
             <ErrorBoundary>
+            <Suspense fallback={null}>
             <Switch>
               <Route path="/" component={Intro} />
 
@@ -433,6 +435,7 @@ function AppRouter() {
 
               <Route component={NotFound} />
             </Switch>
+            </Suspense>
             </ErrorBoundary>
           </main>
           {showFooter && <Footer />}
