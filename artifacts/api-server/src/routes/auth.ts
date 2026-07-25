@@ -602,6 +602,7 @@ router.get("/me", async (req: any, res) => {
         emailDigestOptIn: user.emailDigestOptIn,
         voiceEnabled: user.voiceEnabled,
         voicePersona: user.voicePersona,
+        voiceAccent: user.voiceAccent ?? "neutral",
         preferredLocale: user.preferredLocale ?? "en",
         gamificationEnabled: user.gamificationEnabled,
       },
@@ -619,12 +620,13 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, preferredLocale, gamificationEnabled } = req.body ?? {};
+    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, voiceAccent, preferredLocale, gamificationEnabled } = req.body ?? {};
     const updates: {
       displayName?: string | null;
       emailDigestOptIn?: boolean;
       voiceEnabled?: boolean;
       voicePersona?: string;
+      voiceAccent?: string;
       preferredLocale?: string;
       gamificationEnabled?: boolean;
     } = {};
@@ -663,6 +665,15 @@ router.patch("/me", async (req: any, res) => {
       updates.voicePersona = voicePersona;
     }
 
+    if (voiceAccent !== undefined) {
+      const allowedAccents = ["neutral", "british"];
+      if (typeof voiceAccent !== "string" || !allowedAccents.includes(voiceAccent)) {
+        res.status(400).json({ error: `voiceAccent must be one of: ${allowedAccents.join(", ")}` });
+        return;
+      }
+      updates.voiceAccent = voiceAccent;
+    }
+
     if (preferredLocale !== undefined) {
       if (preferredLocale !== "en" && preferredLocale !== "cy") {
         res.status(400).json({ error: "preferredLocale must be 'en' or 'cy'" });
@@ -698,6 +709,7 @@ router.patch("/me", async (req: any, res) => {
         emailDigestOptIn: updated.emailDigestOptIn,
         voiceEnabled: updated.voiceEnabled,
         voicePersona: updated.voicePersona,
+        voiceAccent: updated.voiceAccent ?? "neutral",
         preferredLocale: updated.preferredLocale ?? "en",
         gamificationEnabled: updated.gamificationEnabled,
       },

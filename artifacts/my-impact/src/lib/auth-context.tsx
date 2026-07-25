@@ -5,6 +5,7 @@ import { setSentryUser } from "@/lib/sentry";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export type VoicePersona = "alloy" | "nova" | "shimmer" | "echo" | "fable" | "onyx";
+export type VoiceAccent = "neutral" | "british";
 
 interface User {
   id: string;
@@ -14,6 +15,7 @@ interface User {
   emailDigestOptIn?: boolean;
   voiceEnabled?: boolean;
   voicePersona?: VoicePersona;
+  voiceAccent?: VoiceAccent;
   preferredLocale?: "en" | "cy";
   gamificationEnabled?: boolean;
 }
@@ -44,6 +46,7 @@ interface AuthContextType {
     emailDigestOptIn?: boolean;
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
+    voiceAccent?: VoiceAccent;
     preferredLocale?: "en" | "cy";
     gamificationEnabled?: boolean;
   }) => Promise<void>;
@@ -140,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     emailDigestOptIn?: boolean;
     voiceEnabled?: boolean;
     voicePersona?: VoicePersona;
+    voiceAccent?: VoiceAccent;
     preferredLocale?: "en" | "cy";
     gamificationEnabled?: boolean;
   }) => {

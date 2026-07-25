@@ -13,7 +13,7 @@ import {
   type PushPreferencesResponse,
   type PushTriggerToggles,
 } from "@/lib/push-client";
-import { useAuth, type VoicePersona } from "@/lib/auth-context";
+import { useAuth, type VoicePersona, type VoiceAccent } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import { useT } from "@/i18n";
@@ -797,12 +797,61 @@ const VOICE_PERSONA_OPTIONS: { value: VoicePersona; label: string; description: 
   { value: "onyx", label: "Onyx", description: "Deep and grounded" },
 ];
 
+const VOICE_ACCENT_OPTIONS: { value: VoiceAccent; label: string; description: string }[] = [
+  { value: "neutral", label: "Standard", description: "The voice's natural accent" },
+  { value: "british", label: "British", description: "A British English accent" },
+];
+
+const VOICE_PREVIEW_TEXT =
+  "Hello! I'm Sidekick, your My Impact assistant. This is how I'll sound when I read replies aloud.";
+
 function SidekickVoiceSettings() {
   const { user, updateProfile } = useAuth();
   const { toast } = useToast();
   const voiceEnabled = user?.voiceEnabled ?? false;
   const voicePersona = (user?.voicePersona ?? "alloy") as VoicePersona;
+  const voiceAccent = (user?.voiceAccent ?? "neutral") as VoiceAccent;
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      previewAudio?.pause();
+    };
+  }, [previewAudio]);
+
+  const handlePreview = async () => {
+    if (previewing) return;
+    previewAudio?.pause();
+    setPreviewing(true);
+    try {
+      const res = await fetch(`${BASE}/api/sidekick/speak`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: VOICE_PREVIEW_TEXT, voice: voicePersona }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Preview failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      setPreviewAudio(audio);
+      await audio.play();
+    } catch (err) {
+      toast({
+        title: "Couldn't play the sample",
+        description: err instanceof Error ? err.message : "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewing(false);
+    }
+  };
 
   const handleToggleVoice = async () => {
     if (saving) return;
@@ -836,6 +885,29 @@ function SidekickVoiceSettings() {
     } catch {
       toast({
         title: "Could not change voice",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangeAccent = async (next: VoiceAccent) => {
+    if (saving || next === voiceAccent) return;
+    setSaving(true);
+    try {
+      await updateProfile({ voiceAccent: next });
+      toast({
+        title: "Accent updated",
+        description:
+          next === "british"
+            ? "Sidekick will speak with a British accent."
+            : "Sidekick will use the voice's standard accent.",
+      });
+    } catch {
+      toast({
+        title: "Could not change accent",
         description: "Please try again.",
         variant: "destructive",
       });
@@ -895,8 +967,38 @@ function SidekickVoiceSettings() {
               </option>
             ))}
           </select>
+          <label htmlFor="voice-accent" className="block text-sm font-medium text-foreground mb-1 mt-4">
+            Accent
+          </label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Choose the accent Sidekick uses for spoken replies.
+          </p>
+          <select
+            id="voice-accent"
+            value={voiceAccent}
+            disabled={saving}
+            onChange={(e) => handleChangeAccent(e.target.value as VoiceAccent)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            data-testid="voice-accent-select"
+          >
+            {VOICE_ACCENT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}, {opt.description}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={previewing || saving}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 disabled:opacity-60 transition-colors"
+            data-testid="voice-preview-button"
+          >
+            {previewing ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Mic className="w-3.5 h-3.5" aria-hidden="true" />}
+            {previewing ? "Preparing sample…" : "Hear a sample"}
+          </button>
           <p className="text-[11px] text-muted-foreground mt-2">
-            Tap the microphone in the Sidekick panel to speak instead of typing. Voice features need a modern browser with microphone access.
+            The sample uses a small amount of your monthly voice budget. Tap the microphone in the Sidekick panel to speak instead of typing. Voice features need a modern browser with microphone access.
           </p>
         </div>
         <VoiceUsageMeter />

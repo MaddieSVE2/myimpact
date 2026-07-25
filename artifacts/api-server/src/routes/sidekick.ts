@@ -7,7 +7,7 @@ import {
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
-import { db, organisationsTable, orgMembersTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Response } from "express";
 import { z } from "zod";
@@ -723,7 +723,24 @@ router.post("/speak", authenticate, requireOrgAiEnabled, sidekickVoiceRateLimit,
         ? (voice as AllowedVoice)
         : "alloy";
 
-    const audio = await textToSpeech(text, chosenVoice, "mp3");
+    // Apply the user's saved accent preference to the spoken reply. The
+    // preference is stored on the user record (Settings → Sidekick voice),
+    // so the client doesn't need to send it with every request.
+    let voiceInstruction: string | undefined;
+    try {
+      const userRow = await db.query.usersTable.findFirst({
+        where: eq(usersTable.id, userId),
+        columns: { voiceAccent: true },
+      });
+      if (userRow?.voiceAccent === "british") {
+        voiceInstruction =
+          "Speak with a natural British English (UK) accent, using British pronunciation throughout.";
+      }
+    } catch (accentErr) {
+      console.warn("[voice-usage] failed to load voice accent preference:", accentErr);
+    }
+
+    const audio = await textToSpeech(text, chosenVoice, "mp3", voiceInstruction);
 
     const costPence = estimateTtsCostPence(charCount);
     console.log(

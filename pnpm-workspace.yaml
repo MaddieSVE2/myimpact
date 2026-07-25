@@ -36,6 +36,7 @@ minimumReleaseAge: 1440
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
+  - ffmpeg-static
   - msw
   - unrs-resolver
 

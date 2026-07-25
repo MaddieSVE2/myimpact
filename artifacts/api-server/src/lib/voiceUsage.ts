@@ -2,9 +2,29 @@ import { db, voiceUsageTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { spawn } from "child_process";
 import { writeFile, unlink } from "fs/promises";
+import { existsSync } from "fs";
 import { randomUUID } from "crypto";
 import { tmpdir } from "os";
 import { join } from "path";
+import ffprobeStatic from "ffprobe-static";
+
+/**
+ * Resolve the ffprobe binary to use. Prefers the portable binary shipped by
+ * the `ffprobe-static` npm package (present in production deployments,
+ * unlike the Nix-provided system ffprobe that only exists in development).
+ * Falls back to whatever `ffprobe` is on PATH.
+ */
+function resolveFfprobePath(): string {
+  const staticPath = ffprobeStatic?.path;
+  if (typeof staticPath === "string" && staticPath && existsSync(staticPath)) {
+    return staticPath;
+  }
+  console.warn(
+    `[voice-usage] ffprobe-static binary not found (looked at ${staticPath ?? "<null>"}); ` +
+      "falling back to system `ffprobe` on PATH",
+  );
+  return "ffprobe";
+}
 
 /**
  * Monthly cap on transcribed audio per user. Defaults to 30 minutes
@@ -205,8 +225,9 @@ export async function probeAudioDurationSeconds(buffer: Buffer): Promise<number>
   const inputPath = join(tmpdir(), `voice-probe-${randomUUID()}`);
   try {
     await writeFile(inputPath, buffer);
+    const ffprobePath = resolveFfprobePath();
     return await new Promise<number>((resolve) => {
-      const ffprobe = spawn("ffprobe", [
+      const ffprobe = spawn(ffprobePath, [
         "-v", "error",
         "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",

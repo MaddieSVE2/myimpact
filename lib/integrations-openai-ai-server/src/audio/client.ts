@@ -2,9 +2,28 @@ import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";
 import { spawn } from "child_process";
 import { writeFile, unlink, readFile } from "fs/promises";
+import { existsSync } from "fs";
 import { randomUUID } from "crypto";
 import { tmpdir } from "os";
 import { join } from "path";
+import ffmpegStatic from "ffmpeg-static";
+
+/**
+ * Resolve the ffmpeg binary to use. Prefers the portable binary bundled by
+ * the `ffmpeg-static` npm package (which survives production deployment
+ * bundling, unlike the Nix-provided system ffmpeg that is only present in
+ * development). Falls back to whatever `ffmpeg` is on PATH.
+ */
+export function resolveFfmpegPath(): string {
+  if (typeof ffmpegStatic === "string" && ffmpegStatic && existsSync(ffmpegStatic)) {
+    return ffmpegStatic;
+  }
+  console.warn(
+    "[audio] ffmpeg-static binary not found (looked at " +
+      `${ffmpegStatic ?? "<null>"}); falling back to system \`ffmpeg\` on PATH`,
+  );
+  return "ffmpeg";
+}
 
 if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
   throw new Error(
@@ -68,8 +87,9 @@ export async function convertToWav(audioBuffer: Buffer): Promise<Buffer> {
   try {
     await writeFile(inputPath, audioBuffer);
 
+    const ffmpegPath = resolveFfmpegPath();
     await new Promise<void>((resolve, reject) => {
-      const ffmpeg = spawn("ffmpeg", [
+      const ffmpeg = spawn(ffmpegPath, [
         "-i", inputPath,
         "-vn",
         "-f", "wav",
@@ -80,12 +100,29 @@ export async function convertToWav(audioBuffer: Buffer): Promise<Buffer> {
         outputPath,
       ]);
 
-      ffmpeg.stderr.on("data", () => {});
+      let stderrTail = "";
+      ffmpeg.stderr.on("data", (d) => {
+        stderrTail = (stderrTail + d.toString()).slice(-2000);
+      });
       ffmpeg.on("close", (code) => {
         if (code === 0) resolve();
-        else reject(new Error(`ffmpeg exited with code ${code}`));
+        else {
+          console.error(
+            `[audio] ffmpeg (${ffmpegPath}) exited with code ${code}. stderr tail: ${stderrTail}`,
+          );
+          reject(new Error(`ffmpeg exited with code ${code}`));
+        }
       });
-      ffmpeg.on("error", reject);
+      ffmpeg.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "ENOENT") {
+          console.error(
+            `[audio] ffmpeg binary not found at "${ffmpegPath}". ` +
+              "The ffmpeg-static package binary is missing and no system ffmpeg is on PATH. " +
+              "Audio transcoding cannot proceed.",
+          );
+        }
+        reject(err);
+      });
     });
 
     return await readFile(outputPath);
@@ -174,14 +211,18 @@ export async function voiceChatStream(
 export async function textToSpeech(
   text: string,
   voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy",
-  format: "wav" | "mp3" | "flac" | "opus" | "pcm16" = "wav"
+  format: "wav" | "mp3" | "flac" | "opus" | "pcm16" = "wav",
+  voiceInstruction?: string
 ): Promise<Buffer> {
+  const systemContent = voiceInstruction
+    ? `You are an assistant that performs text-to-speech. ${voiceInstruction}`
+    : "You are an assistant that performs text-to-speech.";
   const response = await openai.chat.completions.create({
     model: "gpt-audio",
     modalities: ["text", "audio"],
     audio: { voice, format },
     messages: [
-      { role: "system", content: "You are an assistant that performs text-to-speech." },
+      { role: "system", content: systemContent },
       { role: "user", content: `Repeat the following text verbatim: ${text}` },
     ],
   });

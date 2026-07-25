@@ -10,6 +10,8 @@ export const usersTable = pgTable("users", {
   lastDigestSentAt: timestamp("last_digest_sent_at"),
   voiceEnabled: boolean("voice_enabled").default(false).notNull(),
   voicePersona: text("voice_persona").default("alloy").notNull(),
+  // Accent for Sidekick's spoken replies: "neutral" (default) or "british".
+  voiceAccent: text("voice_accent").default("neutral").notNull(),
   preferredLocale: text("preferred_locale").default("en").notNull(),
   gamificationEnabled: boolean("gamification_enabled").default(true).notNull(),
   // Age gate: collected at sign-up for new accounts only. Nullable so
