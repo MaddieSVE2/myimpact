@@ -4,7 +4,7 @@ import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
-import { HOME_META } from "@/lib/page-metadata";
+import { HOME_META, FAQ_ITEMS, HOMEPAGE_JSON_LD } from "@/lib/page-metadata";
 import { useWizard } from "@/lib/wizard-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RecapBanner from "@/components/RecapBanner";
@@ -176,12 +176,6 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
   );
 }
 
-interface FAQItem {
-  q: string;
-  a: string;
-  aNode?: React.ReactNode;
-}
-
 const SVE_LINK = (
   <a
     href="https://www.socialvalueengine.com"
@@ -193,78 +187,29 @@ const SVE_LINK = (
   </a>
 );
 
-const FAQ_ITEMS: FAQItem[] = [
-  {
-    q: "What is My Impact?",
-    a: "My Impact is a free tool for anyone who volunteers, cares for others, gives to charity, or takes positive action in their community. Answer a short set of questions about what you do, and it works out what your contributions are worth in pounds using peer-reviewed social value methodology. You get a shareable results page that is useful for job applications, funding bids, UCAS personal statements, DofE applications, and annual reports.",
-  },
-  {
-    q: "How does My Impact calculate social value?",
-    a: "We use the Social Value Engine, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.",
-    aNode: <>We use the {SVE_LINK}, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.</>,
-  },
-  {
-    q: "Is the information I enter verified or independently audited?",
-    a: "Today, contributions are self-reported. We are transparent about this on every results page. We use conservative proxy values, sensible default ranges, and single-SDG attribution to keep figures defensible. Organisation-side verification for group programmes is on our roadmap.",
-  },
-  {
-    q: "Is My Impact free to use?",
-    a: "Measuring your impact is free and you don't need an account to do it. If you do create a free account, you can also save your history, write journal entries, earn milestones, and share a public profile. For organisations wanting access to the dashboard, Pulse surveys, and other team features, there is a cost. Get in touch at hello@myimpact.uk to find out more.",
-  },
-  {
-    q: "What is the Social Value Engine?",
-    a: "The Social Value Engine (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.",
-    aNode: <>The {SVE_LINK} (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.</>,
-  },
-  {
-    q: "Can my organisation use My Impact?",
-    a: "Yes. My Impact works for schools, universities, charities, local authorities, and private sector employers running employee volunteering or community investment programmes. Organisations get a dedicated dashboard showing aggregated, anonymised impact data across their members, ready for programme reporting, funding bids, commissioner returns, and ESG reporting. Get in touch at hello@myimpact.uk or explore the demo dashboard to find out more.",
-  },
-];
+type RichFAQItem = { q: string; a: string; aNode?: React.ReactNode };
 
-const HOMEPAGE_JSON_LD = [
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": "https://myimpact.uk/#website",
-    "url": "https://myimpact.uk/",
-    "name": "My Impact",
-    "description": "Free tool to calculate and share the social value of your volunteering, community work, and positive actions.",
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "@id": "https://myimpact.uk/#webapp",
-    "url": "https://myimpact.uk/",
-    "name": "My Impact",
-    "applicationCategory": "LifestyleApplication",
-    "operatingSystem": "Web",
-    "description": "Free tool to measure, track and share the social value of volunteering and community contributions using SROI methodology.",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "GBP",
-    },
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": FAQ_ITEMS.map(item => ({
-      "@type": "Question",
-      "name": item.q,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": item.a,
-      },
-    })),
-  },
-];
+const RICH_FAQ_ITEMS: RichFAQItem[] = FAQ_ITEMS.map((item, i) => {
+  if (i === 1) {
+    return {
+      ...item,
+      aNode: <>We use the {SVE_LINK}, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.</>,
+    };
+  }
+  if (i === 4) {
+    return {
+      ...item,
+      aNode: <>The {SVE_LINK} (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.</>,
+    };
+  }
+  return item;
+});
 
 function HomeFAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {FAQ_ITEMS.map((item, i) => {
+      {RICH_FAQ_ITEMS.map((item, i) => {
         const isOpen = openIndex === i;
         return (
           <div

@@ -2,9 +2,9 @@
  * prerender.ts — lightweight static pre-render for public pages.
  *
  * Reads the Vite-built dist/public/index.html shell, injects per-page
- * metadata (title, description, canonical, robots) and writes each page as
- * dist/public/<path>/index.html so crawlers receive the correct tags
- * without executing JavaScript.
+ * metadata (title, description, canonical, robots, Open Graph, Twitter Card,
+ * and JSON-LD) and writes each page as dist/public/<path>/index.html so
+ * crawlers receive the correct tags without executing JavaScript.
  *
  * No headless browser required — we use string injection because the app
  * already defines all metadata in PageMeta / Helmet component props.
@@ -17,31 +17,54 @@
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PRERENDER_PAGES } from "./src/lib/page-metadata.ts";
+import { PRERENDER_PAGES, DEFAULT_OG_IMAGE } from "./src/lib/page-metadata.ts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const DIST = resolve(__dirname, "dist", "public");
+
+const SITE_NAME = "My Impact";
 
 function escape(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function injectMeta(html: string, page: (typeof PRERENDER_PAGES)[number]): string {
-  const { title, description, canonical, robots } = page;
+  const { title, description, canonical, robots, ogType, ogImage, jsonLd } = page;
+
+  const resolvedOgImage = ogImage ?? DEFAULT_OG_IMAGE;
+  const resolvedOgType = ogType ?? "website";
 
   const escapedTitle = escape(title);
   const escapedDesc = escape(description);
+  const escapedOgImage = escape(resolvedOgImage);
 
   const metaTags = [
     `  <meta name="description" content="${escapedDesc}" />`,
     `  <meta name="robots" content="${robots}" />`,
     canonical ? `  <link rel="canonical" href="${canonical}" />` : null,
+
     `  <meta property="og:title" content="${escapedTitle}" />`,
     `  <meta property="og:description" content="${escapedDesc}" />`,
+    `  <meta property="og:type" content="${resolvedOgType}" />`,
     canonical ? `  <meta property="og:url" content="${canonical}" />` : null,
+    `  <meta property="og:image" content="${escapedOgImage}" />`,
+    `  <meta property="og:image:width" content="1200" />`,
+    `  <meta property="og:image:height" content="630" />`,
+    `  <meta property="og:site_name" content="${escape(SITE_NAME)}" />`,
+
+    `  <meta name="twitter:card" content="summary_large_image" />`,
+    `  <meta name="twitter:title" content="${escapedTitle}" />`,
+    `  <meta name="twitter:description" content="${escapedDesc}" />`,
+    `  <meta name="twitter:image" content="${escapedOgImage}" />`,
   ]
     .filter(Boolean)
     .join("\n");
+
+  const jsonLdBlocks = jsonLd && jsonLd.length > 0
+    ? jsonLd
+        .map(schema => `  <script type="application/ld+json">\n  ${JSON.stringify(schema)}\n  </script>`)
+        .join("\n")
+    : null;
 
   // Replace the placeholder title the Vite build puts in index.html
   let result = html.replace(/<title>[^<]*<\/title>/, `<title>${escapedTitle}</title>`);
@@ -53,7 +76,8 @@ function injectMeta(html: string, page: (typeof PRERENDER_PAGES)[number]): strin
     .replace(/<meta\s+name="robots"[^>]*>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "");
 
-  result = result.replace(/<head>/, `<head>\n${metaTags}`);
+  const injected = jsonLdBlocks ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
+  result = result.replace(/<head>/, `<head>\n${injected}`);
 
   return result;
 }
