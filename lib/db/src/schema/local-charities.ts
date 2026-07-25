@@ -28,6 +28,8 @@ export interface StoredCharityPlace {
   name: string;
   description: string;
   howToJoin: string;
+  /** Official website URL (https), when the AI is confident about it. */
+  website?: string;
   source: "ai";
   verified: boolean;
   registrationNumber?: string;

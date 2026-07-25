@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from '@/lib/auth-context';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
 
+/**
+ * sessionStorage key used by the Inspire page's "Log activity with this
+ * charity" shortcut. The activities step reads it once on mount to pre-fill
+ * describe mode with the chosen charity.
+ */
+export const CHARITY_SEED_KEY = "wizard:charity-seed";
+
 export const INTEREST_OPTIONS = [
   { id: 'environment', label: 'The environment', emoji: '🌍', category: 'Environment' },
   { id: 'mental_health', label: 'Mental health', emoji: '🧠', category: 'Health' },

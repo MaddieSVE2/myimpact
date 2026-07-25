@@ -60,6 +60,24 @@ const CATEGORY_PROMPTS: Record<string, string> = {
   "Sport & Active": "sports coaching and active lifestyle volunteering",
 };
 
+/**
+ * Keep only plausible http(s) charity URLs; anything else becomes undefined
+ * so the frontend simply hides the website link.
+ */
+function sanitizeWebsite(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
+    if (!url.hostname.includes(".")) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function isScottish(country: string): boolean {
   return country.trim().toLowerCase() === "scotland";
 }
@@ -109,6 +127,7 @@ Return a JSON object with a "places" array. Each item has:
 - name (string): the real name of the charity or voluntary organisation
 - description (string): one sentence, max 15 words, explaining what they do — specific to the theme
 - howToJoin (string): one concrete action to get started, max 12 words
+- website (string): the organisation's official website URL (https), or "" if you are not confident of the exact URL — never guess
 
 Rules:
 - Only suggest registered charities or voluntary/community organisations — never suggest councils, local authorities, government bodies, job centres, or DWP services
@@ -149,14 +168,16 @@ Rules:
           !!p && typeof p === "object" && typeof (p as { name?: unknown }).name === "string" &&
           !isBlockedOrganisation((p as { name: string }).name)
         )
-        .map(({ name, description, howToJoin }: {
+        .map(({ name, description, howToJoin, website }: {
           name: string;
           description?: string;
           howToJoin?: string;
+          website?: string;
         }) => ({
           name,
           description: typeof description === "string" ? description : "",
           howToJoin: typeof howToJoin === "string" ? howToJoin : "",
+          website: sanitizeWebsite(website),
         }))
     : [];
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useWizard, INTEREST_OPTIONS, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
 import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompts";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
@@ -98,6 +98,38 @@ export default function ActivitiesStep() {
 
   // Pick mode search filter (pre-filled when switching from describe mode)
   const [pickSearch, setPickSearch] = useState("");
+
+  // Seed from a suggested local charity ("Log activity with this charity" on
+  // the Inspire page): switch to describe mode with the organisation and its
+  // description pre-filled so the user only has to say what they did.
+  useEffect(() => {
+    let seed: { name?: string; description?: string } | null = null;
+    try {
+      const raw = sessionStorage.getItem(CHARITY_SEED_KEY);
+      if (raw) {
+        seed = JSON.parse(raw);
+        sessionStorage.removeItem(CHARITY_SEED_KEY);
+      }
+    } catch {
+      // ignore malformed/blocked storage
+    }
+    if (!seed || typeof seed.name !== "string" || !seed.name.trim()) return;
+    const desc = typeof seed.description === "string" && seed.description.trim()
+      ? ` (${seed.description.trim().replace(/\.$/, "")})`
+      : "";
+    setActivityModeLocal("describe");
+    setWizardActivityMode("describe");
+    setDescribeText(`I volunteer with ${seed.name.trim()}${desc}. `);
+    // Focus the textarea so the user can carry straight on typing
+    setTimeout(() => {
+      const el = describeRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Session calculator (gap 2 fix)
   const [showSessionCalc, setShowSessionCalc] = useState(false);

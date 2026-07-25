@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link } from "wouter";
-import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
+import { Link, useLocation as useWouterLocation } from "wouter";
+import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY } from "@/lib/wizard-context";
 import { PageMeta } from "@/components/PageMeta";
 import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat, Globe, PlusCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/i18n";
 
@@ -12,6 +12,7 @@ interface LocalPlace {
   name: string;
   description: string;
   howToJoin: string;
+  website?: string;
   source?: "ai";
   verified?: boolean;
   registrationNumber?: string;
@@ -58,6 +59,161 @@ function VolunteerScotlandSearchCard() {
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
     </a>
+  );
+}
+
+/**
+ * One suggested local charity. Tapping the row expands a small detail view
+ * that emphasises the website / how-to-join info and offers a shortcut to
+ * log an activity with this charity pre-filled in the wizard.
+ */
+function PlaceCard({
+  place,
+  areaLabel,
+  profilePostcode,
+  isScottish,
+}: {
+  place: LocalPlace;
+  areaLabel: string;
+  profilePostcode: string;
+  isScottish: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [, navigate] = useWouterLocation();
+
+  const handleLogActivity = () => {
+    try {
+      sessionStorage.setItem(
+        CHARITY_SEED_KEY,
+        JSON.stringify({ name: place.name, description: place.description })
+      );
+    } catch {
+      // ignore storage errors — the wizard still opens, just unseeded
+    }
+    navigate("/wizard/activities");
+  };
+
+  return (
+    <div className="bg-white border border-border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full text-left px-3 py-2.5 hover:bg-muted/40 transition-colors"
+        data-testid={`place-card-${place.name}`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
+              {place.verified ? (
+                <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Verified charity
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                  Suggested
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{place.description}</p>
+          </div>
+          <ChevronDown
+            className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground transition-transform"
+            style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+            aria-hidden="true"
+          />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="detail"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border" />
+            <div className="px-3 py-3 space-y-3">
+              {/* How to join — emphasised */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+                  How to get involved
+                </p>
+                <p className="text-xs text-foreground leading-relaxed">{place.howToJoin}</p>
+              </div>
+
+              {place.verified && place.registrationNumber && (
+                <p className="text-[10px] text-muted-foreground/70">
+                  Registered charity no. {place.registrationNumber}
+                </p>
+              )}
+
+              {/* Primary actions */}
+              <div className="flex flex-wrap gap-1.5">
+                {place.website ? (
+                  <a
+                    href={place.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#E8633A" }}
+                    data-testid={`place-website-${place.name}`}
+                  >
+                    <Globe className="w-3 h-3" /> Visit website <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                ) : (
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${areaLabel} volunteer charity`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#E8633A" }}
+                  >
+                    <Globe className="w-3 h-3" /> Find their website <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogActivity}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
+                  data-testid={`place-log-${place.name}`}
+                >
+                  <PlusCircle className="w-3 h-3" /> Log activity with this charity
+                </button>
+              </div>
+
+              {/* Secondary links */}
+              <div className="flex flex-wrap gap-1.5">
+                {place.website && (
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${areaLabel} volunteer charity`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                  >
+                    Search online <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+                {!isScottish && (
+                  <a
+                    href={`https://register-of-charities.charitycommission.gov.uk/charity-search?q=${encodeURIComponent(place.name)}${profilePostcode ? `&postcode=${encodeURIComponent(profilePostcode)}` : ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all text-emerald-700"
+                  >
+                    Check register <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -395,49 +551,13 @@ export default function Suggestions() {
                           </p>
                         ) : (
                           places.map((place, pi) => (
-                            <div key={pi} className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                  <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
-                                  {place.verified ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      ✓ Verified charity
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                      Suggested
-                                    </span>
-                                  )}
-                                </div>
-                                {place.verified && place.registrationNumber && (
-                                  <p className="text-[10px] text-muted-foreground/70 mb-0.5">
-                                    Reg. no. {place.registrationNumber}
-                                  </p>
-                                )}
-                                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{place.description}</p>
-                                <p className="text-[11px] text-foreground/60 mt-0.5 italic">{place.howToJoin}</p>
-                              </div>
-                              <div className="shrink-0 flex flex-col gap-1 items-end">
-                                <a
-                                  href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${areaLabel} volunteer charity`)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
-                                >
-                                  Search online <ExternalLink className="w-2.5 h-2.5" />
-                                </a>
-                                {!isScottish && (
-                                  <a
-                                    href={`https://register-of-charities.charitycommission.gov.uk/charity-search?q=${encodeURIComponent(place.name)}${profilePostcode ? `&postcode=${encodeURIComponent(profilePostcode)}` : ""}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all text-emerald-700"
-                                  >
-                                    Check register <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
+                            <PlaceCard
+                              key={pi}
+                              place={place}
+                              areaLabel={areaLabel}
+                              profilePostcode={profilePostcode}
+                              isScottish={isScottish}
+                            />
                           ))
                         )}
 
