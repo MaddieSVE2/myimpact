@@ -295,6 +295,54 @@ export const recordVerificationsTable = pgTable("record_verifications", {
   orgStatusIdx: index("record_verifications_org_status_idx").on(table.orgId, table.status),
 }));
 
+// One row per super-admin import of an org data export into a fresh
+// organisation. Records provenance (source org), who imported, and a
+// snapshot of non-restorable aggregates (e.g. survey aggregates) so the
+// migrated org keeps its history even though responses aren't copied.
+export const orgMigrationsTable = pgTable("org_migrations", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  sourceOrgId: text("source_org_id").notNull(),
+  sourceOrgName: text("source_org_name").notNull(),
+  sourceDataSharingMode: text("source_data_sharing_mode").notNull(),
+  exportedAt: timestamp("exported_at").notNull(),
+  importedBy: text("imported_by").notNull().references(() => usersTable.id),
+  membersInSource: integer("members_in_source").notNull().default(0),
+  activitiesImported: integer("activities_imported").notNull().default(0),
+  surveyAggregates: jsonb("survey_aggregates"),
+  settingsApplied: jsonb("settings_applied"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_migrations_org_idx").on(t.orgId),
+}));
+
+// Historical activity records restored from an org data export. These are
+// intentionally NOT impact_records: they belong to the organisation (not to
+// a user account) and are clearly marked as migrated via this table and
+// their migrationId. Member identity is kept as a label/email snapshot from
+// the export; memberships themselves are re-established via the normal join
+// flow of the new organisation.
+export const orgMigratedActivitiesTable = pgTable("org_migrated_activities", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  migrationId: text("migration_id").notNull().references(() => orgMigrationsTable.id, { onDelete: "cascade" }),
+  sourceRecordId: text("source_record_id").notNull(),
+  memberName: text("member_name"),
+  memberEmail: text("member_email"),
+  entryDate: timestamp("entry_date").notNull(),
+  name: text("name").notNull(),
+  totalValue: numeric("total_value", { precision: 12, scale: 2 }).notNull(),
+  totalHours: integer("total_hours").notNull(),
+  source: text("source").notNull(),
+  verified: boolean("verified").notNull().default(false),
+  verificationStatus: text("verification_status"),
+  activitiesJson: jsonb("activities_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_migrated_activities_org_idx").on(t.orgId),
+  migrationIdx: index("org_migrated_activities_migration_idx").on(t.migrationId),
+}));
+
 export const orgAuditLogTable = pgTable("org_audit_log", {
   id: serial("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
@@ -324,3 +372,5 @@ export type OrgSurveyResponse = typeof orgSurveyResponsesTable.$inferSelect;
 export type OrgSurveyOptOut = typeof orgSurveyOptOutsTable.$inferSelect;
 export type RecordVerification = typeof recordVerificationsTable.$inferSelect;
 export type OrgAuditLog = typeof orgAuditLogTable.$inferSelect;
+export type OrgMigration = typeof orgMigrationsTable.$inferSelect;
+export type OrgMigratedActivity = typeof orgMigratedActivitiesTable.$inferSelect;

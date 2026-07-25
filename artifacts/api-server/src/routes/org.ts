@@ -19,7 +19,7 @@ import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
 import { getOrgSharingContext, sharedRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
-import { orgMemberConsentsTable } from "@workspace/db";
+import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -3297,6 +3297,62 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
   } catch (err) {
     console.error("Org activities error:", err);
     res.status(500).json({ error: "Failed to load activities" });
+  }
+});
+
+// Migrated history: historical activity restored from a super-admin import
+// of a previous organisation's data export. Read-only, clearly separated
+// from live records.
+router.get("/migrated-history", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+
+    const migrations = await db
+      .select()
+      .from(orgMigrationsTable)
+      .where(eq(orgMigrationsTable.orgId, orgId))
+      .orderBy(desc(orgMigrationsTable.createdAt));
+
+    if (migrations.length === 0) {
+      res.json({ migration: null, activities: [] });
+      return;
+    }
+    const migration = migrations[0];
+
+    const rows = await db
+      .select()
+      .from(orgMigratedActivitiesTable)
+      .where(eq(orgMigratedActivitiesTable.orgId, orgId))
+      .orderBy(desc(orgMigratedActivitiesTable.entryDate));
+
+    res.json({
+      migration: {
+        id: migration.id,
+        sourceOrgName: migration.sourceOrgName,
+        sourceDataSharingMode: migration.sourceDataSharingMode,
+        exportedAt: migration.exportedAt.toISOString(),
+        importedAt: migration.createdAt.toISOString(),
+        membersInSource: migration.membersInSource,
+        activitiesImported: migration.activitiesImported,
+        surveyAggregates: migration.surveyAggregates ?? null,
+      },
+      activities: rows.map((r) => ({
+        id: r.id,
+        entryDate: r.entryDate.toISOString().slice(0, 10),
+        memberName: r.memberName ?? "Member",
+        name: r.name,
+        totalValue: Number(r.totalValue),
+        totalHours: r.totalHours,
+        source: r.source,
+        verified: r.verified,
+        verificationStatus: r.verificationStatus,
+      })),
+    });
+  } catch (err) {
+    console.error("Org migrated-history error:", err);
+    res.status(500).json({ error: "Failed to load migrated history" });
   }
 });
 

@@ -382,7 +382,7 @@ router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => 
 
 // ── Super-admin organisation management ──────────────────────────────────────
 
-function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCount = 0) {
+function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCount = 0, totalMembershipCount = memberCount) {
   return {
     id: org.id,
     name: org.name,
@@ -395,6 +395,7 @@ function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCo
     revokedAt: org.revokedAt ? org.revokedAt.toISOString() : null,
     createdAt: org.createdAt.toISOString(),
     memberCount,
+    totalMembershipCount,
   };
 }
 
@@ -406,13 +407,18 @@ router.get("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
   const orgs = await db.select().from(organisationsTable).orderBy(desc(organisationsTable.createdAt));
   const counts = orgs.length > 0
     ? await db
-        .select({ orgId: orgMembersTable.orgId, count: sql<number>`count(*)::int` })
+        .select({
+          orgId: orgMembersTable.orgId,
+          count: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.status} = 'active')::int`,
+          totalCount: sql<number>`count(*)::int`,
+        })
         .from(orgMembersTable)
-        .where(and(inArray(orgMembersTable.orgId, orgs.map(o => o.id)), eq(orgMembersTable.status, "active")))
+        .where(inArray(orgMembersTable.orgId, orgs.map(o => o.id)))
         .groupBy(orgMembersTable.orgId)
     : [];
   const countMap = new Map(counts.map(c => [c.orgId, c.count]));
-  res.json({ orgs: orgs.map(o => serializeAdminOrg(o, countMap.get(o.id) ?? 0)) });
+  const totalCountMap = new Map(counts.map(c => [c.orgId, c.totalCount]));
+  res.json({ orgs: orgs.map(o => serializeAdminOrg(o, countMap.get(o.id) ?? 0, totalCountMap.get(o.id) ?? 0)) });
 });
 
 router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {

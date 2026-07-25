@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -25,6 +25,7 @@ interface AdminOrg {
   revokedAt: string | null;
   createdAt: string;
   memberCount: number;
+  totalMembershipCount: number;
 }
 
 function ModeBadge({ mode }: { mode: AdminOrg["dataSharingMode"] }) {
@@ -111,6 +112,103 @@ export default function AdminOrganisations() {
     }
   }
 
+  const [importPreview, setImportPreview] = useState<{
+    orgId: string;
+    file: unknown;
+    preview: {
+      sourceOrg: { id: string; name: string; type: string; dataSharingMode: string; exportedAt: string };
+      willCreate: { migratedActivities: number; settingsApplied: string[]; surveyAggregatesPreserved: number };
+      membersInSource: number;
+      membersNote: string;
+    };
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importTargetRef = useRef<string | null>(null);
+
+  function downloadBlob(content: string, filename: string, type: string) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  async function handleExport(org: AdminOrg) {
+    setBusy(org.id + "-export");
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/export`, { credentials: "include" });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to export organisation data");
+      const slug = org.name.replace(/\s+/g, "-").toLowerCase();
+      downloadBlob(JSON.stringify(data, null, 2), `my-impact-export-${slug}.json`, "application/json");
+      if (typeof data.humanReadableSummary === "string") {
+        downloadBlob(data.humanReadableSummary, `my-impact-export-${slug}-summary.txt`, "text/plain;charset=utf-8");
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to export organisation data");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function startImport(org: AdminOrg) {
+    importTargetRef.current = org.id;
+    fileInputRef.current?.click();
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const orgId = importTargetRef.current;
+    if (!file || !orgId) return;
+    setBusy(orgId + "-import");
+    try {
+      const text = await file.text();
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new Error("That file isn't valid JSON. Choose a My Impact organisation export file.");
+      }
+      const r = await fetch(`${BASE}/api/admin/orgs/${orgId}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ dryRun: true, export: parsed }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Import validation failed");
+      setImportPreview({ orgId, file: parsed, preview: data.preview });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Import validation failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function confirmImport() {
+    if (!importPreview) return;
+    const { orgId, file } = importPreview;
+    setBusy(orgId + "-import-commit");
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${orgId}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ dryRun: false, export: file }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Import failed");
+      setImportPreview(null);
+      alert(`Import complete: ${data.imported.migratedActivities} activity record(s) restored and marked as migrated, and ${data.imported.settingsApplied.length} setting(s) applied. Members re-join through the normal join flow.`);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleRevoke(org: AdminOrg) {
     const confirmed = window.confirm(
       `Revoke access for "${org.name}"?\n\nManagers will immediately lose access to the organisation dashboard and API. The organisation's data is retained for 180 days, and the contact (${org.contactEmail ?? "no email on file"}) will be notified by email.`
@@ -135,6 +233,49 @@ export default function AdminOrganisations() {
 
   return (
     <div data-testid="admin-organisations">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={handleImportFile}
+        data-testid="input-import-file"
+      />
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-lg rounded-xl bg-background border border-border shadow-xl p-6" data-testid="import-preview-dialog">
+            <h3 className="text-lg font-display font-bold text-foreground mb-1">Confirm import</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Import data from <strong className="text-foreground">{importPreview.preview.sourceOrg.name}</strong> (exported {new Date(importPreview.preview.sourceOrg.exportedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}) into this fresh organisation. Nothing has been imported yet.
+            </p>
+            <ul className="text-sm text-foreground space-y-1.5 mb-4">
+              <li>• <strong>{importPreview.preview.willCreate.migratedActivities}</strong> historical activity record(s) will be restored, marked as migrated.</li>
+              <li>• <strong>{importPreview.preview.willCreate.settingsApplied.length}</strong> organisation setting(s) will be applied (branding, SROI assumptions, reporting year, toggles).</li>
+              <li>• Survey aggregates from <strong>{importPreview.preview.willCreate.surveyAggregatesPreserved}</strong> survey(s) will be preserved for reference.</li>
+              <li>• <strong>{importPreview.preview.membersInSource}</strong> member(s) existed in the source organisation. {importPreview.preview.membersNote}</li>
+            </ul>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setImportPreview(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors"
+                data-testid="button-import-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmImport}
+                disabled={busy === importPreview.orgId + "-import-commit"}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                data-testid="button-import-confirm"
+              >
+                {busy === importPreview.orgId + "-import-commit" ? "Importing…" : "Import data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mt-12 mb-2">
         <h2 className="text-xl font-display font-bold text-foreground">Organisations</h2>
         <button
@@ -303,16 +444,44 @@ export default function AdminOrganisations() {
                     })}
                   </div>
 
-                  {!org.revokedAt && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleRevoke(org)}
-                      disabled={busy === org.id + "-revoke"}
-                      className="px-4 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm font-medium transition-colors border border-destructive/20 disabled:opacity-50"
-                      data-testid={`button-revoke-${org.id}`}
+                      onClick={() => handleExport(org)}
+                      disabled={busy === org.id + "-export"}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border disabled:opacity-50 ${org.revokedAt ? "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200" : "bg-secondary hover:bg-secondary/70 text-foreground border-border"}`}
+                      data-testid={`button-export-${org.id}`}
                     >
-                      {busy === org.id + "-revoke" ? "Revoking…" : "Revoke access"}
+                      {busy === org.id + "-export" ? "Exporting…" : org.revokedAt ? "Export data (data request)" : "Export data"}
                     </button>
+                    {!org.revokedAt && org.totalMembershipCount === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => startImport(org)}
+                        disabled={busy === org.id + "-import"}
+                        className="px-4 py-1.5 rounded-lg bg-secondary hover:bg-secondary/70 text-foreground text-sm font-medium transition-colors border border-border disabled:opacity-50"
+                        data-testid={`button-import-${org.id}`}
+                      >
+                        {busy === org.id + "-import" ? "Validating…" : "Import data…"}
+                      </button>
+                    )}
+                    {!org.revokedAt && (
+                      <button
+                        type="button"
+                        onClick={() => handleRevoke(org)}
+                        disabled={busy === org.id + "-revoke"}
+                        className="px-4 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm font-medium transition-colors border border-destructive/20 disabled:opacity-50"
+                        data-testid={`button-revoke-${org.id}`}
+                      >
+                        {busy === org.id + "-revoke" ? "Revoking…" : "Revoke access"}
+                      </button>
+                    )}
+                  </div>
+                  {org.revokedAt && (
+                    <p className="text-xs text-muted-foreground mt-2">Export remains available during the 180-day retention window for data requests.</p>
+                  )}
+                  {!org.revokedAt && org.totalMembershipCount === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">Import restores an exported organisation's settings and historical activity data into this fresh organisation, marked as migrated. Members re-join through the normal join flow.</p>
                   )}
                 </div>
               )}

@@ -97,6 +97,43 @@ function useRealOrgActivities(enabled: boolean, from: string, to: string) {
   });
 }
 
+interface MigratedActivity {
+  id: string;
+  entryDate: string;
+  memberName: string;
+  name: string;
+  totalValue: number;
+  totalHours: number;
+  source: string;
+  verified: boolean;
+  verificationStatus: string | null;
+}
+
+interface MigratedHistoryResponse {
+  migration: {
+    id: string;
+    sourceOrgName: string;
+    sourceDataSharingMode: string;
+    exportedAt: string;
+    importedAt: string;
+    membersInSource: number;
+    activitiesImported: number;
+  } | null;
+  activities: MigratedActivity[];
+}
+
+function useMigratedHistory(enabled: boolean) {
+  return useQuery<MigratedHistoryResponse>({
+    queryKey: ["org-migrated-history"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/migrated-history`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load migrated history");
+      return res.json();
+    },
+    enabled,
+  });
+}
+
 export default function OrgActivities() {
   const { data: orgData, isLoading, isError } = useMyOrg();
 
@@ -140,6 +177,9 @@ export default function OrgActivities() {
 
   const realFeedEnabled = Boolean(orgData?.org && isManager && !isDemoOrg);
   const { data: realData, isLoading: realLoading } = useRealOrgActivities(realFeedEnabled, from, to);
+  const { data: migratedData } = useMigratedHistory(realFeedEnabled);
+  const migration = migratedData?.migration ?? null;
+  const migratedActivities = migratedData?.activities ?? [];
 
   const removedIds = useMemo(
     () => isDemoOrg ? new Set(getRemovedMemberIds(DEMO_ORG_ID)) : new Set<string>(),
@@ -478,6 +518,54 @@ export default function OrgActivities() {
             </>
           )}
         </div>
+
+        {migration && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5" data-testid="migrated-history-section">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h2 className="text-[15px] font-semibold text-foreground">Migrated history</h2>
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-semibold">Migrated from {migration.sourceOrgName}</span>
+            </div>
+            <p className="text-[13px] text-muted-foreground mb-3">
+              These records were imported from your previous organisation ({migration.sourceOrgName}) on{" "}
+              {new Date(migration.importedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}.
+              They are read-only and kept separate from your live activity feed above.
+            </p>
+            {migratedActivities.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">No activity records were included in the import.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-amber-200/70">
+                      <th className="py-2 pr-3 font-medium">Date</th>
+                      <th className="py-2 pr-3 font-medium">Member (at export)</th>
+                      <th className="py-2 pr-3 font-medium">Activity</th>
+                      <th className="py-2 pr-3 font-medium text-right">Hours</th>
+                      <th className="py-2 pr-3 font-medium text-right">Social value</th>
+                      <th className="py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {migratedActivities.map((a) => (
+                      <tr key={a.id} className="border-b border-amber-100 align-top" data-testid={`row-migrated-${a.id}`}>
+                        <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.entryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="py-2 pr-3">{a.memberName}</td>
+                        <td className="py-2 pr-3">{a.name}</td>
+                        <td className="py-2 pr-3 text-right whitespace-nowrap">{a.totalHours}</td>
+                        <td className="py-2 pr-3 text-right whitespace-nowrap font-semibold">£{a.totalValue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="py-2">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                            {a.verified ? "Verified (migrated)" : "Migrated"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="text-[13px] text-muted-foreground">
           Need to share this with funders or your board? Head to{" "}

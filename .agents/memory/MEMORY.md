@@ -7,4 +7,5 @@
 - [gpt-5-mini JSON truncation](reasoning-model-json-truncation.md) — reasoning tokens eat small max_completion_tokens budgets; guard JSON.parse and use reasoning_effort low + big budget.
 - [E2E run quirks](e2e-run-quirks.md) — run Playwright suite with E2E_API_PORT=5000 E2E_WEB_PORT=3000 via the validation runner; shell reaps background servers; magic-link sign-in rate-limits per email.
 - [Persona instant login](persona-instant-login.md) — demo persona emails (x@x.org) log in instantly via /api/auth/demo-login or the sign-in form; best auth path for curl and UI tests.
+- [Dev DB drift vs drizzle push](dev-db-drift.md) — push aborts on leftover `opportunities` table drop; apply new tables/columns via psql SQL matching the schema instead.
 - [Parallel validation contention](parallel-validation-contention.md) — validation runs all Playwright suites at once sharing test-results/; ENOENT trace errors + timeouts are contention, verify suites individually via workflows.
