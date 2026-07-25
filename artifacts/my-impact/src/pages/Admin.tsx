@@ -53,6 +53,11 @@ interface AiUsageReport {
     outputTokens: number;
     estimatedCostUsd: number;
   };
+  callerCount: number;
+  signedInCallers: number;
+  total: number;
+  page: number;
+  totalPages: number;
   budgetAlertUsd?: number;
 }
 
@@ -101,18 +106,25 @@ export default function Admin() {
   const [orgRequests, setOrgRequests] = useState<OrgRequest[]>([]);
   const [orgFetching, setOrgFetching] = useState(true);
   const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgPage, setOrgPage] = useState(1);
+  const [orgTotal, setOrgTotal] = useState(0);
+  const [orgTotalPages, setOrgTotalPages] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [voiceUsers, setVoiceUsers] = useState<VoiceUsageUser[]>([]);
   const [voiceCaps, setVoiceCaps] = useState<{ transcribeSecondsCap: number; ttsCharactersCap: number; yearMonth: string } | null>(null);
   const [voiceFetching, setVoiceFetching] = useState(true);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voicePage, setVoicePage] = useState(1);
+  const [voiceTotal, setVoiceTotal] = useState(0);
+  const [voiceTotalPages, setVoiceTotalPages] = useState(1);
 
   const [aiReport, setAiReport] = useState<AiUsageReport | null>(null);
   const [aiFetching, setAiFetching] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSort, setAiSort] = useState<AiSortKey>("cost");
   const [aiFilter, setAiFilter] = useState<AiFilter>("all");
+  const [aiPage, setAiPage] = useState(1);
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
@@ -120,19 +132,28 @@ export default function Admin() {
     if (isLoading) return;
     if (!user || !isAdmin) {
       setLocation("/", { replace: true });
-      return;
     }
+  }, [isLoading, user, isAdmin, setLocation]);
 
-    fetch(`${BASE}/api/admin/org-requests`, { credentials: "include" })
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setOrgFetching(true);
+    fetch(`${BASE}/api/admin/org-requests?page=${orgPage}&limit=20`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
         setOrgRequests(data.requests);
+        setOrgTotal(data.total ?? data.requests.length);
+        setOrgTotalPages(data.totalPages ?? 1);
       })
       .catch((err) => setOrgError(err.message ?? "Failed to load org requests"))
       .finally(() => setOrgFetching(false));
+  }, [isLoading, user, isAdmin, orgPage]);
 
-    fetch(`${BASE}/api/admin/ai-usage`, { credentials: "include" })
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setAiFetching(true);
+    fetch(`${BASE}/api/admin/ai-usage?page=${aiPage}&limit=50&sort=${aiSort}&filter=${aiFilter}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -140,12 +161,18 @@ export default function Admin() {
       })
       .catch((err) => setAiError(err.message ?? "Failed to load AI usage"))
       .finally(() => setAiFetching(false));
+  }, [isLoading, user, isAdmin, aiPage, aiSort, aiFilter]);
 
-    fetch(`${BASE}/api/admin/voice-usage`, { credentials: "include" })
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setVoiceFetching(true);
+    fetch(`${BASE}/api/admin/voice-usage?page=${voicePage}&limit=50`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
         setVoiceUsers(data.users);
+        setVoiceTotal(data.total ?? data.users.length);
+        setVoiceTotalPages(data.totalPages ?? 1);
         setVoiceCaps({
           yearMonth: data.yearMonth,
           transcribeSecondsCap: data.transcribeSecondsCap,
@@ -154,7 +181,7 @@ export default function Admin() {
       })
       .catch((err) => setVoiceError(err.message ?? "Failed to load voice usage"))
       .finally(() => setVoiceFetching(false));
-  }, [isLoading, user, isAdmin]);
+  }, [isLoading, user, isAdmin, voicePage]);
 
   useEffect(() => {
     if (isLoading || !user || !isAdmin) return;
@@ -339,16 +366,9 @@ export default function Admin() {
         const budget = aiReport.budgetAlertUsd ?? 0;
         const budgetPct = budget > 0 ? Math.min(100, Math.round((totalCost / budget) * 100)) : 0;
         const overBudget = budget > 0 && totalCost >= budget;
-        const filtered = aiReport.rows.filter((r) => {
-          if (aiFilter === "user") return r.userKey.startsWith("user:");
-          if (aiFilter === "anon") return !r.userKey.startsWith("user:");
-          return true;
-        });
-        const sorted = [...filtered].sort((a, b) => {
-          if (aiSort === "questions") return b.questionCount - a.questionCount;
-          if (aiSort === "tokens") return (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens);
-          return b.estimatedCostUsd - a.estimatedCostUsd;
-        });
+        const sorted = aiReport.rows;
+        const aiTotal = aiReport.total ?? sorted.length;
+        const aiTotalPages = aiReport.totalPages ?? 1;
         return (
           <div data-testid="admin-ai-usage">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
@@ -375,9 +395,9 @@ export default function Admin() {
               </div>
               <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Callers</p>
-                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{aiReport.rows.length.toLocaleString("en-GB")}</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{(aiReport.callerCount ?? aiReport.rows.length).toLocaleString("en-GB")}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {aiReport.rows.filter((r) => r.userKey.startsWith("user:")).length} signed-in
+                  {aiReport.signedInCallers ?? 0} signed-in
                 </p>
               </div>
             </div>
@@ -404,7 +424,7 @@ export default function Admin() {
                 <label className="text-muted-foreground font-medium">Show:</label>
                 <select
                   value={aiFilter}
-                  onChange={(e) => setAiFilter(e.target.value as AiFilter)}
+                  onChange={(e) => { setAiFilter(e.target.value as AiFilter); setAiPage(1); }}
                   className="rounded-md border border-border bg-background px-2 py-1 text-sm"
                   data-testid="admin-ai-filter"
                 >
@@ -417,7 +437,7 @@ export default function Admin() {
                 <label className="text-muted-foreground font-medium">Sort by:</label>
                 <select
                   value={aiSort}
-                  onChange={(e) => setAiSort(e.target.value as AiSortKey)}
+                  onChange={(e) => { setAiSort(e.target.value as AiSortKey); setAiPage(1); }}
                   className="rounded-md border border-border bg-background px-2 py-1 text-sm"
                   data-testid="admin-ai-sort"
                 >
@@ -427,7 +447,7 @@ export default function Admin() {
                 </select>
               </div>
               <span className="text-xs text-muted-foreground ml-auto">
-                {sorted.length} of {aiReport.rows.length} caller{aiReport.rows.length !== 1 ? "s" : ""}
+                {aiTotal} caller{aiTotal !== 1 ? "s" : ""} match{aiTotal === 1 ? "es" : ""} this filter
               </span>
             </div>
 
@@ -470,6 +490,31 @@ export default function Admin() {
                 </table>
               </div>
             )}
+
+            <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+              <p className="text-xs text-muted-foreground">
+                {aiTotal} caller{aiTotal !== 1 ? "s" : ""}
+                {aiTotalPages > 1 ? ` · page ${aiPage} of ${aiTotalPages}` : ""}
+              </p>
+              {aiTotalPages > 1 && (
+                <div className="flex items-center gap-2" data-testid="admin-ai-usage-pagination">
+                  <button
+                    onClick={() => setAiPage((p) => Math.max(1, p - 1))}
+                    disabled={aiPage <= 1 || aiFetching}
+                    className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setAiPage((p) => Math.min(aiTotalPages, p + 1))}
+                    disabled={aiPage >= aiTotalPages || aiFetching}
+                    className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         );
       })()}
@@ -567,9 +612,30 @@ export default function Admin() {
         </div>
       )}
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        {orgRequests.length} request{orgRequests.length !== 1 ? "s" : ""} total
-      </p>
+      <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+        <p className="text-xs text-muted-foreground">
+          {orgTotal} request{orgTotal !== 1 ? "s" : ""} total
+          {orgTotalPages > 1 ? ` · page ${orgPage} of ${orgTotalPages}` : ""}
+        </p>
+        {orgTotalPages > 1 && (
+          <div className="flex items-center gap-2" data-testid="admin-org-requests-pagination">
+            <button
+              onClick={() => setOrgPage((p) => Math.max(1, p - 1))}
+              disabled={orgPage <= 1 || orgFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setOrgPage((p) => Math.min(orgTotalPages, p + 1))}
+              disabled={orgPage >= orgTotalPages || orgFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
       <AdminOrganisations />
 
@@ -644,6 +710,31 @@ export default function Admin() {
           </table>
         </div>
       )}
+
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+        <p className="text-xs text-muted-foreground">
+          {voiceTotal} voice user{voiceTotal !== 1 ? "s" : ""} this month
+          {voiceTotalPages > 1 ? ` · page ${voicePage} of ${voiceTotalPages}` : ""}
+        </p>
+        {voiceTotalPages > 1 && (
+          <div className="flex items-center gap-2" data-testid="admin-voice-usage-pagination">
+            <button
+              onClick={() => setVoicePage((p) => Math.max(1, p - 1))}
+              disabled={voicePage <= 1 || voiceFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setVoicePage((p) => Math.min(voiceTotalPages, p + 1))}
+              disabled={voicePage >= voiceTotalPages || voiceFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
       {voiceCaps && (
         <p className="mt-3 text-xs text-muted-foreground">

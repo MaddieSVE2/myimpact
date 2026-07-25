@@ -29,8 +29,8 @@ export const TTS_CHARACTERS_CAP = (() => {
 // rough running spend estimate; the real OpenAI invoice is the source of
 // truth. Numbers below assume gpt-4o-mini-transcribe at ~$0.003/min and
 // gpt-audio TTS at ~$0.015/1k chars, converted at $1 ≈ £0.80.
-const PENCE_PER_TRANSCRIBE_SECOND = 0.004;
-const PENCE_PER_TTS_CHAR = 0.0012;
+export const PENCE_PER_TRANSCRIBE_SECOND = 0.004;
+export const PENCE_PER_TTS_CHAR = 0.0012;
 
 export const VOICE_CAP_REACHED_MESSAGE =
   "You've used your voice budget for this month — voice will be back next month, or upgrade your plan.";

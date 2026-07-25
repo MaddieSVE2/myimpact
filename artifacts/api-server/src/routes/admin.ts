@@ -8,6 +8,8 @@ import { randomUUID } from "crypto";
 import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
+  PENCE_PER_TRANSCRIBE_SECOND,
+  PENCE_PER_TTS_CHAR,
   currentMonthKey,
   estimateTranscribeCostPence,
   estimateTtsCostPence,
@@ -104,8 +106,28 @@ router.get("/org-requests", authenticate, async (req: AuthenticatedRequest, res)
     return;
   }
 
-  const requests = await db.select().from(orgRegistrationsTable).orderBy(desc(orgRegistrationsTable.createdAt));
-  res.json({ requests });
+  const page = Math.max(1, Math.floor(Number(req.query.page ?? 1)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit ?? 20)) || 20));
+  const offset = (page - 1) * limit;
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(orgRegistrationsTable);
+
+  const requests = await db
+    .select()
+    .from(orgRegistrationsTable)
+    .orderBy(desc(orgRegistrationsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  res.json({
+    requests,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
 });
 
 function generateInviteCode(): string {
@@ -224,7 +246,19 @@ router.get("/voice-usage", authenticate, async (req: AuthenticatedRequest, res) 
     return;
   }
 
+  const page = Math.max(1, Math.floor(Number(req.query.page ?? 1)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit ?? 50)) || 50));
+  const offset = (page - 1) * limit;
+
   const yearMonth = currentMonthKey();
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(voiceUsageTable)
+    .where(eq(voiceUsageTable.yearMonth, yearMonth));
+
+  // Order by estimated cost in SQL so pagination matches the display sort.
+  const costExpr = sql`(${voiceUsageTable.transcribeSeconds} * ${PENCE_PER_TRANSCRIBE_SECOND} + ${voiceUsageTable.ttsCharacters} * ${PENCE_PER_TTS_CHAR})`;
   const rows = await db
     .select({
       userId: voiceUsageTable.userId,
@@ -238,29 +272,32 @@ router.get("/voice-usage", authenticate, async (req: AuthenticatedRequest, res) 
     .from(voiceUsageTable)
     .innerJoin(usersTable, eq(voiceUsageTable.userId, usersTable.id))
     .where(eq(voiceUsageTable.yearMonth, yearMonth))
-    .orderBy(desc(voiceUsageTable.transcribeSeconds), desc(voiceUsageTable.ttsCharacters))
-    .limit(50);
+    .orderBy(desc(costExpr), desc(voiceUsageTable.transcribeSeconds), desc(voiceUsageTable.ttsCharacters))
+    .limit(limit)
+    .offset(offset);
 
-  const users = rows
-    .map((r) => ({
-      userId: r.userId,
-      email: r.email,
-      displayName: r.displayName,
-      yearMonth: r.yearMonth,
-      transcribeSeconds: r.transcribeSeconds,
-      ttsCharacters: r.ttsCharacters,
-      estimatedCostPence:
-        estimateTranscribeCostPence(r.transcribeSeconds) +
-        estimateTtsCostPence(r.ttsCharacters),
-      updatedAt: r.updatedAt,
-    }))
-    .sort((a, b) => b.estimatedCostPence - a.estimatedCostPence);
+  const users = rows.map((r) => ({
+    userId: r.userId,
+    email: r.email,
+    displayName: r.displayName,
+    yearMonth: r.yearMonth,
+    transcribeSeconds: r.transcribeSeconds,
+    ttsCharacters: r.ttsCharacters,
+    estimatedCostPence:
+      estimateTranscribeCostPence(r.transcribeSeconds) +
+      estimateTtsCostPence(r.ttsCharacters),
+    updatedAt: r.updatedAt,
+  }));
 
   res.json({
     yearMonth,
     transcribeSecondsCap: TRANSCRIBE_SECONDS_CAP,
     ttsCharactersCap: TTS_CHARACTERS_CAP,
     users,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
   });
 });
 
@@ -304,8 +341,43 @@ router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => 
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+  const page = Math.max(1, Math.floor(Number(req.query.page ?? 1)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit ?? 50)) || 50));
+  const sort = String(req.query.sort ?? "cost");
+  const filter = String(req.query.filter ?? "all");
+
   const report = await getMonthlyUsageReport();
-  res.json({ ...report, budgetAlertUsd: AI_BUDGET_ALERT_USD });
+
+  const callerCount = report.rows.length;
+  const signedInCallers = report.rows.filter((r) => r.userKey.startsWith("user:")).length;
+
+  let rows = report.rows;
+  if (filter === "user") rows = rows.filter((r) => r.userKey.startsWith("user:"));
+  else if (filter === "anon") rows = rows.filter((r) => !r.userKey.startsWith("user:"));
+
+  rows = [...rows].sort((a, b) => {
+    if (sort === "questions") return b.questionCount - a.questionCount;
+    if (sort === "tokens") return (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens);
+    return b.estimatedCostUsd - a.estimatedCostUsd;
+  });
+
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const paged = rows.slice((page - 1) * limit, (page - 1) * limit + limit);
+
+  res.json({
+    monthStart: report.monthStart,
+    monthEnd: report.monthEnd,
+    totals: report.totals,
+    rows: paged,
+    callerCount,
+    signedInCallers,
+    total,
+    page,
+    limit,
+    totalPages,
+    budgetAlertUsd: AI_BUDGET_ALERT_USD,
+  });
 });
 
 // ── Super-admin organisation management ──────────────────────────────────────
