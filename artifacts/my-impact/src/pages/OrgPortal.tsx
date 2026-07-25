@@ -14,6 +14,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
+import { NumberInput } from "@/components/ui/number-input";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1528,8 +1529,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="block text-[11px] font-medium text-foreground mb-1">£ per hour</label>
-              <input
-                type="number"
+              <NumberInput
                 inputMode="decimal"
                 min="0"
                 step="0.01"
@@ -1541,8 +1541,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
             </div>
             <div>
               <label className="block text-[11px] font-medium text-foreground mb-1">Donation multiplier</label>
-              <input
-                type="number"
+              <NumberInput
                 inputMode="decimal"
                 min="0"
                 step="0.01"
@@ -1554,8 +1553,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
             </div>
             <div>
               <label className="block text-[11px] font-medium text-foreground mb-1">Monthly cap / member</label>
-              <input
-                type="number"
+              <NumberInput
                 inputMode="decimal"
                 min="0"
                 step="0.01"

@@ -13,6 +13,7 @@ import {
   getRemovedMemberIds, setRemovedMemberIds,
   type DemoPendingRequest,
 } from "@/lib/org-demo-mock";
+import { NumberInput } from "@/components/ui/number-input";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1236,8 +1237,7 @@ function SroiAssumptionsSection({
               <span className="block text-[11px] text-muted-foreground">{line.help}</span>
               <span className={`inline-flex items-center rounded-md border overflow-hidden focus-within:border-primary ${invalid ? "border-red-500" : "border-border"}`}>
                 <span className="px-2 py-1.5 text-[13px] text-muted-foreground bg-muted/40">£</span>
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   max={1_000_000}
                   step={1}

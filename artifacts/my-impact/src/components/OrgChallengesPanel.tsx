@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useT } from "@/i18n";
 import { BASE } from "@/lib/org-export";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface ApiChallenge {
   id: string;
@@ -206,8 +207,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             </div>
             <div>
               <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
-              <input
-                type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
+              <NumberInput min="1" value={target} onChange={e => setTarget(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-target"
               />
@@ -434,8 +434,7 @@ function DemoOrgChallengesPanel() {
             </div>
             <div>
               <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
-              <input
-                type="number" min="1" value={target} onChange={e => setTarget(e.target.value)}
+              <NumberInput min="1" value={target} onChange={e => setTarget(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-target"
               />

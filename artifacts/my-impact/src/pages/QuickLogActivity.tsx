@@ -36,6 +36,7 @@ import {
   clearChallengeContext,
   consumeChallengeContextForSave,
 } from "@/lib/challenge-context";
+import { NumberInput } from "@/components/ui/number-input";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
@@ -793,8 +794,7 @@ function ActivityQuantityPanel({
               {quantityFieldLabel(activity)}
             </label>
             <div className="flex items-center gap-3">
-              <input
-                type="number"
+              <NumberInput
                 min="1"
                 value={quantity}
                 onChange={e => setQuantity(Number(e.target.value))}
@@ -858,8 +858,7 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
         {analysed.unit === "pound" ? (
           <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary w-fit">
             <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
-            <input
-              type="number"
+            <NumberInput
               min="1"
               value={quantity}
               onChange={e => setQuantity(Number(e.target.value))}
@@ -869,8 +868,7 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <input
-              type="number"
+            <NumberInput
               min="1"
               value={quantity}
               onChange={e => setQuantity(Number(e.target.value))}

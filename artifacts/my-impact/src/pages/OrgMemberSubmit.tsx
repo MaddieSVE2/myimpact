@@ -8,6 +8,7 @@ import { useGetActivities, type ActivityItem } from "@workspace/api-client-react
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { NumberInput } from "@/components/ui/number-input";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -533,8 +534,7 @@ export default function OrgMemberSubmit() {
                           <li key={idx} className="flex items-center justify-between gap-2">
                             <span className="text-xs text-foreground truncate">{l.activityName}</span>
                             <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
-                              <input
-                                type="number"
+                              <NumberInput
                                 min={0}
                                 value={usesHours ? l.hoursPerYear : l.quantity}
                                 onChange={e => {
@@ -792,8 +792,7 @@ export default function OrgMemberSubmit() {
                     </div>
                     <div>
                       <label className="block text-[11px] font-medium text-foreground mb-1">Hours spent</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         min={0}
                         step={0.5}
                         value={line.hoursPerYear || ""}
@@ -809,8 +808,7 @@ export default function OrgMemberSubmit() {
                       {isHourly ? (
                         <div>
                           <label className="block text-[11px] font-medium text-foreground mb-1">Hours</label>
-                          <input
-                            type="number"
+                          <NumberInput
                             min={0}
                             step={1}
                             value={line.hoursPerYear || ""}
@@ -823,8 +821,7 @@ export default function OrgMemberSubmit() {
                         <>
                           <div>
                             <label className="block text-[11px] font-medium text-foreground mb-1">{def.unitLabel || "Quantity"}</label>
-                            <input
-                              type="number"
+                            <NumberInput
                               min={0}
                               step={1}
                               value={line.quantity || ""}
@@ -838,8 +835,7 @@ export default function OrgMemberSubmit() {
                               Hours
                               {!line.hoursManual && <span className="text-muted-foreground font-normal"> (auto)</span>}
                             </label>
-                            <input
-                              type="number"
+                            <NumberInput
                               min={0}
                               step={1}
                               value={line.hoursPerYear || ""}
@@ -889,24 +885,21 @@ export default function OrgMemberSubmit() {
                             <div className="mt-2 bg-muted/30 border border-border rounded-md p-3 space-y-2" data-testid={`member-submit-calc-${line.activityId}`}>
                               <p className="text-xs font-medium text-muted-foreground">Estimate annual hours from a regular shift</p>
                               <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <input
-                                  type="number" min="0.5" step="0.5"
+                                <NumberInput min="0.5" step="0.5"
                                   value={calc.hrsPerSession}
                                   onChange={e => updateSessionCalc(line.activityId, { hrsPerSession: Number(e.target.value) || 0 })}
                                   className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   data-testid={`member-submit-calc-hrs-${line.activityId}`}
                                 />
                                 <span className="text-muted-foreground text-xs">hrs/session ×</span>
-                                <input
-                                  type="number" min="1"
+                                <NumberInput min="1"
                                   value={calc.sessionsPerWeek}
                                   onChange={e => updateSessionCalc(line.activityId, { sessionsPerWeek: Number(e.target.value) || 0 })}
                                   className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   data-testid={`member-submit-calc-sessions-${line.activityId}`}
                                 />
                                 <span className="text-muted-foreground text-xs">/week ×</span>
-                                <input
-                                  type="number" min="1" max="52"
+                                <NumberInput min="1" max="52"
                                   value={calc.weeksPerYear}
                                   onChange={e => updateSessionCalc(line.activityId, { weeksPerYear: Number(e.target.value) || 0 })}
                                   className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"

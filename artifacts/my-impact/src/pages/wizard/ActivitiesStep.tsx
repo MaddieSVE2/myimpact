@@ -9,6 +9,7 @@ import { ArrowRight, ArrowLeft, Check, ChevronDown, ChevronRight, PenLine, Trash
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface PreviousActivity {
   activityId: string;
@@ -897,8 +898,7 @@ export default function ActivitiesStep() {
                                     {analysed.unit === "pound" ? (
                                       <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
                                         <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
-                                        <input
-                                          type="number"
+                                        <NumberInput
                                           min="1"
                                           value={customQuantity}
                                           onChange={e => setCustomQuantity(Number(e.target.value))}
@@ -906,8 +906,7 @@ export default function ActivitiesStep() {
                                         />
                                       </div>
                                     ) : (
-                                      <input
-                                        type="number"
+                                      <NumberInput
                                         min="1"
                                         value={customQuantity}
                                         onChange={e => setCustomQuantity(Number(e.target.value))}
@@ -1081,8 +1080,7 @@ export default function ActivitiesStep() {
                         ) : currentActivity.unit === "hour" ? (
                           <div>
                             <div className="flex items-center gap-3">
-                              <input
-                                type="number"
+                              <NumberInput
                                 min="1"
                                 value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20}
                                 onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
@@ -1105,8 +1103,7 @@ export default function ActivitiesStep() {
                               <div className="mt-3 bg-white border border-border rounded-md p-3 space-y-2">
                                 <p className="text-xs font-medium text-muted-foreground mb-1">Sessions per year</p>
                                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                                  <input
-                                    type="number" min="0.5" step="0.5"
+                                  <NumberInput min="0.5" step="0.5"
                                     value={sessionHrs}
                                     onChange={e => {
                                       const v = Number(e.target.value);
@@ -1116,8 +1113,7 @@ export default function ActivitiesStep() {
                                     className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   />
                                   <span className="text-muted-foreground text-xs">hrs/session ×</span>
-                                  <input
-                                    type="number" min="1"
+                                  <NumberInput min="1"
                                     value={sessionsPerWeek}
                                     onChange={e => {
                                       const v = Number(e.target.value);
@@ -1127,8 +1123,7 @@ export default function ActivitiesStep() {
                                     className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   />
                                   <span className="text-muted-foreground text-xs">×</span>
-                                  <input
-                                    type="number" min="1" max="52"
+                                  <NumberInput min="1" max="52"
                                     value={weeksPerYear}
                                     onChange={e => {
                                       const v = Number(e.target.value);
@@ -1148,8 +1143,7 @@ export default function ActivitiesStep() {
                         ) : (
                           <div>
                             <div className="flex items-center gap-3">
-                              <input
-                                type="number"
+                              <NumberInput
                                 min="1"
                                 value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1}
                                 onChange={e => {
@@ -1170,8 +1164,7 @@ export default function ActivitiesStep() {
                                 Approximate hours per year
                               </p>
                               <div className="flex items-center gap-3">
-                                <input
-                                  type="number"
+                                <NumberInput
                                   min="1"
                                   value={hours[currentActivity.id] ?? Math.max(1, Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1) * 2))}
                                   onChange={e => setHours(h => ({ ...h, [currentActivity.id]: Number(e.target.value) }))}
@@ -1227,8 +1220,7 @@ export default function ActivitiesStep() {
                         {pendingItem.analysed.unit === "pound" ? (
                           <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary w-fit">
                             <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
-                            <input
-                              type="number"
+                            <NumberInput
                               min="1"
                               value={pendingCustomQuantities[pendingIndex] ?? pendingItem.analysed.defaultQuantity}
                               onChange={e => setPendingCustomQuantities(q => ({ ...q, [pendingIndex]: Number(e.target.value) }))}
@@ -1237,8 +1229,7 @@ export default function ActivitiesStep() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-3">
-                            <input
-                              type="number"
+                            <NumberInput
                               min="1"
                               value={pendingCustomQuantities[pendingIndex] ?? pendingItem.analysed.defaultQuantity}
                               onChange={e => setPendingCustomQuantities(q => ({ ...q, [pendingIndex]: Number(e.target.value) }))}

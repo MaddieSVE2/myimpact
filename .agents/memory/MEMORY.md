@@ -1,3 +1,4 @@
+- [React number input leading zeros](react-number-input.md) — React compares number inputs numerically so "0100" isn't stomped; always use shared NumberInput, never raw type="number".
 - [SEO meta pattern](seo-meta.md) — react-helmet-async with PageMeta/NoIndexMeta; HelmetProvider in App.tsx wraps everything; private routes noindexed via PrivateRoute + NOINDEX_PATH_PREFIXES list in AppRouter.
 - [Orphaned workflow process](orphaned-workflow-process.md) — workflow restart can leave an old tsx process holding the API port, serving stale code; check ps for duplicate index.ts processes.
 - [Org export shared pipeline](org-export-live.md) — real orgs reuse the demo export pipeline via DemoActivity mapping; hooks above early returns; query cache cleared on login/logout to stop PII leaks.

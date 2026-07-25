@@ -13,6 +13,7 @@ import { TimescalePresetPicker } from "@/components/TimescalePresetPicker";
 import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateDialog";
 import { type TimescalePresetId } from "@/lib/timescale-presets";
 import { todayIso } from "@/components/quicklog/activity-shared";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
@@ -144,8 +145,7 @@ export default function ContributionsStep() {
             <p className="text-xs text-muted-foreground mb-3">{t("wizard.charitableDonationsDesc")}</p>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground font-medium">£</span>
-              <input 
-                type="number" min="0"
+              <NumberInput min="0"
                 value={donations}
                 onChange={e => setDonations(Number(e.target.value))}
                 className="w-full min-h-[44px] py-3 pl-8 pr-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
@@ -159,8 +159,7 @@ export default function ContributionsStep() {
             </label>
             <p className="text-xs text-muted-foreground mb-3">{t("wizard.generalVolunteerHoursDesc")}</p>
             <div className="relative">
-              <input 
-                type="number" min="0"
+              <NumberInput min="0"
                 value={hours}
                 onChange={e => setHours(Number(e.target.value))}
                 className="w-full min-h-[44px] py-3 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"

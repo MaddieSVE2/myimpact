@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Trophy, Plus, Users, Calendar, Target, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
+import { NumberInput } from "@/components/ui/number-input";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -246,8 +247,7 @@ function CreateChallengeForm({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-medium text-foreground">Target</label>
-          <input
-            type="number"
+          <NumberInput
             value={target}
             onChange={e => setTarget(e.target.value)}
             min="1"

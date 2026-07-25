@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 // eslint-disable-next-line import/no-unresolved
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { NumberInput } from "@/components/ui/number-input";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -193,8 +194,7 @@ export function PdfPager({ src, height = 520 }: PdfPagerProps) {
           aria-live="polite"
         >
           Page{" "}
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={numPages}
             value={currentPage}
