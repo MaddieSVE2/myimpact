@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, voiceUsageTable } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { randomUUID } from "crypto";
@@ -41,29 +41,60 @@ router.get("/users", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const users = await db.select().from(usersTable).orderBy(desc(usersTable.createdAt));
+  const page = Math.max(1, Math.floor(Number(req.query.page ?? 1)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit ?? 50)) || 50));
+  const offset = (page - 1) * limit;
 
-  const pageViews = await db.select().from(pageViewsTable).orderBy(desc(pageViewsTable.visitedAt));
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(usersTable);
 
-  const viewsByUser: Record<string, string[]> = {};
-  for (const view of pageViews) {
-    if (!viewsByUser[view.userId]) {
-      viewsByUser[view.userId] = [];
-    }
-    if (!viewsByUser[view.userId].includes(view.page)) {
-      viewsByUser[view.userId].push(view.page);
-    }
-  }
+  const users = await db
+    .select()
+    .from(usersTable)
+    .orderBy(desc(usersTable.createdAt))
+    .limit(limit)
+    .offset(offset);
 
-  const result = users.map((user) => ({
-    id: user.id,
-    displayName: user.displayName ?? null,
-    email: user.email,
-    createdAt: user.createdAt,
-    pagesVisited: viewsByUser[user.id] ?? [],
-  }));
+  // Summarise "Pages Visited" as distinct-page and total-visit counts for
+  // just the users on this page, instead of loading every page_views row.
+  const userIds = users.map((u) => u.id);
+  const viewSummaries =
+    userIds.length > 0
+      ? await db
+          .select({
+            userId: pageViewsTable.userId,
+            distinctPages: sql<number>`count(distinct ${pageViewsTable.page})::int`,
+            totalViews: sql<number>`count(*)::int`,
+            lastVisit: sql<string>`max(${pageViewsTable.visitedAt})`,
+          })
+          .from(pageViewsTable)
+          .where(inArray(pageViewsTable.userId, userIds))
+          .groupBy(pageViewsTable.userId)
+      : [];
 
-  res.json({ users: result });
+  const summaryByUser = new Map(viewSummaries.map((v) => [v.userId, v]));
+
+  const result = users.map((user) => {
+    const s = summaryByUser.get(user.id);
+    return {
+      id: user.id,
+      displayName: user.displayName ?? null,
+      email: user.email,
+      createdAt: user.createdAt,
+      distinctPagesVisited: s?.distinctPages ?? 0,
+      totalPageViews: s?.totalViews ?? 0,
+      lastVisit: s?.lastVisit ?? null,
+    };
+  });
+
+  res.json({
+    users: result,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
 });
 
 router.get("/org-requests", authenticate, async (req: AuthenticatedRequest, res) => {

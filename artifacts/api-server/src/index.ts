@@ -12,6 +12,7 @@ async function bootstrap(): Promise<void> {
   const { startAttachmentGCJob } = await import("./lib/attachmentGC.js");
   const { startAiSpendAlertJob } = await import("./lib/aiSpendAlert.js");
   const { startInflightReservationSweepJob } = await import("./lib/aiUsage.js");
+  const { startRetentionCleanupJob } = await import("./lib/retentionCleanup.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -57,6 +58,7 @@ async function bootstrap(): Promise<void> {
     startAttachmentGCJob();
     startAiSpendAlertJob();
     startInflightReservationSweepJob();
+    startRetentionCleanupJob();
   });
 }
 

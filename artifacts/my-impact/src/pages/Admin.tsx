@@ -14,8 +14,12 @@ interface AdminUser {
   displayName: string | null;
   email: string;
   createdAt: string;
-  pagesVisited: string[];
+  distinctPagesVisited: number;
+  totalPageViews: number;
+  lastVisit: string | null;
 }
+
+const USERS_PER_PAGE = 50;
 
 interface VoiceUsageUser {
   userId: string;
@@ -89,6 +93,9 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userPage, setUserPage] = useState(1);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userTotalPages, setUserTotalPages] = useState(1);
 
   const [orgRequests, setOrgRequests] = useState<OrgRequest[]>([]);
   const [orgFetching, setOrgFetching] = useState(true);
@@ -114,15 +121,6 @@ export default function Admin() {
       setLocation("/", { replace: true });
       return;
     }
-
-    fetch(`${BASE}/api/admin/users`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setUsers(data.users);
-      })
-      .catch((err) => setError(err.message ?? "Failed to load users"))
-      .finally(() => setFetching(false));
 
     fetch(`${BASE}/api/admin/org-requests`, { credentials: "include" })
       .then((r) => r.json())
@@ -156,6 +154,21 @@ export default function Admin() {
       .catch((err) => setVoiceError(err.message ?? "Failed to load voice usage"))
       .finally(() => setVoiceFetching(false));
   }, [isLoading, user, isAdmin]);
+
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setFetching(true);
+    fetch(`${BASE}/api/admin/users?page=${userPage}&limit=${USERS_PER_PAGE}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setUsers(data.users);
+        setUserTotal(data.total ?? data.users.length);
+        setUserTotalPages(data.totalPages ?? 1);
+      })
+      .catch((err) => setError(err.message ?? "Failed to load users"))
+      .finally(() => setFetching(false));
+  }, [isLoading, user, isAdmin, userPage]);
 
   async function handleApprove(id: string) {
     setActionLoading(id + "-approve");
@@ -229,7 +242,7 @@ export default function Admin() {
                 <th className="text-left px-4 py-3 font-semibold text-foreground">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-foreground">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-foreground">Joined</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground">Pages Visited</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Pages Visited (last 90 days)</th>
               </tr>
             </thead>
             <tbody>
@@ -257,9 +270,19 @@ export default function Admin() {
                     })}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {u.pagesVisited.length > 0
-                      ? u.pagesVisited.join(", ")
-                      : <span className="italic">None</span>}
+                    {u.distinctPagesVisited > 0 ? (
+                      <span>
+                        {u.distinctPagesVisited} page{u.distinctPagesVisited !== 1 ? "s" : ""}{" "}
+                        <span className="text-xs">
+                          ({u.totalPageViews} visit{u.totalPageViews !== 1 ? "s" : ""}
+                          {u.lastVisit
+                            ? `, last ${new Date(u.lastVisit).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                            : ""})
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="italic">None</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -268,9 +291,30 @@ export default function Admin() {
         </div>
       )}
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        {users.length} user{users.length !== 1 ? "s" : ""} total
-      </p>
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+        <p className="text-xs text-muted-foreground">
+          {userTotal} user{userTotal !== 1 ? "s" : ""} total
+          {userTotalPages > 1 ? ` · page ${userPage} of ${userTotalPages}` : ""}
+        </p>
+        {userTotalPages > 1 && (
+          <div className="flex items-center gap-2" data-testid="admin-users-pagination">
+            <button
+              onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+              disabled={userPage <= 1 || fetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setUserPage((p) => Math.min(userTotalPages, p + 1))}
+              disabled={userPage >= userTotalPages || fetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
       <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Sidekick AI usage</h2>
       <p className="text-sm text-muted-foreground mb-6">

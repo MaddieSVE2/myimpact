@@ -8,6 +8,7 @@ import {
   ANALYTICS_EVENTS,
   type AnalyticsSurface,
 } from "../lib/analytics.js";
+import { ACTIVITY_LOG_RETENTION_DAYS } from "../lib/retentionCleanup.js";
 
 const router: IRouter = Router();
 
@@ -187,7 +188,12 @@ router.get("/admin/funnels", authenticate, async (req: AuthenticatedRequest, res
     return;
   }
 
-  const windowDays = Math.min(Math.max(Number(req.query.days ?? 30), 1), 365);
+  // Raw events are only retained for ACTIVITY_LOG_RETENTION_DAYS, so cap
+  // the query window there — anything longer would silently under-report.
+  const windowDays = Math.min(
+    Math.max(Number(req.query.days ?? 30), 1),
+    ACTIVITY_LOG_RETENTION_DAYS,
+  );
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
 
   // Step user-sets for member surface
@@ -341,6 +347,7 @@ router.get("/admin/funnels", authenticate, async (req: AuthenticatedRequest, res
 
   res.json({
     windowDays,
+    retentionDays: ACTIVITY_LOG_RETENTION_DAYS,
     generatedAt: new Date().toISOString(),
     eventNames: ANALYTICS_EVENTS,
     funnels: [signupToFirstLog, wizardFunnel],

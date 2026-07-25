@@ -36,6 +36,7 @@ interface EventCount {
 
 interface FunnelResponse {
   windowDays: number;
+  retentionDays?: number;
   generatedAt: string;
   eventNames: readonly string[];
   funnels: FunnelView[];
@@ -214,6 +215,8 @@ export default function AdminFunnels() {
       <p className="text-sm text-muted-foreground mb-6">
         Privacy-first internal analytics. No data leaves My Impact servers.
         Member and organisation surfaces are tracked separately.
+        {" "}Raw activity logs are kept for the last {data?.retentionDays ?? 90} days,
+        then automatically deleted.
       </p>
 
       {error && (
