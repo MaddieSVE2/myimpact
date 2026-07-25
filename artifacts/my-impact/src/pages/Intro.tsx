@@ -526,7 +526,7 @@ export default function Intro() {
     const periodLabel = draftEntry.periodLabel?.trim();
     personalCta = {
       kind: "draft",
-      label: periodLabel ? `Continue your draft: ${periodLabel} →` : "Continue your draft →",
+      label: periodLabel ? `Continue your journal draft: ${periodLabel} →` : "Continue your journal draft →",
       href: `/journal#entry-${draftEntry.id}`,
       testId: "welcome-cta-continue-draft",
     };
@@ -625,6 +625,13 @@ export default function Intro() {
               data-testid="welcome-individual-ctas"
               style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}
             >
+              <Link
+                href="/log?from=%2F"
+                className="mi-btn-hero"
+                data-testid="welcome-cta-quick-log"
+              >
+                Log an activity →
+              </Link>
               {personalCta && (
                 personalCta.kind === "overdue" ? (
                   <a
@@ -638,20 +645,13 @@ export default function Intro() {
                 ) : (
                   <Link
                     href={personalCta.href}
-                    className={isOrgMember ? "mi-btn-ghost-hero" : "mi-btn-hero"}
+                    className="mi-btn-ghost-hero"
                     data-testid={personalCta.testId}
                   >
                     {personalCta.label}
                   </Link>
                 )
               )}
-              <Link
-                href="/log?from=%2F"
-                className={(isOrgMember || personalCta) ? "mi-btn-ghost-hero" : "mi-btn-hero"}
-                data-testid="welcome-cta-quick-log"
-              >
-                Log an activity →
-              </Link>
               <Link
                 href="/wizard/actions"
                 className="mi-btn-ghost-hero"
