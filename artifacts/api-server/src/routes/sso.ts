@@ -13,6 +13,7 @@ import {
   isProviderConfigured,
 } from "../lib/oidc.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { checkAgeGate } from "./auth.js";
 
 const router: IRouter = Router();
 
@@ -414,27 +415,62 @@ router.get("/:provider/callback", async (req, res) => {
 
   let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
   if (!user) {
-    const [created] = await db
-      .insert(usersTable)
-      .values({
-        id: randomBytes(12).toString("hex"),
+    // Age gate: brand-new SSO accounts must confirm their birth month/year
+    // BEFORE any user row is stored — same policy as magic-link sign-up.
+    // Nothing is persisted here; the verified identity is carried forward
+    // in a short-lived signed token, and the user row is only created by
+    // /complete-signup once the age gate passes.
+    const pendingToken = jwt.sign(
+      {
+        purpose: "sso_pending_signup",
         email: identity.email,
-        displayName: identity.name ?? null,
-      })
-      .returning();
-    user = created;
-  } else if (!user.displayName && identity.name) {
+        name: identity.name ?? null,
+        orgId: cfg.orgId,
+        returnTo: payload.returnTo ?? null,
+      },
+      process.env.SESSION_SECRET!,
+      { expiresIn: "15m" },
+    );
+    res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
+    renderAgeGatePage(res, { token: pendingToken, email: identity.email });
+    return;
+  }
+
+  if (!user.displayName && identity.name) {
     // Backfill display name on first SSO login if it was blank
     await db.update(usersTable).set({ displayName: identity.name }).where(eq(usersTable.id, user.id));
   }
 
-  // Verify the org still exists, then link membership.
+  const linked = await linkUserToOrg(res, user, cfg.orgId);
+  if (!linked) return;
+
+  issueSession(res, user);
+  res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
+
+  renderResultPage(res, {
+    ok: true,
+    title: "Signed in",
+    message: `Welcome, ${identity.name ?? identity.email}. Taking you to ${linked.name}…`,
+    redirectTo: payload.returnTo ?? "/",
+  });
+});
+
+/**
+ * Verify the org still exists and link the user as a member (if not already
+ * a member elsewhere). Renders an error page and returns null on failure;
+ * returns the org row on success.
+ */
+async function linkUserToOrg(
+  res: Response,
+  user: { id: string },
+  orgId: string,
+): Promise<{ id: string; name: string } | null> {
   const org = await db.query.organisationsTable.findFirst({
-    where: eq(organisationsTable.id, cfg.orgId),
+    where: eq(organisationsTable.id, orgId),
   });
   if (!org) {
     renderResultPage(res, { ok: false, title: "Sign-in failed", message: "Your organisation could not be found." });
-    return;
+    return null;
   }
 
   const existingMembership = await db.query.orgMembersTable.findFirst({
@@ -452,7 +488,7 @@ router.get("/:provider/callback", async (req, res) => {
     } catch (err) {
       console.error("Failed to auto-link SSO user to org:", err);
       renderResultPage(res, { ok: false, title: "Sign-in failed", message: "We couldn't add you to your organisation. Please contact support." });
-      return;
+      return null;
     }
   } else if (existingMembership.orgId !== org.id) {
     // User is already in a different org — surface a clear error rather
@@ -462,17 +498,134 @@ router.get("/:provider/callback", async (req, res) => {
       title: "Already in another organisation",
       message: "Your account is already linked to a different organisation on My Impact. Please contact support to switch.",
     });
+    return null;
+  }
+  return org;
+}
+
+/**
+ * Render the birth month/year form shown to brand-new SSO users before
+ * their account is created. Posts back to /api/auth/sso/complete-signup.
+ */
+function renderAgeGatePage(res: Response, opts: { token: string; email: string; error?: string }) {
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const currentYear = new Date().getFullYear();
+  const monthOptions = monthNames
+    .map((m, i) => `<option value="${i + 1}">${m}</option>`)
+    .join("");
+  let yearOptions = "";
+  for (let y = currentYear; y >= currentYear - 120; y--) {
+    yearOptions += `<option value="${y}">${y}</option>`;
+  }
+  const emailEscaped = escapeHtml(opts.email);
+  const tokenEscaped = escapeHtml(opts.token);
+  const errorHtml = opts.error ? `<p class="error">${escapeHtml(opts.error)}</p>` : "";
+  res.status(200).type("html").send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>One last step · My Impact</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 32px 24px; color: #213547; text-align: center; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  p { color: #555; line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
+  select { padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; margin: 0 4px; }
+  button { background: #F06127; color: #fff; padding: 12px 22px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 16px; }
+  .error { color: #c0392b; font-weight: 600; }
+</style>
+</head><body>
+<h1>One last step</h1>
+<p>You're creating a new My Impact account for <strong>${emailEscaped}</strong>.<br/>Please tell us your date of birth — you must be 13 or older to use My Impact.</p>
+${errorHtml}
+<form method="post" action="/api/auth/sso/complete-signup">
+  <input type="hidden" name="token" value="${tokenEscaped}" />
+  <div>
+    <select name="birthMonth" required aria-label="Birth month" data-testid="select-birth-month">
+      <option value="">Month</option>${monthOptions}
+    </select>
+    <select name="birthYear" required aria-label="Birth year" data-testid="select-birth-year">
+      <option value="">Year</option>${yearOptions}
+    </select>
+  </div>
+  <button type="submit" data-testid="button-complete-signup">Continue</button>
+</form>
+</body></html>`);
+}
+
+/**
+ * Finish a brand-new SSO sign-up after the age gate. Validates the pending
+ * token issued by the callback, runs the same age gate as magic-link
+ * sign-up, and only then creates the user row, links the org membership,
+ * and issues a session. Under-13s are blocked and nothing is stored.
+ */
+router.post("/complete-signup", async (req, res) => {
+  const { token, birthMonth, birthYear } = req.body ?? {};
+  if (typeof token !== "string" || !token) {
+    renderResultPage(res, { ok: false, title: "Sign-in failed", message: "Your sign-in session was invalid. Please start again.", redirectTo: "/login" });
     return;
   }
 
+  let pending: { purpose?: string; email?: string; name?: string | null; orgId?: string; returnTo?: string | null };
+  try {
+    pending = jwt.verify(token, process.env.SESSION_SECRET!) as typeof pending;
+  } catch {
+    renderResultPage(res, { ok: false, title: "Sign-in expired", message: "Your sign-in session expired. Please sign in again.", redirectTo: "/login" });
+    return;
+  }
+  if (pending.purpose !== "sso_pending_signup" || !pending.email || !pending.orgId) {
+    renderResultPage(res, { ok: false, title: "Sign-in failed", message: "Your sign-in session was invalid. Please start again.", redirectTo: "/login" });
+    return;
+  }
+
+  const ageGate = checkAgeGate(birthMonth, birthYear);
+  if (!ageGate.ok) {
+    if (ageGate.body.code === "under_13") {
+      // Same friendly message as magic-link; no data has been stored.
+      renderResultPage(res, {
+        ok: false,
+        title: "Sorry, you can't join yet",
+        message: "You must be 13 or older to use My Impact. We haven't stored any of your details.",
+        redirectTo: "/",
+      });
+      return;
+    }
+    renderAgeGatePage(res, {
+      token,
+      email: pending.email,
+      error: "Please choose your birth month and year to continue.",
+    });
+    return;
+  }
+
+  // The user may have been created between callback and now (e.g. a
+  // parallel magic-link sign-up). Reuse the existing row in that case
+  // rather than failing.
+  let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, pending.email) });
+  if (!user) {
+    const [created] = await db
+      .insert(usersTable)
+      .values({
+        id: randomBytes(12).toString("hex"),
+        email: pending.email,
+        displayName: pending.name ?? null,
+        birthMonth: ageGate.birthMonth,
+        birthYear: ageGate.birthYear,
+        isMinor: ageGate.isMinor,
+      })
+      .returning();
+    user = created;
+  }
+
+  const linked = await linkUserToOrg(res, user, pending.orgId);
+  if (!linked) return;
+
   issueSession(res, user);
-  res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
 
   renderResultPage(res, {
     ok: true,
     title: "Signed in",
-    message: `Welcome, ${identity.name ?? identity.email}. Taking you to ${org.name}…`,
-    redirectTo: payload.returnTo ?? "/",
+    message: `Welcome, ${pending.name ?? pending.email}. Taking you to ${linked.name}…`,
+    redirectTo: (isSafePath(pending.returnTo) ? pending.returnTo : null) ?? "/",
   });
 });
 

@@ -39,18 +39,18 @@ function issueSession(res: any, user: { id: string; email: string }) {
 // so we treat the unknown day as making the person YOUNGER: they only count
 // as `years` old once their birth month has fully passed. Someone whose
 // 13th-birthday month is the current month is still treated as 12.
-function isAtLeastAge(birthMonth: number, birthYear: number, years: number, now = new Date()): boolean {
+export function isAtLeastAge(birthMonth: number, birthYear: number, years: number, now = new Date()): boolean {
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1; // 1-12
   const thresholdYear = birthYear + years;
   return nowYear > thresholdYear || (nowYear === thresholdYear && nowMonth > birthMonth);
 }
 
-type AgeGateResult =
+export type AgeGateResult =
   | { ok: true; birthMonth: number; birthYear: number; isMinor: boolean }
   | { ok: false; status: number; body: Record<string, unknown> };
 
-function checkAgeGate(rawMonth: unknown, rawYear: unknown): AgeGateResult {
+export function checkAgeGate(rawMonth: unknown, rawYear: unknown): AgeGateResult {
   const birthMonth = typeof rawMonth === "number" ? rawMonth : Number(rawMonth);
   const birthYear = typeof rawYear === "number" ? rawYear : Number(rawYear);
   const currentYear = new Date().getFullYear();
