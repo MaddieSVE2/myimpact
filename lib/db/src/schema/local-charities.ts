@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, primaryKey, index, integer } from "drizzle-orm/pg-core";
 
 /**
  * Pre-mapped local charity suggestions, keyed by local authority.
@@ -20,6 +20,13 @@ export const localCharityAreasTable = pgTable("local_charity_areas", {
   /** pending → generation queued/in progress; ready → results stored; failed → last attempt errored. */
   status: text("status").notNull().default("pending"),
   lastGeneratedAt: timestamp("last_generated_at"),
+  /**
+   * Pipeline version the stored results were generated with. Bumped when the
+   * generation output changes shape (e.g. v2 added website URLs) so the daily
+   * sweep promptly re-generates areas produced by an older pipeline instead
+   * of waiting for the monthly window.
+   */
+  generationVersion: integer("generation_version").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -19,6 +19,7 @@ import {
 import { eq, like, gt, desc, and, sql, inArray } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
 import { eraseUserData } from "../lib/userDeletion.js";
+import { CURRENT_GENERATION_VERSION } from "../lib/premappedCharities.js";
 
 /**
  * Test-only endpoints. Mounted only when E2E_TEST_MODE=1 is set.
@@ -388,10 +389,22 @@ router.post("/seed-local-charities", async (req, res) => {
 
   await db
     .insert(localCharityAreasTable)
-    .values({ localAuthority, country, status, lastGeneratedAt: new Date() })
+    .values({
+      localAuthority,
+      country,
+      status,
+      lastGeneratedAt: new Date(),
+      generationVersion: CURRENT_GENERATION_VERSION,
+    })
     .onConflictDoUpdate({
       target: localCharityAreasTable.localAuthority,
-      set: { country, status, lastGeneratedAt: new Date(), updatedAt: new Date() },
+      set: {
+        country,
+        status,
+        lastGeneratedAt: new Date(),
+        generationVersion: CURRENT_GENERATION_VERSION,
+        updatedAt: new Date(),
+      },
     });
 
   await db
