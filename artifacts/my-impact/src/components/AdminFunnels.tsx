@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, BarChart3, Users, AlertCircle } from "lucide-react";
+import { TrendingUp, BarChart3, Users, AlertCircle, Archive } from "lucide-react";
 
 interface FunnelStep {
   key: string;
@@ -169,6 +169,101 @@ function EventCountsTable({ counts }: { counts: EventCount[] }) {
   );
 }
 
+interface TrendRow {
+  month: string;
+  eventName: string;
+  surface: string;
+  total: number;
+}
+
+interface TrendsResponse {
+  generatedAt: string;
+  retentionDays: number;
+  archivedThrough: string | null;
+  months: TrendRow[];
+}
+
+function LongTermTrends() {
+  const [data, setData] = useState<TrendsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/analytics/admin/trends`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) throw new Error(d.error);
+        setData(d as TrendsResponse);
+      })
+      .catch((err) => setError(err?.message ?? "Failed to load trends"));
+  }, []);
+
+  if (error) {
+    return (
+      <p className="text-sm text-destructive flex items-center gap-2">
+        <AlertCircle className="w-4 h-4" /> {error}
+      </p>
+    );
+  }
+  if (!data) return <p className="text-sm text-muted-foreground">Loading trends…</p>;
+
+  // Monthly totals per surface
+  const monthTotals = new Map<string, { member: number; org: number }>();
+  for (const r of data.months) {
+    const t = monthTotals.get(r.month) ?? { member: 0, org: 0 };
+    if (r.surface === "org") t.org += r.total;
+    else t.member += r.total;
+    monthTotals.set(r.month, t);
+  }
+  const months = [...monthTotals.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const maxTotal = Math.max(...months.map(([, t]) => t.member + t.org), 1);
+
+  if (months.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        No activity recorded yet — trends will build up over time.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-background p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <Archive className="w-4 h-4 text-primary" />
+          Monthly activity volume
+        </h3>
+        {data.archivedThrough && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            archive through {data.archivedThrough}
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Total analytics events per month, combining durable archived aggregates
+        (kept forever) with live data from the last {data.retentionDays} days.
+        Member events in green, organisation events in blue.
+      </p>
+      <div className="flex flex-col gap-1">
+        {months.map(([month, t]) => {
+          const total = t.member + t.org;
+          const memberPct = (t.member / maxTotal) * 100;
+          const orgPct = (t.org / maxTotal) * 100;
+          return (
+            <div key={month} className="flex items-center gap-3 py-1">
+              <div className="w-20 shrink-0 text-xs font-mono text-muted-foreground">{month}</div>
+              <div className="flex-1 relative h-6 rounded-md bg-secondary/40 overflow-hidden border border-border flex">
+                <div className="h-full bg-emerald-500/70" style={{ width: `${memberPct}%` }} />
+                <div className="h-full bg-blue-500/70" style={{ width: `${orgPct}%` }} />
+              </div>
+              <div className="w-16 text-right text-xs font-medium text-foreground">{total}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminFunnels() {
   const [windowDays, setWindowDays] = useState(30);
   const [data, setData] = useState<FunnelResponse | null>(null);
@@ -239,6 +334,10 @@ export default function AdminFunnels() {
           <div className="lg:col-span-2">
             <h3 className="text-sm font-semibold text-foreground mb-2 mt-2">Raw event counts (last {data.windowDays}d)</h3>
             <EventCountsTable counts={data.eventCounts} />
+          </div>
+          <div className="lg:col-span-2">
+            <h3 className="text-sm font-semibold text-foreground mb-2 mt-2">Long-term trends</h3>
+            <LongTermTrends />
           </div>
         </div>
       )}

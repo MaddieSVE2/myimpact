@@ -101,3 +101,21 @@ The table lives in `lib/db/src/schema/analytics.ts` and is created by
 `lib/db/migrations/0011_analytics_events.sql`. It uses `ON DELETE SET
 NULL` for `user_id` so that erasing a user account preserves
 aggregate counts but removes the link.
+
+---
+
+## Long-term retention & archiving
+
+Raw `analytics_events` and `page_views` rows are deleted after 90 days by
+the retention cleanup job (`src/lib/retentionCleanup.ts`). Just before
+deletion, the job archives daily aggregate counts — one row per
+(day, event_name, surface) — into the `analytics_daily_summary` table,
+which is kept forever. Archive + delete run in a single transaction per
+table, so a failed run can neither lose data nor double-count.
+
+Legacy `page_views` rows are archived under the event name
+`page_view_legacy` so they don't double-count the mirrored `page_view`
+analytics events.
+
+`GET /api/analytics/admin/trends` merges the archive with live raw rows
+into monthly buckets and powers the "Long-term trends" section on `/admin`.

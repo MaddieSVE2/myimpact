@@ -9,6 +9,7 @@ import {
   type AnalyticsSurface,
 } from "../lib/analytics.js";
 import { ACTIVITY_LOG_RETENTION_DAYS } from "../lib/retentionCleanup.js";
+import { analyticsDailySummaryTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -353,6 +354,78 @@ router.get("/admin/funnels", authenticate, async (req: AuthenticatedRequest, res
     funnels: [signupToFirstLog, wizardFunnel],
     retention,
     eventCounts: eventCountRows,
+  });
+});
+
+// ── Admin long-term trends endpoint ──────────────────────────────────────────
+// Combines the durable daily aggregates (archived by the retention cleanup
+// job before raw rows are deleted) with live counts from the raw
+// analytics_events table, so trends span well beyond the raw-row retention
+// window. Archived rows only ever cover days older than the retention
+// cutoff at the time they were archived, and raw rows only cover recent
+// days, so the two sources never overlap for the same day — summing any
+// same-month buckets is safe.
+router.get("/admin/trends", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  // Archived aggregates, bucketed by month.
+  const archivedRows = await db
+    .select({
+      month: sql<string>`to_char(${analyticsDailySummaryTable.day}, 'YYYY-MM')`,
+      eventName: analyticsDailySummaryTable.eventName,
+      surface: analyticsDailySummaryTable.surface,
+      total: sql<number>`sum(${analyticsDailySummaryTable.count})::int`,
+    })
+    .from(analyticsDailySummaryTable)
+    .groupBy(
+      sql`to_char(${analyticsDailySummaryTable.day}, 'YYYY-MM')`,
+      analyticsDailySummaryTable.eventName,
+      analyticsDailySummaryTable.surface,
+    );
+
+  // Live raw events (still within the retention window), same bucketing.
+  const liveRows = await db
+    .select({
+      month: sql<string>`to_char(${analyticsEventsTable.createdAt}, 'YYYY-MM')`,
+      eventName: analyticsEventsTable.eventName,
+      surface: analyticsEventsTable.surface,
+      total: sql<number>`count(*)::int`,
+    })
+    .from(analyticsEventsTable)
+    .groupBy(
+      sql`to_char(${analyticsEventsTable.createdAt}, 'YYYY-MM')`,
+      analyticsEventsTable.eventName,
+      analyticsEventsTable.surface,
+    );
+
+  // Merge the two sources per (month, eventName, surface).
+  const merged = new Map<
+    string,
+    { month: string; eventName: string; surface: string; total: number }
+  >();
+  for (const r of [...archivedRows, ...liveRows]) {
+    const key = `${r.month}|${r.eventName}|${r.surface}`;
+    const existing = merged.get(key);
+    if (existing) existing.total += r.total;
+    else merged.set(key, { ...r });
+  }
+
+  const rows = [...merged.values()].sort((a, b) =>
+    a.month === b.month ? a.eventName.localeCompare(b.eventName) : a.month.localeCompare(b.month),
+  );
+
+  const archivedThroughRow = await db
+    .select({ maxDay: sql<string | null>`max(${analyticsDailySummaryTable.day})::text` })
+    .from(analyticsDailySummaryTable);
+
+  res.json({
+    generatedAt: new Date().toISOString(),
+    retentionDays: ACTIVITY_LOG_RETENTION_DAYS,
+    archivedThrough: archivedThroughRow[0]?.maxDay ?? null,
+    months: rows,
   });
 });
 
