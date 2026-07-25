@@ -34,8 +34,56 @@ function issueSession(res: any, user: { id: string; email: string }) {
   });
 }
 
+// Age gate: compute whether a person with the given birth month/year is
+// at least `years` old, conservatively. Only month and year are collected,
+// so we treat the unknown day as making the person YOUNGER: they only count
+// as `years` old once their birth month has fully passed. Someone whose
+// 13th-birthday month is the current month is still treated as 12.
+function isAtLeastAge(birthMonth: number, birthYear: number, years: number, now = new Date()): boolean {
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1; // 1-12
+  const thresholdYear = birthYear + years;
+  return nowYear > thresholdYear || (nowYear === thresholdYear && nowMonth > birthMonth);
+}
+
+type AgeGateResult =
+  | { ok: true; birthMonth: number; birthYear: number; isMinor: boolean }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+function checkAgeGate(rawMonth: unknown, rawYear: unknown): AgeGateResult {
+  const birthMonth = typeof rawMonth === "number" ? rawMonth : Number(rawMonth);
+  const birthYear = typeof rawYear === "number" ? rawYear : Number(rawYear);
+  const currentYear = new Date().getFullYear();
+  if (
+    rawMonth == null || rawYear == null ||
+    !Number.isInteger(birthMonth) || !Number.isInteger(birthYear) ||
+    birthMonth < 1 || birthMonth > 12 ||
+    birthYear < currentYear - 120 || birthYear > currentYear
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        error: "Please tell us your birth month and year to create an account.",
+        code: "birth_date_required",
+      },
+    };
+  }
+  if (!isAtLeastAge(birthMonth, birthYear, 13)) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: "You must be 13 or older to use My Impact. We haven't stored any of your details.",
+        code: "under_13",
+      },
+    };
+  }
+  return { ok: true, birthMonth, birthYear, isMinor: !isAtLeastAge(birthMonth, birthYear, 18) };
+}
+
 router.post("/request", async (req, res) => {
-  const { email, returnTo, marketingOptIn } = req.body;
+  const { email, returnTo, marketingOptIn, birthMonth, birthYear } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required" });
     return;
@@ -94,9 +142,23 @@ router.post("/request", async (req, res) => {
   });
 
   if (!user) {
+    // Age gate: a birth month/year is required whenever a NEW account would
+    // be created. Under-13s are rejected here, BEFORE any row (user, profile,
+    // magic token) is written and before any email is sent.
+    const ageGate = checkAgeGate(birthMonth, birthYear);
+    if (!ageGate.ok) {
+      res.status(ageGate.status).json(ageGate.body);
+      return;
+    }
     const [created] = await db
       .insert(usersTable)
-      .values({ id: randomBytes(12).toString("hex"), email: normalizedEmail })
+      .values({
+        id: randomBytes(12).toString("hex"),
+        email: normalizedEmail,
+        birthMonth: ageGate.birthMonth,
+        birthYear: ageGate.birthYear,
+        isMinor: ageGate.isMinor,
+      })
       .returning();
     user = created;
   }

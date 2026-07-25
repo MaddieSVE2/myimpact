@@ -140,8 +140,10 @@ test.describe("GDPR self-service", () => {
     // Terms link is present at sign-up.
     await expect(page.getByRole("link", { name: /^terms$/i })).toBeVisible();
 
-    // Submit without ticking.
+    // Submit without ticking. A new account needs an adult birth date (age gate).
     await page.locator("#email").fill(email);
+    await page.locator("#birth-month").selectOption("1");
+    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
     await expect(page.getByText(/we['']ve sent a sign-in link/i)).toBeVisible({ timeout: 15_000 });
 

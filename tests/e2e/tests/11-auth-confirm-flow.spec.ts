@@ -38,6 +38,9 @@ test.describe("Spec 11 — auth confirm flow", () => {
     const emailInput = page.locator("#email");
     await emailInput.waitFor({ state: "visible" });
     await emailInput.fill(email);
+    // Age gate: new accounts need an adult birth date.
+    await page.locator("#birth-month").selectOption("1");
+    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
 
     // Step 2: The "check your inbox" screen must appear (proves /api/auth/request worked).
@@ -98,6 +101,9 @@ test.describe("Spec 11 — auth confirm flow", () => {
     const emailInput = page.locator("#email");
     await emailInput.waitFor({ state: "visible" });
     await emailInput.fill(email);
+    // Age gate: new accounts need an adult birth date.
+    await page.locator("#birth-month").selectOption("1");
+    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
     await expect(
       page.getByText(/we['']ve sent a sign-in link/i),

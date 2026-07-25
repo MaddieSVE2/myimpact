@@ -118,6 +118,31 @@ router.get("/latest-token", async (req, res) => {
 });
 
 /**
+ * Fetch a user's age-gate fields (or confirm they don't exist).
+ * Used by the age-gate spec to assert on birth month/year and minor flag,
+ * and that under-13 attempts never created a row.
+ */
+router.get("/user-info", async (req, res) => {
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  if (!email) {
+    res.status(400).json({ error: "email required" });
+    return;
+  }
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, email) });
+  if (!user) {
+    res.json({ exists: false });
+    return;
+  }
+  res.json({
+    exists: true,
+    userId: user.id,
+    birthMonth: user.birthMonth,
+    birthYear: user.birthYear,
+    isMinor: user.isMinor,
+  });
+});
+
+/**
  * Approve the most recent pending org registration with the given contact
  * email. Creates the organisation and stamps the registration with the
  * generated invite code so a subsequent /api/org/join with that user as

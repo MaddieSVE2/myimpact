@@ -12,6 +12,11 @@ export const usersTable = pgTable("users", {
   voicePersona: text("voice_persona").default("alloy").notNull(),
   preferredLocale: text("preferred_locale").default("en").notNull(),
   gamificationEnabled: boolean("gamification_enabled").default(true).notNull(),
+  // Age gate: collected at sign-up for new accounts only. Nullable so
+  // existing users (who never provided them) are unaffected.
+  birthMonth: integer("birth_month"),
+  birthYear: integer("birth_year"),
+  isMinor: boolean("is_minor"),
 });
 
 export const magicTokensTable = pgTable("magic_tokens", {

@@ -24,6 +24,12 @@ export async function signInWithMagicLink(
   const emailInput = page.locator("#email");
   await emailInput.waitFor({ state: "visible" });
   await emailInput.fill(email);
+
+  // Age gate: a birth month/year is required when the email would create a
+  // new account. Fill an adult date so every helper-driven sign-up passes.
+  await page.locator("#birth-month").selectOption("1");
+  await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
+
   await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
 
   // Wait for the "we've sent a sign-in link" confirmation copy. We assert
