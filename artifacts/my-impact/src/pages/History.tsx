@@ -290,6 +290,25 @@ export default function History() {
   );
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Set when the user clicks a chart point: the matching record card scrolls
+  // into view, expands, and flashes briefly so it's obvious which one it is.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const recordRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+  }, []);
+
+  const jumpToRecord = (recordId: string) => {
+    setExpandedId(recordId);
+    setHighlightedId(recordId);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 2000);
+    // Wait a tick so the detail section has expanded before scrolling.
+    requestAnimationFrame(() => {
+      recordRefs.current.get(recordId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -712,6 +731,7 @@ export default function History() {
         .filter(b => b && b.activityName)
         .sort((a, b) => (b.impactValue ?? 0) - (a.impactValue ?? 0));
       return {
+        recordId: String(r.id),
         date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
         fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
         delta,
@@ -983,7 +1003,15 @@ export default function History() {
             <figcaption className="text-sm font-semibold text-foreground mb-4">Social value over time</figcaption>
             <div className="h-[240px] w-full" role="img" aria-label="Chart showing your cumulative social value over time">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  onClick={(state: { activePayload?: Array<{ payload?: { recordId?: string } }> }) => {
+                    const id = state?.activePayload?.[0]?.payload?.recordId;
+                    if (id) jumpToRecord(id);
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
                   <defs>
                     <linearGradient id="runningTotalFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#F06127" stopOpacity={0.35} />
@@ -1023,6 +1051,9 @@ export default function History() {
                               )}
                             </div>
                           )}
+                          <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+                            Click to see full details
+                          </p>
                         </div>
                       );
                     }}
@@ -1085,11 +1116,18 @@ export default function History() {
               return (
                 <motion.div
                   key={record.id}
+                  ref={(el: HTMLDivElement | null) => {
+                    if (el) recordRefs.current.set(String(record.id), el);
+                    else recordRefs.current.delete(String(record.id));
+                  }}
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
-                  className="bg-white border border-border rounded-lg overflow-hidden transition-shadow hover:shadow-sm"
+                  className={`bg-white border border-border rounded-lg overflow-hidden transition-shadow hover:shadow-sm ${
+                    highlightedId === record.id ? "ring-2 ring-primary/60 shadow-md" : ""
+                  }`}
                   style={{ borderColor: isOpen ? "hsl(var(--primary) / 0.4)" : undefined }}
+                  data-testid={`card-record-${record.id}`}
                 >
                   {/* Header row */}
                   <div className="w-full flex items-center justify-between p-4 text-left">
