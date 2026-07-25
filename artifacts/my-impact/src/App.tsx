@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, Component, lazy, Suspense, type ReactNode } from "react";
+import { useState, useRef, useEffect, Component, Suspense, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { updateNavHistory } from "@/lib/nav-history";
 import { scrollContentToTop, CONTENT_SCROLL_ID } from "@/lib/scroll-utils";
 import { captureException as captureSentryException } from "@/lib/sentry";
+import { lazyWithRetry, isChunkLoadError, attemptChunkErrorReload } from "@/lib/lazy-retry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -55,54 +56,54 @@ const NOINDEX_PATH_PREFIXES = [
 const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register", "/org/share"];
 
 // Pages — lazy-loaded so each route becomes its own split chunk
-const Intro = lazy(() => import("@/pages/Intro"));
-const ActionsStep = lazy(() => import("@/pages/wizard/ActionsStep"));
-const ActivitiesStep = lazy(() => import("@/pages/wizard/ActivitiesStep"));
-const ContributionsStep = lazy(() => import("@/pages/wizard/ContributionsStep"));
-const Results = lazy(() => import("@/pages/Results"));
-const Suggestions = lazy(() => import("@/pages/Suggestions"));
-const History = lazy(() => import("@/pages/History"));
-const Journal = lazy(() => import("@/pages/Journal"));
-const Milestones = lazy(() => import("@/pages/Milestones"));
-const OrgPortal = lazy(() => import("@/pages/OrgPortal"));
-const OrgMemberSubmit = lazy(() => import("@/pages/OrgMemberSubmit"));
-const OrgMemberSubmitHistory = lazy(() => import("@/pages/OrgMemberSubmitHistory"));
-const OrgDashboard = lazy(() => import("@/pages/OrgDashboard"));
-const OrgActivities = lazy(() => import("@/pages/OrgActivities"));
-const OrgChallenges = lazy(() => import("@/pages/OrgChallenges"));
-const OrgPulse = lazy(() => import("@/pages/OrgPulse"));
-const OrgMemberPulse = lazy(() => import("@/pages/OrgMemberPulse"));
-const OrgMemberChallenges = lazy(() => import("@/pages/OrgMemberChallenges"));
-const OrgExport = lazy(() => import("@/pages/OrgExport"));
-const OrgSettings = lazy(() => import("@/pages/OrgSettings"));
-const OrgRegister = lazy(() => import("@/pages/OrgRegister"));
-const OrgTypeExplicitSubmission = lazy(() => import("@/pages/OrgTypeExplicitSubmission"));
-const OrgTypeConsentedLogging = lazy(() => import("@/pages/OrgTypeConsentedLogging"));
-const OrgDemoPage = lazy(() => import("@/pages/OrgDemoPage"));
-const Pricing = lazy(() => import("@/pages/Pricing"));
-const Login = lazy(() => import("@/pages/Login"));
-const AuthConfirm = lazy(() => import("@/pages/AuthConfirm"));
-const About = lazy(() => import("@/pages/About"));
-const Methodology = lazy(() => import("@/pages/Methodology"));
-const WhatsNew = lazy(() => import("@/pages/WhatsNew"));
-const Privacy = lazy(() => import("@/pages/Privacy"));
-const Terms = lazy(() => import("@/pages/Terms"));
-const Security = lazy(() => import("@/pages/Security"));
-const Settings = lazy(() => import("@/pages/Settings"));
-const NotFound = lazy(() => import("@/pages/not-found"));
-const ProfileSetup = lazy(() => import("@/pages/ProfileSetup"));
-const Profile = lazy(() => import("@/pages/Profile"));
-const Admin = lazy(() => import("@/pages/Admin"));
-const Contact = lazy(() => import("@/pages/Contact"));
-const Feedback = lazy(() => import("@/pages/Feedback"));
-const PublicProfile = lazy(() => import("@/pages/PublicProfile"));
-const OrgSharePage = lazy(() => import("@/pages/OrgSharePage"));
-const AnnualRecap = lazy(() => import("@/pages/AnnualRecap"));
-const Challenges = lazy(() => import("@/pages/Challenges"));
-const ChallengeDetail = lazy(() => import("@/pages/ChallengeDetail"));
-const ChallengeJoin = lazy(() => import("@/pages/ChallengeJoin"));
-const QuickLogPhoto = lazy(() => import("@/pages/QuickLogPhoto"));
-const QuickLogActivity = lazy(() => import("@/pages/QuickLogActivity"));
+const Intro = lazyWithRetry(() => import("@/pages/Intro"));
+const ActionsStep = lazyWithRetry(() => import("@/pages/wizard/ActionsStep"));
+const ActivitiesStep = lazyWithRetry(() => import("@/pages/wizard/ActivitiesStep"));
+const ContributionsStep = lazyWithRetry(() => import("@/pages/wizard/ContributionsStep"));
+const Results = lazyWithRetry(() => import("@/pages/Results"));
+const Suggestions = lazyWithRetry(() => import("@/pages/Suggestions"));
+const History = lazyWithRetry(() => import("@/pages/History"));
+const Journal = lazyWithRetry(() => import("@/pages/Journal"));
+const Milestones = lazyWithRetry(() => import("@/pages/Milestones"));
+const OrgPortal = lazyWithRetry(() => import("@/pages/OrgPortal"));
+const OrgMemberSubmit = lazyWithRetry(() => import("@/pages/OrgMemberSubmit"));
+const OrgMemberSubmitHistory = lazyWithRetry(() => import("@/pages/OrgMemberSubmitHistory"));
+const OrgDashboard = lazyWithRetry(() => import("@/pages/OrgDashboard"));
+const OrgActivities = lazyWithRetry(() => import("@/pages/OrgActivities"));
+const OrgChallenges = lazyWithRetry(() => import("@/pages/OrgChallenges"));
+const OrgPulse = lazyWithRetry(() => import("@/pages/OrgPulse"));
+const OrgMemberPulse = lazyWithRetry(() => import("@/pages/OrgMemberPulse"));
+const OrgMemberChallenges = lazyWithRetry(() => import("@/pages/OrgMemberChallenges"));
+const OrgExport = lazyWithRetry(() => import("@/pages/OrgExport"));
+const OrgSettings = lazyWithRetry(() => import("@/pages/OrgSettings"));
+const OrgRegister = lazyWithRetry(() => import("@/pages/OrgRegister"));
+const OrgTypeExplicitSubmission = lazyWithRetry(() => import("@/pages/OrgTypeExplicitSubmission"));
+const OrgTypeConsentedLogging = lazyWithRetry(() => import("@/pages/OrgTypeConsentedLogging"));
+const OrgDemoPage = lazyWithRetry(() => import("@/pages/OrgDemoPage"));
+const Pricing = lazyWithRetry(() => import("@/pages/Pricing"));
+const Login = lazyWithRetry(() => import("@/pages/Login"));
+const AuthConfirm = lazyWithRetry(() => import("@/pages/AuthConfirm"));
+const About = lazyWithRetry(() => import("@/pages/About"));
+const Methodology = lazyWithRetry(() => import("@/pages/Methodology"));
+const WhatsNew = lazyWithRetry(() => import("@/pages/WhatsNew"));
+const Privacy = lazyWithRetry(() => import("@/pages/Privacy"));
+const Terms = lazyWithRetry(() => import("@/pages/Terms"));
+const Security = lazyWithRetry(() => import("@/pages/Security"));
+const Settings = lazyWithRetry(() => import("@/pages/Settings"));
+const NotFound = lazyWithRetry(() => import("@/pages/not-found"));
+const ProfileSetup = lazyWithRetry(() => import("@/pages/ProfileSetup"));
+const Profile = lazyWithRetry(() => import("@/pages/Profile"));
+const Admin = lazyWithRetry(() => import("@/pages/Admin"));
+const Contact = lazyWithRetry(() => import("@/pages/Contact"));
+const Feedback = lazyWithRetry(() => import("@/pages/Feedback"));
+const PublicProfile = lazyWithRetry(() => import("@/pages/PublicProfile"));
+const OrgSharePage = lazyWithRetry(() => import("@/pages/OrgSharePage"));
+const AnnualRecap = lazyWithRetry(() => import("@/pages/AnnualRecap"));
+const Challenges = lazyWithRetry(() => import("@/pages/Challenges"));
+const ChallengeDetail = lazyWithRetry(() => import("@/pages/ChallengeDetail"));
+const ChallengeJoin = lazyWithRetry(() => import("@/pages/ChallengeJoin"));
+const QuickLogPhoto = lazyWithRetry(() => import("@/pages/QuickLogPhoto"));
+const QuickLogActivity = lazyWithRetry(() => import("@/pages/QuickLogActivity"));
 
 const queryClient = new QueryClient();
 
@@ -122,12 +123,26 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
+    if (isChunkLoadError(error)) {
+      // Stale-deploy chunk failure: render() handles the one-time reload,
+      // and Sentry already ignores these — skip reporting entirely.
+      console.warn("[ErrorBoundary] chunk load failure", error.message);
+      return;
+    }
     console.error("[ErrorBoundary]", error, info.componentStack);
     captureSentryException(error, { componentStack: info.componentStack });
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.state.error && isChunkLoadError(this.state.error)) {
+        // A reload may be underway (see componentDidCatch); render nothing
+        // briefly instead of flashing the error screen. If the reload was
+        // already attempted, fall through to the error UI below.
+        if (attemptChunkErrorReload()) {
+          return null;
+        }
+      }
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center gap-4">
           <p className="text-lg font-semibold text-foreground">Something went wrong</p>
