@@ -20,6 +20,7 @@ import type {
   AckStreakMilestoneBody,
   ActivitiesResponse,
   AnnualRecapResponse,
+  ConfirmRecurringTemplateBody,
   DeleteAllImpactRecordsResponse,
   DeleteImpactRecordResponse,
   DeleteRecurringTemplateParams,
@@ -1521,11 +1522,14 @@ export const getConfirmRecurringTemplateUrl = (id: string) => {
 
 export const confirmRecurringTemplate = async (
   id: string,
+  confirmRecurringTemplateBody?: ConfirmRecurringTemplateBody,
   options?: RequestInit,
 ): Promise<RecurringTemplate> => {
   return customFetch<RecurringTemplate>(getConfirmRecurringTemplateUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmRecurringTemplateBody),
   });
 };
 
@@ -1536,14 +1540,14 @@ export const getConfirmRecurringTemplateMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof confirmRecurringTemplate>>,
     TError,
-    { id: string },
+    { id: string; data: BodyType<ConfirmRecurringTemplateBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof confirmRecurringTemplate>>,
   TError,
-  { id: string },
+  { id: string; data: BodyType<ConfirmRecurringTemplateBody> },
   TContext
 > => {
   const mutationKey = ["confirmRecurringTemplate"];
@@ -1557,11 +1561,11 @@ export const getConfirmRecurringTemplateMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof confirmRecurringTemplate>>,
-    { id: string }
+    { id: string; data: BodyType<ConfirmRecurringTemplateBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return confirmRecurringTemplate(id, requestOptions);
+    return confirmRecurringTemplate(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1570,7 +1574,8 @@ export const getConfirmRecurringTemplateMutationOptions = <
 export type ConfirmRecurringTemplateMutationResult = NonNullable<
   Awaited<ReturnType<typeof confirmRecurringTemplate>>
 >;
-
+export type ConfirmRecurringTemplateMutationBody =
+  BodyType<ConfirmRecurringTemplateBody>;
 export type ConfirmRecurringTemplateMutationError = ErrorType<void>;
 
 /**
@@ -1583,14 +1588,14 @@ export const useConfirmRecurringTemplate = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof confirmRecurringTemplate>>,
     TError,
-    { id: string },
+    { id: string; data: BodyType<ConfirmRecurringTemplateBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof confirmRecurringTemplate>>,
   TError,
-  { id: string },
+  { id: string; data: BodyType<ConfirmRecurringTemplateBody> },
   TContext
 > => {
   return useMutation(getConfirmRecurringTemplateMutationOptions(options));

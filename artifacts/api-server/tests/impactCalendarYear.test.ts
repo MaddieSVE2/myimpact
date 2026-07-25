@@ -653,6 +653,55 @@ describe("impact route — calendar-year invariants", () => {
     expect(state.impactRecords).toHaveLength(remainingMonths);
   });
 
+  it("confirming a habit with a past target year creates 12 retrospective entries in that year", async () => {
+    const app = makeApp();
+    const currentYear = new Date().getUTCFullYear();
+    const priorYear = currentYear - 1;
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Weekly recycling",
+      cadence: "weekly",
+      dayOfPeriod: 1,
+      anchorDate: new Date(),
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 0 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      createdAt: new Date(),
+    });
+
+    const res = await request(app)
+      .post("/api/impact/templates/1/confirm")
+      .send({ year: priorYear })
+      .expect(200);
+    expect(res.body.entriesCreated).toBe(12);
+    expect(state.impactRecords).toHaveLength(12);
+    for (const r of state.impactRecords) {
+      expect(r.source).toBe("retrospective");
+      expect(r.habitTemplateId).toBe(1);
+      const d = r.entryDate as Date;
+      expect(d.getUTCFullYear()).toBe(priorYear);
+      expect(d.getUTCDate()).toBe(1);
+    }
+    // Backfilling a past year must NOT tick off the current occurrence.
+    expect(state.recurringTemplates[0].lastConfirmedAt).toBeNull();
+
+    // Re-confirming the same past year inserts nothing new (dedupe per month).
+    const second = await request(app)
+      .post("/api/impact/templates/1/confirm")
+      .send({ year: priorYear })
+      .expect(200);
+    expect(second.body.entriesCreated).toBe(0);
+    expect(state.impactRecords).toHaveLength(12);
+
+    // Future years are rejected outright.
+    await request(app)
+      .post("/api/impact/templates/1/confirm")
+      .send({ year: currentYear + 1 })
+      .expect(400);
+  });
+
   it("/save returns 409 when a habit-generated entry already covers the same month with overlapping activities", async () => {
     const app = makeApp();
     const currentYear = new Date().getUTCFullYear();

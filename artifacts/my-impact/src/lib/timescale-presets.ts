@@ -20,6 +20,7 @@ export type TimescalePresetId =
   | "last_month"
   | "this_term"
   | "last_term"
+  | "this_year"
   | "ongoing"
   | "custom";
 
@@ -34,6 +35,7 @@ export const TIMESCALE_PRESETS: TimescalePreset[] = [
   { id: "last_month", label: "Last month" },
   { id: "this_term",  label: "This term" },
   { id: "last_term",  label: "Last term" },
+  { id: "this_year",  label: `This year (${new Date().getFullYear()})` },
   { id: "ongoing",    label: "Ongoing" },
   { id: "custom",     label: "Custom date" },
 ];
@@ -122,6 +124,12 @@ export function resolvePresetDate(
       const { term: prev, year: py } = prevTerm(term, year);
       return cap(toIso(py, prev.endMonth, lastDayOf(py, prev.endMonth)));
     }
+
+    // "This year" — the entry counts toward the current calendar year.
+    // The natural resolution is 31 Dec, but future dates are never
+    // produced, so this caps at today (which is always within the year).
+    case "this_year":
+      return cap(toIso(year, 12, 31));
 
     default:
       return today;

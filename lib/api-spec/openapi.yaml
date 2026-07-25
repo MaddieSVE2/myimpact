@@ -396,6 +396,21 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                year:
+                  type: integer
+                  description: |
+                    Calendar year the bulk-created entries should count toward.
+                    Defaults to the current year. For the current year, entries
+                    are created for the remaining months; for a past year, one
+                    entry per month of the full year is created and marked as
+                    retrospective. Future years are rejected.
       responses:
         "200":
           description: Confirmed template

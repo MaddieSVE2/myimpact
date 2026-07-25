@@ -1398,15 +1398,30 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     return;
   }
 
-  // Bulk-create one impact entry per remaining month of the current calendar
-  // year (from this month through December), each dated to the 1st of the
-  // month. The recurring template row stays intact as the "this habit is on"
-  // flag for the year-rollover prompt. Months that already have a habit-
-  // generated entry for this template are skipped so the user can re-tick a
-  // habit without piling up duplicates.
+  // Bulk-create one impact entry per month of the target calendar year, each
+  // dated to the 1st of the month. For the current year this covers the
+  // remaining months (this month through December); for a past year it covers
+  // all 12 months and the records are marked retrospective, consistent with
+  // manual backdated logging. The recurring template row stays intact as the
+  // "this habit is on" flag for the year-rollover prompt. Months that already
+  // have a habit-generated entry for this template in that year are skipped
+  // so the user can re-tick a habit without piling up duplicates.
   const now = new Date();
-  const year = now.getUTCFullYear();
-  const startMonth = now.getUTCMonth();
+  const currentYear = now.getUTCFullYear();
+  const yearRaw = (req.body as Record<string, unknown> | undefined)?.year;
+  const requestedYear =
+    typeof yearRaw === "number" && Number.isInteger(yearRaw)
+      ? yearRaw
+      : typeof yearRaw === "string" && /^\d{4}$/.test(yearRaw)
+        ? parseInt(yearRaw, 10)
+        : currentYear;
+  if (requestedYear > currentYear || requestedYear < 2000) {
+    res.status(400).json({ error: "Invalid target year" });
+    return;
+  }
+  const year = requestedYear;
+  const isPastYear = year < currentYear;
+  const startMonth = isPastYear ? 0 : now.getUTCMonth();
 
   const existingHabitEntries = await db
     .select({ entryDate: impactRecordsTable.entryDate })
@@ -1442,7 +1457,9 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
       activitiesJson: activities,
       resultJson: result,
       entryDate: startOfMonthUTC(year, m),
-      source: "habit",
+      // Past-year habit logging is retrospective, matching manual backdated
+      // entries; habitTemplateId still ties the rows back to the template.
+      source: isPastYear ? "retrospective" : "habit",
       habitTemplateId: id,
     });
   }
@@ -1454,11 +1471,17 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     await autoVerifyRecordsForUser(userId, created.map((r) => r.id));
   }
 
-  const [updated] = await db
-    .update(recurringTemplatesTable)
-    .set({ lastConfirmedAt: new Date() })
-    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
-    .returning();
+  // Only a current-year confirmation counts as ticking off the current
+  // scheduled occurrence. Backfilling a past year leaves the schedule alone.
+  let updated = existing;
+  if (!isPastYear) {
+    const [row] = await db
+      .update(recurringTemplatesTable)
+      .set({ lastConfirmedAt: new Date() })
+      .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+      .returning();
+    if (row) updated = row;
+  }
 
   const serialized = serializeTemplate(updated as TemplateRow, new Date()) as Record<string, unknown>;
   serialized.entriesCreated = inserts.length;

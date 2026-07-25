@@ -698,6 +698,15 @@ export const ConfirmRecurringTemplateParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const ConfirmRecurringTemplateBody = zod.object({
+  year: zod
+    .number()
+    .optional()
+    .describe(
+      "Calendar year the bulk-created entries should count toward.\nDefaults to the current year. For the current year, entries\nare created for the remaining months; for a past year, one\nentry per month of the full year is created and marked as\nretrospective. Future years are rejected.\n",
+    ),
+});
+
 export const ConfirmRecurringTemplateResponse = zod.object({
   id: zod.string(),
   label: zod.string(),

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Repeat, ArrowRight, X, Calendar } from "lucide-react";
@@ -6,8 +6,10 @@ import {
   useListRecurringTemplates,
   useConfirmRecurringTemplate,
   useGetImpactHistory,
+  useListImpactYears,
   getListRecurringTemplatesQueryKey,
   getGetImpactHistoryQueryKey,
+  getListImpactYearsQueryKey,
   type RecurringTemplate,
   type SelectedActivity,
 } from "@workspace/api-client-react";
@@ -104,7 +106,16 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
     },
   );
 
+  const yearsQuery = useListImpactYears({
+    query: { enabled: isLoggedIn, queryKey: getListImpactYearsQueryKey() },
+  });
+
   const confirmMutation = useConfirmRecurringTemplate();
+
+  // Confirmation prompt state: which template is awaiting a "which year?"
+  // decision, and which year is currently selected in that prompt.
+  const [pendingTemplate, setPendingTemplate] = useState<RecurringTemplate | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const templates = templatesQuery.data?.templates ?? [];
   const visibleTemplates = useMemo(() => {
@@ -116,32 +127,53 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   if (templatesQuery.isLoading) return null;
   if (visibleTemplates.length === 0) return null;
 
-  const handleConfirm = async (template: RecurringTemplate) => {
-    // Ticking a habit bulk-creates one impact entry per remaining month of
-    // the current calendar year. The wizard pre-fill flow remains as a
-    // fallback path for users who want to amend before saving, but the
-    // primary action here is the bulk confirm, so we don't navigate away.
+  const currentYear = new Date().getFullYear();
+  // Years the user already has entries in, newest first, capped at the
+  // current year (habits can't be logged into the future).
+  const recordYears = (yearsQuery.data?.years ?? [])
+    .map((y) => y.year)
+    .filter((y) => y <= currentYear)
+    .sort((a, b) => b - a);
+
+  const doConfirm = async (template: RecurringTemplate, year: number) => {
+    // Ticking a habit bulk-creates one impact entry per month of the chosen
+    // calendar year (remaining months for the current year, all months for a
+    // past year). The wizard pre-fill flow remains as a fallback path for
+    // users who want to amend before saving, but the primary action here is
+    // the bulk confirm, so we don't navigate away.
+    setPendingTemplate(null);
     try {
-      const result = (await confirmMutation.mutateAsync({ id: template.id })) as { entriesCreated?: number };
+      const result = (await confirmMutation.mutateAsync({
+        id: template.id,
+        data: { year },
+      })) as { entriesCreated?: number };
       queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
+      // Refresh everything derived from impact records (dashboard totals,
+      // year picker, stats) so the chosen year reflects the new activity.
+      queryClient.invalidateQueries({
+        predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).startsWith("/api/impact"),
+      });
       const created = result?.entriesCreated ?? 0;
       if (created > 0) {
         toast({
           title: `Logged "${template.label}"`,
-          description: `Added ${created} monthly ${created === 1 ? "entry" : "entries"} for the rest of ${new Date().getFullYear()}.`,
+          description:
+            year === currentYear
+              ? `Added ${created} monthly ${created === 1 ? "entry" : "entries"} for the rest of ${year}.`
+              : `Added ${created} monthly ${created === 1 ? "entry" : "entries"} to your ${year} impact record.`,
         });
       } else {
         // Nothing new created, the user already has habit entries for the
-        // remaining months. Nudge them to the wizard if they want to adjust.
+        // chosen year. Nudge them to the wizard if they want to adjust.
         const overlaid = buildOverlaidActivities(
           template.defaultActivities,
           historyQuery.data?.records,
         );
         loadFromTemplate(overlaid, template.defaultDonationsGBP ?? 0);
         toast({
-          title: `"${template.label}" already logged for the year`,
-          description: "Want to adjust this month? Edit the entry from your history, or save a new one below.",
+          title: `"${template.label}" already logged for ${year}`,
+          description: "Want to adjust an entry? Edit it from your history, or save a new one below.",
         });
         navigate("/wizard/contributions");
       }
@@ -152,6 +184,18 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
         variant: "destructive",
       });
     }
+  };
+
+  const handleCardTap = (template: RecurringTemplate) => {
+    if (recordYears.length === 0) {
+      // No impact records yet — nothing to ask about. Start their record for
+      // the current year without a confusing prompt.
+      void doConfirm(template, currentYear);
+      return;
+    }
+    const defaultYear = recordYears[0] ?? currentYear;
+    setSelectedYear(defaultYear);
+    setPendingTemplate(template);
   };
 
   const isCompact = variant === "compact";
@@ -188,7 +232,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
               data-testid={`quick-log-card-${template.id}`}
             >
               <button
-                onClick={() => handleConfirm(template)}
+                onClick={() => handleCardTap(template)}
                 disabled={confirmMutation.isPending}
                 className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors disabled:opacity-60"
               >
@@ -214,6 +258,70 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
               </button>
+
+              <AnimatePresence>
+                {pendingTemplate?.id === template.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="border-t border-border/60 bg-muted/20"
+                    data-testid={`quick-log-confirm-${template.id}`}
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm text-foreground font-medium">
+                          Add this to your {selectedYear ?? currentYear} impact record?
+                        </p>
+                        <button
+                          onClick={() => setPendingTemplate(null)}
+                          className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
+                          aria-label="Cancel"
+                          data-testid={`quick-log-confirm-cancel-${template.id}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {recordYears.length > 1 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {recordYears.map((y) => (
+                            <button
+                              key={y}
+                              onClick={() => setSelectedYear(y)}
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                selectedYear === y
+                                  ? "text-white border-transparent"
+                                  : "bg-white text-foreground border-border hover:border-foreground/40"
+                              }`}
+                              style={selectedYear === y ? { background: "#F06127" } : undefined}
+                              data-testid={`quick-log-year-${template.id}-${y}`}
+                            >
+                              {y}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {selectedYear != null && selectedYear < currentYear && (
+                        <p className="text-[11px] text-muted-foreground mt-2">
+                          Entries for {selectedYear} will be added as retrospective (added later).
+                        </p>
+                      )}
+
+                      <button
+                        onClick={() => doConfirm(template, selectedYear ?? currentYear)}
+                        disabled={confirmMutation.isPending}
+                        className="mt-3 w-full py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+                        style={{ background: "#F06127" }}
+                        data-testid={`quick-log-confirm-yes-${template.id}`}
+                      >
+                        Yes, add to {selectedYear ?? currentYear}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           );
         })}

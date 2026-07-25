@@ -394,6 +394,16 @@ export type DeleteRecurringTemplateParams = {
   removeFutureEntries?: boolean;
 };
 
+export type ConfirmRecurringTemplateBody = {
+  /** Calendar year the bulk-created entries should count toward.
+Defaults to the current year. For the current year, entries
+are created for the remaining months; for a past year, one
+entry per month of the full year is created and marked as
+retrospective. Future years are rejected.
+ */
+  year?: number;
+};
+
 export type AckStreakMilestoneBody = {
   milestone: number;
 };
