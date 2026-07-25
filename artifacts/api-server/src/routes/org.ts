@@ -1514,7 +1514,7 @@ router.post("/my/members/:userId/approve", authenticate, async (req: Authenticat
   if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
   if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can approve requests." }); return; }
 
-  const { userId } = req.params;
+  const userId = String(req.params.userId);
   const target = await db.query.orgMembersTable.findFirst({
     where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)),
   });
@@ -1579,7 +1579,7 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
   if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
   if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can reject requests." }); return; }
 
-  const { userId } = req.params;
+  const userId = String(req.params.userId);
   const target = await db.query.orgMembersTable.findFirst({
     where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)),
   });
