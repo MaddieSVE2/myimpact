@@ -16,6 +16,7 @@ const READY_POSTCODE = "ZZ1 1ZZ";
 const READY_AUTHORITY = "Testford";
 const PENDING_POSTCODE = "ZZ2 2ZZ";
 const PENDING_AUTHORITY = "Pendington";
+const FAILED_AUTHORITY = "Failtown";
 
 // Must mirror MAIN_CATEGORIES on the server (all catalogue categories except
 // "Custom") so whichever categories the suggestion tiles land on have places.
@@ -63,11 +64,13 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
   // two back-to-back sign-ins with the same address can 429.
   const readyEmail = uniqueEmail("localcharities-ready");
   const pendingEmail = uniqueEmail("localcharities-pending");
+  const failedEmail = uniqueEmail("localcharities-failed");
 
   test.beforeAll(async ({ baseURL }) => {
     api = await TestApi.create({ baseURL: baseURL! });
     await api.resetUser(readyEmail);
     await api.resetUser(pendingEmail);
+    await api.resetUser(failedEmail);
     // Ready area: every main category has the same two seeded places.
     await api.seedLocalCharities({
       localAuthority: READY_AUTHORITY,
@@ -88,6 +91,7 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
   test.afterAll(async () => {
     await api.resetUser(readyEmail);
     await api.resetUser(pendingEmail);
+    await api.resetUser(failedEmail);
     await api.resetLocalCharities(READY_AUTHORITY);
     await api.resetLocalCharities(PENDING_AUTHORITY);
     await api.dispose();
@@ -130,7 +134,7 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
     await expect(page.getByText("Testford Community Circle").first()).toBeVisible();
     await expect(page.getByText(/^Suggested$/i).first()).toBeVisible();
 
-    // Registration number now lives in the expandable detail view (tap card).
+    // The registration number lives inside the place card's expandable detail.
     await page.getByTestId("place-card-Testford Verified Trust").first().click();
     await expect(page.getByText(/how to get involved/i).first()).toBeVisible();
     await expect(page.getByText(/Registered charity no\. 1234567/).first()).toBeVisible();
@@ -167,6 +171,58 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
       els.map((el) => el.getAttribute("href")),
     )) {
       expect(href).toContain(`postcode=${encodeURIComponent(PENDING_POSTCODE)}`);
+    }
+  });
+
+  test("failed area shows the error copy with fallback search cards", async ({ page }) => {
+    // Seeding a "failed" status row directly would make ensureAuthority
+    // re-queue real background AI generation, so intercept the premapped
+    // fetch and return a deterministic "failed" payload instead.
+    await page.route("**/api/local-charities/premapped*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "failed",
+          location: {
+            postcode: READY_POSTCODE,
+            localAuthority: FAILED_AUTHORITY,
+            country: "England",
+          },
+          categories: [],
+        }),
+      });
+    });
+
+    await signInWithMagicLink(page, api, failedEmail);
+    await setProfilePostcode(page, READY_POSTCODE);
+
+    await page.goto("/suggestions");
+
+    const toggles = page.getByRole("button", { name: /see what's near you/i });
+    await expect(toggles.first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(`Live listings near ${FAILED_AUTHORITY}`)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await toggles.first().click();
+
+    // The expanded panel shows the helpful error copy — never a blank panel.
+    await expect(page.getByText(`Near ${FAILED_AUTHORITY}`).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.getByText(/couldn't load local suggestions right now/i),
+    ).toBeVisible();
+
+    // GoVo fallback card inside the panel, plus the one in the live-search
+    // section at the top of the page.
+    const govoCards = page.locator('a[href*="govo.org/search"]');
+    await expect(govoCards).toHaveCount(2);
+    for (const href of await govoCards.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("href")),
+    )) {
+      expect(href).toContain(`postcode=${encodeURIComponent(READY_POSTCODE)}`);
     }
   });
 });
