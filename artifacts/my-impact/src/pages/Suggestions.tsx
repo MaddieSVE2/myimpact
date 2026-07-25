@@ -4,7 +4,7 @@ import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY } from "@/lib/wizard-cont
 import { PageMeta } from "@/components/PageMeta";
 import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat, Globe, PlusCircle, ThumbsUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat, Globe, PlusCircle, ThumbsUp, Flag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/i18n";
 
@@ -69,6 +69,260 @@ function VolunteerScotlandSearchCard() {
   );
 }
 
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+type SubmitResult = "applied" | "review" | null;
+
+/**
+ * Inline "report an issue" form for one charity card. Verified corrections
+ * are applied instantly for everyone in the area; everything else goes to
+ * the team for review.
+ */
+function ReportIssueForm({
+  place,
+  category,
+  profilePostcode,
+  onClose,
+}: {
+  place: LocalPlace;
+  category: string;
+  profilePostcode: string;
+  onClose: () => void;
+}) {
+  const [issueType, setIssueType] = useState("wrong_website");
+  const [correctWebsite, setCorrectWebsite] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<SubmitResult>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/local-charities/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          postcode: profilePostcode,
+          charityName: place.name,
+          category,
+          issueType,
+          correctWebsite: issueType === "wrong_website" ? correctWebsite.trim() : "",
+          note: note.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Failed to submit report");
+      setResult(data.result === "applied" ? "applied" : "review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <div
+        className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800"
+        data-testid={`report-result-${place.name}`}
+      >
+        {result === "applied"
+          ? "Fix verified and applied — thanks! It's now live for everyone in your area."
+          : "Thanks — we couldn't verify this automatically, so it's been sent to the team for review."}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-md border border-border bg-muted/30 p-3 space-y-2" data-testid={`report-form-${place.name}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Report an issue with {place.name}
+      </p>
+      <select
+        value={issueType}
+        onChange={e => setIssueType(e.target.value)}
+        className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground"
+        aria-label="Issue type"
+        data-testid={`report-issue-type-${place.name}`}
+      >
+        <option value="wrong_website">Wrong website</option>
+        <option value="wrong_description">Wrong description</option>
+        <option value="closed">Charity has closed</option>
+        <option value="other">Something else</option>
+      </select>
+      {issueType === "wrong_website" && (
+        <input
+          type="text"
+          value={correctWebsite}
+          onChange={e => setCorrectWebsite(e.target.value)}
+          placeholder="Correct website, e.g. https://example.org"
+          className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground placeholder:text-muted-foreground"
+          aria-label="Correct website URL"
+          maxLength={500}
+          data-testid={`report-website-${place.name}`}
+        />
+      )}
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="Anything else we should know? (optional)"
+        rows={2}
+        maxLength={2000}
+        className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground placeholder:text-muted-foreground resize-none"
+        aria-label="Additional detail"
+      />
+      {error && <p className="text-[11px] text-red-600" role="alert">{error}</p>}
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={submitting || (issueType === "wrong_website" && !correctWebsite.trim() && !note.trim())}
+          className="text-[11px] font-semibold px-3 py-1.5 rounded-md text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          data-testid={`report-submit-${place.name}`}
+        >
+          {submitting ? "Checking…" : "Submit report"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** "Suggest a charity near you" entry point shown under each local places list. */
+function SuggestCharityForm({
+  category,
+  profilePostcode,
+  areaLabel,
+}: {
+  category: string;
+  profilePostcode: string;
+  areaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [website, setWebsite] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<SubmitResult>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/local-charities/suggest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          postcode: profilePostcode,
+          name: name.trim(),
+          website: website.trim(),
+          category,
+          note: note.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Failed to submit suggestion");
+      setResult(data.result === "applied" ? "applied" : "review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800" data-testid="suggest-result">
+        {result === "applied"
+          ? "Verified and added — thanks! It's now live for everyone in your area."
+          : "Thanks — we couldn't verify this automatically, so it's been sent to the team for review."}
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+        data-testid={`suggest-charity-open-${category}`}
+      >
+        <PlusCircle className="w-3 h-3" /> Suggest a charity near you
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-md border border-border bg-white p-3 space-y-2" data-testid="suggest-form">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Suggest a charity near {areaLabel || "you"}
+      </p>
+      <input
+        type="text"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="Charity name"
+        maxLength={200}
+        required
+        className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground placeholder:text-muted-foreground"
+        aria-label="Charity name"
+        data-testid="suggest-name"
+      />
+      <input
+        type="text"
+        value={website}
+        onChange={e => setWebsite(e.target.value)}
+        placeholder="Website (optional), e.g. https://example.org"
+        maxLength={500}
+        className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground placeholder:text-muted-foreground"
+        aria-label="Charity website"
+        data-testid="suggest-website"
+      />
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="Why do you like them? (optional)"
+        rows={2}
+        maxLength={2000}
+        className="w-full text-[11px] border border-border rounded-md px-2 py-1.5 bg-white text-foreground placeholder:text-muted-foreground resize-none"
+        aria-label="Note"
+      />
+      {error && <p className="text-[11px] text-red-600" role="alert">{error}</p>}
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={submitting || !name.trim()}
+          className="text-[11px] font-semibold px-3 py-1.5 rounded-md text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          data-testid="suggest-submit"
+        >
+          {submitting ? "Checking…" : "Suggest charity"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 /**
  * One suggested local charity. Tapping the row expands a small detail view
  * that emphasises the website / how-to-join info and offers a shortcut to
@@ -80,14 +334,17 @@ function PlaceCard({
   localAuthority,
   profilePostcode,
   isScottish,
+  category,
 }: {
   place: LocalPlace;
   areaLabel: string;
   localAuthority: string;
   profilePostcode: string;
   isScottish: boolean;
+  category: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [, navigate] = useWouterLocation();
 
   // Community thumbs-up — optimistic local state, synced with the server response
@@ -290,7 +547,7 @@ function PlaceCard({
               </div>
 
               {/* Secondary links */}
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {place.website && (
                   <a
                     href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${areaLabel} volunteer charity`)}`}
@@ -311,7 +568,26 @@ function PlaceCard({
                     Check register <ExternalLink className="w-2.5 h-2.5" />
                   </a>
                 )}
+                {!reporting && (
+                  <button
+                    type="button"
+                    onClick={() => setReporting(true)}
+                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                    data-testid={`report-issue-${place.name}`}
+                  >
+                    <Flag className="w-2.5 h-2.5" /> Report an issue
+                  </button>
+                )}
               </div>
+
+              {reporting && (
+                <ReportIssueForm
+                  place={place}
+                  category={category}
+                  profilePostcode={profilePostcode}
+                  onClose={() => setReporting(false)}
+                />
+              )}
             </div>
           </motion.div>
         )}
@@ -661,8 +937,19 @@ export default function Suggestions() {
                               localAuthority={localAuthority}
                               profilePostcode={profilePostcode}
                               isScottish={isScottish}
+                              category={sug.category}
                             />
                           ))
+                        )}
+
+                        {profilePostcode && !premapped.loading && !premapped.error && premapped.data?.status === "ready" && (
+                          <div className="pt-1">
+                            <SuggestCharityForm
+                              category={sug.category}
+                              profilePostcode={profilePostcode}
+                              areaLabel={areaLabel}
+                            />
+                          </div>
                         )}
 
                         {places && places.length > 0 && !premapped.loading && !premapped.error && premapped.data?.status === "ready" && (

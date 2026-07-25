@@ -24,6 +24,7 @@ import { CATEGORIES } from "./impactData.js";
 import { verifyCharityName } from "./charity-commission";
 import { verifyOSCRCharityName } from "./oscr";
 import { detectVolunteerRecruitment } from "./volunteerRecruitment.js";
+import { getOverridesForAuthority, mergeOverrides } from "./charityOverrides.js";
 
 /** Main categories to pre-map; "Custom" holds user-defined activities only. */
 export const MAIN_CATEGORIES: string[] = CATEGORIES.filter((c) => c !== "Custom");
@@ -379,15 +380,25 @@ export async function ensureAuthority(
   return { status: area.status };
 }
 
-/** Fetch stored suggestions for an authority, keyed by category. */
+/**
+ * Fetch stored suggestions for an authority, keyed by category, with the
+ * community-corrections overrides layer merged on top. Merging at read time
+ * means verified fixes are live immediately and survive regeneration.
+ */
 export async function getStoredSuggestions(
   localAuthority: string,
 ): Promise<Array<{ category: string; places: StoredCharityPlace[] }>> {
-  const rows = await db
-    .select()
-    .from(localCharitySuggestionsTable)
-    .where(eq(localCharitySuggestionsTable.localAuthority, localAuthority));
-  return rows.map((r) => ({ category: r.category, places: r.places }));
+  const [rows, overrides] = await Promise.all([
+    db
+      .select()
+      .from(localCharitySuggestionsTable)
+      .where(eq(localCharitySuggestionsTable.localAuthority, localAuthority)),
+    getOverridesForAuthority(localAuthority),
+  ]);
+  return mergeOverrides(
+    rows.map((r) => ({ category: r.category, places: r.places })),
+    overrides,
+  );
 }
 
 /**

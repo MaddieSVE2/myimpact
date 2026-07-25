@@ -37,7 +37,7 @@ export interface StoredCharityPlace {
   howToJoin: string;
   /** Official website URL (https), when the AI is confident about it. */
   website?: string;
-  source: "ai";
+  source: "ai" | "community";
   verified: boolean;
   registrationNumber?: string;
   /**
@@ -86,6 +86,62 @@ export const localCharityVotesTable = pgTable(
   })
 );
 
+/**
+ * Community corrections layer. Overrides are merged over the stored
+ * suggestions at read time, so verified fixes are live immediately and
+ * survive regeneration of an area's suggestion list.
+ */
+export const localCharityOverridesTable = pgTable(
+  "local_charity_overrides",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    localAuthority: text("local_authority").notNull(),
+    /** Category the override applies to; null = every category (name-matched). */
+    category: text("category"),
+    /** Charity name to match (normalised comparison in code). Null for additions. */
+    targetName: text("target_name"),
+    /** "patch" (merge fields), "remove" (hide entry), or "add" (append place). */
+    kind: text("kind").notNull(),
+    /** Fields to merge for kind=patch, e.g. { "website": "https://..." }. */
+    patch: jsonb("patch").$type<Partial<StoredCharityPlace>>(),
+    /** Full place to append for kind=add. */
+    place: jsonb("place").$type<StoredCharityPlace>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    authorityIdx: index("local_charity_overrides_authority_idx").on(t.localAuthority),
+  })
+);
+
+/** Every user submission (correction or suggestion), applied or not. */
+export const localCharitySubmissionsTable = pgTable(
+  "local_charity_submissions",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id"),
+    /** "correction" or "suggestion". */
+    type: text("type").notNull(),
+    localAuthority: text("local_authority").notNull(),
+    country: text("country").notNull().default(""),
+    category: text("category"),
+    charityName: text("charity_name").notNull(),
+    /** For corrections: wrong_website | wrong_description | closed | other. */
+    issueType: text("issue_type"),
+    submittedWebsite: text("submitted_website"),
+    note: text("note"),
+    /** "applied" (auto-verified) or "needs_review" (emailed to admin). */
+    status: text("status").notNull(),
+    /** Short human explanation of the verification outcome. */
+    verificationDetail: text("verification_detail"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index("local_charity_submissions_user_idx").on(t.userId),
+  })
+);
+
 export type LocalCharityArea = typeof localCharityAreasTable.$inferSelect;
 export type LocalCharitySuggestion = typeof localCharitySuggestionsTable.$inferSelect;
 export type LocalCharityVote = typeof localCharityVotesTable.$inferSelect;
+export type LocalCharityOverride = typeof localCharityOverridesTable.$inferSelect;
+export type LocalCharitySubmission = typeof localCharitySubmissionsTable.$inferSelect;
