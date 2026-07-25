@@ -161,6 +161,23 @@ export async function atomicReserveTranscribeSeconds(
   return result.rows.length > 0;
 }
 
+/**
+ * Release previously reserved transcription seconds (e.g. when the
+ * transcription pipeline failed and the user got no value from the clip).
+ * Clamps at zero so a refund can never drive usage negative.
+ */
+export async function releaseTranscribeSeconds(userId: string, seconds: number): Promise<void> {
+  if (!(seconds > 0)) return;
+  const yearMonth = currentMonthKey();
+  const intSeconds = Math.max(1, Math.round(seconds));
+  await db.execute(sql`
+    UPDATE voice_usage
+      SET transcribe_seconds = GREATEST(0, transcribe_seconds - ${intSeconds}),
+          updated_at = NOW()
+      WHERE user_id = ${userId} AND year_month = ${yearMonth}
+  `);
+}
+
 export async function recordTtsUsage(userId: string, characters: number): Promise<void> {
   if (!(characters > 0)) return;
   const yearMonth = currentMonthKey();

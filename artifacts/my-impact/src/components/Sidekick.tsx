@@ -849,10 +849,17 @@ export function Sidekick() {
       });
       const data = await res.json().catch(() => ({} as { transcript?: string; error?: string; code?: string }));
       if (!res.ok) {
-        // The server returns a friendly cap-reached message with status 429
-        // and { code: "voice_cap_reached" }. Pass that straight through so
-        // the user sees the configured copy rather than a generic error.
-        const errMsg = (data as { error?: string }).error ?? `Transcription failed (${res.status})`;
+        // The server returns specific codes with friendly copy:
+        // 429 { code: "voice_cap_reached" }, 422 { code: "no_speech_detected" }
+        // (mic muted / wrong input), 502 { code: "transcription_failed" }.
+        // Pass the server message straight through so the user sees the
+        // specific copy rather than a generic error.
+        const code = (data as { code?: string }).code;
+        const errMsg =
+          (data as { error?: string }).error ??
+          (code === "no_speech_detected"
+            ? "We couldn't hear any speech — check your microphone and try again."
+            : `Transcription failed (${res.status})`);
         throw new Error(errMsg);
       }
       const transcript = ((data as { transcript?: string }).transcript ?? "").trim();

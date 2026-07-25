@@ -10,4 +10,5 @@ export {
   textToSpeechStream,
   speechToText,
   speechToTextStream,
+  detectAudioVolume,
 } from "./client";

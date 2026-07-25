@@ -257,17 +257,60 @@ export async function textToSpeechStream(
   })();
 }
 
-/** Speech-to-Text using gpt-4o-mini-transcribe. */
+/** Speech-to-Text using gpt-4o-mini-transcribe (or an explicit model). */
 export async function speechToText(
   audioBuffer: Buffer,
-  format: "wav" | "mp3" | "webm" = "wav"
+  format: "wav" | "mp3" | "webm" = "wav",
+  model: string = "gpt-4o-mini-transcribe"
 ): Promise<string> {
   const file = await toFile(audioBuffer, `audio.${format}`);
   const response = await openai.audio.transcriptions.create({
     file,
-    model: "gpt-4o-mini-transcribe",
+    model,
   });
   return response.text;
+}
+
+/**
+ * Measure the audio energy of a clip using ffmpeg's volumedetect filter.
+ * Returns the mean and max volume in dB, or null if detection failed
+ * (in which case the caller should assume the clip may contain speech).
+ */
+export async function detectAudioVolume(
+  audioBuffer: Buffer
+): Promise<{ meanVolumeDb: number; maxVolumeDb: number } | null> {
+  const inputPath = join(tmpdir(), `voldetect-${randomUUID()}`);
+  try {
+    await writeFile(inputPath, audioBuffer);
+    const ffmpegPath = resolveFfmpegPath();
+    return await new Promise((resolve) => {
+      const ffmpeg = spawn(ffmpegPath, [
+        "-i", inputPath,
+        "-af", "volumedetect",
+        "-f", "null",
+        "-",
+      ]);
+      let stderr = "";
+      ffmpeg.stderr.on("data", (d) => {
+        stderr = (stderr + d.toString()).slice(-4000);
+      });
+      ffmpeg.on("close", () => {
+        const mean = /mean_volume:\s*(-?[\d.]+)\s*dB/.exec(stderr);
+        const max = /max_volume:\s*(-?[\d.]+)\s*dB/.exec(stderr);
+        if (mean && max) {
+          resolve({
+            meanVolumeDb: parseFloat(mean[1]),
+            maxVolumeDb: parseFloat(max[1]),
+          });
+        } else {
+          resolve(null);
+        }
+      });
+      ffmpeg.on("error", () => resolve(null));
+    });
+  } finally {
+    await unlink(inputPath).catch(() => {});
+  }
 }
 
 /** Streaming Speech-to-Text. */

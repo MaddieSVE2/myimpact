@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import {
+  detectAudioVolume,
   ensureCompatibleFormat,
   speechToText,
   textToSpeech,
@@ -22,6 +23,7 @@ import {
   getUserVoiceUsage,
   probeAudioDurationSeconds,
   recordTtsUsage,
+  releaseTranscribeSeconds,
 } from "../lib/voiceUsage.js";
 import {
   aiPerIpLimiter,
@@ -641,6 +643,24 @@ router.post(
 
       const { buffer, format } = await ensureCompatibleFormat(audioBuffer);
 
+      // Silence detection: if the converted clip carries essentially no
+      // audio energy (wrong input device, muted mic), tell the user
+      // specifically and skip the transcription call + quota charge.
+      // A max volume below -50 dB means even the loudest sample is near
+      // digital silence. If volumedetect fails we assume speech is present.
+      const volume = await detectAudioVolume(buffer);
+      if (volume && volume.maxVolumeDb < -50) {
+        console.log(
+          `[voice-usage] transcribe-silent user=${userId} ` +
+            `max_db=${volume.maxVolumeDb.toFixed(1)} mean_db=${volume.meanVolumeDb.toFixed(1)}`
+        );
+        res.status(422).json({
+          error: "We couldn't hear any speech in that clip — check your microphone and try again.",
+          code: "no_speech_detected",
+        });
+        return;
+      }
+
       // Probe the *converted* WAV/MP3 buffer for an accurate duration. If
       // ffprobe is unavailable, fall back to a rough estimate based on the
       // original payload size at ~32kbps so we still record something.
@@ -665,15 +685,50 @@ router.post(
         return;
       }
 
-      const transcript = await speechToText(buffer, format);
+      // Primary transcription, with a one-shot whisper-1 fallback if the
+      // primary model returns an empty transcript for a non-silent clip.
+      let model = "gpt-4o-mini-transcribe";
+      let transcript = "";
+      try {
+        transcript = ((await speechToText(buffer, format, model)) ?? "").trim();
+      } catch (err) {
+        console.error(`[voice-usage] transcribe-error user=${userId} model=${model}:`, err);
+      }
+      if (!transcript) {
+        console.warn(
+          `[voice-usage] transcribe-empty user=${userId} model=${model} ` +
+            `seconds=${durationSeconds.toFixed(2)} retrying_with=whisper-1`
+        );
+        model = "whisper-1";
+        try {
+          transcript = ((await speechToText(buffer, format, model)) ?? "").trim();
+        } catch (err) {
+          console.error(`[voice-usage] transcribe-error user=${userId} model=${model}:`, err);
+        }
+      }
 
       const costPence = estimateTranscribeCostPence(durationSeconds);
       console.log(
         `[voice-usage] transcribe user=${userId} seconds=${durationSeconds.toFixed(2)} ` +
-          `est_cost_pence=${costPence.toFixed(4)} cap=${TRANSCRIBE_SECONDS_CAP}`
+          `est_cost_pence=${costPence.toFixed(4)} cap=${TRANSCRIBE_SECONDS_CAP} ` +
+          `model=${model} transcript_len=${transcript.length}`
       );
 
-      res.json({ transcript: (transcript ?? "").trim() });
+      if (!transcript) {
+        // Both models came back empty for a clip that wasn't silent — the
+        // pipeline is broken, so refund the quota we reserved and tell the
+        // client this was a transcription failure rather than user error.
+        await releaseTranscribeSeconds(userId, durationSeconds).catch((e) =>
+          console.error("[voice-usage] refund failed:", e)
+        );
+        res.status(502).json({
+          error: "We couldn't transcribe that clip. Please try again in a moment.",
+          code: "transcription_failed",
+        });
+        return;
+      }
+
+      res.json({ transcript });
     } catch (err) {
       console.error("Sidekick transcribe error:", err);
       res.status(500).json({ error: "Failed to transcribe audio" });
