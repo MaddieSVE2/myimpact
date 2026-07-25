@@ -231,7 +231,12 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     columns: { contactEmail: true },
   });
 
-  const shouldBeManager = registration?.contactEmail?.toLowerCase() === userEmail.toLowerCase();
+  // A joiner is auto-promoted to manager when their email matches either the
+  // approved registration's contact email (self-registered orgs) or the
+  // organisation's own contact email (admin-created orgs have no registration).
+  const shouldBeManager =
+    registration?.contactEmail?.toLowerCase() === userEmail.toLowerCase() ||
+    (org.contactEmail ?? "").toLowerCase() === userEmail.toLowerCase();
   const role = shouldBeManager ? "manager" : "member";
   // Managers are active immediately; regular members start as pending.
   const memberStatus = shouldBeManager ? "active" : "pending";
@@ -311,20 +316,31 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
             ),
           );
 
-        if (managerRows.length === 0) return;
-
-        const managerUserIds = managerRows.map(r => r.userId);
-        const [managerUsers, requesterUser] = await Promise.all([
-          db
+        let recipientEmails: string[];
+        if (managerRows.length > 0) {
+          const managerUserIds = managerRows.map(r => r.userId);
+          const managerUsers = await db
             .select({ id: usersTable.id, email: usersTable.email })
             .from(usersTable)
-            .where(inArray(usersTable.id, managerUserIds)),
-          db
-            .select({ displayName: usersTable.displayName })
-            .from(usersTable)
-            .where(eq(usersTable.id, userId))
-            .then(rows => rows[0] ?? null),
-        ]);
+            .where(inArray(usersTable.id, managerUserIds));
+          recipientEmails = managerUsers.map(m => m.email);
+        } else if (org.contactEmail) {
+          // No active managers yet (e.g. admin-created org whose contact
+          // hasn't claimed their manager seat) — fall back to the
+          // organisation's contact email so the request isn't lost.
+          recipientEmails = [org.contactEmail];
+        } else {
+          console.warn(
+            `[org.join] org ${org.id} has no active managers and no contact email — join-request notification not sent`,
+          );
+          return;
+        }
+
+        const requesterUser = await db
+          .select({ displayName: usersTable.displayName })
+          .from(usersTable)
+          .where(eq(usersTable.id, userId))
+          .then(rows => rows[0] ?? null);
 
         const requesterName = requesterUser?.displayName?.trim() || userEmail;
         const { client, fromEmail } = await getUncachableResendClient();
@@ -332,10 +348,10 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
         const reviewUrl = `${appUrl}/org/settings`;
 
         await Promise.all(
-          managerUsers.map(manager =>
+          recipientEmails.map(recipientEmail =>
             client.emails.send({
               from: fromEmail,
-              to: manager.email,
+              to: recipientEmail,
               subject: `New join request for ${escHtml(org.name)}`,
               html: `
                 <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">

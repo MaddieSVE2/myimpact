@@ -478,7 +478,34 @@ router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
     res.status(500).json({ error: "Failed to generate a unique invite code. Please try again." });
     return;
   }
-  res.json({ ok: true, org: serializeAdminOrg(created) });
+
+  let emailWarning: string | undefined;
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
+    await client.emails.send({
+      from: fromEmail,
+      to: contactEmail,
+      subject: `Your organisation is active on My Impact`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+          <h2 style="color:#213547;margin-top:0;">Great news, ${escHtmlAdmin(contactName)}!</h2>
+          <p style="color:#444;line-height:1.6;margin-top:0;"><strong>${escHtmlAdmin(name)}</strong> is now active on My Impact. Sign in with this email address (${escHtmlAdmin(contactEmail)}) and enter the invite code below to claim your manager seat and start inviting members.</p>
+          <div style="background:white;border-radius:8px;padding:24px;margin:24px 0;text-align:center;border:2px solid #E8633A;">
+            <p style="color:#555;font-size:13px;margin:0 0 8px;">Your organisation invite code</p>
+            <p style="color:#E8633A;font-size:32px;font-weight:bold;letter-spacing:4px;margin:0;">${escHtmlAdmin(inviteCode)}</p>
+          </div>
+          <p style="color:#444;line-height:1.6;">1. Go to <a href="${appUrl}/org" style="color:#E8633A;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}/org</a> and sign in with this email address.<br/>2. Enter the invite code to join as a manager.<br/>3. Share the code with members of <strong>${escHtmlAdmin(name)}</strong> so they can join too.</p>
+          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="${appUrl}" style="color:#aaa;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}</a></p>
+        </div>
+      `,
+    });
+  } catch (emailErr) {
+    console.error("[admin.orgs] Failed to send organisation-active email:", emailErr);
+    emailWarning = "Organisation created but the notification email could not be sent. Please contact the organisation contact manually.";
+  }
+
+  res.json({ ok: true, org: serializeAdminOrg(created), ...(emailWarning ? { warning: emailWarning } : {}) });
 });
 
 // Edit contact details and dashboard sections. The data-sharing mode is

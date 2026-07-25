@@ -197,9 +197,11 @@ router.post("/approve-org-registration", async (req, res) => {
 router.post("/create-org", async (req, res) => {
   const name = typeof req.body?.name === "string" ? req.body.name : "E2E Test Org";
   const type = typeof req.body?.type === "string" ? req.body.type : "charity";
+  const contactName = typeof req.body?.contactName === "string" ? req.body.contactName : null;
+  const contactEmail = typeof req.body?.contactEmail === "string" ? req.body.contactEmail.toLowerCase() : null;
   const orgId = `e2e-org-${randomUUID().slice(0, 8)}`;
   const inviteCode = `E2E-${randomBytes(3).toString("hex").toUpperCase()}`;
-  await db.insert(organisationsTable).values({ id: orgId, name, type, inviteCode });
+  await db.insert(organisationsTable).values({ id: orgId, name, type, inviteCode, contactName, contactEmail });
   res.json({ ok: true, orgId, inviteCode, orgName: name });
 });
 
