@@ -79,7 +79,7 @@ export function ReflectionPrompts({ text, context, onPick, className }: Reflecti
       <div className="flex items-center justify-between mb-1.5">
         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
           <Sparkles className="w-3 h-3" style={{ color: "#F06127" }} aria-hidden="true" />
-          {loading && questions.length === 0 ? "Thinking of prompts…" : "Need a nudge? Tap a question"}
+          {loading && questions.length === 0 ? "Coming up with questions to help you say more…" : "Stuck for words? Tap a question for ideas"}
         </span>
         {questions.length > 0 && (
           <button
