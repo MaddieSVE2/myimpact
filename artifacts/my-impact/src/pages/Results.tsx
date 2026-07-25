@@ -1208,10 +1208,39 @@ export default function Results() {
   const handleNativeShare = async () => {
     const hasNative = typeof navigator !== "undefined" && typeof navigator.share === "function";
     track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel: hasNative ? "native" : "menu" });
-    if (hasNative) {
-      await navigator.share({ title: "My Impact", text: shareText, url: shareUrl });
-    } else {
+    if (!hasNative) {
       setShareOpen(o => !o);
+      return;
+    }
+    // Share the branded report card image when the platform supports file
+    // sharing — far more useful than a bare link to the homepage.
+    try {
+      const logoSrc = await loadLogoDataUrl(RESULTS_LOGO_SRC);
+      const canvas = await paintResultsShareCard({
+        totalValue: result.totalValue,
+        impactValue: result.impactValue,
+        contributionValue: result.contributionValue,
+        donationsValue: result.donationsValue,
+        personalDevelopmentValue: result.personalDevelopmentValue,
+        logoSrc,
+      });
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
+      if (blob) {
+        const file = new File([blob], "my-impact-report.png", { type: "image/png" });
+        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "My Impact", text: `${shareText} ${shareUrl}` });
+          return;
+        }
+      }
+    } catch (err) {
+      // AbortError means the user dismissed the share sheet — stop quietly.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      // Otherwise fall through to the plain link share below.
+    }
+    try {
+      await navigator.share({ title: "My Impact", text: shareText, url: shareUrl });
+    } catch {
+      // user cancelled — nothing to do
     }
   };
 
