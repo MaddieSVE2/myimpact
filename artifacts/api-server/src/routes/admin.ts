@@ -392,6 +392,7 @@ function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCo
     contactEmail: org.contactEmail ?? null,
     inviteCode: org.inviteCode,
     dashboardSections: normalizeDashboardSections(org.dashboardSections),
+    fullTierEnabled: org.fullTierEnabled ?? false,
     revokedAt: org.revokedAt ? org.revokedAt.toISOString() : null,
     createdAt: org.createdAt.toISOString(),
     memberCount,
@@ -547,7 +548,7 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
   const { id } = req.params;
   const body = (req.body ?? {}) as Record<string, unknown>;
 
-  const updates: Partial<{ contactName: string; contactEmail: string; dashboardSections: unknown }> = {};
+  const updates: Partial<{ contactName: string; contactEmail: string; dashboardSections: unknown; fullTierEnabled: boolean }> = {};
   if ("contactName" in body) {
     if (typeof body.contactName !== "string" || !body.contactName.trim()) {
       res.status(400).json({ error: "contactName must be a non-empty string" });
@@ -570,6 +571,13 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
       return;
     }
     updates.dashboardSections = sections;
+  }
+  if ("fullTierEnabled" in body) {
+    if (typeof body.fullTierEnabled !== "boolean") {
+      res.status(400).json({ error: "fullTierEnabled must be a boolean" });
+      return;
+    }
+    updates.fullTierEnabled = body.fullTierEnabled;
   }
   if ("dataSharingMode" in body) {
     res.status(400).json({ error: "An organisation's data-sharing type cannot be changed after creation." });

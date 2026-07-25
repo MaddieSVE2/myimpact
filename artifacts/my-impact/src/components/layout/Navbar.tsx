@@ -19,7 +19,7 @@ import { useLocale } from "@/i18n";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean } | null }>({
+  return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean; fullTierEnabled?: boolean } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -241,8 +241,10 @@ export function Navbar() {
   const aiDisabledByOrg = inOrg && orgData?.org?.aiSidekickEnabled === false;
   const isDemoOrgManager = isOrgManager && orgData?.org?.id === "demo-org-0000000000000";
   const isUniversityManager = isOrgManager && orgData?.org?.type === "university";
-  // Managers of the demo org and university orgs have the dashboard/settings pages.
-  const isOrgDashboardManager = isDemoOrgManager || isUniversityManager;
+  const isFullTierManager = isOrgManager && orgData?.org?.fullTierEnabled === true;
+  // Managers of the demo org, university orgs and full-tier orgs have the
+  // dashboard/settings pages.
+  const isOrgDashboardManager = isDemoOrgManager || isUniversityManager || isFullTierManager;
   const orgHomeHref = isOrgDashboardManager ? "/org/dashboard" : "/org";
 
   const isOrgMemberOnly = inOrg && !isOrgManager;

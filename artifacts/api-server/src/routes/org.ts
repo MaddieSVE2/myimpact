@@ -460,6 +460,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       allowedDomain: org.allowedDomain ?? null,
       dataSharingMode: org.dataSharingMode ?? "explicit_submission",
       dashboardSections: normalizeDashboardSections(org.dashboardSections),
+      fullTierEnabled: org.fullTierEnabled ?? false,
       revoked: !!org.revokedAt,
       branding: {
         logoUrl,

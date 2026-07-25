@@ -36,6 +36,8 @@ export interface MyOrgResponse {
     sroiCostBreakdown?: SroiCostBreakdown;
     summaryYearStart?: string;
     dashboardSections?: Record<string, boolean>;
+    fullTierEnabled?: boolean;
+    membershipStatus?: string;
     branding?: OrgBranding;
   } | null;
 }

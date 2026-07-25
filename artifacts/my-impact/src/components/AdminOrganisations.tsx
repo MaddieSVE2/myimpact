@@ -22,6 +22,7 @@ interface AdminOrg {
   contactEmail: string | null;
   inviteCode: string;
   dashboardSections: Record<string, boolean>;
+  fullTierEnabled: boolean;
   revokedAt: string | null;
   createdAt: string;
   memberCount: number;
@@ -109,6 +110,25 @@ export default function AdminOrganisations() {
       setOrgs(prev => prev.map(o => (o.id === org.id ? data.org : o)));
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to update sections");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function toggleFullTier(org: AdminOrg) {
+    setBusy(org.id + "-fulltier");
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fullTierEnabled: !org.fullTierEnabled }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to update tier");
+      setOrgs(prev => prev.map(o => (o.id === org.id ? data.org : o)));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update tier");
     } finally {
       setBusy(null);
     }
@@ -445,6 +465,26 @@ export default function AdminOrganisations() {
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Organisation tier</span>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        type="button"
+                        disabled={busy === org.id + "-fulltier" || !!org.revokedAt}
+                        onClick={() => toggleFullTier(org)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${org.fullTierEnabled ? "bg-green-100 text-green-800 border-green-200" : "bg-secondary text-muted-foreground border-border"}`}
+                        data-testid={`toggle-full-tier-${org.id}`}
+                      >
+                        {busy === org.id + "-fulltier" ? "Saving…" : org.fullTierEnabled ? "Full tier: ON" : "Full tier: OFF"}
+                      </button>
+                      <p className="text-xs text-muted-foreground">
+                        {org.fullTierEnabled
+                          ? "Managers see the full Organisation-tier dashboard (analytics, challenges, pulse, export, settings)."
+                          : "Managers see the lite portal with the upgrade prompt."}
+                      </p>
+                    </div>
                   </div>
 
                   <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Dashboard sections</span>

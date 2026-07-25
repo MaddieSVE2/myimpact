@@ -17,3 +17,4 @@
 - [Vite manualChunks white screen](vite-manualchunks-whitescreen.md) — never split React into a manual vendor chunk in my-impact; it caused a prod-only chunk-init cycle and a white screen at myimpact.uk.
 - [Stale composite dist](stale-composite-dist.md) — my-impact tsc reads api-client-react dist .d.ts via project refs; phantom type errors mean rebuild with `tsc -b lib/api-client-react` first.
 - [Interactive AI latency](interactive-ai-latency.md) — gpt-5-mini is too slow for interactive UI suggestions even at low effort; use gpt-4.1-mini with an AbortSignal.timeout and curated fallbacks.
+- [Org dashboard tiering](org-dashboard-tiering.md) — full Organisation-tier dashboard is gated by demo org, type=university, or the admin-toggled full_tier_enabled flag; all other orgs get the lite portal with upsell.

@@ -30,6 +30,7 @@ interface OrgInfo {
   type: string;
   role: string;
   membershipStatus?: string;
+  fullTierEnabled?: boolean;
   branding?: OrgBranding;
 }
 
@@ -1896,12 +1897,12 @@ export default function OrgPortal() {
   }, [orgData, isPendingMember]);
 
   // Demo org managers always land on the new mock-data dashboard, and
-  // university managers go straight to their live dashboard.
+  // university / full-tier org managers go straight to their live dashboard.
   useEffect(() => {
-    if (inOrg && isManager && (orgData?.org?.id === DEMO_ORG_ID || orgData?.org?.type === "university")) {
+    if (inOrg && isManager && (orgData?.org?.id === DEMO_ORG_ID || orgData?.org?.type === "university" || orgData?.org?.fullTierEnabled)) {
       setLocation("/org/dashboard", { replace: true });
     }
-  }, [inOrg, isManager, orgData?.org?.id, orgData?.org?.type, setLocation]);
+  }, [inOrg, isManager, orgData?.org?.id, orgData?.org?.type, orgData?.org?.fullTierEnabled, setLocation]);
 
   const [preset, setPreset] = useState<PresetKey>("all");
   const [customFrom, setCustomFrom] = useState("");

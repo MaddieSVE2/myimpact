@@ -63,6 +63,10 @@ export const organisationsTable = pgTable("organisations", {
   // all sections visible. Shape: { locationMap, categories, sroi,
   // valuePerMember, topActivities, pulseSummary } — each boolean.
   dashboardSections: jsonb("dashboard_sections"),
+  // Super-admin toggle: when true, managers of this org get the full
+  // Organisation-tier dashboard (/org/dashboard and its sub-pages) instead of
+  // the lite portal view with the upsell card. Managed from the admin panel.
+  fullTierEnabled: boolean("full_tier_enabled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
