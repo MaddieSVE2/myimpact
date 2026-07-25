@@ -25,6 +25,7 @@ import {
   deleteAllAttachmentsForUser,
 } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
+import { repairInflatedDonations } from "../lib/donationRepair.js";
 
 const router: IRouter = Router();
 
@@ -552,6 +553,76 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     source: updated.source,
     habitTemplateId: updated.habitTemplateId ?? null,
     tags: updated.tags ?? [],
+  });
+});
+
+// One-tap repair for records saved before the donation-inflation fix: a
+// custom activity describing a money donation (e.g. "donate £72 a year")
+// could be matched to a weekly/hourly proxy and massively overvalued. This
+// rewrites those breakdowns to pound-for-pound at the annualised amount the
+// user described and recomputes all derived totals on the stored record.
+router.post("/:id/fix-donations", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const recordId = parseInt(req.params.id as string, 10);
+  if (isNaN(recordId)) {
+    res.status(400).json({ error: "Invalid record ID" });
+    return;
+  }
+
+  const [record] = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+    .limit(1);
+
+  if (!record) {
+    res.status(404).json({ error: "Record not found" });
+    return;
+  }
+
+  const result = record.resultJson as Record<string, unknown> | null;
+  if (!result || typeof result !== "object") {
+    res.status(400).json({ error: "Record has no stored result to fix" });
+    return;
+  }
+
+  const repaired = repairInflatedDonations(result);
+  if (!repaired) {
+    res.json({ fixed: false });
+    return;
+  }
+
+  const [updated] = await db
+    .update(impactRecordsTable)
+    .set({
+      resultJson: repaired,
+      totalValue: String(repaired.totalValue),
+      impactValue: String(repaired.impactValue),
+      contributionValue: String(repaired.contributionValue),
+      donationsValue: String(repaired.donationsValue),
+      personalDevelopmentValue: String(repaired.personalDevelopmentValue),
+      totalHours: repaired.totalHours as number,
+    })
+    .where(and(eq(impactRecordsTable.id, recordId), eq(impactRecordsTable.userId, userId)))
+    .returning();
+
+  await recordAuditEvent({
+    userId,
+    userEmail: req.user!.email,
+    action: "impact_record_fix_donations",
+    req,
+    metadata: {
+      recordId: String(recordId),
+      previousTotalValue: result.totalValue,
+      newTotalValue: repaired.totalValue,
+    },
+  });
+
+  res.json({
+    fixed: true,
+    id: String(updated.id),
+    totalValue: Number(updated.totalValue),
+    impactResult: updated.resultJson,
   });
 });
 

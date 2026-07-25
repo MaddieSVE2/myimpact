@@ -58,31 +58,10 @@ const FUNDRAISING_RE = /fund[\s-]?rais/i;
 // Monetary donation detection: money donations must be valued 1:1 with the
 // amount given (annualised from the stated period), never matched to an
 // hourly/weekly proxy — otherwise "£72 a year" can get inflated into a
-// weekly habit (£72 × 48 weeks). See parseDonation below.
-const MONEY_RE = /£\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:pounds?|quid|gbp)\b/i;
-const DONATION_CUE_RE = /\bdonat\w*|\bgiv(?:e|es|ing)\b|\bgave\b|\bsponsor\w*|\btithe\w*|\bto\s+(?:\w+\s+){0,3}?(?:charit\w*|church|mosque|temple|good\s+cause|cause\b)/i;
-
-interface ParsedDonation {
-  annualAmount: number;
-}
-
-export function parseDonation(name: string): ParsedDonation | null {
-  if (FUNDRAISING_RE.test(name)) return null;
-  if (!DONATION_CUE_RE.test(name)) return null;
-  const money = name.match(MONEY_RE);
-  if (!money) return null;
-  const amount = parseFloat((money[1] ?? money[2] ?? "").replace(/,/g, ""));
-  if (!isFinite(amount) || amount <= 0) return null;
-
-  let multiplier = 1; // default: treat the stated amount as the annual total
-  if (/\b(?:per|a|each|every)\s+week\b|\bweekly\b/i.test(name)) multiplier = 52;
-  else if (/\bfortnight\w*\b/i.test(name)) multiplier = 26;
-  else if (/\b(?:per|a|each|every)\s+month\b|\bmonthly\b/i.test(name)) multiplier = 12;
-  else if (/\b(?:per|a|each|every)\s+(?:year|annum)\b|\bannually\b|\byearly\b|\bp\.?a\.?\b/i.test(name)) multiplier = 1;
-  else if (/\b(?:per|a|each|every)\s+day\b|\bdaily\b/i.test(name)) multiplier = 365;
-
-  return { annualAmount: Math.round(amount * multiplier * 100) / 100 };
-}
+// weekly habit (£72 × 48 weeks). Detection lives in lib/donationRepair so
+// the History "fix this entry" repair path shares the exact same logic.
+export { parseDonation } from "../lib/donationRepair";
+import { parseDonation } from "../lib/donationRepair";
 
 type ChatMessage = { role: "system" | "user"; content: string };
 

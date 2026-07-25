@@ -12,7 +12,7 @@ import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
   HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX, Info,
 } from "lucide-react";
-import { calcResultBreakdown } from "@/lib/formula";
+import { calcResultBreakdown, detectInflatedDonations, repairLocalInflatedDonations } from "@/lib/formula";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
@@ -297,6 +297,7 @@ export default function History() {
   const [editDate, setEditDate] = useState("");
   const [originalEditDate, setOriginalEditDate] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [fixingDonationsId, setFixingDonationsId] = useState<string | null>(null);
   const todayIso = new Date().toISOString().slice(0, 10);
   const [showResetModal, setShowResetModal] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -364,6 +365,47 @@ export default function History() {
     // so editing an entry's date (which can move it into a new calendar year)
     // immediately surfaces that year as an option.
     queryClient.invalidateQueries({ queryKey: ["impact-years", user?.id ?? ""] });
+  };
+
+  // One-tap repair for entries saved before the donation-inflation fix
+  // (e.g. "£72 a year" valued as a weekly habit). Server records go through
+  // the API so dashboard totals update everywhere; signed-out records are
+  // repaired directly in localStorage.
+  const handleFixDonations = async (record: AnyRecord) => {
+    setFixingDonationsId(String(record.id));
+    try {
+      if (isAuthenticated) {
+        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const res = await fetch(`${BASE}/api/impact/${record.id}/fix-donations`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Server error");
+        invalidateHistory();
+      } else {
+        const lr = record as LocalRecord;
+        const repaired = repairLocalInflatedDonations(lr.impactResult as Parameters<typeof repairLocalInflatedDonations>[0]);
+        if (repaired) {
+          const updated = localRecords.map(r =>
+            r.id === lr.id ? { ...r, impactResult: repaired as unknown as ImpactResult } : r
+          );
+          saveLocalHistory(updated);
+          setLocalRecords(updated);
+        }
+      }
+      toast({
+        title: "Entry corrected",
+        description: "Your donation is now counted pound for pound at its true value.",
+      });
+    } catch {
+      toast({
+        title: "Couldn't fix this entry",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFixingDonationsId(null);
+    }
   };
 
   const handleDownloadPdf = async (recordId: string, recordName: string) => {
@@ -1225,6 +1267,32 @@ export default function History() {
                         transition={{ duration: 0.22, ease: "easeInOut" }}
                         style={{ overflow: "hidden" }}
                       >
+                        {(() => {
+                          const overstatement = detectInflatedDonations(record.impactResult);
+                          if (overstatement <= 0) return null;
+                          const isFixing = fixingDonationsId === String(record.id);
+                          return (
+                            <div className="flex items-start gap-2.5 px-4 py-3 bg-amber-500/10 border-t border-amber-500/30">
+                              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" aria-hidden="true" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-foreground">
+                                  This entry overstates a donation by {formatCurrency(overstatement)}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                                  A money donation was valued using a time-based rate instead of pound for pound. Fix it to show the true amount you gave.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleFixDonations(record)}
+                                disabled={isFixing}
+                                className="shrink-0 px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 transition-colors disabled:opacity-60"
+                                data-testid={`button-fix-donations-${record.id}`}
+                              >
+                                {isFixing ? "Fixing…" : "Fix this entry"}
+                              </button>
+                            </div>
+                          );
+                        })()}
                         <RecordDetail
                           result={record.impactResult}
                           recordId={isAuthenticated ? (parseInt(String(record.id), 10) || undefined) : undefined}
