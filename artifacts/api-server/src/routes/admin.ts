@@ -382,7 +382,7 @@ router.get("/ai-usage", authenticate, async (req: AuthenticatedRequest, res) => 
 
 // ── Super-admin organisation management ──────────────────────────────────────
 
-function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCount = 0, totalMembershipCount = memberCount) {
+function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCount = 0, totalMembershipCount = memberCount, managerCount = 0) {
   return {
     id: org.id,
     name: org.name,
@@ -396,7 +396,52 @@ function serializeAdminOrg(org: typeof organisationsTable.$inferSelect, memberCo
     createdAt: org.createdAt.toISOString(),
     memberCount,
     totalMembershipCount,
+    managerCount,
+    hasManager: managerCount > 0,
   };
+}
+
+async function fetchOrgMembershipStats(orgId: string) {
+  const [row] = await db
+    .select({
+      count: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.status} = 'active')::int`,
+      totalCount: sql<number>`count(*)::int`,
+      managerCount: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.status} = 'active' AND ${orgMembersTable.role} = 'manager')::int`,
+    })
+    .from(orgMembersTable)
+    .where(eq(orgMembersTable.orgId, orgId));
+  return {
+    memberCount: row?.count ?? 0,
+    totalMembershipCount: row?.totalCount ?? 0,
+    managerCount: row?.managerCount ?? 0,
+  };
+}
+
+async function serializeAdminOrgWithStats(org: typeof organisationsTable.$inferSelect) {
+  const stats = await fetchOrgMembershipStats(org.id);
+  return serializeAdminOrg(org, stats.memberCount, stats.totalMembershipCount, stats.managerCount);
+}
+
+async function sendActivationEmail(opts: { name: string; contactName: string; contactEmail: string; inviteCode: string }) {
+  const { client, fromEmail } = await getUncachableResendClient();
+  const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
+  await client.emails.send({
+    from: fromEmail,
+    to: opts.contactEmail,
+    subject: `Your organisation is active on My Impact`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+        <h2 style="color:#213547;margin-top:0;">Great news, ${escHtmlAdmin(opts.contactName)}!</h2>
+        <p style="color:#444;line-height:1.6;margin-top:0;"><strong>${escHtmlAdmin(opts.name)}</strong> is now active on My Impact. Sign in with this email address (${escHtmlAdmin(opts.contactEmail)}) and enter the invite code below to claim your manager seat and start inviting members.</p>
+        <div style="background:white;border-radius:8px;padding:24px;margin:24px 0;text-align:center;border:2px solid #E8633A;">
+          <p style="color:#555;font-size:13px;margin:0 0 8px;">Your organisation invite code</p>
+          <p style="color:#E8633A;font-size:32px;font-weight:bold;letter-spacing:4px;margin:0;">${escHtmlAdmin(opts.inviteCode)}</p>
+        </div>
+        <p style="color:#444;line-height:1.6;">1. Go to <a href="${appUrl}/org" style="color:#E8633A;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}/org</a> and sign in with this email address.<br/>2. Enter the invite code to join as a manager.<br/>3. Share the code with members of <strong>${escHtmlAdmin(opts.name)}</strong> so they can join too.</p>
+        <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="${appUrl}" style="color:#aaa;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}</a></p>
+      </div>
+    `,
+  });
 }
 
 router.get("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -411,6 +456,7 @@ router.get("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
           orgId: orgMembersTable.orgId,
           count: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.status} = 'active')::int`,
           totalCount: sql<number>`count(*)::int`,
+          managerCount: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.status} = 'active' AND ${orgMembersTable.role} = 'manager')::int`,
         })
         .from(orgMembersTable)
         .where(inArray(orgMembersTable.orgId, orgs.map(o => o.id)))
@@ -418,7 +464,8 @@ router.get("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
     : [];
   const countMap = new Map(counts.map(c => [c.orgId, c.count]));
   const totalCountMap = new Map(counts.map(c => [c.orgId, c.totalCount]));
-  res.json({ orgs: orgs.map(o => serializeAdminOrg(o, countMap.get(o.id) ?? 0, totalCountMap.get(o.id) ?? 0)) });
+  const managerCountMap = new Map(counts.map(c => [c.orgId, c.managerCount]));
+  res.json({ orgs: orgs.map(o => serializeAdminOrg(o, countMap.get(o.id) ?? 0, totalCountMap.get(o.id) ?? 0, managerCountMap.get(o.id) ?? 0)) });
 });
 
 router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -481,25 +528,7 @@ router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
 
   let emailWarning: string | undefined;
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
-    const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
-    await client.emails.send({
-      from: fromEmail,
-      to: contactEmail,
-      subject: `Your organisation is active on My Impact`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
-          <h2 style="color:#213547;margin-top:0;">Great news, ${escHtmlAdmin(contactName)}!</h2>
-          <p style="color:#444;line-height:1.6;margin-top:0;"><strong>${escHtmlAdmin(name)}</strong> is now active on My Impact. Sign in with this email address (${escHtmlAdmin(contactEmail)}) and enter the invite code below to claim your manager seat and start inviting members.</p>
-          <div style="background:white;border-radius:8px;padding:24px;margin:24px 0;text-align:center;border:2px solid #E8633A;">
-            <p style="color:#555;font-size:13px;margin:0 0 8px;">Your organisation invite code</p>
-            <p style="color:#E8633A;font-size:32px;font-weight:bold;letter-spacing:4px;margin:0;">${escHtmlAdmin(inviteCode)}</p>
-          </div>
-          <p style="color:#444;line-height:1.6;">1. Go to <a href="${appUrl}/org" style="color:#E8633A;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}/org</a> and sign in with this email address.<br/>2. Enter the invite code to join as a manager.<br/>3. Share the code with members of <strong>${escHtmlAdmin(name)}</strong> so they can join too.</p>
-          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="${appUrl}" style="color:#aaa;">${escHtmlAdmin(appUrl.replace(/^https?:\/\//, ""))}</a></p>
-        </div>
-      `,
-    });
+    await sendActivationEmail({ name, contactName, contactEmail, inviteCode: created.inviteCode });
   } catch (emailErr) {
     console.error("[admin.orgs] Failed to send organisation-active email:", emailErr);
     emailWarning = "Organisation created but the notification email could not be sent. Please contact the organisation contact manually.";
@@ -556,7 +585,7 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
     res.status(404).json({ error: "Organisation not found" });
     return;
   }
-  res.json({ ok: true, org: serializeAdminOrg(updated) });
+  res.json({ ok: true, org: await serializeAdminOrgWithStats(updated) });
 });
 
 router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -612,7 +641,57 @@ router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, 
     emailWarning = "Organisation revoked, but no contact email is on file — please notify them manually.";
   }
 
-  res.json({ ok: true, org: updated ? serializeAdminOrg(updated) : null, ...(emailWarning ? { warning: emailWarning } : {}) });
+  res.json({ ok: true, org: updated ? await serializeAdminOrgWithStats(updated) : null, ...(emailWarning ? { warning: emailWarning } : {}) });
+});
+
+// Re-send the "your organisation is active" activation email — used to chase
+// up organisations whose contact hasn't yet claimed their manager seat.
+router.post("/orgs/:id/resend-activation", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const { id } = req.params;
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, id) });
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  if (org.revokedAt) {
+    res.status(400).json({ error: "This organisation has been revoked, so the activation email can't be re-sent." });
+    return;
+  }
+  if (!org.contactEmail) {
+    res.status(400).json({ error: "No contact email is on file for this organisation." });
+    return;
+  }
+  const [managers] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.orgId, id),
+      eq(orgMembersTable.status, "active"),
+      eq(orgMembersTable.role, "manager"),
+    ));
+  if ((managers?.count ?? 0) > 0) {
+    res.status(400).json({ error: "This organisation already has an active manager, so the activation email doesn't need re-sending." });
+    return;
+  }
+
+  try {
+    await sendActivationEmail({
+      name: org.name,
+      contactName: org.contactName ?? "there",
+      contactEmail: org.contactEmail,
+      inviteCode: org.inviteCode,
+    });
+  } catch (emailErr) {
+    console.error("[admin.orgs] Failed to re-send organisation-active email:", emailErr);
+    res.status(502).json({ error: "The activation email could not be sent. Please try again or contact the organisation manually." });
+    return;
+  }
+
+  res.json({ ok: true, sentTo: org.contactEmail });
 });
 
 export default router;

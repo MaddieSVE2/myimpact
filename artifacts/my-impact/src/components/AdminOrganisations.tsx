@@ -26,6 +26,8 @@ interface AdminOrg {
   createdAt: string;
   memberCount: number;
   totalMembershipCount: number;
+  managerCount: number;
+  hasManager: boolean;
 }
 
 function ModeBadge({ mode }: { mode: AdminOrg["dataSharingMode"] }) {
@@ -204,6 +206,23 @@ export default function AdminOrganisations() {
       alert(`Import complete: ${data.imported.migratedActivities} activity record(s) restored and marked as migrated, and ${data.imported.settingsApplied.length} setting(s) applied. Members re-join through the normal join flow.`);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleResendActivation(org: AdminOrg) {
+    setBusy(org.id + "-resend");
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/resend-activation`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to re-send the activation email");
+      alert(`Activation email re-sent to ${data.sentTo}.`);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to re-send the activation email");
     } finally {
       setBusy(null);
     }
@@ -389,6 +408,9 @@ export default function AdminOrganisations() {
                   <span className="text-xs text-muted-foreground capitalize">{org.type} · {org.memberCount} member{org.memberCount !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
+                  {!org.revokedAt && !org.hasManager && (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold border bg-amber-100 text-amber-800 border-amber-200" data-testid={`badge-no-manager-${org.id}`}>No manager yet</span>
+                  )}
                   {org.revokedAt && (
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold border bg-red-100 text-red-700 border-red-200">Revoked</span>
                   )}
@@ -465,6 +487,17 @@ export default function AdminOrganisations() {
                         {busy === org.id + "-import" ? "Validating…" : "Import data…"}
                       </button>
                     )}
+                    {!org.revokedAt && !org.hasManager && (
+                      <button
+                        type="button"
+                        onClick={() => handleResendActivation(org)}
+                        disabled={busy === org.id + "-resend" || !org.contactEmail}
+                        className="px-4 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium transition-colors border border-amber-200 disabled:opacity-50"
+                        data-testid={`button-resend-activation-${org.id}`}
+                      >
+                        {busy === org.id + "-resend" ? "Sending…" : "Re-send activation email"}
+                      </button>
+                    )}
                     {!org.revokedAt && (
                       <button
                         type="button"
@@ -479,6 +512,13 @@ export default function AdminOrganisations() {
                   </div>
                   {org.revokedAt && (
                     <p className="text-xs text-muted-foreground mt-2">Export remains available during the 180-day retention window for data requests.</p>
+                  )}
+                  {!org.revokedAt && !org.hasManager && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {org.contactEmail
+                        ? `No one has claimed the manager seat yet. Re-sending emails the invite code to ${org.contactEmail}.`
+                        : "No one has claimed the manager seat yet, and no contact email is on file — add one via the contact details to re-send the activation email."}
+                    </p>
                   )}
                   {!org.revokedAt && org.totalMembershipCount === 0 && (
                     <p className="text-xs text-muted-foreground mt-2">Import restores an exported organisation's settings and historical activity data into this fresh organisation, marked as migrated. Members re-join through the normal join flow.</p>
