@@ -17,6 +17,7 @@
     "digest:scheduled": "tsx ./src/scripts/send-monthly-digest.ts --skip-recently-sent --notify",
     "onboarding:emails": "tsx ./src/scripts/onboarding-emails.ts",
     "calendar:sync": "tsx ./src/scripts/sync-calendars.ts",
+    "seed:local-charities": "tsx ./src/scripts/seed-local-charities.ts",
     "calendar:scheduled": "tsx ./src/scripts/sync-calendars.ts --prune"
   },
   "dependencies": {
