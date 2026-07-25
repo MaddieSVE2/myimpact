@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { PageMeta } from "@/components/PageMeta";
@@ -12,34 +12,15 @@ interface LocalPlace {
   name: string;
   description: string;
   howToJoin: string;
-  website: string | null;
-  source?: "register" | "ai";
+  source?: "ai";
   verified?: boolean;
   registrationNumber?: string;
-  registerUrl?: string;
 }
 
-interface TileLocalState {
-  open: boolean;
-  loading: boolean;
-  error: boolean;
-  places: LocalPlace[];
-}
-
-interface NearbyOpportunity {
-  name: string;
-  activityType: string;
-  distanceMiles: number;
-  description: string;
-  website: string | null;
-  registerUrl: string;
-  registrationNumber: string;
-  source: "register";
-}
-
-interface NearbyResponse {
-  nearby: NearbyOpportunity[];
-  location: { postcode: string; adminDistrict: string; country: string };
+interface PremappedResponse {
+  status: "ready" | "pending" | "failed";
+  location: { postcode: string; localAuthority: string; country: string };
+  categories: Array<{ category: string; places: LocalPlace[] }>;
 }
 
 function GoVoSearchCard({ postcode }: { postcode: string }) {
@@ -78,16 +59,6 @@ function VolunteerScotlandSearchCard() {
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
     </a>
   );
-}
-
-function formatActivityType(activity: string): string {
-  return activity.replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function formatDistance(miles: number): string {
-  if (miles < 1) return "< 1 mi";
-  if (miles < 10) return `${miles.toFixed(1)} mi`;
-  return `${Math.round(miles)} mi`;
 }
 
 const SCOTTISH_TERMS = new Set([
@@ -136,24 +107,25 @@ export default function Suggestions() {
   const { data: profileData } = useGetProfile();
   const t = useT();
 
-  // Per-tile local state: activityId → TileLocalState
-  const [tileLocal, setTileLocal] = useState<Record<string, TileLocalState>>({});
+  // Which tiles have their local-places panel open
+  const [openTiles, setOpenTiles] = useState<Record<string, boolean>>({});
 
-  // "Near you this week" state
-  const [nearbyState, setNearbyState] = useState<{
+  // Pre-mapped local charity results, loaded once per postcode
+  const [premapped, setPremapped] = useState<{
     loading: boolean;
     error: boolean;
-    data: NearbyResponse | null;
+    data: PremappedResponse | null;
   }>({ loading: false, error: false, data: null });
 
   const profilePostcode = profileData?.profile?.postcode?.trim() ?? "";
-  const profileInterests = profileData?.profile?.interests ?? [];
-  const interestsForNearby = profileInterests.length > 0 ? profileInterests : interests;
 
-  // Derive whether the user's location is Scottish (no CC register) using the
-  // same term list the API uses so register links match server-side routing.
+  // Derive whether the user's location is Scottish (no CC register). Prefer
+  // the authoritative country from the pre-mapped lookup, fall back to the
+  // wizard's resolved council name.
   const adminDistrict = (locationMeta?.adminDistrict || "").toLowerCase();
-  const isScottish = Array.from(SCOTTISH_TERMS).some(t => adminDistrict.includes(t));
+  const isScottish = premapped.data
+    ? premapped.data.location.country.toLowerCase() === "scotland"
+    : Array.from(SCOTTISH_TERMS).some(term => adminDistrict.includes(term));
 
   const interestLabels = interests
     .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
@@ -170,82 +142,49 @@ export default function Suggestions() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch "Near you this week" when we have a postcode in the profile
+  // Load pre-mapped local charity results as soon as we know the postcode.
+  // Results are generated ahead of time server-side, so this is instant when
+  // the user's local authority has been seen before.
   useEffect(() => {
     if (!profilePostcode) {
-      setNearbyState({ loading: false, error: false, data: null });
+      setPremapped({ loading: false, error: false, data: null });
       return;
     }
     let cancelled = false;
-    setNearbyState({ loading: true, error: false, data: null });
+    setPremapped({ loading: true, error: false, data: null });
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-    fetch(`${base}/api/local-charities/nearby`, {
-      method: "POST",
+    fetch(`${base}/api/local-charities/premapped?postcode=${encodeURIComponent(profilePostcode)}`, {
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postcode: profilePostcode, interests: interestsForNearby }),
     })
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error("nearby failed"))))
-      .then((data: NearbyResponse) => {
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error("premapped failed"))))
+      .then((data: PremappedResponse) => {
         if (cancelled) return;
-        setNearbyState({ loading: false, error: false, data });
+        setPremapped({ loading: false, error: false, data });
       })
       .catch(() => {
         if (cancelled) return;
-        setNearbyState({ loading: false, error: true, data: null });
+        setPremapped({ loading: false, error: true, data: null });
       });
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profilePostcode, interestsForNearby.join(",")]);
+  }, [profilePostcode]);
 
-  const handleToggleLocal = useCallback(async (activityId: string, activityName: string) => {
-    // If already open, collapse
-    if (tileLocal[activityId]?.open) {
-      setTileLocal(prev => ({ ...prev, [activityId]: { ...prev[activityId], open: false } }));
-      return;
+  const placesByCategory = useMemo(() => {
+    const map = new Map<string, LocalPlace[]>();
+    for (const entry of premapped.data?.categories ?? []) {
+      map.set(entry.category, entry.places);
     }
+    return map;
+  }, [premapped.data]);
 
-    // If already fetched, just open
-    if (tileLocal[activityId]?.places.length) {
-      setTileLocal(prev => ({ ...prev, [activityId]: { ...prev[activityId], open: true } }));
-      return;
-    }
+  const localAuthority = premapped.data?.location.localAuthority ?? "";
 
-    // Start fetch
-    setTileLocal(prev => ({
-      ...prev,
-      [activityId]: { open: true, loading: true, error: false, places: [] },
-    }));
-
-    try {
-      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-      // Prefer the resolved council name over the raw postcode so Scottish/English
-      // charity register detection works correctly (e.g. "City of Edinburgh" not "EH1 1AB")
-      const searchLocation = locationMeta?.adminDistrict || location?.trim();
-      const res = await fetch(`${base}/api/local-charities/suggest`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location: searchLocation, activityName }),
-      });
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
-      setTileLocal(prev => ({
-        ...prev,
-        [activityId]: { open: true, loading: false, error: false, places: data.places ?? [] },
-      }));
-    } catch {
-      setTileLocal(prev => ({
-        ...prev,
-        [activityId]: { open: true, loading: false, error: true, places: [] },
-      }));
-    }
-  }, [tileLocal, location]);
+  const handleToggleLocal = useCallback((activityId: string) => {
+    setOpenTiles(prev => ({ ...prev, [activityId]: !prev[activityId] }));
+  }, []);
 
   const { data, isPending, isError } = suggestionsMutation;
-  const hasLocation = Boolean(location?.trim());
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -270,7 +209,7 @@ export default function Suggestions() {
         </p>
       </div>
 
-      {/* Near you this week */}
+      {/* Live opportunity search links */}
       {profileData ? (
         !profilePostcode ? (
           <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-dashed border-border bg-muted/40">
@@ -293,13 +232,13 @@ export default function Suggestions() {
               <div>
                 <div className="flex items-center gap-2">
                   <Compass className="w-4 h-4" style={{ color: "#E8633A" }} aria-hidden="true" />
-                  <h2 className="text-sm font-semibold text-foreground">Near you this week</h2>
+                  <h2 className="text-sm font-semibold text-foreground">Search live opportunities</h2>
                 </div>
-                {nearbyState.data?.location.adminDistrict && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Charities operating in {nearbyState.data.location.adminDistrict}
-                  </p>
-                )}
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {localAuthority
+                    ? `Live listings near ${localAuthority}`
+                    : `Live listings near ${profilePostcode}`}
+                </p>
               </div>
               <Link
                 href="/profile"
@@ -308,76 +247,10 @@ export default function Suggestions() {
                 Change postcode
               </Link>
             </div>
-
-            {nearbyState.loading ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground p-4 bg-white border border-border rounded-lg">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Finding opportunities near {profilePostcode}…
-                </div>
-                <GoVoSearchCard postcode={profilePostcode} />
-              </div>
-            ) : nearbyState.error ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground p-4 bg-white border border-border rounded-lg">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  Couldn't load nearby opportunities right now.
-                </div>
-                <GoVoSearchCard postcode={profilePostcode} />
-              </div>
-            ) : nearbyState.data && nearbyState.data.nearby.length > 0 ? (
-              <div className="space-y-2">
-                {nearbyState.data.nearby.map((n, i) => (
-                  <motion.a
-                    key={n.registrationNumber}
-                    href={n.website ?? n.registerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="block bg-white border border-border rounded-lg px-4 py-3 hover:border-foreground/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <p className="text-sm font-semibold text-foreground leading-snug truncate">{n.name}</p>
-                          <span className="inline-flex items-center text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                            ✓ Registered
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
-                          <span className="px-1.5 py-0.5 rounded bg-muted font-medium uppercase tracking-wider">
-                            {formatActivityType(n.activityType)}
-                          </span>
-                          <span className="inline-flex items-center gap-0.5">
-                            <MapPin className="w-2.5 h-2.5" />
-                            {formatDistance(n.distanceMiles)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">{n.description}</p>
-                      </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
-                    </div>
-                  </motion.a>
-                ))}
-                {nearbyState.data.location.country === "Scotland" && <VolunteerScotlandSearchCard />}
-                <GoVoSearchCard postcode={profilePostcode} />
-                <p className="text-[10px] text-muted-foreground/70 pt-1">
-                  Sorted by distance from {nearbyState.data.location.postcode}. Results from the official UK charity register.
-                </p>
-              </div>
-            ) : nearbyState.data ? (
-              <div className="space-y-2">
-                <div className="p-4 bg-white border border-border rounded-lg">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    We couldn't find any registered charities matching your interests within 30 miles of {profilePostcode} right now. Browse the broader suggestions below for more ideas.
-                  </p>
-                </div>
-                {nearbyState.data.location.country === "Scotland" && <VolunteerScotlandSearchCard />}
-                <GoVoSearchCard postcode={profilePostcode} />
-              </div>
-            ) : null}
+            <div className="space-y-2">
+              <GoVoSearchCard postcode={profilePostcode} />
+              {isScottish && <VolunteerScotlandSearchCard />}
+            </div>
           </div>
         )
       ) : null}
@@ -397,8 +270,9 @@ export default function Suggestions() {
       ) : (
         <div className="space-y-3">
           {data?.suggestions.map((sug, idx) => {
-            const local = tileLocal[sug.activityId];
-            const isOpen = local?.open ?? false;
+            const isOpen = openTiles[sug.activityId] ?? false;
+            const places = placesByCategory.get(sug.category) ?? null;
+            const areaLabel = localAuthority || location || profilePostcode;
 
             return (
               <motion.div
@@ -424,21 +298,19 @@ export default function Suggestions() {
                       </h3>
                       <p className="text-xs text-muted-foreground leading-relaxed">{sug.reason}</p>
 
-                      {/* "See what's near you" button, only if location captured */}
-                      {hasLocation && (
-                        <button
-                          onClick={() => handleToggleLocal(sug.activityId, sug.activityName)}
-                          className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold transition-all"
-                          style={{ color: "#E8633A" }}
-                        >
-                          <MapPin className="w-3 h-3" />
-                          {isOpen ? "Hide local places" : `See what's near you`}
-                          <ChevronDown
-                            className="w-3 h-3 transition-transform"
-                            style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-                          />
-                        </button>
-                      )}
+                      {/* "See what's near you" toggle — results are pre-mapped, so opening is instant */}
+                      <button
+                        onClick={() => handleToggleLocal(sug.activityId)}
+                        className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold transition-all"
+                        style={{ color: "#E8633A" }}
+                      >
+                        <MapPin className="w-3 h-3" />
+                        {isOpen ? "Hide local places" : `See what's near you`}
+                        <ChevronDown
+                          className="w-3 h-3 transition-transform"
+                          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                        />
+                      </button>
                     </div>
 
                     <div className="shrink-0 text-right">
@@ -472,43 +344,62 @@ export default function Suggestions() {
                       <div className="border-t border-border mx-5" />
                       <div className="px-5 py-4 space-y-3" style={{ background: "#FDF8F5" }}>
                         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#E8633A" }}>
-                          Near {location}
+                          {areaLabel ? `Near ${areaLabel}` : "Near you"}
                         </p>
 
-                        {local?.loading ? (
+                        {!profilePostcode ? (
+                          <p className="text-xs text-muted-foreground py-2">
+                            <Link
+                              href="/profile"
+                              className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/70 transition-colors"
+                            >
+                              Add your postcode
+                            </Link>{" "}
+                            to see charities near you for this activity.
+                          </p>
+                        ) : premapped.loading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Finding local organisations…
+                            Loading local charities…
                           </div>
-                        ) : local?.error ? (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                            Couldn't load local suggestions right now.
+                        ) : premapped.error || premapped.data?.status === "failed" ? (
+                          <div className="space-y-2 py-1">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              Couldn't load local suggestions right now. Try the live searches instead:
+                            </div>
+                            <GoVoSearchCard postcode={profilePostcode} />
+                            {isScottish && <VolunteerScotlandSearchCard />}
                           </div>
-                        ) : local?.places.length === 0 ? (
+                        ) : premapped.data?.status === "pending" ? (
+                          <div className="space-y-2 py-1">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              Finding local charities for your area — check back soon. Meanwhile, try the live searches:
+                            </div>
+                            <GoVoSearchCard postcode={profilePostcode} />
+                            {isScottish && <VolunteerScotlandSearchCard />}
+                          </div>
+                        ) : !places || places.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">
                             No specific local groups found.{" "}
                             <a
-                              href={`https://www.google.com/search?q=${encodeURIComponent(`${sug.activityName} ${location} volunteer charity`)}`}
+                              href={`https://www.google.com/search?q=${encodeURIComponent(`${sug.activityName} ${areaLabel} volunteer charity`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2 hover:text-foreground/70 transition-colors"
                             >
                               Search online <ExternalLink className="w-2.5 h-2.5" />
                             </a>{" "}
-                            for "{sug.activityName} {location}".
+                            for "{sug.activityName} {areaLabel}".
                           </p>
                         ) : (
-                          local.places.map((place, pi) => (
+                          places.map((place, pi) => (
                             <div key={pi} className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                   <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
-                                  {place.source === "register" ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      ✓ Registered charity
-                                    </span>
-                                  ) : place.verified ? (
+                                  {place.verified ? (
                                     <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                                       ✓ Verified charity
                                     </span>
@@ -518,7 +409,7 @@ export default function Suggestions() {
                                     </span>
                                   )}
                                 </div>
-                                {(place.source === "register" || place.verified) && place.registrationNumber && (
+                                {place.verified && place.registrationNumber && (
                                   <p className="text-[10px] text-muted-foreground/70 mb-0.5">
                                     Reg. no. {place.registrationNumber}
                                   </p>
@@ -527,27 +418,15 @@ export default function Suggestions() {
                                 <p className="text-[11px] text-foreground/60 mt-0.5 italic">{place.howToJoin}</p>
                               </div>
                               <div className="shrink-0 flex flex-col gap-1 items-end">
-                                {place.source === "register" && place.registerUrl && (
-                                  <a
-                                    href={place.registerUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all text-emerald-700"
-                                  >
-                                    Register page <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                )}
-                                {place.source !== "register" && (
-                                  <a
-                                    href={place.website ?? `https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${location} volunteer charity`)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
-                                  >
-                                    {place.website ? "Visit website" : "Search online"} <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                )}
-                                {place.source !== "register" && !isScottish && (
+                                <a
+                                  href={`https://www.google.com/search?q=${encodeURIComponent(`${place.name} ${areaLabel} volunteer charity`)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
+                                >
+                                  Search online <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                                {!isScottish && (
                                   <a
                                     href={`https://register-of-charities.charitycommission.gov.uk/charity-search?q=${encodeURIComponent(place.name)}${profilePostcode ? `&postcode=${encodeURIComponent(profilePostcode)}` : ""}`}
                                     target="_blank"
@@ -557,26 +436,14 @@ export default function Suggestions() {
                                     Check register <ExternalLink className="w-2.5 h-2.5" />
                                   </a>
                                 )}
-                                {place.source === "register" && place.website && place.website !== place.registerUrl && (
-                                  <a
-                                    href={place.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-border bg-white hover:border-foreground/30 transition-all text-muted-foreground hover:text-foreground"
-                                  >
-                                    Website <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                )}
                               </div>
                             </div>
                           ))
                         )}
 
-                        {local?.places && local.places.length > 0 && (
+                        {places && places.length > 0 && !premapped.loading && !premapped.error && premapped.data?.status === "ready" && (
                           <p className="text-[10px] text-muted-foreground/60 pt-1">
-                            {local.places[0]?.source === "register"
-                              ? "Results from the official UK charity register."
-                              : "AI-suggested. Always verify before contacting."}
+                            AI-suggested and checked against the official charity registers. Always verify before contacting.
                           </p>
                         )}
                       </div>

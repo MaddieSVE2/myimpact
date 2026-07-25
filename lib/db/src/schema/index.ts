@@ -14,3 +14,4 @@ export * from "./ai-inflight-reservations";
 export * from "./push";
 export * from "./attachment-pending-reservations";
 export * from "./audit-log";
+export * from "./local-charities";
