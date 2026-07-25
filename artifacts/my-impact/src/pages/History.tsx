@@ -790,10 +790,10 @@ export default function History() {
                 </p>
                 {changeVsLast !== null ? (
                   <>
-                    <p className={`text-2xl font-display font-bold ${changeVsLast >= 0 ? "text-green-600" : "text-destructive"}`}>
+                    <p className={`text-2xl font-display font-bold ${changeVsLast >= 0 ? "text-green-600" : "text-foreground"}`}>
                       {changeVsLast >= 0 ? "+" : ""}{formatCurrency(changeVsLast)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">{changeVsLast >= 0 ? "↑ Growing!" : "↓ Room to improve"}</p>
+                    {changeVsLast >= 0 && <p className="text-xs text-muted-foreground mt-1">↑ Growing!</p>}
                   </>
                 ) : (
                   <>
