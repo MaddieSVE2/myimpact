@@ -7,6 +7,13 @@ import {
   ensureAuthority,
   getStoredSuggestions,
 } from "../lib/premappedCharities.js";
+import {
+  attachVotes,
+  charityVoteKey,
+  getVoteState,
+  toggleVote,
+} from "../lib/localCharityVotes.js";
+import { isPersonaEmail } from "./auth.js";
 
 const router = Router();
 
@@ -53,7 +60,11 @@ router.get("/premapped", authenticate, localCharitiesRateLimit, async (req, res)
     }
 
     const area = await ensureAuthority(geo.adminDistrict, geo.country);
-    const categories = await getStoredSuggestions(geo.adminDistrict);
+    const [categories, voteState] = await Promise.all([
+      getStoredSuggestions(geo.adminDistrict),
+      getVoteState(geo.adminDistrict, userId),
+    ]);
+    const categoriesWithVotes = attachVotes(categories, voteState.counts, voteState.mine);
 
     res.json({
       // "ready" only means generation has completed at least once; individual
@@ -64,11 +75,69 @@ router.get("/premapped", authenticate, localCharitiesRateLimit, async (req, res)
         localAuthority: geo.adminDistrict,
         country: geo.country,
       },
-      categories,
+      categories: categoriesWithVotes,
     });
   } catch (err) {
     console.error("Local charities premapped error:", err);
     res.status(500).json({ error: "Failed to load local charity suggestions" });
+  }
+});
+
+/**
+ * Toggle the signed-in user's thumbs-up for one suggested charity.
+ *
+ * The charity must exist in the stored suggestions for the given local
+ * authority (identified by registration number or, for unverified
+ * suggestions, by name). Demo persona accounts are shared logins, so their
+ * votes are blocked with a sign-in prompt.
+ */
+router.post("/vote", authenticate, localCharitiesRateLimit, async (req, res) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    if (!user) {
+      res.status(401).json({ error: "Unauthorised" });
+      return;
+    }
+    if (isPersonaEmail(user.email)) {
+      res.status(403).json({
+        error: "Demo accounts can't vote. Sign in with your own account to rate charities.",
+        code: "demo_account",
+      });
+      return;
+    }
+
+    const localAuthority =
+      typeof req.body?.localAuthority === "string" ? req.body.localAuthority.trim() : "";
+    const registrationNumber =
+      typeof req.body?.registrationNumber === "string" ? req.body.registrationNumber.trim() : "";
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+
+    if (!localAuthority || (!registrationNumber && !name)) {
+      res.status(400).json({ error: "localAuthority and a charity identifier are required" });
+      return;
+    }
+
+    // Only allow votes for charities that actually appear in this area's
+    // stored suggestions — the vote key must match a real place.
+    const categories = await getStoredSuggestions(localAuthority);
+    const target = categories
+      .flatMap((c) => c.places)
+      .find((p) =>
+        registrationNumber
+          ? p.registrationNumber?.trim() === registrationNumber
+          : charityVoteKey(p) === charityVoteKey({ name, registrationNumber: undefined }),
+      );
+
+    if (!target) {
+      res.status(404).json({ error: "That charity isn't in the suggestions for this area" });
+      return;
+    }
+
+    const result = await toggleVote(localAuthority, charityVoteKey(target), user.id);
+    res.json(result);
+  } catch (err) {
+    console.error("Local charities vote error:", err);
+    res.status(500).json({ error: "Failed to record vote" });
   }
 });
 

@@ -429,6 +429,16 @@ const PERSONA_ACCOUNTS: Record<string, { situation: string[] }> = {
   "university@university.org": { situation: [] },
 };
 
+/**
+ * True for the shared demo persona accounts (demo@demo.org etc). These are
+ * real sign-ins used by many visitors at once, so community features like
+ * charity thumbs-ups block them — their votes would be meaningless shared
+ * state.
+ */
+export function isPersonaEmail(email: string): boolean {
+  return !!PERSONA_ACCOUNTS[email.trim().toLowerCase()];
+}
+
 // Personas that land on the org dashboard after login.
 const ORG_PERSONA_EMAILS = new Set<string>([
   "demo@demo.org",

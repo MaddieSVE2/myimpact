@@ -62,5 +62,30 @@ export const localCharitySuggestionsTable = pgTable(
   })
 );
 
+/**
+ * One community thumbs-up per user per charity within a local authority.
+ *
+ * charityKey is a stable identifier so votes survive the ~monthly area
+ * regeneration: "reg:<registrationNumber>" when the charity is verified,
+ * otherwise "name:<normalised name>". When an area's suggestions are
+ * re-generated, charities that reappear keep their existing votes because
+ * the key matches; votes for charities that vanish simply stop being shown
+ * (and re-attach if the charity comes back later).
+ */
+export const localCharityVotesTable = pgTable(
+  "local_charity_votes",
+  {
+    localAuthority: text("local_authority").notNull(),
+    charityKey: text("charity_key").notNull(),
+    userId: text("user_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.localAuthority, t.charityKey, t.userId] }),
+    authorityIdx: index("local_charity_votes_authority_idx").on(t.localAuthority),
+  })
+);
+
 export type LocalCharityArea = typeof localCharityAreasTable.$inferSelect;
 export type LocalCharitySuggestion = typeof localCharitySuggestionsTable.$inferSelect;
+export type LocalCharityVote = typeof localCharityVotesTable.$inferSelect;
