@@ -12,6 +12,9 @@ import {
   recordVerificationsTable,
   orgShareLinksTable,
   orgAuditLogTable,
+  localCharityAreasTable,
+  localCharitySuggestionsTable,
+  type StoredCharityPlace,
 } from "@workspace/db";
 import { eq, like, gt, desc, and, sql, inArray } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
@@ -352,6 +355,77 @@ router.post("/seed-approved-registration", async (req, res) => {
     inviteCode,
   });
   res.json({ ok: true, id });
+});
+
+/**
+ * Seed a local-charity area (and optionally per-category suggestion rows)
+ * so the pre-mapped suggestions flow can be tested without any AI calls.
+ *
+ * Body: {
+ *   localAuthority: string,
+ *   country?: string,          // default "England"
+ *   status?: string,           // default "ready"
+ *   categories?: Array<{ category: string; places: StoredCharityPlace[] }>
+ * }
+ *
+ * Note: to simulate the "pending" API response WITHOUT triggering real
+ * background generation, seed status "ready" with no categories — the
+ * /premapped route reports "pending" when no suggestion rows exist, and
+ * ensureAuthority only re-queues generation for "failed"/"pending" rows.
+ */
+router.post("/seed-local-charities", async (req, res) => {
+  const localAuthority =
+    typeof req.body?.localAuthority === "string" ? req.body.localAuthority.trim() : "";
+  if (!localAuthority) {
+    res.status(400).json({ error: "localAuthority required" });
+    return;
+  }
+  const country = typeof req.body?.country === "string" ? req.body.country : "England";
+  const status = typeof req.body?.status === "string" ? req.body.status : "ready";
+  const categories = Array.isArray(req.body?.categories)
+    ? (req.body.categories as Array<{ category: string; places: StoredCharityPlace[] }>)
+    : [];
+
+  await db
+    .insert(localCharityAreasTable)
+    .values({ localAuthority, country, status, lastGeneratedAt: new Date() })
+    .onConflictDoUpdate({
+      target: localCharityAreasTable.localAuthority,
+      set: { country, status, lastGeneratedAt: new Date(), updatedAt: new Date() },
+    });
+
+  await db
+    .delete(localCharitySuggestionsTable)
+    .where(eq(localCharitySuggestionsTable.localAuthority, localAuthority));
+
+  for (const entry of categories) {
+    if (!entry || typeof entry.category !== "string" || !Array.isArray(entry.places)) continue;
+    await db.insert(localCharitySuggestionsTable).values({
+      localAuthority,
+      category: entry.category,
+      places: entry.places,
+      generatedAt: new Date(),
+    });
+  }
+
+  res.json({ ok: true, localAuthority, status, seededCategories: categories.length });
+});
+
+/** Delete a seeded local-charity area and all its suggestion rows. */
+router.post("/reset-local-charities", async (req, res) => {
+  const localAuthority =
+    typeof req.body?.localAuthority === "string" ? req.body.localAuthority.trim() : "";
+  if (!localAuthority) {
+    res.status(400).json({ error: "localAuthority required" });
+    return;
+  }
+  await db
+    .delete(localCharitySuggestionsTable)
+    .where(eq(localCharitySuggestionsTable.localAuthority, localAuthority));
+  await db
+    .delete(localCharityAreasTable)
+    .where(eq(localCharityAreasTable.localAuthority, localAuthority));
+  res.json({ ok: true });
 });
 
 export default router;

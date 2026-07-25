@@ -83,9 +83,22 @@ function writeNegative(key: string) {
   negativeCache.set(key, Date.now() + TTL_MS);
 }
 
+/**
+ * Deterministic geocode stubs for e2e tests. The ZZ postcode area is
+ * reserved (never allocated by Royal Mail), so these keys can never
+ * collide with a real lookup. Only active when E2E_TEST_MODE=1.
+ */
+const E2E_STUB_LOOKUPS: Record<string, PostcodeLookup> = {
+  ZZ11ZZ: { lat: 53.48, lng: -2.24, adminDistrict: "Testford", region: "Test Region", country: "England" },
+  ZZ22ZZ: { lat: 53.5, lng: -2.3, adminDistrict: "Pendington", region: "Test Region", country: "England" },
+};
+
 export async function geocodePostcode(raw: string): Promise<PostcodeLookup | null> {
   const key = normalize(raw);
   if (!key) return null;
+  if (process.env.E2E_TEST_MODE === "1" && E2E_STUB_LOOKUPS[key]) {
+    return E2E_STUB_LOOKUPS[key];
+  }
   const cached = readCache(key);
   if (cached) return cached;
   if (readNegative(key)) return null;

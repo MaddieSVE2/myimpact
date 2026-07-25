@@ -19,6 +19,15 @@ export function uniqueEmail(prefix = "user"): string {
   return `${prefix}-${ts}-${rand}@${E2E_EMAIL_DOMAIN}`;
 }
 
+export interface SeedCharityPlace {
+  name: string;
+  description: string;
+  howToJoin: string;
+  source: "ai";
+  verified: boolean;
+  registrationNumber?: string;
+}
+
 export interface ApiClientOpts {
   baseURL: string;
 }
@@ -147,6 +156,33 @@ export class TestApi {
     });
     if (!res.ok()) {
       throw new Error(`seed-approved-registration failed (${res.status()}): ${await res.text()}`);
+    }
+  }
+
+  /**
+   * Seed a local-charity area plus per-category suggestion rows. Seeding
+   * status "ready" with no categories makes the /premapped API report
+   * "pending" without triggering real background AI generation.
+   */
+  async seedLocalCharities(opts: {
+    localAuthority: string;
+    country?: string;
+    status?: string;
+    categories?: Array<{ category: string; places: SeedCharityPlace[] }>;
+  }): Promise<void> {
+    const res = await this.ctx.post("/api/test/seed-local-charities", { data: opts });
+    if (!res.ok()) {
+      throw new Error(`seed-local-charities failed (${res.status()}): ${await res.text()}`);
+    }
+  }
+
+  /** Delete a seeded local-charity area and its suggestion rows. */
+  async resetLocalCharities(localAuthority: string): Promise<void> {
+    const res = await this.ctx.post("/api/test/reset-local-charities", {
+      data: { localAuthority },
+    });
+    if (!res.ok()) {
+      throw new Error(`reset-local-charities failed (${res.status()}): ${await res.text()}`);
     }
   }
 }
