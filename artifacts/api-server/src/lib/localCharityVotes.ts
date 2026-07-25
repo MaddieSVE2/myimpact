@@ -89,12 +89,20 @@ export async function toggleVote(
   return { voted, votes: row?.count ?? 0 };
 }
 
-export type VotedPlace = StoredCharityPlace & { votes: number; voted: boolean };
+export type VotedPlace = StoredCharityPlace & { votes: number; voted: boolean; popular: boolean };
+
+/**
+ * Minimum shared votes before the top charity in a category earns the
+ * "Popular with the community" badge.
+ */
+export const POPULAR_VOTE_THRESHOLD = 3;
 
 /**
  * Attach vote counts + the user's own votes to stored places, and sort each
  * category's places by votes (descending), preserving the stored order as a
- * stable tie-break.
+ * stable tie-break. The single most-voted charity in each category is marked
+ * `popular` when it has at least POPULAR_VOTE_THRESHOLD votes and strictly
+ * more votes than any other charity in the category (ties earn no badge).
  */
 export function attachVotes(
   categories: Array<{ category: string; places: StoredCharityPlace[] }>,
@@ -110,6 +118,15 @@ export function attachVotes(
       .map((p, i) => ({ p, i }))
       .sort((a, b) => b.p.votes - a.p.votes || a.i - b.i)
       .map(({ p }) => p);
-    return { category, places: sorted };
+    const top = sorted[0];
+    const runnerUp = sorted[1];
+    const topIsPopular =
+      !!top &&
+      top.votes >= POPULAR_VOTE_THRESHOLD &&
+      (!runnerUp || runnerUp.votes < top.votes);
+    return {
+      category,
+      places: sorted.map((p, i) => ({ ...p, popular: topIsPopular && i === 0 })),
+    };
   });
 }

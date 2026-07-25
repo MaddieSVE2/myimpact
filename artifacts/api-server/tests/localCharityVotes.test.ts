@@ -93,6 +93,28 @@ describe("attachVotes", () => {
     expect(result[0].places.map((p) => p.name)).toEqual(["Gamma", "Beta", "Alpha"]);
     expect(result[0].places.map((p) => p.votes)).toEqual([5, 2, 0]);
     expect(result[0].places.map((p) => p.voted)).toEqual([false, true, false]);
+    expect(result[0].places.map((p) => p.popular)).toEqual([true, false, false]);
+  });
+
+  it("does not mark popular below the vote threshold", () => {
+    const categories = [
+      { category: "Community", places: [place("Alpha", "111"), place("Beta")] },
+    ];
+    const counts = new Map<string, number>([["reg:111", 2]]);
+    const result = attachVotes(categories, counts, new Set());
+    expect(result[0].places.map((p) => p.popular)).toEqual([false, false]);
+  });
+
+  it("does not mark popular when the top spot is tied", () => {
+    const categories = [
+      { category: "Community", places: [place("Alpha", "111"), place("Beta", "222")] },
+    ];
+    const counts = new Map<string, number>([
+      ["reg:111", 4],
+      ["reg:222", 4],
+    ]);
+    const result = attachVotes(categories, counts, new Set());
+    expect(result[0].places.map((p) => p.popular)).toEqual([false, false]);
   });
 
   it("keeps stored order as a stable tie-break", () => {

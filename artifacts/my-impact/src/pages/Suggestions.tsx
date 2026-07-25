@@ -21,6 +21,8 @@ interface LocalPlace {
   votes?: number;
   /** Whether the signed-in user has thumbs-upped this charity. */
   voted?: boolean;
+  /** Server-computed: most-voted charity in its category with enough votes. */
+  popular?: boolean;
 }
 
 interface PremappedResponse {
@@ -156,6 +158,15 @@ function PlaceCard({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <p className="text-xs font-semibold text-foreground leading-snug">{place.name}</p>
+                {place.popular && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200"
+                    data-testid={`place-popular-${place.name}`}
+                  >
+                    <ThumbsUp className="w-2.5 h-2.5" fill="currentColor" aria-hidden="true" />
+                    Popular with the community
+                  </span>
+                )}
                 {place.verified ? (
                   <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                     ✓ Verified charity
