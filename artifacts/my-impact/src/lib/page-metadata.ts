@@ -154,6 +154,30 @@ export const NOT_FOUND_META: PageMetadata = {
   robots: "noindex, follow",
 };
 
+export const SUGGESTIONS_META: PageMetadata = {
+  title: "Volunteering ideas — find ways to make a difference | My Impact",
+  description:
+    "Discover volunteering, community, and social action ideas matched to your interests. Browse hundreds of ways to contribute and calculate your potential social value.",
+  canonical: undefined,
+  robots: "noindex, nofollow",
+};
+
+export const PRICING_META: PageMetadata = {
+  title: "Pricing — My Impact for Organisations",
+  description:
+    "Transparent pricing for My Impact's organisation dashboard. Free tier available. Upgrade to unlock regional analytics, branded PDF reports, funder share links, SSO, and more.",
+  canonical: "https://myimpact.uk/pricing",
+  robots: "index, follow",
+};
+
+export const ORG_REGISTER_META: PageMetadata = {
+  title: "Register your Organisation — My Impact",
+  description:
+    "Register your school, charity, company, or public-sector body to get an aggregated, anonymised impact dashboard showing the collective social value your members create. Free to try.",
+  canonical: "https://myimpact.uk/org/register",
+  robots: "index, follow",
+};
+
 /**
  * All public pages to pre-render, in order.
  * Used by prerender.ts to write static HTML for crawlers.
@@ -165,5 +189,8 @@ export const PRERENDER_PAGES: PrerenderPage[] = [
   { path: "/whats-new", ...WHATS_NEW_META },
   { path: "/contact", ...CONTACT_META },
   { path: "/org/demo", ...ORG_DEMO_META },
+  { path: "/pricing", ...PRICING_META },
+  { path: "/org/register", ...ORG_REGISTER_META },
+  { path: "/suggestions", ...SUGGESTIONS_META },
   { path: "/404", ...NOT_FOUND_META },
 ];

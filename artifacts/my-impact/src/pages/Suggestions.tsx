@@ -252,7 +252,7 @@ export default function Suggestions() {
       <PageMeta
         title="Volunteering ideas — find ways to make a difference | My Impact"
         description="Discover volunteering, community, and social action ideas matched to your interests. Browse hundreds of ways to contribute and calculate your potential social value."
-        canonical="https://myimpact.uk/suggestions"
+        noIndex={true}
       />
 
       {/* Header */}

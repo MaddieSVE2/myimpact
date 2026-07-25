@@ -4,6 +4,8 @@ import { Link } from "wouter";
 import { Check, X, Sparkles, ArrowRight, Building2, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
+import { PageMeta } from "@/components/PageMeta";
+import { PRICING_META } from "@/lib/page-metadata";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -193,6 +195,11 @@ export default function Pricing() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
+      <PageMeta
+        title={PRICING_META.title}
+        description={PRICING_META.description}
+        canonical={PRICING_META.canonical}
+      />
       <div className="text-center max-w-2xl mx-auto mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
           <Building2 className="w-3.5 h-3.5" /> For organisations

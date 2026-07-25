@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { Building2, BarChart2, Users, TrendingUp, Clock, AlertCircle, Loader2, ChevronRight, Lock } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 import { formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -113,26 +114,42 @@ export default function OrgSharePage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  const orgName = data?.share.orgName ?? null;
+  const metaSummary = data?.sections.summary ?? null;
+  const shareMetaTitle = orgName
+    ? `${orgName} — Organisation Impact Report | My Impact`
+    : "Organisation Impact Report — My Impact";
+  const shareMetaDescription = orgName && metaSummary
+    ? `${orgName} has generated £${metaSummary.totalSocialValue.toLocaleString("en-GB")} in social value across ${metaSummary.totalMemberCount.toLocaleString("en-GB")} members. Anonymised impact data shared via My Impact.`
+    : "View an organisation's anonymised, aggregated impact data — total social value, volunteer hours, and member activity. Shared via My Impact.";
+  const shareMetaCanonical = slug ? `https://myimpact.uk/org/share/${encodeURIComponent(slug)}` : undefined;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+      <>
+        <PageMeta title={shareMetaTitle} description={shareMetaDescription} canonical={shareMetaCanonical} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </>
     );
   }
 
   if (errorMsg || !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(232,99,58,0.10)" }}>
-          <Lock className="w-8 h-8 text-primary" />
+      <>
+        <PageMeta title={shareMetaTitle} description={shareMetaDescription} canonical={shareMetaCanonical} noIndex={true} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(232,99,58,0.10)" }}>
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-foreground">Share link unavailable</h1>
+          <p className="text-muted-foreground text-sm max-w-sm">{errorMsg ?? "This link is no longer available."}</p>
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+            Visit My Impact <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
-        <h1 className="text-2xl font-display font-bold text-foreground">Share link unavailable</h1>
-        <p className="text-muted-foreground text-sm max-w-sm">{errorMsg ?? "This link is no longer available."}</p>
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-          Visit My Impact <ChevronRight className="w-4 h-4" />
-        </Link>
-      </div>
+      </>
     );
   }
 
@@ -147,6 +164,7 @@ export default function OrgSharePage() {
 
   return (
     <>
+    <PageMeta title={shareMetaTitle} description={shareMetaDescription} canonical={shareMetaCanonical} />
     <div className="max-w-4xl mx-auto px-4 py-10">
       {/* Header band */}
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 mb-6">

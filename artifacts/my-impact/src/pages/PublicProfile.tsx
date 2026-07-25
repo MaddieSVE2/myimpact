@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { Globe, Clock, TrendingUp, Tag, BookOpen, AlertCircle, Loader2, ChevronRight, BadgeCheck } from "lucide-react";
+import { PageMeta } from "@/components/PageMeta";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -69,40 +70,58 @@ export default function PublicProfile() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  const resolvedName = data?.profile.displayName ?? null;
+  const metaTitle = resolvedName
+    ? `${resolvedName}'s Social Impact Profile — My Impact`
+    : "Volunteer Social Impact Profile — My Impact";
+  const metaDescription = resolvedName
+    ? `See ${resolvedName}'s volunteering hours, social return on investment, and community impact. Shared via My Impact.`
+    : "View a volunteer's impact profile on My Impact — hours contributed, estimated social value, and community activities.";
+  const metaCanonical = slug ? `https://myimpact.uk/profile/${encodeURIComponent(slug)}` : undefined;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+      <>
+        <PageMeta title={metaTitle} description={metaDescription} canonical={metaCanonical} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </>
     );
   }
 
   if (notFound) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(232,99,58,0.10)" }}>
-          <Globe className="w-8 h-8 text-primary" />
+      <>
+        <PageMeta title={metaTitle} description={metaDescription} canonical={metaCanonical} noIndex={true} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(232,99,58,0.10)" }}>
+            <Globe className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-foreground">Profile not found</h1>
+          <p className="text-muted-foreground text-sm max-w-sm">
+            This profile doesn't exist, has been disabled, or the account has been deleted.
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            Go to My Impact <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
-        <h1 className="text-2xl font-display font-bold text-foreground">Profile not found</h1>
-        <p className="text-muted-foreground text-sm max-w-sm">
-          This profile doesn't exist, has been disabled, or the account has been deleted.
-        </p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-        >
-          Go to My Impact <ChevronRight className="w-4 h-4" />
-        </Link>
-      </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <AlertCircle className="w-10 h-10 text-destructive" />
-        <p className="text-sm text-muted-foreground">Something went wrong loading this profile. Please try again later.</p>
-      </div>
+      <>
+        <PageMeta title={metaTitle} description={metaDescription} canonical={metaCanonical} noIndex={true} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+          <AlertCircle className="w-10 h-10 text-destructive" />
+          <p className="text-sm text-muted-foreground">Something went wrong loading this profile. Please try again later.</p>
+        </div>
+      </>
     );
   }
 
@@ -122,6 +141,7 @@ export default function PublicProfile() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
+      <PageMeta title={metaTitle} description={metaDescription} canonical={metaCanonical} />
       {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(232,99,58,0.10)" }}>

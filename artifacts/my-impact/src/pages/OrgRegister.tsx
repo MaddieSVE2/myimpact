@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft, FileText, Award, Briefcase } from "lucide-react";
 import { scrollContentToTop } from "@/lib/scroll-utils";
+import { PageMeta } from "@/components/PageMeta";
+import { ORG_REGISTER_META } from "@/lib/page-metadata";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -264,6 +266,11 @@ export default function OrgRegister() {
 
   return (
     <div className="min-h-screen bg-muted/20">
+      <PageMeta
+        title={ORG_REGISTER_META.title}
+        description={ORG_REGISTER_META.description}
+        canonical={ORG_REGISTER_META.canonical}
+      />
       <div className="max-w-2xl mx-auto px-4 py-10">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to home

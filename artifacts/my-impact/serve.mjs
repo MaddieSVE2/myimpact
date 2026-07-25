@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, statSync, readFileSync, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,6 +51,163 @@ const IMMUTABLE_HEADERS = {
 function isHashedAsset(pathname) {
   // Vite default: `[name]-[hash].[ext]` under /assets/
   return /^\/assets\/.+[-.][A-Za-z0-9_-]{8,}\.[a-zA-Z0-9]+$/.test(pathname);
+}
+
+// ── SSR metadata injection for public slug routes ─────────────────────────────
+//
+// /profile/:slug  and  /org/share/:slug  are dynamically rendered by React, so
+// the static SPA shell carries no slug-specific metadata.  Non-JS crawlers and
+// social preview bots therefore only see the generic app shell.
+//
+// At request-time we fetch the slug's data from the API, inject the correct
+// <title>, <meta name="description">, robots, canonical, and Open Graph tags
+// into the SPA shell HTML, and return the patched HTML.  React then hydrates
+// normally on the client.  Callers receive no extra latency on static assets.
+//
+// Falls back gracefully to the unpatched shell if the API is unreachable.
+
+const APP_URL = (process.env.APP_URL ?? "").replace(/\/$/, "");
+const API_BASE = APP_URL
+  ? `${APP_URL}/api`
+  : `http://localhost:${process.env.API_PORT ?? 4000}/api`;
+
+const PROFILE_RE = /^\/profile\/([^/?#]+)/;
+const SHARE_RE   = /^\/org\/share\/([^/?#]+)/;
+const OG_IMAGE   = "https://myimpact.uk/opengraph.jpg";
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function injectSlugMeta(shell, { title, description, canonical, robots }) {
+  const tags = [
+    `  <meta name="description" content="${escHtml(description)}" />`,
+    `  <meta name="robots" content="${escHtml(robots)}" />`,
+    canonical ? `  <link rel="canonical" href="${escHtml(canonical)}" />` : null,
+    `  <meta property="og:title" content="${escHtml(title)}" />`,
+    `  <meta property="og:description" content="${escHtml(description)}" />`,
+    canonical ? `  <meta property="og:url" content="${escHtml(canonical)}" />` : null,
+    `  <meta property="og:image" content="${escHtml(OG_IMAGE)}" />`,
+    `  <meta property="og:image:width" content="1200" />`,
+    `  <meta property="og:image:height" content="630" />`,
+    `  <meta property="og:site_name" content="My Impact" />`,
+    `  <meta name="twitter:card" content="summary_large_image" />`,
+    `  <meta name="twitter:title" content="${escHtml(title)}" />`,
+    `  <meta name="twitter:description" content="${escHtml(description)}" />`,
+    `  <meta name="twitter:image" content="${escHtml(OG_IMAGE)}" />`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return shell
+    .replace(/<title>[^<]*<\/title>/, `<title>${escHtml(title)}</title>`)
+    .replace(/<meta\s+name="description"[^>]*>/gi, "")
+    .replace(/<meta\s+name="robots"[^>]*>/gi, "")
+    .replace(/<link\s+rel="canonical"[^>]*>/gi, "")
+    .replace(/<head>/, `<head>\n${tags}`);
+}
+
+async function fetchJson(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function buildProfileMeta(slug, data) {
+  const canonical = `https://myimpact.uk/profile/${encodeURIComponent(slug)}`;
+  if (!data) {
+    return {
+      title: "Volunteer Social Impact Profile — My Impact",
+      description:
+        "View a volunteer's impact profile on My Impact — hours contributed, estimated social value, and community activities.",
+      canonical,
+      robots: "noindex, nofollow",
+    };
+  }
+  const name = data.profile?.displayName ?? "Someone";
+  const parts = [`${name} has shared their social impact on My Impact.`];
+  const hours = data.stats?.totalHours;
+  const sroi = data.stats?.totalSroi;
+  if (data.profile?.showHours && hours != null) {
+    parts.push(`${hours.toLocaleString("en-GB")} volunteering hours.`);
+  }
+  if (data.profile?.showSroi && sroi != null) {
+    const formatted =
+      sroi >= 1_000_000
+        ? `£${(sroi / 1_000_000).toFixed(1)}m`
+        : sroi >= 1_000
+        ? `£${(sroi / 1_000).toFixed(0)}k`
+        : `£${sroi.toLocaleString("en-GB")}`;
+    parts.push(`${formatted} estimated social value.`);
+  }
+  return {
+    title: `${name}'s Social Impact Profile — My Impact`,
+    description: parts.join(" "),
+    canonical,
+    robots: "index, follow",
+  };
+}
+
+function buildShareMeta(slug, data) {
+  if (!data) {
+    return {
+      title: "Organisation Impact Report — My Impact",
+      description:
+        "View an organisation's anonymised, aggregated impact data — total social value, volunteer hours, and member activity. Shared via My Impact.",
+      canonical: undefined,
+      robots: "noindex, nofollow",
+    };
+  }
+  const orgName = data.share?.orgName ?? "Organisation";
+  const funderLabel = data.share?.funderLabel ?? null;
+  const summary = data.sections?.summary ?? null;
+  const parts = [];
+  if (funderLabel) parts.push(`Shared with ${funderLabel}.`);
+  if (summary) {
+    parts.push(
+      `${orgName} has generated £${summary.totalSocialValue.toLocaleString("en-GB")} in social value across ${summary.totalMemberCount.toLocaleString("en-GB")} members.`
+    );
+    if (summary.totalHours) {
+      parts.push(`${summary.totalHours.toLocaleString("en-GB")} total volunteering hours.`);
+    }
+  }
+  parts.push("Anonymised aggregate impact data shared via My Impact.");
+  return {
+    title: `${orgName} — Organisation Impact Report | My Impact`,
+    description: parts.join(" "),
+    canonical: `https://myimpact.uk/org/share/${encodeURIComponent(slug)}`,
+    robots: "noindex, nofollow",
+  };
+}
+
+async function trySlugSsr(pathname, indexPath) {
+  const profileMatch = PROFILE_RE.exec(pathname);
+  const shareMatch = !profileMatch ? SHARE_RE.exec(pathname) : null;
+  if (!profileMatch && !shareMatch) return null;
+
+  if (!existsSync(indexPath)) return null;
+  const shell = readFileSync(indexPath, "utf-8");
+
+  let meta;
+  if (profileMatch) {
+    const slug = decodeURIComponent(profileMatch[1]);
+    const data = await fetchJson(`${API_BASE}/public-profile/${encodeURIComponent(slug)}`);
+    meta = buildProfileMeta(slug, data);
+  } else {
+    const slug = decodeURIComponent(shareMatch[1]);
+    const data = await fetchJson(`${API_BASE}/org-share/${encodeURIComponent(slug)}`);
+    meta = buildShareMeta(slug, data);
+  }
+
+  return injectSlugMeta(shell, meta);
 }
 
 function safeJoin(root, pathname) {
@@ -111,6 +268,23 @@ const server = createServer(async (req, res) => {
   }
 
   const pathname = req.url.split("?")[0];
+
+  // ── SSR metadata injection for slug routes ──────────────────────────────────
+  // Must run before the static-file check because /profile/:slug and
+  // /org/share/:slug have no pre-built static file — they would fall through
+  // to the index.html SPA shell which carries only generic metadata.
+  const indexPath = join(ROOT, "index.html");
+  const ssrHtml = await trySlugSsr(pathname, indexPath);
+  if (ssrHtml !== null) {
+    for (const [k, v] of Object.entries(NO_CACHE_HEADERS)) res.setHeader(k, v);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.statusCode = 200;
+    if (req.method === "HEAD") { res.end(); return; }
+    res.end(ssrHtml);
+    return;
+  }
+
   const target = safeJoin(ROOT, pathname);
   if (!target) {
     res.statusCode = 400;

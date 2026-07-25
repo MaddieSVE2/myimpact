@@ -35,7 +35,6 @@ const NOINDEX_PATH_PREFIXES = [
   "/privacy",
   "/terms",
   "/security",
-  "/pricing",
   "/feedback",
   "/admin",
   "/log",
@@ -53,7 +52,7 @@ const NOINDEX_PATH_PREFIXES = [
 ];
 
 // Paths that must be indexable even though a prefix above would catch them.
-const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register"];
+const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register", "/org/share"];
 
 // Pages — lazy-loaded so each route becomes its own split chunk
 const Intro = lazy(() => import("@/pages/Intro"));
@@ -302,7 +301,7 @@ function AppRouter() {
   );
 
   const isExcludedFromNoIndex = NOINDEX_PATH_EXCLUSIONS.some(
-    (p) => location === p || location.startsWith(p + "?")
+    (p) => location === p || location.startsWith(p + "/") || location.startsWith(p + "?")
   );
   const shouldNoIndex = !isExcludedFromNoIndex && NOINDEX_PATH_PREFIXES.some(
     (p) => location === p || location.startsWith(p + "/") || location.startsWith(p + "?")
