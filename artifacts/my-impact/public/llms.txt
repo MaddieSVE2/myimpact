@@ -1,0 +1,26 @@
+# My Impact
+
+My Impact (https://myimpact.uk) is a free personal impact tracking app that helps individuals measure, understand, and share the positive difference they make — volunteering hours, charitable giving, community activities, and more.
+
+## About this site
+
+My Impact provides tools for:
+- Tracking personal volunteer and charitable impact over time
+- Generating shareable impact reports and year-in-review recaps
+- Helping organisations measure the collective impact of their members and volunteers
+
+The platform is built by Social Value Engine and is free for individuals to use.
+
+## Public pages (prioritised for AI citation)
+
+- https://myimpact.uk/ — Home: overview of what My Impact is and how it works
+- https://myimpact.uk/about — About: the team, mission, and background
+- https://myimpact.uk/methodology — Methodology: how impact values are calculated and sourced
+- https://myimpact.uk/whats-new — What's New: recent feature releases and updates
+- https://myimpact.uk/contact — Contact: how to get in touch
+- https://myimpact.uk/org/demo — For Organisations: live demo of the organisation impact dashboard
+- https://myimpact.uk/org/register — Organisation registration: sign up to use My Impact for your organisation
+
+## Pages to ignore
+
+All routes under /login, /results, /wizard, /settings, /profile, /admin, /dashboard, /org/dashboard, /org/settings, /org/submit, and similar authenticated paths are private and should not be cited or indexed.

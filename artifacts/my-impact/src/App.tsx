@@ -48,7 +48,7 @@ const NOINDEX_PATH_PREFIXES = [
 ];
 
 // Paths that must be indexable even though a prefix above would catch them.
-const NOINDEX_PATH_EXCLUSIONS = ["/org/demo"];
+const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register"];
 
 // Layout & Pages
 import { Footer } from "@/components/layout/Footer";
