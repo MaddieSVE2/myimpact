@@ -399,13 +399,32 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const org = await db.query.organisationsTable.findFirst({
+  let org = await db.query.organisationsTable.findFirst({
     where: eq(organisationsTable.id, membership.orgId),
   });
 
   if (!org) {
     res.json({ org: null });
     return;
+  }
+
+  // Self-heal: if the org's own contact is stuck as a pending member (e.g.
+  // they joined before the auto-promotion fix shipped), promote them to
+  // active manager here — the pending screen blocks re-entering the invite
+  // code, so /join's promotion path can never run for them.
+  const userEmail = req.user!.email ?? "";
+  if (
+    membership.status === "pending" &&
+    membership.role !== "manager" &&
+    !org.revokedAt &&
+    (org.contactEmail ?? "").toLowerCase() === userEmail.toLowerCase() &&
+    userEmail
+  ) {
+    await db.update(orgMembersTable)
+      .set({ role: "manager", status: "active" })
+      .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
+    membership.role = "manager";
+    membership.status = "active";
   }
 
   let logoUrl: string | null = null;
