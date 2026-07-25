@@ -249,7 +249,9 @@ export default function ActivitiesStep() {
       const confirmedQty = pendingCustomQuantities[i] ?? p.analysed.defaultQuantity;
       const activityId = `custom_${Date.now()}_${i}`;
       const { sdg, sdgColor } = sdgFromHint(p.analysed.sdgHint);
-      const hrs = p.analysed.unit === "hour" ? confirmedQty : Math.max(1, Math.round(confirmedQty * 2));
+      // Pound-unit entries are money, not time — they must not generate
+      // volunteer hours (which would inflate contribution/skills values).
+      const hrs = p.analysed.unit === "hour" ? confirmedQty : p.analysed.unit === "pound" ? 0 : Math.max(1, Math.round(confirmedQty * 2));
       const qty = p.analysed.unit === "hour" ? 1 : confirmedQty;
       const detail: CustomActivityDetail = {
         activityId,
@@ -333,7 +335,7 @@ export default function ActivitiesStep() {
     if (!customName.trim() || !analysed) return;
     const activityId = `custom_${Date.now()}`;
     const { sdg, sdgColor } = sdgFromHint(analysed.sdgHint);
-    const hrs = analysed.unit === "hour" ? customQuantity : customHours;
+    const hrs = analysed.unit === "hour" ? customQuantity : analysed.unit === "pound" ? 0 : customHours;
     const qty = analysed.unit === "hour" ? 1 : customQuantity;
 
     const detail: CustomActivityDetail = {

@@ -11,6 +11,12 @@ export function calcResultBreakdown(b: {
 }): string {
   const vpu = b.valuePerUnit;
   if (!vpu) return "";
+  // Monetary entries (donations, funds raised) are valued pound-for-pound —
+  // show the true annual amount rather than a misleading unit formula.
+  if (b.unit === "pound") {
+    const amount = b.quantity ?? Math.round(b.impactValue / vpu);
+    return `£${amount.toLocaleString("en-GB")}/year`;
+  }
   const rate = `£${vpu % 1 === 0 ? vpu.toFixed(0) : vpu.toFixed(2)}`;
   if (b.unit === "hour" || !b.unit) {
     return `${Math.round(b.hours).toLocaleString("en-GB")} hrs × ${rate}/hr`;

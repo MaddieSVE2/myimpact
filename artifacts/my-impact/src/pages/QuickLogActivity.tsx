@@ -411,7 +411,8 @@ export default function QuickLogActivity() {
       const { sdg, sdgColor } = sdgFromHint(a.sdgHint);
       const isHourUnit = a.unit === "hour";
       const qty = Math.max(1, Number(quantity) || a.defaultQuantity || 1);
-      const hrs = isHourUnit ? qty : Math.max(1, Math.round(qty * 2));
+      // Pound-unit entries are money, not time — no derived volunteer hours.
+      const hrs = isHourUnit ? qty : a.unit === "pound" ? 0 : Math.max(1, Math.round(qty * 2));
       const customId = `custom_${Date.now()}`;
       customActivities = [{
         activityId: customId,
