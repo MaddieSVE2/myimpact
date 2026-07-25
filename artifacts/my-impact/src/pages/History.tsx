@@ -23,7 +23,7 @@ import { TagEditor } from "@/components/TagEditor";
 import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
 
@@ -678,11 +678,43 @@ export default function History() {
     }
   }
 
-  const chartData = [...allRecords].filter(r => r.impactResult?.totalValue != null).reverse().map(r => ({
-    date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
-    fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
-    value: r.impactResult.totalValue,
-  }));
+  // Sort records chronologically by period where available (yearly labels sort
+  // to the start of the year, monthly labels to the start of the month),
+  // falling back to created date, so the running total never goes backwards.
+  function periodSortKey(r: AnyRecord): number {
+    const label = r.period?.trim();
+    if (label) {
+      if (/^\d{4}$/.test(label)) return Date.UTC(parseInt(label, 10), 0, 1);
+      const m = label.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
+      if (m) {
+        const monthIndex = ["january","february","march","april","may","june","july","august","september","october","november","december"]
+          .indexOf(m[1].toLowerCase());
+        return Date.UTC(parseInt(m[2], 10), monthIndex, 1);
+      }
+    }
+    return new Date(r.createdAt).getTime();
+  }
+
+  const chartData = (() => {
+    const sorted = [...allRecords]
+      .filter(r => r.impactResult?.totalValue != null)
+      .sort((a, b) => {
+        const diff = periodSortKey(a) - periodSortKey(b);
+        if (diff !== 0) return diff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+    let runningTotal = 0;
+    return sorted.map(r => {
+      const delta = r.impactResult.totalValue;
+      runningTotal += delta;
+      return {
+        date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+        fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
+        delta,
+        total: runningTotal,
+      };
+    });
+  })();
 
   function inferPeriodType(label: string | null | undefined): string {
     if (!label) return "unknown";
@@ -940,9 +972,15 @@ export default function History() {
           >
             <figure className="m-0">
             <figcaption className="text-sm font-semibold text-foreground mb-4">Social value over time</figcaption>
-            <div className="h-[240px] w-full" role="img" aria-label="Bar chart showing your social value per saved period">
+            <div className="h-[240px] w-full" role="img" aria-label="Chart showing your cumulative social value over time">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="runningTotalFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#F06127" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#F06127" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
@@ -956,12 +994,24 @@ export default function History() {
                     tickFormatter={v => `£${(v / 1000).toFixed(1)}k`}
                   />
                   <RechartsTooltip
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ""}
-                    formatter={(value: number) => [formatCurrency(value), "Social Value"]}
+                    labelFormatter={(_, payload) => {
+                      const p = payload?.[0]?.payload;
+                      if (!p) return "";
+                      return `+${formatCurrency(p.delta)} — ${p.fullDate}`;
+                    }}
+                    formatter={(value: number) => [formatCurrency(value), "Running total"]}
                     contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                   />
-                  <Bar dataKey="value" fill="#F06127" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Area
+                    type="stepAfter"
+                    dataKey="total"
+                    stroke="#F06127"
+                    strokeWidth={2}
+                    fill="url(#runningTotalFill)"
+                    dot={{ r: 3, fill: "#F06127", strokeWidth: 0 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
             </figure>
