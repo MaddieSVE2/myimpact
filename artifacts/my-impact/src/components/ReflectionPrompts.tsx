@@ -14,13 +14,33 @@ interface ReflectionPromptsProps {
 
 const MIN_CHARS = 15;
 const DEBOUNCE_MS = 900;
+/** Hard cap on the visible loading state before we fall back. */
+const FETCH_TIMEOUT_MS = 6000;
+
+/**
+ * Generic reflection questions shown when the request fails, times out, or
+ * the user is over their AI quota — so the panel never just vanishes.
+ */
+const FALLBACK_QUESTIONS: string[] = [
+  "What did you learn from doing this?",
+  "Who did this help, and how?",
+  "What changed as a result of your effort?",
+  "What was the most rewarding part?",
+  "How did it make you feel afterwards?",
+  "Did you pick up any new skills?",
+];
+
+function pickFallbacks(): string[] {
+  const start = Math.floor(Math.random() * FALLBACK_QUESTIONS.length);
+  return [0, 2, 4].map((i) => FALLBACK_QUESTIONS[(start + i) % FALLBACK_QUESTIONS.length]);
+}
 
 /**
  * Subtle, self-contained AI clarifying-question helper that sits beneath a
  * free-text reflection / description field. It debounces requests while the
- * user types, only asks once there is enough text to work with, and degrades
- * silently (showing nothing) when AI is unavailable, over the quota, or
- * returns no suggestions. It never blocks typing or saving.
+ * user types and only asks once there is enough text to work with. If AI is
+ * slow, unavailable, or over quota it shows generic fallback questions
+ * instead of vanishing. It never blocks typing or saving.
  */
 export function ReflectionPrompts({ text, context, onPick, className }: ReflectionPromptsProps) {
   const [questions, setQuestions] = useState<string[]>([]);
@@ -34,13 +54,25 @@ export function ReflectionPrompts({ text, context, onPick, className }: Reflecti
     const trimmed = text.trim();
     if (trimmed.length < MIN_CHARS) {
       setQuestions([]);
+      setLoading(false);
       return;
     }
     if (trimmed === lastFetchedRef.current) return;
 
     const controller = new AbortController();
+    let timedOut = false;
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(async () => {
       setLoading(true);
+      // Never let the loading message linger: after the cap, abort the
+      // request and show fallback questions instead.
+      timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        lastFetchedRef.current = trimmed;
+        setQuestions(pickFallbacks());
+        setLoading(false);
+      }, FETCH_TIMEOUT_MS);
       try {
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         const res = await fetch(`${base}/api/reflection/questions`, {
@@ -50,23 +82,33 @@ export function ReflectionPrompts({ text, context, onPick, className }: Reflecti
           body: JSON.stringify({ text: trimmed, context }),
           signal: controller.signal,
         });
-        // Quietly do nothing on quota (429), auth, or any other error.
+        // Quietly stay silent when signed out; fall back on quota (429)
+        // or server errors so the user still gets something useful.
         if (!res.ok) {
-          setQuestions([]);
+          lastFetchedRef.current = trimmed;
+          setQuestions(res.status === 401 || res.status === 403 ? [] : pickFallbacks());
           return;
         }
         const data = (await res.json()) as { questions?: string[] };
         lastFetchedRef.current = trimmed;
-        setQuestions(Array.isArray(data.questions) ? data.questions.slice(0, 3) : []);
+        const list = Array.isArray(data.questions) ? data.questions.slice(0, 3) : [];
+        setQuestions(list.length > 0 ? list : pickFallbacks());
       } catch {
-        if (!controller.signal.aborted) setQuestions([]);
+        if (!controller.signal.aborted) {
+          lastFetchedRef.current = trimmed;
+          setQuestions(pickFallbacks());
+        }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        // Always clear loading (unless the timeout path already did) so the
+        // spinner can never linger after an abort or error.
+        if (!timedOut) setLoading(false);
       }
     }, DEBOUNCE_MS);
 
     return () => {
       clearTimeout(timer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
       controller.abort();
     };
   }, [text, context, dismissed]);
