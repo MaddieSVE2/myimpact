@@ -129,7 +129,11 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
     await expect(page.getByText(/✓ Verified charity/i).first()).toBeVisible();
     await expect(page.getByText("Testford Community Circle").first()).toBeVisible();
     await expect(page.getByText(/^Suggested$/i).first()).toBeVisible();
-    await expect(page.getByText(/Reg\. no\. 1234567/).first()).toBeVisible();
+
+    // Registration number now lives in the expandable detail view (tap card).
+    await page.getByTestId("place-card-Testford Verified Trust").first().click();
+    await expect(page.getByText(/how to get involved/i).first()).toBeVisible();
+    await expect(page.getByText(/Registered charity no\. 1234567/).first()).toBeVisible();
 
     // Collapse works too.
     await page.getByRole("button", { name: /hide local places/i }).first().click();
