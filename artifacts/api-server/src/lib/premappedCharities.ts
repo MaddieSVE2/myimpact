@@ -25,6 +25,7 @@ import { verifyCharityName } from "./charity-commission";
 import { verifyOSCRCharityName } from "./oscr";
 import { detectVolunteerRecruitment } from "./volunteerRecruitment.js";
 import { getOverridesForAuthority, mergeOverrides } from "./charityOverrides.js";
+import { cleanupOrphanedVotes } from "./localCharityVotes.js";
 
 /** Main categories to pre-map; "Custom" holds user-defined activities only. */
 export const MAIN_CATEGORIES: string[] = CATEGORIES.filter((c) => c !== "Custom");
@@ -442,6 +443,16 @@ export async function runPremappedRefreshSweep(): Promise<number> {
     }
     await new Promise((resolve) => setTimeout(resolve, SWEEP_THROTTLE_MS));
   }
+
+  // Clean up thumbs-up votes for charities that have been absent from their
+  // area's suggestions beyond the grace period (they're kept for a while so
+  // votes re-attach if a charity reappears in a later regeneration).
+  try {
+    await cleanupOrphanedVotes();
+  } catch (err) {
+    console.error("[premapped-charities] orphaned vote cleanup failed:", err);
+  }
+
   return stale.length;
 }
 

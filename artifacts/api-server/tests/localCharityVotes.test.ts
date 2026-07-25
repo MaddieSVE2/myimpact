@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { db, localCharityVotesTable, type StoredCharityPlace } from "@workspace/db";
+import {
+  db,
+  localCharitySuggestionsTable,
+  localCharityVotesTable,
+  type StoredCharityPlace,
+} from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   attachVotes,
   charityVoteKey,
+  cleanupOrphanedVotes,
   getVoteState,
   toggleVote,
 } from "../src/lib/localCharityVotes.js";
@@ -123,5 +129,82 @@ describe("attachVotes", () => {
     ];
     const result = attachVotes(categories, new Map(), new Set());
     expect(result[0].places.map((p) => p.name)).toEqual(["One", "Two"]);
+  });
+});
+
+describe("cleanupOrphanedVotes", () => {
+  // Two throwaway areas: one with stored suggestions, one with votes only.
+  const CLEAN_AREA = `__test_cleanup_${Date.now()}__`;
+  const NO_SUGGESTIONS_AREA = `__test_cleanup_nosugg_${Date.now()}__`;
+  const OLD = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000); // beyond 90d grace
+
+  async function cleanupAreas() {
+    for (const area of [CLEAN_AREA, NO_SUGGESTIONS_AREA]) {
+      await db.delete(localCharityVotesTable).where(eq(localCharityVotesTable.localAuthority, area));
+      await db
+        .delete(localCharitySuggestionsTable)
+        .where(eq(localCharitySuggestionsTable.localAuthority, area));
+    }
+  }
+
+  beforeAll(async () => {
+    await cleanupAreas();
+    await db.insert(localCharitySuggestionsTable).values({
+      localAuthority: CLEAN_AREA,
+      category: "Community",
+      places: [
+        // Verified: current key is reg:cl-111, but it may hold older name votes.
+        place("Verified Charity", "cl-111"),
+        // Unverified: current key is the name key.
+        place("Name Only Charity"),
+      ],
+    });
+    await db.insert(localCharityVotesTable).values([
+      // Present via reg key, stale lastSeenAt -> must be kept and touched.
+      { localAuthority: CLEAN_AREA, charityKey: "reg:cl-111", userId: "u1", lastSeenAt: OLD },
+      // Legacy name-key vote for the now-verified charity -> still present, kept.
+      { localAuthority: CLEAN_AREA, charityKey: "name:verified charity", userId: "u2", lastSeenAt: OLD },
+      // Present via name key -> kept.
+      { localAuthority: CLEAN_AREA, charityKey: "name:name only charity", userId: "u1", lastSeenAt: OLD },
+      // Absent and past the grace period -> deleted.
+      { localAuthority: CLEAN_AREA, charityKey: "reg:cl-gone", userId: "u1", lastSeenAt: OLD },
+      // Absent but recently seen -> kept (still within grace).
+      { localAuthority: CLEAN_AREA, charityKey: "reg:cl-recent", userId: "u1" },
+      // Area with no stored suggestions -> untouched even though stale.
+      { localAuthority: NO_SUGGESTIONS_AREA, charityKey: "reg:cl-orphan", userId: "u1", lastSeenAt: OLD },
+    ]);
+  });
+
+  afterAll(cleanupAreas);
+
+  it("deletes only long-absent votes and refreshes lastSeenAt for present ones", async () => {
+    await cleanupOrphanedVotes();
+
+    const rows = await db
+      .select()
+      .from(localCharityVotesTable)
+      .where(eq(localCharityVotesTable.localAuthority, CLEAN_AREA));
+    const keys = rows.map((r) => r.charityKey).sort();
+    expect(keys).toEqual([
+      "name:name only charity",
+      "name:verified charity",
+      "reg:cl-111",
+      "reg:cl-recent",
+    ]);
+
+    // Present votes (including the legacy name-key vote for the verified
+    // charity) had their lastSeenAt refreshed past the old timestamp.
+    for (const key of ["reg:cl-111", "name:verified charity", "name:name only charity"]) {
+      const row = rows.find((r) => r.charityKey === key)!;
+      expect(row.lastSeenAt.getTime()).toBeGreaterThan(OLD.getTime());
+    }
+
+    // Areas without stored suggestions are skipped entirely.
+    const untouched = await db
+      .select()
+      .from(localCharityVotesTable)
+      .where(eq(localCharityVotesTable.localAuthority, NO_SUGGESTIONS_AREA));
+    expect(untouched.map((r) => r.charityKey)).toEqual(["reg:cl-orphan"]);
+    expect(untouched[0].lastSeenAt.getTime()).toBe(OLD.getTime());
   });
 });

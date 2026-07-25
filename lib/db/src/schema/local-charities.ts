@@ -79,6 +79,12 @@ export const localCharityVotesTable = pgTable(
     charityKey: text("charity_key").notNull(),
     userId: text("user_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    /**
+     * Last time this vote's charityKey appeared in the area's stored
+     * suggestions (touched by the daily refresh sweep). Votes whose charity
+     * has been absent for a generous grace period are cleaned up.
+     */
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.localAuthority, t.charityKey, t.userId] }),

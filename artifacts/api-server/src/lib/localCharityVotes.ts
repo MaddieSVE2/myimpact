@@ -7,8 +7,13 @@
  * verified, falling back to the normalised charity name.
  */
 
-import { db, localCharityVotesTable, type StoredCharityPlace } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import {
+  db,
+  localCharitySuggestionsTable,
+  localCharityVotesTable,
+  type StoredCharityPlace,
+} from "@workspace/db";
+import { and, eq, inArray, lt, not, sql } from "drizzle-orm";
 
 /**
  * Stable identity for a charity across regenerations. Registration number is
@@ -96,6 +101,85 @@ export type VotedPlace = StoredCharityPlace & { votes: number; voted: boolean; p
  * "Popular with the community" badge.
  */
 export const POPULAR_VOTE_THRESHOLD = 3;
+
+/**
+ * Grace period before votes for a vanished charity are deleted. Suggestions
+ * regenerate roughly monthly, so 90 days gives a charity ~3 regeneration
+ * cycles to reappear (and re-attach its votes) before cleanup.
+ */
+const VOTE_ORPHAN_GRACE_MS = 90 * 24 * 60 * 60 * 1000;
+
+/**
+ * Clean up votes for charities that have disappeared from their area's
+ * suggestions for good. For each authority that has votes:
+ *
+ *  1. Touch lastSeenAt on votes whose charityKey is present in the area's
+ *     current stored suggestions — these are never deleted.
+ *  2. Delete votes whose charity hasn't been seen for the grace period.
+ *
+ * Authorities with no stored suggestions are skipped entirely (nothing to
+ * compare against — e.g. generation pending or failed), so their votes are
+ * neither touched nor deleted. Returns the number of votes deleted.
+ */
+export async function cleanupOrphanedVotes(now: Date = new Date()): Promise<number> {
+  const authorities = await db
+    .selectDistinct({ localAuthority: localCharityVotesTable.localAuthority })
+    .from(localCharityVotesTable);
+
+  const cutoff = new Date(now.getTime() - VOTE_ORPHAN_GRACE_MS);
+  let deletedTotal = 0;
+
+  for (const { localAuthority } of authorities) {
+    const suggestionRows = await db
+      .select({ places: localCharitySuggestionsTable.places })
+      .from(localCharitySuggestionsTable)
+      .where(eq(localCharitySuggestionsTable.localAuthority, localAuthority));
+    if (suggestionRows.length === 0) continue;
+
+    // Treat BOTH identity forms of each current place as present: a charity
+    // may have collected votes under its name key while unverified and later
+    // regenerate as verified (reg key), or vice versa. Those older votes
+    // still belong to a present charity and must never be aged out.
+    const currentKeys = new Set<string>();
+    for (const row of suggestionRows) {
+      for (const place of row.places) {
+        currentKeys.add(charityVoteKey(place));
+        currentKeys.add(charityVoteKey({ name: place.name }));
+      }
+    }
+    const keys = Array.from(currentKeys);
+
+    if (keys.length > 0) {
+      await db
+        .update(localCharityVotesTable)
+        .set({ lastSeenAt: now })
+        .where(
+          and(
+            eq(localCharityVotesTable.localAuthority, localAuthority),
+            inArray(localCharityVotesTable.charityKey, keys),
+          ),
+        );
+    }
+
+    const conditions = [
+      eq(localCharityVotesTable.localAuthority, localAuthority),
+      lt(localCharityVotesTable.lastSeenAt, cutoff),
+    ];
+    if (keys.length > 0) {
+      conditions.push(not(inArray(localCharityVotesTable.charityKey, keys)));
+    }
+    const deleted = await db
+      .delete(localCharityVotesTable)
+      .where(and(...conditions))
+      .returning({ charityKey: localCharityVotesTable.charityKey });
+    deletedTotal += deleted.length;
+  }
+
+  if (deletedTotal > 0) {
+    console.log(`[local-charity-votes] cleanup: deleted ${deletedTotal} orphaned votes`);
+  }
+  return deletedTotal;
+}
 
 /**
  * Attach vote counts + the user's own votes to stored places, and sort each
