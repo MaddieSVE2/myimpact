@@ -270,6 +270,104 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#x27;");
 }
 
+/**
+ * Shared brand styling for server-rendered SSO pages (age gate, result
+ * pages). Mirrors the My Impact web app's design tokens: warm cream
+ * background, Fraunces/DM Sans typography, orange pill buttons, and the
+ * logo served from the web app's public /images directory.
+ */
+const BRAND_HEAD = `
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<link rel="icon" href="/images/icon-192.png" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: hsl(45, 33%, 95%);
+    color: #213547;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    text-align: center;
+  }
+  .logo-chip {
+    background: #213547;
+    border-radius: 14px;
+    padding: 12px 22px;
+    margin-bottom: 28px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .logo { height: 36px; display: block; }
+  .card {
+    background: #fff;
+    border: 1px solid hsl(45, 18%, 87%);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+    padding: 40px 32px;
+    max-width: 440px;
+    width: 100%;
+  }
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.25;
+    margin: 0 0 12px;
+    color: #213547;
+  }
+  p { color: hsl(208, 20%, 42%); line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
+  p strong { color: #213547; }
+  a.btn, button.btn {
+    display: inline-block;
+    background: #E8633A;
+    color: #fff;
+    padding: 13px 30px;
+    border-radius: 100px;
+    border: none;
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  a.btn:hover, button.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(232, 99, 58, 0.31);
+  }
+  .icon {
+    width: 56px; height: 56px;
+    border-radius: 100px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700;
+    margin: 0 auto 18px;
+  }
+  .icon.ok { background: hsl(64, 61%, 46%, 0.18); color: hsl(64, 61%, 32%); }
+  .icon.err { background: rgba(232, 99, 58, 0.14); color: #E8633A; }
+  select {
+    padding: 12px 14px;
+    border: 1px solid hsl(45, 18%, 87%);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: #213547;
+    background: #fff;
+    margin: 0 4px;
+  }
+  select:focus { outline: 2px solid #E8633A; outline-offset: 1px; }
+  .error { color: #c0392b; font-weight: 600; }
+  .footnote { font-size: 13px; color: hsl(208, 20%, 55%); margin-top: 22px; margin-bottom: 0; }
+</style>`;
+
+const BRAND_LOGO = `<div class="logo-chip"><img class="logo" src="/images/myimpact.png" alt="My Impact" /></div>`;
+
 /** Render an HTML page that closes the OAuth flow on the user's side. */
 function renderResultPage(res: Response, opts: { ok: boolean; title: string; message: string; redirectTo?: string | null }) {
   const safeRedirect = isSafePath(opts.redirectTo ?? null) ? opts.redirectTo! : null;
@@ -285,18 +383,15 @@ function renderResultPage(res: Response, opts: { ok: boolean; title: string; mes
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 ${meta}
 <title>${titleEscaped} · My Impact</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 32px 24px; color: #213547; text-align: center; }
-  h1 { font-size: 22px; margin: 0 0 12px; }
-  p { color: #555; line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
-  a.btn { display: inline-block; background: #F06127; color: #fff; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
-  .icon { font-size: 40px; margin-bottom: 8px; }
-</style>
+${BRAND_HEAD}
 </head><body>
-<div class="icon">${opts.ok ? "✓" : "✕"}</div>
+${BRAND_LOGO}
+<div class="card">
+<div class="icon ${opts.ok ? "ok" : "err"}">${opts.ok ? "✓" : "✕"}</div>
 <h1>${titleEscaped}</h1>
 <p>${messageEscaped}</p>
-${safeRedirectEscaped ? `<p><a class="btn" href="${safeRedirectEscaped}">Continue</a></p>` : `<p><a class="btn" href="/">Back to My Impact</a></p>`}
+${safeRedirectEscaped ? `<p style="margin-bottom:0"><a class="btn" href="${safeRedirectEscaped}">Continue</a></p>` : `<p style="margin-bottom:0"><a class="btn" href="/">Back to My Impact</a></p>`}
+</div>
 </body></html>`);
 }
 
@@ -525,15 +620,10 @@ function renderAgeGatePage(res: Response, opts: { token: string; email: string; 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>One last step · My Impact</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 32px 24px; color: #213547; text-align: center; }
-  h1 { font-size: 22px; margin: 0 0 12px; }
-  p { color: #555; line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
-  select { padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; margin: 0 4px; }
-  button { background: #F06127; color: #fff; padding: 12px 22px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 16px; }
-  .error { color: #c0392b; font-weight: 600; }
-</style>
+${BRAND_HEAD}
 </head><body>
+${BRAND_LOGO}
+<div class="card">
 <h1>One last step</h1>
 <p>You're creating a new My Impact account for <strong>${emailEscaped}</strong>.<br/>Please tell us your date of birth — you must be 13 or older to use My Impact.</p>
 ${errorHtml}
@@ -547,8 +637,10 @@ ${errorHtml}
       <option value="">Year</option>${yearOptions}
     </select>
   </div>
-  <button type="submit" data-testid="button-complete-signup">Continue</button>
+  <button type="submit" class="btn" style="margin-top:20px" data-testid="button-complete-signup">Continue</button>
 </form>
+<p class="footnote">We only use this to check you're old enough — nothing is saved until you continue.</p>
+</div>
 </body></html>`);
 }
 
