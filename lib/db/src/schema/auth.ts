@@ -78,9 +78,24 @@ export const feedbackTable = pgTable("feedback", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Addresses Resend has reported as undeliverable (hard bounce, spam
+// complaint, or explicit suppression). Populated by the Resend webhook;
+// checked at magic-link request time so we never show a false "check your
+// email" confirmation. Cleared by an admin once the underlying issue is
+// fixed (which also removes the address from Resend's own suppression list).
+export const emailSuppressionsTable = pgTable("email_suppressions", {
+  email: text("email").primaryKey(),
+  // "bounced" | "complained" | "failed" | "suppressed"
+  eventType: text("event_type").notNull(),
+  reason: text("reason"),
+  firstEventAt: timestamp("first_event_at").defaultNow().notNull(),
+  lastEventAt: timestamp("last_event_at").defaultNow().notNull(),
+});
+
 export type User = typeof usersTable.$inferSelect;
 export type MagicToken = typeof magicTokensTable.$inferSelect;
 export type UserProfile = typeof userProfilesTable.$inferSelect;
 export type PageView = typeof pageViewsTable.$inferSelect;
 export type Feedback = typeof feedbackTable.$inferSelect;
 export type OnboardingEmailSend = typeof onboardingEmailSendsTable.$inferSelect;
+export type EmailSuppression = typeof emailSuppressionsTable.$inferSelect;

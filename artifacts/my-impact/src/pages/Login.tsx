@@ -43,6 +43,7 @@ export default function Login() {
   const [birthMonth, setBirthMonth] = useState("");
   const [birthYear, setBirthYear] = useState("");
   const [underageBlocked, setUnderageBlocked] = useState(false);
+  const [undeliverable, setUndeliverable] = useState(false);
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -108,6 +109,7 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setUnderageBlocked(false);
+    setUndeliverable(false);
 
     // Client-side age gate: if a birth date is provided and it makes the
     // person under 13, block before any request is sent.
@@ -133,7 +135,11 @@ export default function Login() {
       }
       setSent(true);
     } catch (err: any) {
-      setError(err.message ?? t("common.error"));
+      if (err.undeliverable) {
+        setUndeliverable(true);
+      } else {
+        setError(err.message ?? t("common.error"));
+      }
     } finally {
       setLoading(false);
     }
@@ -228,7 +234,7 @@ export default function Login() {
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                      onChange={(e) => { setEmail(e.target.value); setError(null); setUndeliverable(false); }}
                       placeholder={t("login.emailPlaceholder")}
                       required
                       className="w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
@@ -312,6 +318,17 @@ export default function Login() {
                       <span>
                         <strong>{ssoLookup!.domain}</strong> requires single sign-on, but it isn't available right now. Please contact your organisation admin.
                       </span>
+                    </p>
+                  </div>
+                )}
+
+                {undeliverable && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3" data-testid="text-email-undeliverable">
+                    <p className="text-sm font-semibold text-red-800 mb-1">
+                      {t("login.undeliverableTitle")}
+                    </p>
+                    <p className="text-xs text-red-800 leading-relaxed">
+                      {t("login.undeliverableDesc")}
                     </p>
                   </div>
                 )}

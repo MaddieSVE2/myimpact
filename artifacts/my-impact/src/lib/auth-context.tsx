@@ -99,7 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.error ?? "Failed to send magic link");
+      const err = new Error(data.error ?? "Failed to send magic link") as Error & {
+        undeliverable?: boolean;
+      };
+      // Server knows (via Resend bounce/suppression reports) that email to
+      // this address cannot be delivered — the login page shows dedicated
+      // guidance instead of a generic error.
+      if (data.emailUndeliverable) err.undeliverable = true;
+      throw err;
     }
     if (data.instantLogin && data.user) {
       const u: User = { ...data.user, displayName: data.user.displayName ?? null };

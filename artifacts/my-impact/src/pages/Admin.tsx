@@ -64,6 +64,14 @@ interface AiUsageReport {
 type AiSortKey = "cost" | "questions" | "tokens";
 type AiFilter = "all" | "user" | "anon";
 
+interface SuppressedEmail {
+  email: string;
+  eventType: string;
+  reason: string | null;
+  firstEventAt: string;
+  lastEventAt: string;
+}
+
 interface OrgRequest {
   id: string;
   orgName: string;
@@ -118,6 +126,11 @@ export default function Admin() {
   const [voicePage, setVoicePage] = useState(1);
   const [voiceTotal, setVoiceTotal] = useState(0);
   const [voiceTotalPages, setVoiceTotalPages] = useState(1);
+
+  const [suppressions, setSuppressions] = useState<SuppressedEmail[]>([]);
+  const [suppFetching, setSuppFetching] = useState(true);
+  const [suppError, setSuppError] = useState<string | null>(null);
+  const [suppClearing, setSuppClearing] = useState<string | null>(null);
 
   const [aiReport, setAiReport] = useState<AiUsageReport | null>(null);
   const [aiFetching, setAiFetching] = useState(true);
@@ -197,6 +210,37 @@ export default function Admin() {
       .catch((err) => setError(err.message ?? "Failed to load users"))
       .finally(() => setFetching(false));
   }, [isLoading, user, isAdmin, userPage]);
+
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setSuppFetching(true);
+    fetch(`${BASE}/api/admin/suppressed-emails`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setSuppressions(data.suppressions ?? []);
+      })
+      .catch((err) => setSuppError(err.message ?? "Failed to load suppressed emails"))
+      .finally(() => setSuppFetching(false));
+  }, [isLoading, user, isAdmin]);
+
+  async function handleClearSuppression(email: string) {
+    if (!confirm(`Clear the suppression for ${email}? This also removes it from Resend's suppression list so emails can be delivered again.`)) return;
+    setSuppClearing(email);
+    try {
+      const r = await fetch(`${BASE}/api/admin/suppressed-emails/${encodeURIComponent(email)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setSuppressions((prev) => prev.filter((s) => s.email !== email));
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : null) ?? "Failed to clear suppression");
+    } finally {
+      setSuppClearing(null);
+    }
+  }
 
   async function handleApprove(id: string) {
     setActionLoading(id + "-approve");
@@ -343,6 +387,74 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Undeliverable email addresses</h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        Addresses Resend reported as bounced, complained or suppressed. Sign-in links and other
+        emails to these addresses are blocked. Clear an address once the underlying problem is
+        fixed — this also removes it from Resend's suppression list.
+      </p>
+
+      {suppError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">
+          {suppError}
+        </div>
+      )}
+
+      {suppFetching && !suppError && (
+        <p className="text-sm text-muted-foreground">Loading suppressed emails…</p>
+      )}
+
+      {!suppFetching && !suppError && (
+        <div className="overflow-x-auto rounded-xl border border-border shadow-sm" data-testid="admin-suppressed-emails">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Type</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Reason</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">Last event</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {suppressions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                    No suppressed addresses — all emails are deliverable.
+                  </td>
+                </tr>
+              )}
+              {suppressions.map((s, idx) => (
+                <tr key={s.email} className={idx % 2 === 0 ? "bg-background" : "bg-secondary/20"}>
+                  <td className="px-4 py-3 text-foreground font-medium">{s.email}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${s.eventType === "complained" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
+                      {s.eventType}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground max-w-md">
+                    {s.reason ?? <span className="italic">Not provided</span>}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {new Date(s.lastEventAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleClearSuppression(s.email)}
+                      disabled={suppClearing === s.email}
+                      data-testid={`button-clear-suppression-${s.email}`}
+                      className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold text-foreground hover:border-primary/40 disabled:opacity-50"
+                    >
+                      {suppClearing === s.email ? "Clearing…" : "Clear"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Sidekick AI usage</h2>
       <p className="text-sm text-muted-foreground mb-6">

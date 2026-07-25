@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import router from "./routes";
 import { createRateLimiter } from "./lib/rateLimiter.js";
 import { billingWebhookHandler, billingWebhookRawParser } from "./routes/billing.js";
+import { resendWebhookHandler, resendWebhookRawParser } from "./routes/resend-webhook.js";
 import { Sentry, isSentryEnabled } from "./lib/sentry.js";
 
 const app: Express = express();
@@ -40,6 +41,9 @@ app.use(
 // Stripe webhook MUST be registered BEFORE express.json() so the raw body
 // is preserved for signature verification.
 app.post("/api/billing/webhook", billingWebhookRawParser, billingWebhookHandler);
+// Resend webhook (bounce/complaint/suppression events) — also needs the raw
+// body for Svix signature verification.
+app.post("/api/email/resend-webhook", resendWebhookRawParser, resendWebhookHandler);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

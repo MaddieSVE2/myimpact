@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable } from "@workspace/db";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
-import { getUncachableResendClient } from "../lib/resend.js";
+import { getUncachableResendClient, removeFromResendSuppressionList } from "../lib/resend.js";
 import { randomUUID } from "crypto";
 import {
   TRANSCRIBE_SECONDS_CAP,
@@ -692,6 +692,66 @@ router.post("/orgs/:id/resend-activation", authenticate, async (req: Authenticat
   }
 
   res.json({ ok: true, sentTo: org.contactEmail });
+});
+
+// ── Suppressed email addresses ──────────────────────────────────────────────
+// Resend reports bounces/complaints/suppressions via webhook; the addresses
+// land in email_suppressions and block future magic-link sends. These routes
+// give the site owner visibility and a way to clear an address once the
+// underlying issue (typo, full mailbox, etc.) is fixed.
+
+router.get("/suppressed-emails", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(emailSuppressionsTable)
+    .orderBy(desc(emailSuppressionsTable.lastEventAt));
+  res.json({
+    suppressions: rows.map((r) => ({
+      email: r.email,
+      eventType: r.eventType,
+      reason: r.reason,
+      firstEventAt: r.firstEventAt,
+      lastEventAt: r.lastEventAt,
+    })),
+  });
+});
+
+router.delete("/suppressed-emails/:email", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const email = String(req.params.email ?? "").trim().toLowerCase();
+  if (!email.includes("@")) {
+    res.status(400).json({ error: "A valid email address is required" });
+    return;
+  }
+  const existing = await db.query.emailSuppressionsTable.findFirst({
+    where: eq(emailSuppressionsTable.email, email),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "This address is not on the suppression list." });
+    return;
+  }
+
+  // Remove from Resend's suppression list FIRST — if that fails we keep the
+  // local record so the admin sees the address is still blocked upstream.
+  const result = await removeFromResendSuppressionList(email);
+  if (!result.ok) {
+    console.error(`[admin] failed to clear Resend suppression for ${email}:`, result.error);
+    res.status(502).json({
+      error:
+        "Couldn't remove this address from Resend's suppression list. Please try again or clear it in the Resend dashboard.",
+    });
+    return;
+  }
+
+  await db.delete(emailSuppressionsTable).where(eq(emailSuppressionsTable.email, email));
+  res.json({ ok: true });
 });
 
 export default router;

@@ -172,6 +172,9 @@ export const en = {
     newHere: "New here?",
     calculateFirst: "Calculate your impact first",
     closeAndGoBack: "Close and go back",
+    undeliverableTitle: "We couldn't deliver email to this address",
+    undeliverableDesc:
+      "A previous email to this address bounced, so sign-in links can't reach it. Please double-check the address for typos and try again, or contact support at hello@myimpact.uk if you think this is a mistake.",
   },
   intro: {
     poweredBySve: "Powered by the Social Value Engine",

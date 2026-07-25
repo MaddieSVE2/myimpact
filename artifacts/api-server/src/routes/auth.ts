@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable, orgSsoConfigsTable } from "@workspace/db";
+import { db, usersTable, magicTokensTable, organisationsTable, orgMembersTable, userProfilesTable, orgSsoConfigsTable, emailSuppressionsTable } from "@workspace/db";
 import { eq, and, gt, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
@@ -134,6 +134,23 @@ router.post("/request", async (req, res) => {
       console.error("Demo persona login failed:", err);
       res.status(500).json({ error: "Demo sign-in failed. Please try again." });
     }
+    return;
+  }
+
+  // Deliverability check: if Resend has previously reported this address
+  // as bounced/complained/suppressed, every send would be silently swallowed.
+  // Tell the user honestly instead of showing a false "check your email".
+  // Runs before any user/token row is written so undeliverable addresses
+  // don't accumulate accounts. Demo personas never reach this point.
+  const suppression = await db.query.emailSuppressionsTable.findFirst({
+    where: eq(emailSuppressionsTable.email, normalizedEmail),
+  });
+  if (suppression) {
+    res.status(422).json({
+      error:
+        "We couldn't deliver email to this address. Please check it for typos, or contact support if you think this is a mistake.",
+      emailUndeliverable: true,
+    });
     return;
   }
 

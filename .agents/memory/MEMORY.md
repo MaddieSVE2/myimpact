@@ -2,6 +2,7 @@
 - [SEO meta pattern](seo-meta.md) — react-helmet-async with PageMeta/NoIndexMeta; HelmetProvider in App.tsx wraps everything; private routes noindexed via PrivateRoute + NOINDEX_PATH_PREFIXES list in AppRouter.
 - [Orphaned workflow process](orphaned-workflow-process.md) — workflow restart can leave an old tsx process holding the API port, serving stale code; check ps for duplicate index.ts processes.
 - [Org export shared pipeline](org-export-live.md) — real orgs reuse the demo export pipeline via DemoActivity mapping; hooks above early returns; query cache cleared on login/logout to stop PII leaks.
+- [Resend webhook secrets](resend-webhook-secrets.md) — each Resend webhook endpoint has its own whsec_ secret; never reuse another app's; raw-body route must mount before express.json.
 - [Resend verified sender](resend-verified-sender.md) — only socialvalueengine.com is verified in Resend; sends from @myimpact.uk are rejected. Sender lives in the shared Resend helper.
 - [Dependency audit overrides](dependency-audit-overrides.md) — audit fixes go in root pnpm.overrides, but catalog deps (vite) must be bumped in pnpm-workspace.yaml catalog; verify with build+smoke validations.
 - [Sentry DSN token exposure](sentry-dsn-incident.md) — leaked ghp_ token revoked; VITE_* vars bake into bundle so republish needed; DSN inits now validate format before echoing.

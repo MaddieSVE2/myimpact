@@ -174,6 +174,9 @@ export const cy: Catalogue = {
     newHere: "Yn newydd yma?",
     calculateFirst: "Cyfrifwch eich effaith yn gyntaf",
     closeAndGoBack: "Cau a mynd yn ôl",
+    undeliverableTitle: "Doedd dim modd anfon e-bost i'r cyfeiriad hwn",
+    undeliverableDesc:
+      "Methodd e-bost blaenorol i'r cyfeiriad hwn, felly ni all dolenni mewngofnodi ei gyrraedd. Gwiriwch y cyfeiriad am gamgymeriadau a rhowch gynnig arall arni, neu cysylltwch â hello@myimpact.uk os credwch fod hyn yn gamgymeriad.",
   },
   intro: {
     poweredBySve: "Wedi'i bweru gan y Social Value Engine",
