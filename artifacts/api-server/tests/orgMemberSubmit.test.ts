@@ -21,6 +21,9 @@ const state = vi.hoisted(() => ({
   tracked: [] as Array<{ eventName: string; userId?: string }>,
   // db.query.impactRecordsTable.findFirst() result (for DELETE/PATCH routes).
   impactRecord: null as Record<string, unknown> | null,
+  // db.query.organisationsTable.findFirst() result (revocation check in
+  // requireOrgManager). Defaults to an active (non-revoked) organisation.
+  organisation: { revokedAt: null } as Record<string, unknown> | null,
   // Recorded db.update(table).set(values) calls.
   updates: [] as Array<{ table: string; values: unknown }>,
   // Recorded db.delete(table) calls.
@@ -75,6 +78,9 @@ vi.mock("@workspace/db", () => {
       },
       impactRecordsTable: {
         findFirst: vi.fn(async () => state.impactRecord),
+      },
+      organisationsTable: {
+        findFirst: vi.fn(async () => state.organisation),
       },
     },
     insert: (table: { __tableName: string }) => insertFor(table),
@@ -195,6 +201,7 @@ beforeEach(() => {
   state.tracked.length = 0;
   state.insertedRecordId = 4242;
   state.impactRecord = null;
+  state.organisation = { revokedAt: null };
   state.updates.length = 0;
   state.deletes.length = 0;
 });
