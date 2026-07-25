@@ -24,6 +24,7 @@ import {
   Heart, ToggleRight, ScanSearch, Share2, History, Award, UserPlus, NotebookPen,
   ShieldCheck, MessageSquare, Map, Activity, Globe, Lock, Wrench,
   Languages, Mic, Film,
+  CalendarRange, ThumbsUp, MapPin, LineChart, FileSpreadsheet, Search,
   ChevronUp, ChevronDown,
 } from "lucide-react";
 
@@ -64,6 +65,144 @@ const BADGE_COLORS = {
 };
 
 const RELEASES: Release[] = [
+  {
+    id: "july-2026",
+    date: "July 2026",
+    title: "What's new",
+    intro: "Since May we've made logging your impact easier to edit and understand, brought local charity ideas to life, added richer history and results, given organisations more control, and tightened up safety and polish across the app.",
+    groups: [
+      {
+        heading: "Logging your impact",
+        badge: "For you",
+        badgeColor: BADGE_COLORS.forYou,
+        items: [
+          {
+            icon: <Pencil className="w-5 h-5" />,
+            title: "Edit past entries",
+            desc: "Change the activity, dates or donation amount on anything you've logged, no need to delete and re-add it.",
+          },
+          {
+            icon: <CalendarRange className="w-5 h-5" />,
+            title: "Custom date ranges & friendly timescales",
+            desc: "Pick the exact dates something happened, or choose from friendlier timescale presets that match how you actually think about your time.",
+          },
+          {
+            icon: <Zap className="w-5 h-5" />,
+            title: "A clearer quick log",
+            desc: "Quick log now picks the right record more reliably, shows the recurring option only when it makes sense, and we've fixed the analysis errors some of you hit.",
+          },
+          {
+            icon: <PoundSterling className="w-5 h-5" />,
+            title: "Donations at their true value",
+            desc: "Money you donate now shows up at its real value in your results, so your totals reflect what you've actually given.",
+          },
+        ],
+      },
+      {
+        heading: "Ideas & local charities",
+        badge: "For you",
+        badgeColor: BADGE_COLORS.forYou,
+        items: [
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            title: "Instant local charity suggestions",
+            desc: "Local charity ideas now appear instantly with richer detail and website links, so you can find somewhere to help near you in seconds.",
+          },
+          {
+            icon: <ThumbsUp className="w-5 h-5" />,
+            title: "Community thumbs-up",
+            desc: "Give a thumbs-up to charities you rate, and look out for \"Popular with the community\" badges on local favourites.",
+          },
+          {
+            icon: <Wrench className="w-5 h-5" />,
+            title: "Suggest a fix",
+            desc: "Spotted an out-of-date charity listing? You can now suggest a correction right from the page.",
+          },
+          {
+            icon: <Search className="w-5 h-5" />,
+            title: "Postcode search, back and better",
+            desc: "GoVo postcode search and Volunteer Scotland links are restored, with helpful fallbacks if a lookup ever fails.",
+          },
+        ],
+      },
+      {
+        heading: "Your history & results",
+        badge: "Tools",
+        badgeColor: BADGE_COLORS.tools,
+        items: [
+          {
+            icon: <LineChart className="w-5 h-5" />,
+            title: "Running-total history chart",
+            desc: "Watch your impact build over time with a new running-total chart, hover to see the breakdown by activity.",
+          },
+          {
+            icon: <ScanSearch className="w-5 h-5" />,
+            title: "See how every number was calculated",
+            desc: "Open any saved record to see the full calculation behind it, no more mystery maths.",
+          },
+          {
+            icon: <FileSpreadsheet className="w-5 h-5" />,
+            title: "Richer PDF & CSV exports",
+            desc: "Exports now include SDG badges, goal names and plain-language descriptions, ready to share as they are.",
+          },
+          {
+            icon: <Share2 className="w-5 h-5" />,
+            title: "SROI ratio where it matters",
+            desc: "Your social return on investment ratio now appears in funder summaries and on public share pages.",
+          },
+        ],
+      },
+      {
+        heading: "For organisations",
+        badge: "Organisations",
+        badgeColor: BADGE_COLORS.orgs,
+        items: [
+          {
+            icon: <UserPlus className="w-5 h-5" />,
+            title: "Member join requests",
+            desc: "People can now ask to join your organisation, and admins can approve or decline with notifications either way, plus optional email-domain restrictions.",
+          },
+          {
+            icon: <History className="w-5 h-5" />,
+            title: "Personal submission history",
+            desc: "Members can see everything they've submitted to an organisation, and fix or withdraw a submission if something's not right.",
+          },
+          {
+            icon: <FileDown className="w-5 h-5" />,
+            title: "Export your activity feed",
+            desc: "Download your organisation's activity feed as a CSV, plus new organisation types and data export/import.",
+          },
+        ],
+      },
+      {
+        heading: "Safety, accounts & polish",
+        badge: "All users",
+        badgeColor: BADGE_COLORS.all,
+        items: [
+          {
+            icon: <ShieldCheck className="w-5 h-5" />,
+            title: "Age gate at sign-up",
+            desc: "We now check age when you create an account, including when signing up with Google or Microsoft.",
+          },
+          {
+            icon: <Mic className="w-5 h-5" />,
+            title: "Voice transcription fixed",
+            desc: "Talking to the app works reliably again, and there's now a British accent option for better accuracy.",
+          },
+          {
+            icon: <Lightbulb className="w-5 h-5" />,
+            title: "Clearer AI question helper",
+            desc: "The AI question helper now explains what it needs from you more clearly, so you get better answers faster.",
+          },
+          {
+            icon: <Monitor className="w-5 h-5" />,
+            title: "Consistent layouts & unified footer",
+            desc: "Pages now share a consistent wider layout and a single unified footer, alongside plenty of speed and reliability improvements.",
+          },
+        ],
+      },
+    ],
+  },
   {
     id: "may-2026",
     date: "May 2026",
