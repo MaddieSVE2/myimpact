@@ -707,11 +707,20 @@ export default function History() {
     return sorted.map(r => {
       const delta = r.impactResult.totalValue;
       runningTotal += delta;
+      const breakdowns = (r.impactResult.activityBreakdowns ?? []) as Breakdown[];
+      const rankedActivities = [...breakdowns]
+        .filter(b => b && b.activityName)
+        .sort((a, b) => (b.impactValue ?? 0) - (a.impactValue ?? 0));
       return {
         date: r.period || new Date(r.createdAt).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
         fullDate: r.period || new Date(r.createdAt).toLocaleDateString("en-GB"),
         delta,
         total: runningTotal,
+        topActivities: rankedActivities.slice(0, 3).map(b => ({
+          name: b.activityName,
+          value: b.impactValue ?? 0,
+        })),
+        moreCount: Math.max(0, rankedActivities.length - 3),
       };
     });
   })();
@@ -994,13 +1003,29 @@ export default function History() {
                     tickFormatter={v => `£${(v / 1000).toFixed(1)}k`}
                   />
                   <RechartsTooltip
-                    labelFormatter={(_, payload) => {
+                    content={({ active, payload }) => {
                       const p = payload?.[0]?.payload;
-                      if (!p) return "";
-                      return `+${formatCurrency(p.delta)} — ${p.fullDate}`;
+                      if (!active || !p) return null;
+                      return (
+                        <div className="rounded-lg border border-border bg-white px-3 py-2.5 shadow-sm text-xs" data-testid="tooltip-history-chart">
+                          <p className="font-semibold text-foreground">+{formatCurrency(p.delta)} — {p.fullDate}</p>
+                          <p className="text-muted-foreground mt-0.5">Running total: {formatCurrency(p.total)}</p>
+                          {p.topActivities?.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-border space-y-1">
+                              {p.topActivities.map((a: { name: string; value: number }, i: number) => (
+                                <div key={i} className="flex items-center justify-between gap-4">
+                                  <span className="text-foreground/80 truncate max-w-[160px]">{a.name}</span>
+                                  <span className="font-medium text-foreground shrink-0">{formatCurrency(a.value)}</span>
+                                </div>
+                              ))}
+                              {p.moreCount > 0 && (
+                                <p className="text-muted-foreground">and {p.moreCount} more</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
                     }}
-                    formatter={(value: number) => [formatCurrency(value), "Running total"]}
-                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                   />
                   <Area
                     type="stepAfter"
