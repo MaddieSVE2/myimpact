@@ -19,68 +19,10 @@
  */
 import { db, pool, localCharityAreasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { generateForAuthority } from "../lib/premappedCharities.js";
+import { generateForAuthority, SEED_AUTHORITIES } from "../lib/premappedCharities.js";
 
 const FRESH_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // match REFRESH_AFTER_MS
 const THROTTLE_BETWEEN_AUTHORITIES_MS = 5_000;
-
-/**
- * Largest UK local authorities by population. Names must exactly match
- * postcodes.io `admin_district` values, since that is the key the on-demand
- * path uses (e.g. "Glasgow City", "City of Edinburgh", "County Durham").
- */
-const SEED_AUTHORITIES: Array<{ localAuthority: string; country: string }> = [
-  { localAuthority: "Birmingham", country: "England" },
-  { localAuthority: "Leeds", country: "England" },
-  { localAuthority: "Glasgow City", country: "Scotland" },
-  { localAuthority: "Sheffield", country: "England" },
-  { localAuthority: "Manchester", country: "England" },
-  { localAuthority: "Bradford", country: "England" },
-  { localAuthority: "City of Edinburgh", country: "Scotland" },
-  { localAuthority: "Liverpool", country: "England" },
-  { localAuthority: "Bristol, City of", country: "England" },
-  { localAuthority: "Cardiff", country: "Wales" },
-  { localAuthority: "County Durham", country: "England" },
-  { localAuthority: "Buckinghamshire", country: "England" },
-  { localAuthority: "Cornwall", country: "England" },
-  { localAuthority: "Wiltshire", country: "England" },
-  { localAuthority: "Coventry", country: "England" },
-  { localAuthority: "Belfast", country: "Northern Ireland" },
-  { localAuthority: "Leicester", country: "England" },
-  { localAuthority: "Nottingham", country: "England" },
-  { localAuthority: "Newcastle upon Tyne", country: "England" },
-  { localAuthority: "Sunderland", country: "England" },
-  { localAuthority: "Wakefield", country: "England" },
-  { localAuthority: "Dudley", country: "England" },
-  { localAuthority: "Wigan", country: "England" },
-  { localAuthority: "Fife", country: "Scotland" },
-  { localAuthority: "Croydon", country: "England" },
-  { localAuthority: "Barnet", country: "England" },
-  { localAuthority: "Kingston upon Hull, City of", country: "England" },
-  { localAuthority: "Ealing", country: "England" },
-  { localAuthority: "Kirklees", country: "England" },
-  { localAuthority: "Newham", country: "England" },
-  { localAuthority: "North Lanarkshire", country: "Scotland" },
-  { localAuthority: "Sandwell", country: "England" },
-  { localAuthority: "Brent", country: "England" },
-  { localAuthority: "Bromley", country: "England" },
-  { localAuthority: "South Lanarkshire", country: "Scotland" },
-  { localAuthority: "Doncaster", country: "England" },
-  { localAuthority: "Stockport", country: "England" },
-  { localAuthority: "Plymouth", country: "England" },
-  { localAuthority: "Swansea", country: "Wales" },
-  { localAuthority: "Southampton", country: "England" },
-  { localAuthority: "Wandsworth", country: "England" },
-  { localAuthority: "Salford", country: "England" },
-  { localAuthority: "Milton Keynes", country: "England" },
-  { localAuthority: "Aberdeen City", country: "Scotland" },
-  { localAuthority: "Portsmouth", country: "England" },
-  { localAuthority: "Northumberland", country: "England" },
-  { localAuthority: "Lambeth", country: "England" },
-  { localAuthority: "Reading", country: "England" },
-  { localAuthority: "Luton", country: "England" },
-  { localAuthority: "Brighton and Hove", country: "England" },
-];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
