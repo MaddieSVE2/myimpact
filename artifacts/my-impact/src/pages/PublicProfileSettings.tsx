@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Globe, Lock, CheckCircle, AlertCircle, Loader2, Copy, Check, ExternalLink, Info, Code2 } from "lucide-react";
+import { Globe, Lock, CheckCircle, AlertCircle, Loader2, ExternalLink, Info, Code2 } from "lucide-react";
+import { CopyButton } from "@/components/CopyField";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,7 +25,6 @@ interface PublicProfileData {
 function EmbedWidgetPanel({ slug }: { slug: string }) {
   const [size, setSize] = useState<WidgetSize>("medium");
   const [theme, setTheme] = useState<WidgetTheme>("light");
-  const [copied, setCopied] = useState<"script" | "iframe" | null>(null);
 
   // The widget script and iframe URLs are absolute and origin-relative so the
   // user can copy-paste into any third-party site. We resolve them at render
@@ -47,16 +47,6 @@ function EmbedWidgetPanel({ slug }: { slug: string }) {
       `<iframe src="${iframeSrc}" title="My Impact" loading="lazy" style="width:100%;max-width:${widthFor(size)}px;height:240px;border:0;display:block;background:transparent;"></iframe>`,
     [iframeSrc, size],
   );
-
-  const copy = async (kind: "script" | "iframe", text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 2000);
-    } catch {
-      // ignore clipboard errors silently
-    }
-  };
 
   // Live preview iframe key reloads when settings change so the embed
   // accurately reflects the chosen theme/size.
@@ -149,18 +139,11 @@ function EmbedWidgetPanel({ slug }: { slug: string }) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-foreground">Script tag (recommended)</label>
-            <button
-              type="button"
-              onClick={() => copy("script", scriptSnippet)}
+            <CopyButton
+              value={scriptSnippet}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Copy script snippet"
-            >
-              {copied === "script" ? (
-                <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</>
-              ) : (
-                <><Copy className="w-3.5 h-3.5" /> Copy</>
-              )}
-            </button>
+              ariaLabel="Copy script snippet"
+            />
           </div>
           <pre className="text-xs font-mono bg-muted/40 border border-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-foreground">
             {scriptSnippet}
@@ -172,18 +155,11 @@ function EmbedWidgetPanel({ slug }: { slug: string }) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-foreground">Or use a plain iframe</label>
-            <button
-              type="button"
-              onClick={() => copy("iframe", iframeSnippet)}
+            <CopyButton
+              value={iframeSnippet}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Copy iframe snippet"
-            >
-              {copied === "iframe" ? (
-                <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</>
-              ) : (
-                <><Copy className="w-3.5 h-3.5" /> Copy</>
-              )}
-            </button>
+              ariaLabel="Copy iframe snippet"
+            />
           </div>
           <pre className="text-xs font-mono bg-muted/40 border border-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-foreground">
             {iframeSnippet}
@@ -233,7 +209,6 @@ export default function PublicProfileSettings() {
   const [slugInput, setSlugInput] = useState("");
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [slugError, setSlugError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const [gdprDismissed, setGdprDismissed] = useState(false);
   const [gdprAcknowledged, setGdprAcknowledged] = useState(false);
@@ -425,14 +400,6 @@ export default function PublicProfileSettings() {
 
   const publicUrl = profile ? `${window.location.origin}${BASE}/profile/${profile.slug}` : "";
 
-  const handleCopy = () => {
-    if (!publicUrl) return;
-    navigator.clipboard.writeText(publicUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -552,13 +519,13 @@ export default function PublicProfileSettings() {
           <label className="block text-xs font-medium text-foreground mb-1.5">Your public URL</label>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
             <span className="text-sm text-foreground truncate flex-1 font-mono text-xs">{publicUrl}</span>
-            <button
-              onClick={handleCopy}
+            <CopyButton
+              value={publicUrl}
+              copyLabel={null}
+              copiedLabel={null}
               className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Copy URL"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
+              ariaLabel="Copy URL"
+            />
             <a
               href={`${BASE}/profile/${profile.slug}`}
               target="_blank"

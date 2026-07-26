@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Code2, Plus, Trash2, Webhook, ChevronDown, Check, Copy } from "lucide-react";
+import { CopyButton } from "@/components/CopyField";
 import { DEMO_API_KEYS, DEMO_WEBHOOKS, DEMO_SUPPORTED_WEBHOOK_EVENTS } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -30,19 +31,17 @@ interface WebhookEntry {
 }
 
 function CopyableCode({ value, label }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-center gap-2">
       <code className="flex-1 text-xs font-mono bg-muted/30 border border-border rounded px-2 py-1.5 break-all">{value}</code>
-      <button
-        type="button"
-        onClick={() => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}
+      <CopyButton
+        value={value}
         className="shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded border border-border text-xs hover:bg-muted/30 transition-colors"
-        aria-label={label ? `Copy ${label}` : "Copy"}
-      >
-        {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-        {copied ? "Copied" : "Copy"}
-      </button>
+        ariaLabel={label ? `Copy ${label}` : "Copy"}
+        icon={<Copy className="w-3 h-3" />}
+        copiedIcon={<Check className="w-3 h-3 text-green-600" />}
+        resetDelay={1500}
+      />
     </div>
   );
 }

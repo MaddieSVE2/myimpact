@@ -8,6 +8,7 @@ import { useSidekick } from "@/lib/sidekick-context";
 import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { CopyButton } from "@/components/CopyField";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
   SIDEKICK_TEMPLATES,
@@ -401,7 +402,6 @@ export function Sidekick() {
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const inputDisabled = streaming || Date.now() < cooldownUntil;
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -878,18 +878,6 @@ export function Sidekick() {
     },
     [sendMessage]
   );
-
-  const handleCopy = useCallback(async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      window.setTimeout(() => {
-        setCopiedIndex((v) => (v === index ? null : v));
-      }, 1800);
-    } catch {
-      // ignore clipboard errors silently
-    }
-  }, []);
 
   const handleSubmit = () => sendMessage(input);
 
@@ -1400,22 +1388,15 @@ export function Sidekick() {
                       </div>
                       {isAssistant && hasContent && (
                         <div className="flex items-center gap-1 mt-1.5">
-                          <button
-                            onClick={() => handleCopy(msg.content, i)}
+                          <CopyButton
+                            value={msg.content}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            aria-label="Copy reply"
-                            data-testid={`sidekick-copy-${i}`}
-                          >
-                            {copiedIndex === i ? (
-                              <>
-                                <Check className="w-3 h-3" /> Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3 h-3" /> Copy
-                              </>
-                            )}
-                          </button>
+                            ariaLabel="Copy reply"
+                            testId={`sidekick-copy-${i}`}
+                            icon={<Copy className="w-3 h-3" />}
+                            copiedIcon={<Check className="w-3 h-3" />}
+                            resetDelay={1800}
+                          />
                           {showTemplateActions && (
                             <button
                               onClick={() => regenerateTemplate(msg)}

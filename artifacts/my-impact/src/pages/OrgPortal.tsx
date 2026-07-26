@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, Sparkles, BadgeCheck, CheckCircle2, XCircle, Trophy, ClipboardList } from "lucide-react";
+import { CopyButton } from "@/components/CopyField";
 import { Link, useLocation } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
@@ -1200,28 +1201,23 @@ function PeriodSelector({
 }
 
 function CopyJoinLinkButton({ orgId, inviteCode }: { orgId: string; inviteCode: string }) {
-  const [copied, setCopied] = useState(false);
-
-  function handleCopy() {
+  const joinUrl = (() => {
     const url = new URL(window.location.href);
     url.search = "";
     url.searchParams.set("orgId", orgId);
     url.searchParams.set("inviteCode", inviteCode);
-    navigator.clipboard.writeText(url.toString()).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
+    return url.toString();
+  })();
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
+    <CopyButton
+      value={joinUrl}
+      copyLabel="Copy join link"
+      copiedLabel="Copied!"
       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary transition-colors bg-white"
-    >
-      <Link2 className="w-3.5 h-3.5" />
-      {copied ? "Copied!" : "Copy join link"}
-    </button>
+      icon={<Link2 className="w-3.5 h-3.5" />}
+      copiedIcon={<Link2 className="w-3.5 h-3.5" />}
+    />
   );
 }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Share2, Eye, X, Copy, Check, AlertCircle } from "lucide-react";
+import { CopyButton } from "@/components/CopyField";
 import { DEMO_SHARE_LINKS } from "@/lib/org-demo-mock";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -32,22 +33,16 @@ function shareUrl(slug: string): string {
 }
 
 export function CopyShareLinkButton({ slug }: { slug: string }) {
-  const [copied, setCopied] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={() => {
-        navigator.clipboard.writeText(shareUrl(slug)).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        });
-      }}
+    <CopyButton
+      value={shareUrl(slug)}
+      copyLabel="Copy link"
+      copiedLabel="Copied"
       className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
-      data-testid={`button-copy-share-${slug}`}
-    >
-      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {copied ? "Copied" : "Copy link"}
-    </button>
+      icon={<Copy className="w-3 h-3" />}
+      copiedIcon={<Check className="w-3 h-3" />}
+      testId={`button-copy-share-${slug}`}
+    />
   );
 }
 
