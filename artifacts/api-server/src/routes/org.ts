@@ -2522,6 +2522,8 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
       : [];
     const userMap = new Map(users.map(u => [u.id, u]));
 
+    const evidenceByRecord = await loadEvidenceForRecords(pending.map(e => e.record.id));
+
     const items = pending
       .sort((a, b) => new Date(b.record.createdAt).getTime() - new Date(a.record.createdAt).getTime())
       .map(({ record }) => {
@@ -2535,6 +2537,7 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
           totalHours: record.totalHours,
           totalValue: Number(record.totalValue),
           createdAt: record.createdAt.toISOString(),
+          evidence: evidenceByRecord.get(record.id) ?? [],
         };
       });
 
@@ -3051,6 +3054,32 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
   }
 });
 
+// Load evidence attachments (photos linked at member-submit time) for a set
+// of impact record IDs. Returns a map of recordId → attachment summaries.
+// URLs point at the authenticated attachment file proxy; access control for
+// managers viewing member evidence lives in the attachments route.
+async function loadEvidenceForRecords(recordIds: number[]): Promise<Map<number, Array<{ id: number; url: string; mimeType: string }>>> {
+  const map = new Map<number, Array<{ id: number; url: string; mimeType: string }>>();
+  if (recordIds.length === 0) return map;
+  const rows = await db
+    .select({
+      id: attachmentsTable.id,
+      recordId: attachmentsTable.recordId,
+      mimeType: attachmentsTable.mimeType,
+      createdAt: attachmentsTable.createdAt,
+    })
+    .from(attachmentsTable)
+    .where(inArray(attachmentsTable.recordId, recordIds))
+    .orderBy(attachmentsTable.createdAt);
+  for (const row of rows) {
+    if (row.recordId == null) continue;
+    const list = map.get(row.recordId) ?? [];
+    list.push({ id: row.id, url: `/api/attachments/${row.id}/file`, mimeType: row.mimeType });
+    map.set(row.recordId, list);
+  }
+  return map;
+}
+
 // ─── GET /api/org/member-submissions ──────────────────────────────────────
 // Manager-only list of records submitted by org members through the dedicated
 // flow (source='member-submitted'). Used by the Org portal's "Member
@@ -3106,6 +3135,8 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
       : [];
     const userMap = new Map(users.map(u => [u.id, u]));
 
+    const evidenceByRecord = await loadEvidenceForRecords(records.map(r => r.id));
+
     const items = records.map(r => {
       const u = userMap.get(r.userId);
       const lines = Array.isArray(r.activitiesJson) ? (r.activitiesJson as Array<{ activityId?: string; title?: string | null; detail?: string | null; hoursPerYear?: number; quantity?: number }>) : [];
@@ -3133,6 +3164,7 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
             quantity: l.quantity ?? 0,
           };
         }),
+        evidence: evidenceByRecord.get(r.id) ?? [],
       };
     });
 
@@ -3169,6 +3201,8 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
       )!)
       .orderBy(desc(impactRecordsTable.submittedToOrgAt));
 
+    const evidenceByRecord = await loadEvidenceForRecords(records.map(r => r.id));
+
     const nowMs = Date.now();
     const items = records.map(r => {
       const lines = Array.isArray(r.activitiesJson)
@@ -3198,6 +3232,7 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
             detail: l.detail ?? null,
           };
         }),
+        evidence: evidenceByRecord.get(r.id) ?? [],
       };
     });
 
@@ -3517,6 +3552,9 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       : [];
     const approvedRecordIds = new Set(approvedVerifications.map(v => v.recordId));
 
+    // Evidence photos attached at member-submit time, keyed by record ID.
+    const evidenceByRecord = await loadEvidenceForRecords(recordIdList);
+
     const userIds = Array.from(new Set(records.map(r => r.userId)));
     const users = userIds.length > 0
       ? await db
@@ -3543,6 +3581,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       proxy: string;
       proxyYear: string;
       source: "member-submitted" | "org-attested" | "shared";
+      evidence: Array<{ id: number; url: string; mimeType: string }>;
     }
 
     const lines: ActivityLine[] = [];
@@ -3609,6 +3648,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             proxy: "Organisation-attested volunteer hours (wage-replacement proxy, ONS)",
             proxyYear: "2023",
             source: "org-attested",
+            evidence: [],
           });
         } else {
           // Member-submitted or consented-shared: look up the canonical
@@ -3654,6 +3694,9 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             proxy: actDef?.proxy ?? "",
             proxyYear: actDef?.proxyYear ?? "",
             source: lineSource,
+            // Evidence is record-level; only attach it to the first line so
+            // multi-activity records don't repeat the same photos per row.
+            evidence: i === 0 ? (evidenceByRecord.get(r.id) ?? []) : [],
           });
         }
       }

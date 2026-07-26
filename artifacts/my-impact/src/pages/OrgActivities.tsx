@@ -74,6 +74,7 @@ interface RealActivity {
   proxy: string;
   proxyYear: string;
   source: "member-submitted" | "org-attested" | "shared";
+  evidence?: Array<{ id: number; url: string; mimeType: string }>;
 }
 
 const SOURCE_LABELS: Record<RealActivity["source"], string> = {
@@ -501,6 +502,23 @@ export default function OrgActivities() {
                               )}
                             </div>
                             <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
+                            {isReal && (realA.evidence?.length ?? 0) > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1.5" data-testid={`activity-evidence-${a.id}`}>
+                                {realA.evidence!.map(ev => (
+                                  <a
+                                    key={ev.id}
+                                    href={`${BASE}${ev.url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-10 h-10 rounded border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
+                                    title="View evidence photo"
+                                    data-testid={`activity-evidence-thumb-${ev.id}`}
+                                  >
+                                    <img src={`${BASE}${ev.url}`} alt="Evidence" className="w-full h-full object-cover" loading="lazy" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">

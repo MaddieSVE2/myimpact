@@ -19,3 +19,4 @@
 - [Interactive AI latency](interactive-ai-latency.md) — gpt-5-mini is too slow for interactive UI suggestions even at low effort; use gpt-4.1-mini with an AbortSignal.timeout and curated fallbacks.
 - [Org twin dedupe](org-twin-dedupe.md) — member-submit personal copies link to their org record via resultJson.orgRecordId; sharedRecordsCondition excludes twins so org views never double-count.
 - [Org dashboard tiering](org-dashboard-tiering.md) — full Organisation-tier dashboard is gated by demo org, type=university, or the admin-toggled full_tier_enabled flag; all other orgs get the lite portal with upsell.
+- [Org manager review surfaces](org-manager-review-surfaces.md) — manager per-record features need both OrgPortal (lite) and OrgActivities (full tier); demo org's Activities page is mock data, test with the university org.

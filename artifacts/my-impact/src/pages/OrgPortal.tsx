@@ -72,6 +72,12 @@ interface OrgStats {
   verifiedRecordCount: number;
 }
 
+interface PendingVerificationEvidence {
+  id: number;
+  url: string;
+  mimeType: string;
+}
+
 interface PendingVerification {
   recordId: number;
   memberName: string;
@@ -81,6 +87,7 @@ interface PendingVerification {
   totalHours: number;
   totalValue: number;
   createdAt: string;
+  evidence?: PendingVerificationEvidence[];
 }
 
 type PresetKey = "all" | "calendar" | "last12";
@@ -204,6 +211,12 @@ interface MemberSubmissionLine {
 type SubmissionSource = "member-submitted" | "org-attested";
 type SourceFilter = "all" | SubmissionSource;
 
+interface SubmissionEvidence {
+  id: number;
+  url: string;
+  mimeType: string;
+}
+
 interface MemberSubmission {
   recordId: number;
   memberName: string;
@@ -216,6 +229,7 @@ interface MemberSubmission {
   source: SubmissionSource;
   activityCount: number;
   lines: MemberSubmissionLine[];
+  evidence?: SubmissionEvidence[];
 }
 
 function useMemberSubmissions(enabled: boolean, source: SourceFilter) {
@@ -378,21 +392,50 @@ function MemberSubmissionsPanel() {
                   <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
                 {isOpen && (
-                  <ul className="mt-2 ml-3 pl-3 border-l-2 border-primary/20 space-y-1.5">
-                    {s.lines.map((l, idx) => (
-                      <li key={idx} className="text-xs">
-                        <p className="text-foreground">
-                          <span className="font-medium">{l.title || l.activityName}</span>
-                          {l.title && <span className="text-muted-foreground"> · {l.activityName}</span>}
+                  <>
+                    <ul className="mt-2 ml-3 pl-3 border-l-2 border-primary/20 space-y-1.5">
+                      {s.lines.map((l, idx) => (
+                        <li key={idx} className="text-xs">
+                          <p className="text-foreground">
+                            <span className="font-medium">{l.title || l.activityName}</span>
+                            {l.title && <span className="text-muted-foreground"> · {l.activityName}</span>}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {l.category && <span>{l.category} · </span>}
+                            {l.hoursPerYear > 0 ? `${l.hoursPerYear} hrs/yr` : `${l.quantity} units`}
+                          </p>
+                          {l.detail && <p className="text-[11px] text-muted-foreground italic mt-0.5">"{l.detail}"</p>}
+                        </li>
+                      ))}
+                    </ul>
+                    {(s.evidence?.length ?? 0) > 0 && (
+                      <div className="mt-2 ml-3 pl-3 border-l-2 border-primary/20" data-testid={`submission-evidence-${s.recordId}`}>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                          Evidence ({s.evidence!.length})
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {l.category && <span>{l.category} · </span>}
-                          {l.hoursPerYear > 0 ? `${l.hoursPerYear} hrs/yr` : `${l.quantity} units`}
-                        </p>
-                        {l.detail && <p className="text-[11px] text-muted-foreground italic mt-0.5">"{l.detail}"</p>}
-                      </li>
-                    ))}
-                  </ul>
+                        <div className="flex flex-wrap gap-2">
+                          {s.evidence!.map(ev => (
+                            <a
+                              key={ev.id}
+                              href={`${BASE}${ev.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block w-16 h-16 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
+                              title="Open evidence photo in a new tab"
+                              data-testid={`submission-evidence-thumb-${ev.id}`}
+                            >
+                              <img
+                                src={`${BASE}${ev.url}`}
+                                alt={`Evidence photo from ${s.memberName}`}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 {canWithdraw && (
                   <div className="mt-2 ml-3 flex flex-col items-end gap-2">
@@ -607,6 +650,29 @@ function VerificationQueue({ orgName }: { orgName: string }) {
                   <p className="text-[11px] text-muted-foreground">
                     Logged {new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
+                  {(p.evidence?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1" data-testid={`pending-evidence-${p.recordId}`}>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Evidence</span>
+                      {p.evidence!.map(ev => (
+                        <a
+                          key={ev.id}
+                          href={`${BASE}${ev.url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-9 h-9 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
+                          title="Open evidence photo in a new tab"
+                          data-testid={`pending-evidence-thumb-${ev.id}`}
+                        >
+                          <img
+                            src={`${BASE}${ev.url}`}
+                            alt={`Evidence photo from ${p.memberName}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span className="w-16 text-right text-xs text-foreground tabular-nums">{p.totalHours}</span>
                 <span className="w-20 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(p.totalValue)}</span>

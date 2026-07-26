@@ -62,6 +62,12 @@ interface MySubmissionLine {
   detail: string | null;
 }
 
+interface SubmissionEvidence {
+  id: number;
+  url: string;
+  mimeType: string;
+}
+
 interface MySubmission {
   recordId: number;
   name: string;
@@ -73,6 +79,7 @@ interface MySubmission {
   editableUntil?: string;
   canEdit?: boolean;
   lines?: MySubmissionLine[];
+  evidence?: SubmissionEvidence[];
 }
 
 function formatGBP(n: number): string {
@@ -546,6 +553,30 @@ export default function OrgMemberSubmit() {
                     )}
                   </div>
                 </div>
+
+                {(s.evidence?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5" data-testid={`my-submission-evidence-${s.recordId}`}>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Evidence</span>
+                    {s.evidence!.map(ev => (
+                      <a
+                        key={ev.id}
+                        href={`${BASE}${ev.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-10 h-10 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
+                        title="Open evidence photo"
+                        data-testid={`my-submission-evidence-thumb-${ev.id}`}
+                      >
+                        <img
+                          src={`${BASE}${ev.url}`}
+                          alt="Evidence attachment"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
 
                 {s.canEdit && editingSubId !== s.recordId && historyConfirmId !== s.recordId && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">

@@ -4,6 +4,7 @@ import {
   attachmentsTable,
   impactRecordsTable,
   journalEntriesTable,
+  orgMembersTable,
 } from "@workspace/db";
 import { and, eq, sum, desc, inArray, sql } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -721,7 +722,48 @@ router.get("/list", authenticate, async (req: AuthenticatedRequest, res) => {
 });
 
 /**
- * Stream the file bytes for an attachment owned by the requesting user.
+ * Load an attachment the requesting user may view. Access is granted when:
+ *   • the user owns the attachment, or
+ *   • the attachment is linked to an impact record that was submitted to an
+ *     organisation the user manages (org evidence review).
+ */
+async function loadViewableAttachment(
+  userId: string,
+  id: number,
+): Promise<typeof attachmentsTable.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(attachmentsTable)
+    .where(eq(attachmentsTable.id, id))
+    .limit(1);
+  if (!row) return null;
+  if (row.userId === userId) return row;
+
+  if (row.recordId != null) {
+    const [record] = await db
+      .select({ submittedToOrgId: impactRecordsTable.submittedToOrgId })
+      .from(impactRecordsTable)
+      .where(eq(impactRecordsTable.id, row.recordId))
+      .limit(1);
+    if (record?.submittedToOrgId != null) {
+      const [membership] = await db
+        .select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.orgId, record.submittedToOrgId),
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.role, "manager"),
+        ))
+        .limit(1);
+      if (membership) return row;
+    }
+  }
+  return null;
+}
+
+/**
+ * Stream the file bytes for an attachment the requesting user may view
+ * (owner, or manager of the org the linked record was submitted to).
  * Authenticated; the URL itself does not leak the GCS path.
  */
 router.get("/:id/file", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -731,11 +773,7 @@ router.get("/:id/file", authenticate, async (req: AuthenticatedRequest, res) => 
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const [row] = await db
-    .select()
-    .from(attachmentsTable)
-    .where(and(eq(attachmentsTable.id, id), eq(attachmentsTable.userId, userId)))
-    .limit(1);
+  const row = await loadViewableAttachment(userId, id);
   if (!row) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -766,11 +804,7 @@ router.get("/:id/signed-url", authenticate, async (req: AuthenticatedRequest, re
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const [row] = await db
-    .select()
-    .from(attachmentsTable)
-    .where(and(eq(attachmentsTable.id, id), eq(attachmentsTable.userId, userId)))
-    .limit(1);
+  const row = await loadViewableAttachment(userId, id);
   if (!row) {
     res.status(404).json({ error: "Not found" });
     return;
