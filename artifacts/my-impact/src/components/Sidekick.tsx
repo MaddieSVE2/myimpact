@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, RotateCcw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Send, ChevronRight, ChevronDown, Sparkles, X, Bot, Copy, RefreshCw, RotateCcw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -287,6 +287,104 @@ function pickRecorderMimeType(): string | undefined {
   return undefined;
 }
 
+// Chrome/Edge support routing playback to a chosen output via setSinkId;
+// Safari/Firefox don't, so we show "System default" without a picker there.
+const OUTPUT_SELECTION_SUPPORTED =
+  typeof HTMLMediaElement !== "undefined" &&
+  "setSinkId" in HTMLMediaElement.prototype;
+
+const MIC_DEVICE_KEY = "myimpact:sidekick:micDeviceId";
+const OUTPUT_DEVICE_KEY = "myimpact:sidekick:outputDeviceId";
+
+function loadStoredDeviceId(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storeDeviceId(key: string, value: string | null) {
+  try {
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+/** Strip browser-added prefixes like "Default - " for a tidier display. */
+function cleanDeviceLabel(label: string): string {
+  return label.replace(/^(Default|Communications)\s*-\s*/i, "").trim();
+}
+
+/**
+ * Enumerates audio input/output devices and tracks the user's preferred
+ * mic/output. Device labels are only available once mic permission has been
+ * granted, so `permissionGranted` doubles as "can we show real names yet".
+ * Selections persist in localStorage; if a chosen device is unplugged the
+ * selection is cleared so recording/playback fall back to the default.
+ */
+function useAudioDevices(enabled: boolean) {
+  const [inputs, setInputs] = useState<MediaDeviceInfo[]>([]);
+  const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [micId, setMicIdState] = useState<string | null>(() => loadStoredDeviceId(MIC_DEVICE_KEY));
+  const [outputId, setOutputIdState] = useState<string | null>(() => loadStoredDeviceId(OUTPUT_DEVICE_KEY));
+
+  const refresh = useCallback(async () => {
+    if (!VOICE_SUPPORTED) return;
+    if (typeof navigator.mediaDevices.enumerateDevices !== "function") return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const ins = devices.filter((d) => d.kind === "audioinput");
+      const outs = devices.filter((d) => d.kind === "audiooutput");
+      setInputs(ins);
+      setOutputs(outs);
+      // Labels are empty strings until getUserMedia has been granted.
+      setPermissionGranted(ins.some((d) => d.label !== ""));
+    } catch {
+      // enumeration can fail in odd embeds; leave existing state alone
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || !VOICE_SUPPORTED) return;
+    refresh();
+    const md = navigator.mediaDevices;
+    if (typeof md.addEventListener !== "function") return;
+    md.addEventListener("devicechange", refresh);
+    return () => md.removeEventListener("devicechange", refresh);
+  }, [enabled, refresh]);
+
+  // Clear a stored selection once we can see the device list and the chosen
+  // device is no longer present (e.g. headset unplugged).
+  useEffect(() => {
+    if (!permissionGranted) return;
+    if (micId && inputs.length > 0 && !inputs.some((d) => d.deviceId === micId)) {
+      setMicIdState(null);
+      storeDeviceId(MIC_DEVICE_KEY, null);
+    }
+    if (outputId && outputs.length > 0 && !outputs.some((d) => d.deviceId === outputId)) {
+      setOutputIdState(null);
+      storeDeviceId(OUTPUT_DEVICE_KEY, null);
+    }
+  }, [permissionGranted, inputs, outputs, micId, outputId]);
+
+  const setMicId = useCallback((id: string | null) => {
+    setMicIdState(id);
+    storeDeviceId(MIC_DEVICE_KEY, id);
+  }, []);
+
+  const setOutputId = useCallback((id: string | null) => {
+    setOutputIdState(id);
+    storeDeviceId(OUTPUT_DEVICE_KEY, id);
+  }, []);
+
+  return { inputs, outputs, permissionGranted, micId, outputId, setMicId, setOutputId, refresh };
+}
+
 const AI_DISABLED_DISMISSED_KEY_PREFIX = "myimpact:aiDisabledByOrgNoticeDismissed";
 
 function aiDisabledDismissedKey(userId?: string | null) {
@@ -430,6 +528,43 @@ export function Sidekick() {
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const {
+    inputs: micDevices,
+    outputs: outputDevices,
+    permissionGranted: micPermissionGranted,
+    micId: selectedMicId,
+    outputId: selectedOutputId,
+    setMicId: setSelectedMicId,
+    setOutputId: setSelectedOutputId,
+    refresh: refreshDevices,
+  } = useAudioDevices(open);
+  const [devicePickerOpen, setDevicePickerOpen] = useState(false);
+  // The label of the mic actually feeding the current/most recent recording,
+  // taken from the live stream's track. Falls back to the enumerated list.
+  const [activeMicLabel, setActiveMicLabel] = useState<string | null>(null);
+
+  // What to show as "the mic in use": during recording trust the live track;
+  // otherwise the explicitly selected device, then the system default entry.
+  const displayMicLabel = useMemo(() => {
+    if (!micPermissionGranted) return null;
+    const selected = selectedMicId ? micDevices.find((d) => d.deviceId === selectedMicId) : undefined;
+    if (selected?.label) return cleanDeviceLabel(selected.label);
+    if (activeMicLabel) return activeMicLabel;
+    const fallback =
+      micDevices.find((d) => d.deviceId === "default") ?? micDevices[0];
+    return fallback?.label ? cleanDeviceLabel(fallback.label) : null;
+  }, [micPermissionGranted, selectedMicId, micDevices, activeMicLabel]);
+
+  const displayOutputLabel = useMemo(() => {
+    if (!OUTPUT_SELECTION_SUPPORTED || !micPermissionGranted) return null;
+    const selected = selectedOutputId
+      ? outputDevices.find((d) => d.deviceId === selectedOutputId)
+      : undefined;
+    if (selected?.label) return cleanDeviceLabel(selected.label);
+    const fallback =
+      outputDevices.find((d) => d.deviceId === "default") ?? outputDevices[0];
+    return fallback?.label ? cleanDeviceLabel(fallback.label) : null;
+  }, [micPermissionGranted, selectedOutputId, outputDevices]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<Blob[]>([]);
   const recorderMimeRef = useRef<string | undefined>(undefined);
@@ -794,7 +929,16 @@ export function Sidekick() {
     setVoiceError(null);
     stopAudioPlayback();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // "ideal" (not "exact") so the browser silently falls back to the
+      // default mic if the chosen device has been unplugged.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: selectedMicId ? { deviceId: { ideal: selectedMicId } } : true,
+      });
+      const track = stream.getAudioTracks()[0];
+      if (track?.label) setActiveMicLabel(cleanDeviceLabel(track.label));
+      // Permission was just granted (or re-confirmed): refresh so device
+      // labels become visible in the picker.
+      refreshDevices();
       const mimeType = pickRecorderMimeType();
       recorderMimeRef.current = mimeType;
       const recorder = mimeType
@@ -816,7 +960,7 @@ export function Sidekick() {
       );
       setVoiceState("idle");
     }
-  }, [streaming, voiceState, stopAudioPlayback]);
+  }, [streaming, voiceState, stopAudioPlayback, selectedMicId, refreshDevices]);
 
   const stopRecordingAndSend = useCallback(async () => {
     const recorder = mediaRecorderRef.current;
@@ -937,6 +1081,20 @@ export function Sidekick() {
           audio = new Audio();
           audioElRef.current = audio;
         }
+        if (OUTPUT_SELECTION_SUPPORTED && selectedOutputId) {
+          try {
+            await (audio as HTMLMediaElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(
+              selectedOutputId
+            );
+          } catch {
+            // Chosen output unavailable — fall back to the system default.
+            try {
+              await (audio as HTMLMediaElement & { setSinkId: (id: string) => Promise<void> }).setSinkId("");
+            } catch {
+              // ignore; playback will use whatever sink the element has
+            }
+          }
+        }
         audio.src = url;
         const onEnded = () => {
           URL.revokeObjectURL(url);
@@ -962,7 +1120,7 @@ export function Sidekick() {
     return () => {
       cancelled = true;
     };
-  }, [messages, streaming, voiceMode, voicePersona]);
+  }, [messages, streaming, voiceMode, voicePersona, selectedOutputId]);
 
   // Stop playback and recording when the panel is closed.
   useEffect(() => {
@@ -1249,6 +1407,120 @@ export function Sidekick() {
 
           {/* Input */}
           <div className="px-4 py-3.5 border-t border-border bg-white shrink-0">
+            {voiceMode && VOICE_SUPPORTED && (
+              <div className="mb-2" data-testid="sidekick-device-indicator">
+                <button
+                  type="button"
+                  onClick={() => setDevicePickerOpen((v) => !v)}
+                  disabled={!micPermissionGranted}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 max-w-full px-2 py-1 rounded-md text-[11px] text-muted-foreground transition-colors",
+                    micPermissionGranted
+                      ? "hover:bg-accent hover:text-foreground"
+                      : "cursor-default"
+                  )}
+                  aria-expanded={devicePickerOpen}
+                  aria-label="Audio device settings"
+                  title={
+                    micPermissionGranted
+                      ? "Choose which microphone and speakers Sidekick uses"
+                      : "Device names appear after you allow microphone access"
+                  }
+                  data-testid="sidekick-device-toggle"
+                >
+                  <Mic className="w-3 h-3 shrink-0" />
+                  <span className="truncate">
+                    {micPermissionGranted
+                      ? displayMicLabel ?? "System default"
+                      : "Mic ready — tap the mic to allow access"}
+                  </span>
+                  {micPermissionGranted && (
+                    <>
+                      <span className="text-border">·</span>
+                      <Volume2 className="w-3 h-3 shrink-0" />
+                      <span className="truncate">
+                        {OUTPUT_SELECTION_SUPPORTED
+                          ? displayOutputLabel ?? "System default"
+                          : "System default"}
+                      </span>
+                      <ChevronDown
+                        className={cn("w-3 h-3 shrink-0 transition-transform", devicePickerOpen && "rotate-180")}
+                      />
+                    </>
+                  )}
+                </button>
+                {devicePickerOpen && micPermissionGranted && (
+                  <div
+                    className="mt-1.5 rounded-lg border border-border bg-white p-2 flex flex-col gap-2 max-h-[220px] overflow-y-auto"
+                    data-testid="sidekick-device-picker"
+                  >
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">
+                        Microphone
+                      </p>
+                      {micDevices.map((d) => {
+                        const isActive = selectedMicId
+                          ? d.deviceId === selectedMicId
+                          : d.deviceId === "default" || micDevices[0]?.deviceId === d.deviceId;
+                        return (
+                          <button
+                            key={d.deviceId || d.label}
+                            type="button"
+                            onClick={() => {
+                              setSelectedMicId(d.deviceId === "default" ? null : d.deviceId);
+                              setActiveMicLabel(null);
+                              setDevicePickerOpen(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md text-[12px] transition-colors",
+                              isActive
+                                ? "text-[#F06127] bg-[#FFF7F3] font-medium"
+                                : "text-foreground hover:bg-accent"
+                            )}
+                            data-testid={`sidekick-mic-option-${d.deviceId}`}
+                          >
+                            {isActive ? <Check className="w-3 h-3 shrink-0" /> : <span className="w-3 shrink-0" />}
+                            <span className="truncate">{cleanDeviceLabel(d.label) || "Microphone"}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {OUTPUT_SELECTION_SUPPORTED && outputDevices.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">
+                          Speakers
+                        </p>
+                        {outputDevices.map((d) => {
+                          const isActive = selectedOutputId
+                            ? d.deviceId === selectedOutputId
+                            : d.deviceId === "default" || outputDevices[0]?.deviceId === d.deviceId;
+                          return (
+                            <button
+                              key={d.deviceId || d.label}
+                              type="button"
+                              onClick={() => {
+                                setSelectedOutputId(d.deviceId === "default" ? null : d.deviceId);
+                                setDevicePickerOpen(false);
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md text-[12px] transition-colors",
+                                isActive
+                                  ? "text-[#F06127] bg-[#FFF7F3] font-medium"
+                                  : "text-foreground hover:bg-accent"
+                              )}
+                              data-testid={`sidekick-output-option-${d.deviceId}`}
+                            >
+                              {isActive ? <Check className="w-3 h-3 shrink-0" /> : <span className="w-3 shrink-0" />}
+                              <span className="truncate">{cleanDeviceLabel(d.label) || "Speakers"}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {voiceError && (
               <p className="text-[12px] text-red-600 mb-2" role="alert" data-testid="sidekick-voice-error">
                 {voiceError}
