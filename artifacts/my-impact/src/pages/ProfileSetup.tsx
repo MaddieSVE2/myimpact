@@ -3,6 +3,7 @@ import { useLocation, useSearch, Link } from "wouter";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -237,8 +238,8 @@ export default function ProfileSetup() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-12" style={{ background: "#f8fafc" }}>
-      <div className="max-w-xl mx-auto">
+    <div className="min-h-screen py-12" style={{ background: "#f8fafc" }}>
+      <div className={CONTENT_CONTAINER}>
         <Link href="/">
           <img
             src={`${import.meta.env.BASE_URL}images/myimpact.png`}

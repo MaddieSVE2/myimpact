@@ -31,6 +31,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { describeCadence } from "@/components/QuickLog";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -158,7 +159,7 @@ export default function Settings() {
   const nameChanged = displayName.trim() !== (user?.displayName ?? "");
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-10">
+    <div className={`${CONTENT_CONTAINER} py-10`}>
       <div className="mb-8">
         <h1 className="text-2xl font-display font-bold text-foreground">{t("settings.title")}</h1>
         <p className="text-muted-foreground text-sm mt-1">{t("settings.subtitle")}</p>

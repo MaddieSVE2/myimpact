@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageSquare, Send, CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -49,7 +50,7 @@ export default function Feedback() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-12">
+    <div className={`${CONTENT_CONTAINER} py-12`}>
       <div className="flex items-center gap-3 mb-8">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"

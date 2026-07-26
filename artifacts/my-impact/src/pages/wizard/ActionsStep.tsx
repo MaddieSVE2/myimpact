@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useT } from "@/i18n";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
@@ -231,7 +232,7 @@ export default function ActionsStep() {
   const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak || situations.length > 0;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className={`${CONTENT_CONTAINER} py-10`}>
       <StepProgress currentStep={1} />
 
       {hasDraft && (

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { NumberInput } from "@/components/ui/number-input";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 interface PreviousActivity {
   activityId: string;
@@ -501,7 +502,7 @@ export default function ActivitiesStep() {
   const isQuantityUnit = (a: ActivityItem) => a.unit !== "hour";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className={`${CONTENT_CONTAINER} py-10`}>
       <StepProgress currentStep={2} />
 
       <AnimatePresence mode="wait">

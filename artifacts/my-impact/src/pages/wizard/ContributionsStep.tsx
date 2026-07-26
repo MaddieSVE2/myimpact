@@ -14,6 +14,7 @@ import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateD
 import { type TimescalePresetId } from "@/lib/timescale-presets";
 import { todayIso } from "@/components/quicklog/activity-shared";
 import { NumberInput } from "@/components/ui/number-input";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
@@ -100,7 +101,7 @@ export default function ContributionsStep() {
   const isOngoing = activePreset === "ongoing";
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
+    <div className={`${CONTENT_CONTAINER} py-12`}>
       <StepProgress currentStep={3} />
 
       <motion.div

@@ -37,6 +37,7 @@ import {
   consumeChallengeContextForSave,
 } from "@/lib/challenge-context";
 import { NumberInput } from "@/components/ui/number-input";
+import { CONTENT_CONTAINER } from "@/lib/layout";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
@@ -517,7 +518,7 @@ export default function QuickLogActivity() {
   const challenge = challengeQuery.data?.challenge;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10" data-testid="quick-log-activity-page">
+    <div className={`${CONTENT_CONTAINER} py-10`} data-testid="quick-log-activity-page">
       <button
         type="button"
         onClick={() => setLocation(returnPathRef.current || "/")}
