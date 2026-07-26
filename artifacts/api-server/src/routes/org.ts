@@ -3356,7 +3356,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       unitLabel: string;
       proxy: string;
       proxyYear: string;
-      source: "member-submitted" | "org-attested";
+      source: "member-submitted" | "org-attested" | "shared";
     }
 
     const lines: ActivityLine[] = [];
@@ -3425,7 +3425,12 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             source: "org-attested",
           });
         } else {
-          // Member-submitted: look up the canonical activity definition.
+          // Member-submitted or consented-shared: look up the canonical
+          // activity definition. Records actively submitted to this org carry
+          // submittedToOrgId; anything else reaching this feed came in via
+          // consented logging (shared automatically from the personal log).
+          const lineSource: "member-submitted" | "shared" =
+            r.submittedToOrgId === orgId ? "member-submitted" : "shared";
           const actDef = ACTIVITIES.find(a => a.id === actId);
           const hours    = typeof l.hoursPerYear === "number" ? l.hoursPerYear : 0;
           const quantity = typeof l.quantity     === "number" ? l.quantity     : 0;
@@ -3462,7 +3467,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             unitLabel: actDef?.unitLabel ?? "hrs",
             proxy: actDef?.proxy ?? "",
             proxyYear: actDef?.proxyYear ?? "",
-            source: "member-submitted",
+            source: lineSource,
           });
         }
       }

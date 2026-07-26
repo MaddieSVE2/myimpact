@@ -73,8 +73,20 @@ interface RealActivity {
   unitLabel: string;
   proxy: string;
   proxyYear: string;
-  source: "member-submitted" | "org-attested";
+  source: "member-submitted" | "org-attested" | "shared";
 }
+
+const SOURCE_LABELS: Record<RealActivity["source"], string> = {
+  "member-submitted": "Submitted",
+  "org-attested": "Org-attested",
+  "shared": "Shared from log",
+};
+
+const SOURCE_BADGE_CLASSES: Record<RealActivity["source"], string> = {
+  "member-submitted": "bg-blue-50 text-blue-700 border border-blue-200",
+  "org-attested": "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  "shared": "bg-amber-50 text-amber-700 border border-amber-200",
+};
 
 interface RealMember {
   id: string;
@@ -139,6 +151,7 @@ export default function OrgActivities() {
 
   const [category, setCategory] = useState<"all" | ActivityCategory>("all");
   const [memberId, setMemberId] = useState<"all" | string>("all");
+  const [source, setSource] = useState<"all" | RealActivity["source"]>("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [anonymise, setAnonymise] = useState(false);
@@ -161,7 +174,7 @@ export default function OrgActivities() {
 
   useEffect(() => {
     setOpenTooltip(null);
-  }, [page, category, memberId, query, from, to]);
+  }, [page, category, memberId, source, query, from, to]);
 
   useEffect(() => {
     if (!openTooltip) return;
@@ -232,6 +245,7 @@ export default function OrgActivities() {
     return (realData?.activities ?? []).filter(a => {
       if (category !== "all" && a.category !== category) return false;
       if (memberId !== "all" && a.memberId !== memberId) return false;
+      if (source !== "all" && a.source !== source) return false;
       if (query) {
         const q = query.toLowerCase();
         const hay = `${a.activity} ${a.description} ${anonymise ? "" : a.memberName}`.toLowerCase();
@@ -239,14 +253,14 @@ export default function OrgActivities() {
       }
       return true;
     }).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-  }, [isDemoOrg, demoActivities, realData?.activities, category, memberId, from, to, query, anonymise]);
+  }, [isDemoOrg, demoActivities, realData?.activities, category, memberId, source, from, to, query, anonymise]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function downloadCSV() {
-    const headers = ["Date", "Member Name", "Member Email", "Category", "Activity", "Description", "Hours", "Social Value (GBP)", "Verified"];
+    const headers = ["Date", "Member Name", "Member Email", "Category", "Activity", "Description", "Hours", "Social Value (GBP)", "Verified", "Source"];
 
     const rows = filtered.map(a => {
       const isReal = !isDemoOrg;
@@ -281,6 +295,7 @@ export default function OrgActivities() {
         String(a.hours),
         String(a.socialValueGBP),
         a.verified ? "Yes" : "No",
+        isReal ? SOURCE_LABELS[(a as RealActivity).source] ?? "" : "Submitted",
       ];
     });
 
@@ -383,7 +398,7 @@ export default function OrgActivities() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${isDemoOrg ? "lg:grid-cols-5" : "lg:grid-cols-6"} gap-2 mb-4`}>
             <div className="lg:col-span-2 relative">
               <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -410,6 +425,14 @@ export default function OrgActivities() {
                   ))
               }
             </select>
+            {!isDemoOrg && (
+              <select value={source} onChange={e => { setSource(e.target.value as "all" | RealActivity["source"]); setPage(1); }} className="px-2 py-1.5 rounded-md border border-border text-[13px] bg-white" data-testid="select-source">
+                <option value="all">All sources</option>
+                <option value="member-submitted">Submitted to org</option>
+                <option value="org-attested">Org-attested</option>
+                <option value="shared">Shared from personal log</option>
+              </select>
+            )}
             <div className="flex gap-1">
               <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="bg-white flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="From" />
               <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="bg-white flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="To" />
@@ -466,7 +489,17 @@ export default function OrgActivities() {
                           </td>
                           <td className="py-2 pr-3"><span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-semibold">{a.category}</span></td>
                           <td className="py-2 pr-3 max-w-md">
-                            <p className="font-medium text-foreground">{a.activity}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-medium text-foreground">{a.activity}</p>
+                              {isReal && realA.source && (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${SOURCE_BADGE_CLASSES[realA.source]}`}
+                                  data-testid={`badge-source-${a.id}`}
+                                >
+                                  {SOURCE_LABELS[realA.source]}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
                           </td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{a.hours}</td>
