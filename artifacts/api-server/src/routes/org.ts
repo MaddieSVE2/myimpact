@@ -2589,7 +2589,7 @@ async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]
   const records = await db
     .select()
     .from(impactRecordsTable)
-    .where(inArray(impactRecordsTable.userId, memberIds));
+    .where(and(inArray(impactRecordsTable.userId, memberIds), notOrgTwinCondition(orgId)));
   return records
     .filter(r => {
       const m = memberMap.get(r.userId);
@@ -2600,7 +2600,7 @@ async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]
 
 async function isRecordEligibleForOrg(recordId: number, orgId: string): Promise<boolean> {
   const record = await db.query.impactRecordsTable.findFirst({
-    where: eq(impactRecordsTable.id, recordId),
+    where: and(eq(impactRecordsTable.id, recordId), notOrgTwinCondition(orgId)),
   });
   if (!record) return false;
   const member = await db.query.orgMembersTable.findFirst({

@@ -8,4 +8,4 @@ Member-submit with "save to personal" creates two impact records: the org submis
 
 **Why:** observed in production — the same activity appeared twice in the org activities feed for consenting members.
 
-**How to apply:** any new org-facing consumer of member data should go through `sharedRecordsCondition` (it gets dedupe for free); if querying consented/member personal records directly, reuse `notOrgTwinCondition(orgId)`.
+**How to apply:** any new org-facing consumer of member data should go through `sharedRecordsCondition` (it gets dedupe for free); if querying consented/member personal records directly, reuse `notOrgTwinCondition(orgId)`. The verification pipeline (pending list, pending-count, bulk-approve eligibility, and the decide-endpoint eligibility check) also applies `notOrgTwinCondition` — keep any new verification-related queries consistent with this.
