@@ -82,7 +82,7 @@ router.post("/register", orgRegisterRateLimit, async (req, res) => {
             <tr style="background:#f7f5ef;"><td style="padding:12px 16px;color:#555;font-size:13px;"><strong>Approx size</strong></td><td style="padding:12px 16px;color:#213547;font-size:14px;">${escHtml(size || "Not specified")}</td></tr>
             <tr><td style="padding:12px 16px;color:#555;font-size:13px;vertical-align:top;"><strong>Purpose</strong></td><td style="padding:12px 16px;color:#213547;font-size:14px;line-height:1.5;">${escHtml(purpose || "Not provided")}</td></tr>
           </table>
-          <p style="color:#aaa;font-size:11px;margin-top:24px;">Sent from My Impact · myimpact.replit.com</p>
+          <p style="color:#aaa;font-size:11px;margin-top:24px;">Sent from My Impact · <a href="https://myimpact.uk" style="color:#aaa;">myimpact.uk</a></p>
         </div>
       `,
     });
