@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable, orgInvitesTable } from "@workspace/db";
-import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql, count } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -1870,6 +1870,55 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
   })();
 
   res.json({ ok: true });
+});
+
+/**
+ * Change an active member's role. Managers can promote members to manager
+ * or demote managers back to member. An organisation can never end up with
+ * zero managers — demoting the last active manager is blocked.
+ */
+router.post("/my/members/:userId/role", authenticate, async (req: AuthenticatedRequest, res) => {
+  const actorId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.userId, actorId), eq(orgMembersTable.status, "active")),
+  });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  if (membership.role !== "manager") { res.status(403).json({ error: "Only organisation managers can change member roles." }); return; }
+
+  const role = (req.body as { role?: unknown } | undefined)?.role;
+  if (role !== "manager" && role !== "member") {
+    res.status(400).json({ error: "role must be either \"manager\" or \"member\"." }); return;
+  }
+
+  const userId = String(req.params.userId);
+  const target = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)),
+  });
+  if (!target) { res.status(404).json({ error: "Member not found." }); return; }
+  if (target.status !== "active") { res.status(409).json({ error: "Only active members can have their role changed." }); return; }
+  if (target.role === role) { res.json({ ok: true, role, unchanged: true }); return; }
+
+  if (role === "member") {
+    // Demotion: make sure at least one other active manager remains.
+    const [{ managerCount }] = await db
+      .select({ managerCount: count() })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, membership.orgId),
+        eq(orgMembersTable.role, "manager"),
+        eq(orgMembersTable.status, "active"),
+      ));
+    if (Number(managerCount) <= 1) {
+      res.status(409).json({ error: "An organisation must always have at least one manager. Promote someone else first." });
+      return;
+    }
+  }
+
+  await db.update(orgMembersTable)
+    .set({ role })
+    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
+
+  res.json({ ok: true, role });
 });
 
 // ---------------------------------------------------------------------------

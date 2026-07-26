@@ -333,6 +333,24 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     finally { setActionBusy(null); }
   }
 
+  async function changeLiveMemberRole(userId: string, name: string, role: "manager" | "member") {
+    const verb = role === "manager" ? "Promote" : "Demote";
+    if (!window.confirm(`${verb} ${name} to ${role}?`)) return;
+    setActionBusy(userId);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/role`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error((j as { error?: string }).error ?? "Failed"); }
+      flash(role === "manager" ? `${name} is now a manager.` : `${name} is now a member.`);
+      await fetchLiveMembers(page);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to change role."); }
+    finally { setActionBusy(null); }
+  }
+
   async function regenerateInvite() {
     if (!window.confirm("Revoke and regenerate the invite code? Anyone with the old code won't be able to use it.")) return;
     if (isDemoOrg) {
@@ -660,7 +678,17 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                         </span>
                       </div>
                     </div>
-                    <div className="shrink-0 text-[11px] text-muted-foreground italic">{m.role}</div>
+                    <div className="shrink-0">
+                      <button
+                        type="button"
+                        disabled={actionBusy === m.userId}
+                        onClick={() => changeLiveMemberRole(m.userId, m.name, m.role === "manager" ? "member" : "manager")}
+                        className="inline-flex items-center gap-1 text-[12px] text-primary hover:text-primary/80 font-semibold disabled:opacity-50"
+                        data-testid={`button-role-${m.userId}`}
+                      >
+                        {m.role === "manager" ? "Demote" : "Make manager"}
+                      </button>
+                    </div>
                   </li>
                 ))
             }
@@ -720,7 +748,15 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                         <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
-                          <span className="text-[11px] text-muted-foreground italic">{m.role}</span>
+                          <button
+                            type="button"
+                            disabled={actionBusy === m.userId}
+                            onClick={() => changeLiveMemberRole(m.userId, m.name, m.role === "manager" ? "member" : "manager")}
+                            className="inline-flex items-center gap-1 text-[12px] text-primary hover:text-primary/80 font-semibold disabled:opacity-50"
+                            data-testid={`button-role-${m.userId}-desktop`}
+                          >
+                            {m.role === "manager" ? "Demote" : "Make manager"}
+                          </button>
                         </td>
                       </tr>
                     ))
