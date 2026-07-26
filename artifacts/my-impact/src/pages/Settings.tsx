@@ -171,6 +171,9 @@ export default function Settings() {
         <p className="text-muted-foreground text-sm mt-1">{t("settings.subtitle")}</p>
       </div>
 
+      {/* Sections flow into two columns on large screens, stacked on mobile. */}
+      <div className="lg:columns-2 lg:gap-4 [&_section]:break-inside-avoid">
+
       {/* Profile section */}
       <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
@@ -417,7 +420,7 @@ export default function Settings() {
       <YourDataSection />
 
       {/* App section */}
-      <section className="bg-white rounded-2xl border border-border shadow-sm mb-8 overflow-hidden">
+      <section className="bg-white rounded-2xl border border-border shadow-sm mb-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Smartphone className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">{t("settings.app")}</h2>
@@ -435,6 +438,8 @@ export default function Settings() {
           </Link>
         </div>
       </section>
+
+      </div>
 
       {/* Sign out */}
       <button

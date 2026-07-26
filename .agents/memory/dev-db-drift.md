@@ -11,3 +11,4 @@ The dev database has drifted from the Drizzle schema. `pnpm --filter @workspace/
 - analytics_daily_summary was missing from dev DB (drizzle push aborts); created via psql to match lib/db schema — same pattern as other drift tables.
 - users.voice_accent was also missing (broke demo seed + persona login with "column does not exist"); added via psql with the schema default. If demo login fails oddly, suspect drift first.
 - Prefer `pnpm --filter @workspace/db run migrate` first: it applies numbered lib/db/migrations non-interactively and skips already-applied ones (e.g. fixed missing organisations.evidence_policy that 500'd e2e create-org). Only fall back to manual psql when no migration file exists.
+- org_surveys.scale_labels jsonb was also missing in dev DB; added via ALTER TABLE ADD COLUMN IF NOT EXISTS — broke demo seed and org survey e2e specs until applied.
