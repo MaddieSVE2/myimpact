@@ -13,6 +13,7 @@ import {
   currentMonthKey,
   estimateTranscribeCostPence,
   estimateTtsCostPence,
+  voiceUsageCostPenceExpr,
 } from "../lib/voiceUsage.js";
 import { getMonthlyUsageReport, AI_BUDGET_ALERT_USD } from "../lib/aiUsage.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
@@ -258,7 +259,10 @@ router.get("/voice-usage", authenticate, async (req: AuthenticatedRequest, res) 
     .where(eq(voiceUsageTable.yearMonth, yearMonth));
 
   // Order by estimated cost in SQL so pagination matches the display sort.
-  const costExpr = sql`(${voiceUsageTable.transcribeSeconds} * ${PENCE_PER_TRANSCRIBE_SECOND} + ${voiceUsageTable.ttsCharacters} * ${PENCE_PER_TTS_CHAR})`;
+  // voiceUsageCostPenceExpr casts the decimal multipliers to numeric —
+  // without the cast Postgres throws 22P02 (invalid input syntax for type
+  // integer: "0.004"). Regression-tested in tests/voiceUsageCostQuery.test.ts.
+  const costExpr = voiceUsageCostPenceExpr();
   const rows = await db
     .select({
       userId: voiceUsageTable.userId,

@@ -266,6 +266,17 @@ export async function probeAudioDurationSeconds(buffer: Buffer): Promise<number>
   }
 }
 
+/**
+ * SQL expression for a voice_usage row's estimated cost in pence, used to
+ * ORDER BY cost in admin queries. The decimal multipliers MUST be cast to
+ * numeric: when a bare parameter is multiplied against the integer columns,
+ * Postgres types the parameter as integer and throws 22P02
+ * (`invalid input syntax for type integer: "0.004"`).
+ */
+export function voiceUsageCostPenceExpr() {
+  return sql`(${voiceUsageTable.transcribeSeconds} * CAST(${PENCE_PER_TRANSCRIBE_SECOND} AS numeric) + ${voiceUsageTable.ttsCharacters} * CAST(${PENCE_PER_TTS_CHAR} AS numeric))`;
+}
+
 export function estimateTranscribeCostPence(seconds: number): number {
   return seconds * PENCE_PER_TRANSCRIBE_SECOND;
 }

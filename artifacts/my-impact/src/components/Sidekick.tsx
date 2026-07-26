@@ -476,6 +476,73 @@ export function Sidekick() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<Blob[]>([]);
   const recorderMimeRef = useRef<string | undefined>(undefined);
+  // Live mic metering while recording: an AnalyserNode samples the stream so
+  // we can show a level indicator and detect an entirely-silent clip *before*
+  // paying for a server round-trip. peakLevelRef tracks the loudest sample
+  // (0..1 amplitude) seen across the whole recording.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const meterRafRef = useRef<number | null>(null);
+  const peakLevelRef = useRef(0);
+  // Only true once the AudioContext actually reached "running". Some
+  // browsers (Safari) can leave a context suspended, producing all-zero
+  // samples — in that case we must NOT enforce the silence gate.
+  const meterActiveRef = useRef(false);
+  const [micLevel, setMicLevel] = useState(0);
+
+  const stopMicMetering = useCallback(() => {
+    if (meterRafRef.current !== null) {
+      cancelAnimationFrame(meterRafRef.current);
+      meterRafRef.current = null;
+    }
+    const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
+    if (ctx && ctx.state !== "closed") {
+      ctx.close().catch(() => {});
+    }
+    setMicLevel(0);
+  }, []);
+
+  const startMicMetering = useCallback((stream: MediaStream) => {
+    peakLevelRef.current = 0;
+    meterActiveRef.current = false;
+    try {
+      type AudioContextCtor = typeof AudioContext;
+      const Ctor: AudioContextCtor | undefined =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      audioCtxRef.current = ctx;
+      if (ctx.state !== "running") {
+        ctx.resume().catch(() => {});
+      }
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);
+      const samples = new Float32Array(analyser.fftSize);
+      const tick = () => {
+        if (audioCtxRef.current !== ctx) return;
+        if (ctx.state === "running") meterActiveRef.current = true;
+        analyser.getFloatTimeDomainData(samples);
+        let peak = 0;
+        for (let i = 0; i < samples.length; i++) {
+          const a = Math.abs(samples[i]);
+          if (a > peak) peak = a;
+        }
+        if (peak > peakLevelRef.current) peakLevelRef.current = peak;
+        setMicLevel(peak);
+        meterRafRef.current = requestAnimationFrame(tick);
+      };
+      meterRafRef.current = requestAnimationFrame(tick);
+    } catch {
+      // Metering is best-effort; recording still works without it. Treat
+      // "no meter" as "assume speech" so we never wrongly block an upload.
+      peakLevelRef.current = 1;
+    }
+  }, []);
+
+  useEffect(() => stopMicMetering, [stopMicMetering]);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenIndexRef = useRef<number>(-1);
 
@@ -838,10 +905,28 @@ export function Sidekick() {
     stopAudioPlayback();
     try {
       // "ideal" (not "exact") so the browser silently falls back to the
-      // default mic if the chosen device has been unplugged.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: selectedMicId ? { deviceId: { ideal: selectedMicId } } : true,
-      });
+      // default mic if the chosen device has been unplugged. If a saved
+      // device id still makes getUserMedia fail (stale id after an OS
+      // update, revoked virtual device), retry once with the default mic
+      // and clear the stale selection.
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: selectedMicId ? { deviceId: { ideal: selectedMicId } } : true,
+        });
+      } catch (firstErr) {
+        if (
+          selectedMicId &&
+          firstErr instanceof DOMException &&
+          firstErr.name !== "NotAllowedError"
+        ) {
+          console.warn("Selected mic unavailable, falling back to default:", firstErr);
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          setSelectedMicId(null);
+        } else {
+          throw firstErr;
+        }
+      }
       const track = stream.getAudioTracks()[0];
       if (track?.label) setActiveMicLabel(cleanDeviceLabel(track.label));
       // Permission was just granted (or re-confirmed): refresh so device
@@ -857,6 +942,7 @@ export function Sidekick() {
         if (e.data.size > 0) recorderChunksRef.current.push(e.data);
       };
       mediaRecorderRef.current = recorder;
+      startMicMetering(stream);
       recorder.start(100);
       setVoiceState("recording");
     } catch (err) {
@@ -868,7 +954,7 @@ export function Sidekick() {
       );
       setVoiceState("idle");
     }
-  }, [streaming, voiceState, stopAudioPlayback, selectedMicId, refreshDevices]);
+  }, [streaming, voiceState, stopAudioPlayback, selectedMicId, setSelectedMicId, refreshDevices, startMicMetering]);
 
   const stopRecordingAndSend = useCallback(async () => {
     const recorder = mediaRecorderRef.current;
@@ -884,10 +970,26 @@ export function Sidekick() {
       recorder.stop();
     });
     mediaRecorderRef.current = null;
+    const peakLevel = peakLevelRef.current;
+    // Only trust the meter if the AudioContext actually ran; a suspended
+    // context yields all-zero samples and would wrongly block real speech.
+    const meterRan = meterActiveRef.current;
+    stopMicMetering();
 
     if (blob.size < 1000) {
       setVoiceState("idle");
       setVoiceError("That clip was too short to hear. Hold a little longer and try again.");
+      return;
+    }
+
+    // If the meter ran for the whole clip and never saw a sample above
+    // near-digital-silence (~-46 dB), the mic captured nothing — block the
+    // upload and tell the user before a pointless server round-trip.
+    if (meterRan && peakLevel < 0.005) {
+      setVoiceState("idle");
+      setVoiceError(
+        "We can't hear anything — check your mic isn't muted, or pick a different microphone from the mic menu."
+      );
       return;
     }
 
@@ -926,7 +1028,7 @@ export function Sidekick() {
       setVoiceState("idle");
       setVoiceError(err instanceof Error ? err.message : "Couldn't transcribe audio");
     }
-  }, [sendMessage]);
+  }, [sendMessage, stopMicMetering]);
 
   const handleMicClick = useCallback(() => {
     if (!VOICE_SUPPORTED) return;
@@ -1435,10 +1537,33 @@ export function Sidekick() {
               </p>
             )}
             {voiceState === "recording" && (
-              <p className="text-[12px] text-[#F06127] font-medium mb-2 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#F06127] animate-pulse" />
-                Listening… tap the mic again to send.
-              </p>
+              <div
+                className="text-[12px] text-[#F06127] font-medium mb-2 flex items-center gap-2"
+                data-testid="sidekick-recording-indicator"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#F06127] animate-pulse shrink-0" />
+                <span>Listening… tap the mic again to send.</span>
+                {/* Live input level meter: bars fill as the mic picks up sound */}
+                <span
+                  className="flex items-end gap-[2px] h-4 ml-auto shrink-0"
+                  aria-hidden="true"
+                  data-testid="sidekick-mic-level"
+                >
+                  {[0.02, 0.05, 0.1, 0.18, 0.3].map((threshold, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "w-[3px] rounded-full transition-colors duration-75",
+                        micLevel >= threshold ? "bg-[#F06127]" : "bg-border"
+                      )}
+                      style={{ height: `${6 + i * 2.5}px` }}
+                    />
+                  ))}
+                </span>
+                {micLevel < 0.005 && peakLevelRef.current < 0.005 && (
+                  <span className="text-muted-foreground font-normal shrink-0">Can't hear you yet…</span>
+                )}
+              </div>
             )}
             {voiceState === "transcribing" && (
               <p className="text-[12px] text-muted-foreground mb-2 flex items-center gap-1.5">

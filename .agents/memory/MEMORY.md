@@ -20,4 +20,5 @@
 - [Org twin dedupe](org-twin-dedupe.md) — member-submit personal copies link to their org record via resultJson.orgRecordId; sharedRecordsCondition excludes twins so org views never double-count.
 - [Lighthouse CI local runs](lighthouse-ci.md) — run lhci via the validation runner; dim decorative text with filter not opacity; small orange text needs --brand-orange-text; keep @sentry/react dynamic-only.
 - [Org dashboard tiering](org-dashboard-tiering.md) — full Organisation-tier dashboard is gated by demo org, type=university, or the admin-toggled full_tier_enabled flag; all other orgs get the lite portal with upsell.
+- [Drizzle decimal param cast](drizzle-decimal-param-cast.md) — decimal JS constants in raw sql`` next to integer columns throw 22P02 at plan time; wrap in CAST(... AS numeric).
 - [Org manager review surfaces](org-manager-review-surfaces.md) — manager per-record features need both OrgPortal (lite) and OrgActivities (full tier); demo org's Activities page is mock data, test with the university org.

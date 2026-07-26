@@ -538,6 +538,10 @@ router.post(
         return;
       }
       if (timedOut) {
+        console.error(
+          `[sidekick-chat] first-token-timeout user_key=${(res.locals.aiUserKey as string) ?? getUserKey(req)} ` +
+            `timeout_ms=${FIRST_TOKEN_TIMEOUT_MS}`
+        );
         const message =
           "This is taking longer than usual. Try rephrasing your question, or asking something more specific — that usually helps me reply faster.";
         res.write(`data: ${JSON.stringify({ delta: message, timeout: true })}\n\n`);
@@ -552,6 +556,11 @@ router.post(
     clearTimeout(firstTokenTimer);
 
     if (!firstTokenSeen && !clientClosed) {
+      console.error(
+        `[sidekick-chat] empty-stream user_key=${(res.locals.aiUserKey as string) ?? getUserKey(req)} ` +
+          `input_tokens=${usageInputTokens} output_tokens=${usageOutputTokens} — ` +
+          "model stream completed without emitting any content"
+      );
       const message =
         "Sorry, I couldn't put together a reply for that one. Try rephrasing it or asking something a bit more specific.";
       res.write(`data: ${JSON.stringify({ delta: message })}\n\n`);
@@ -580,12 +589,36 @@ router.post(
       })
       .catch((err) => console.error("[ai-usage] increment failed:", err));
   } catch (err) {
-    console.error("Sidekick chat error:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to get response" });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`);
-      res.end();
+    // Log with enough detail to diagnose production failures: user key,
+    // whether the SSE stream had already started, and any upstream API
+    // status attached to the error by the OpenAI SDK.
+    let userKey = "unknown";
+    try {
+      userKey = (res.locals.aiUserKey as string) ?? getUserKey(req);
+    } catch {
+      // never let logging derail error handling
+    }
+    const upstreamStatus =
+      err && typeof err === "object" && "status" in err
+        ? (err as { status?: unknown }).status
+        : undefined;
+    console.error(
+      `[sidekick-chat] error user_key=${userKey} headers_sent=${res.headersSent} ` +
+        `upstream_status=${upstreamStatus ?? "n/a"}:`,
+      err
+    );
+    // Everything below is best-effort: the response may already be dead
+    // (client gone, socket reset). Nothing here may throw, or the error
+    // would escape the route as an unhandled rejection.
+    try {
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to get response" });
+      } else if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`);
+        res.end();
+      }
+    } catch (writeErr) {
+      console.error("[sidekick-chat] failed to send error response:", writeErr);
     }
   }
 });
