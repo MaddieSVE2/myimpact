@@ -150,7 +150,7 @@ router.post("/org-requests/:id/approve", authenticate, async (req: Authenticated
     return;
   }
 
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   const registration = await db.query.orgRegistrationsTable.findFirst({
     where: eq(orgRegistrationsTable.id, id),
@@ -311,7 +311,7 @@ router.post("/org-requests/:id/reject", authenticate, async (req: AuthenticatedR
     return;
   }
 
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   const registration = await db.query.orgRegistrationsTable.findFirst({
     where: eq(orgRegistrationsTable.id, id),
@@ -549,7 +549,7 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  const { id } = req.params;
+  const id = String(req.params.id);
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   const updates: Partial<{ contactName: string; contactEmail: string; dashboardSections: unknown; fullTierEnabled: boolean }> = {};
@@ -605,7 +605,7 @@ router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, 
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  const { id } = req.params;
+  const id = String(req.params.id);
   const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, id) });
   if (!org) {
     res.status(404).json({ error: "Organisation not found" });
@@ -663,7 +663,7 @@ router.post("/orgs/:id/resend-activation", authenticate, async (req: Authenticat
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  const { id } = req.params;
+  const id = String(req.params.id);
   const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, id) });
   if (!org) {
     res.status(404).json({ error: "Organisation not found" });

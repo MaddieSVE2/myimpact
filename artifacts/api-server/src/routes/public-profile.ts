@@ -231,7 +231,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res: Response) =
 // ── GET /api/public-profile/check-slug/:slug — slug availability check ────────
 router.get("/check-slug/:slug", authenticate, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const slug = (req.params.slug ?? "").trim().toLowerCase();
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
   const error = validateSlug(slug);
   if (error) {
     res.json({ available: false, error });
@@ -433,7 +433,7 @@ async function buildWidgetPayload(slug: string) {
 
 // ── GET /api/public-profile/:slug/widget.json — widget data (cached) ──────────
 router.get("/:slug/widget.json", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = (req.params.slug ?? "").trim().toLowerCase();
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
   const payload = await buildWidgetPayload(slug);
 
   // Allow cross-origin reads from third-party host pages (the iframe loads
@@ -545,7 +545,7 @@ async function buildWidgetStatus(
 }
 
 router.get("/:slug/widget.status", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = (req.params.slug ?? "").trim().toLowerCase();
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "no-store");
 
@@ -832,7 +832,7 @@ function renderWidgetHtml(
 
 // ── GET /api/public-profile/:slug — public page data (no auth, rate limited) ──
 router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = (req.params.slug ?? "").trim().toLowerCase();
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
 
   const profile = await db.query.publicProfilesTable.findFirst({
     where: eq(publicProfilesTable.slug, slug),

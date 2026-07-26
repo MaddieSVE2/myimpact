@@ -67,7 +67,7 @@ async function getManagerOrg(req: AuthenticatedRequest) {
 router.get("/subscription", authenticate, async (req: AuthenticatedRequest, res) => {
   const result = await getManagerOrg(req);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
   const snapshot = await getFeatureSnapshot(result.org.id);
@@ -97,7 +97,7 @@ router.post("/checkout", authenticate, checkoutRateLimit, async (req: Authentica
 
   const result = await getManagerOrg(req);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
 
@@ -177,7 +177,7 @@ router.post("/portal", authenticate, async (req: AuthenticatedRequest, res) => {
 
   const result = await getManagerOrg(req);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
 

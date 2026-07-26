@@ -10,7 +10,11 @@ export function getStripeClient(): Stripe | null {
   if (cached) return cached;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  cached = new Stripe(key, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
+  // The SDK types pin `apiVersion` to the latest release literal, but Stripe
+  // accepts any valid dated version string at runtime; keep ours pinned.
+  cached = new Stripe(key, {
+    apiVersion: "2025-08-27.basil",
+  } as unknown as ConstructorParameters<typeof Stripe>[1]);
   return cached;
 }
 

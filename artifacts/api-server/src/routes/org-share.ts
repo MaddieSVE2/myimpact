@@ -41,7 +41,7 @@ const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 const ORG_COST_PER_VOLUNTEER = 475;
 
 router.get("/:slug", sharePublicRateLimit, async (req: Request, res: Response) => {
-  const slug = (req.params.slug ?? "").trim().toLowerCase();
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
   if (!slug) {
     res.status(404).json({ error: "Share link not found." });
     return;

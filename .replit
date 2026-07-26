@@ -46,6 +46,10 @@ args = "subnav-alignment"
 task = "workflow.run"
 args = "lighthouse"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck-api"
+
 [[workflows.workflow]]
 name = "e2e"
 author = "agent"
@@ -108,6 +112,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck-api"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server typecheck"
 
 [workflows.workflow.metadata]
 isValidation = true

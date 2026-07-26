@@ -459,7 +459,7 @@ router.post(
       clearInterval(keepaliveTimer);
     };
 
-    let stream: Awaited<ReturnType<typeof openai.chat.completions.create>> & AsyncIterable<unknown>;
+    let stream: AsyncIterable<unknown> & { controller: AbortController };
     // Pass an explicit low reasoning effort so gpt-5-mini doesn't spend a
     // long time silently "thinking" before producing anything. If the
     // installed SDK / model rejects the option, retry without it so the

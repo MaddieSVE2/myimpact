@@ -244,7 +244,7 @@ router.post("/sources", authenticate, async (req: AuthenticatedRequest, res) => 
  */
 router.patch("/sources/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const id = req.params.id;
+  const id = String(req.params.id);
   const existing = await db.query.calendarSourcesTable.findFirst({
     where: and(
       eq(calendarSourcesTable.id, id),
@@ -291,7 +291,7 @@ router.patch("/sources/:id", authenticate, async (req: AuthenticatedRequest, res
 /* DELETE /api/calendar/sources/:id — disconnect and revoke. */
 router.delete("/sources/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const id = req.params.id;
+  const id = String(req.params.id);
   const existing = await db.query.calendarSourcesTable.findFirst({
     where: and(
       eq(calendarSourcesTable.id, id),
@@ -329,7 +329,7 @@ router.delete("/sources/:id", authenticate, async (req: AuthenticatedRequest, re
 /* POST /api/calendar/sources/:id/sync — manual re-sync trigger. */
 router.post("/sources/:id/sync", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
-  const id = req.params.id;
+  const id = String(req.params.id);
   const source = await db.query.calendarSourcesTable.findFirst({
     where: and(
       eq(calendarSourcesTable.id, id),

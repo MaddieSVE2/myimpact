@@ -1319,7 +1319,7 @@ router.get("/share-links", authenticate, async (req: AuthenticatedRequest, res) 
   const userId = req.user!.id;
   const result = await requireManager(userId);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
 
@@ -1347,7 +1347,7 @@ router.post("/share-links", authenticate, shareLinkCreateRateLimit, async (req: 
   const userId = req.user!.id;
   const result = await requireManager(userId);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
 
@@ -1436,11 +1436,11 @@ router.post("/share-links/:id/revoke", authenticate, async (req: AuthenticatedRe
   const userId = req.user!.id;
   const result = await requireManager(userId);
   if ("error" in result) {
-    res.status(result.error.status).json({ error: result.error.message });
+    res.status(result.error!.status).json({ error: result.error!.message });
     return;
   }
 
-  const id = req.params.id;
+  const id = String(req.params.id);
   const link = await db.query.orgShareLinksTable.findFirst({
     where: eq(orgShareLinksTable.id, id),
   });

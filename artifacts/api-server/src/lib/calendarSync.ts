@@ -145,7 +145,7 @@ export async function syncSource(source: CalendarSource): Promise<SyncSummary> {
   try {
     rawEvents = await fetchEventsForSource(
       source.provider as CalendarProvider,
-      source.calendarId,
+      source.calendarId!,
       timeMin,
       timeMax,
     );

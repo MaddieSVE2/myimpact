@@ -332,7 +332,7 @@ router.patch("/surveys/:id", authenticate, async (req: AuthenticatedRequest, res
 
   const updates: { scaleLabels?: string[] | null; question?: string } = {};
 
-  let newScaleLabels: string[] | null = existing.scaleLabels;
+  let newScaleLabels: string[] | null = existing.scaleLabels as string[] | null;
   if (body.scaleLabels !== undefined) {
     const validated = validateScaleLabels(body.scaleLabels, template);
     if (!validated.ok) {
