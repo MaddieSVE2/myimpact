@@ -29,6 +29,22 @@ const orgRegisterRateLimit = createRateLimiter({
   message: "Too many registration requests. Please wait before trying again.",
 });
 
+// Once someone actually becomes an active member of an org, any pending
+// email invite for them is stale — remove it so the Pending invites list
+// only shows people who haven't joined yet. Invite emails are stored
+// lowercased, so compare against the lowercased address.
+async function clearPendingInvite(orgId: string, email: string | null | undefined): Promise<void> {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized) return;
+  try {
+    await db.delete(orgInvitesTable).where(
+      and(eq(orgInvitesTable.orgId, orgId), eq(orgInvitesTable.email, normalized)),
+    );
+  } catch (err) {
+    console.error("[org.clearPendingInvite] failed to clear invite:", err);
+  }
+}
+
 function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 }
@@ -250,6 +266,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       await db.update(orgMembersTable)
         .set({ role: "manager", status: "active" })
         .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
+      await clearPendingInvite(org.id, userEmail);
     }
     res.json({ ok: true, orgName: org.name, alreadyMember: true, status: existing.status });
     return;
@@ -264,6 +281,10 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   await db.insert(orgMembersTable).values({ orgId: org.id, userId, role, status: memberStatus });
+
+  if (memberStatus === "active") {
+    await clearPendingInvite(org.id, userEmail);
+  }
 
   if (isConsentedOrg && consentScope && consentShareFrom) {
     await db.insert(orgMemberConsentsTable).values({
@@ -425,6 +446,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     membership.role = "manager";
     membership.status = "active";
+    await clearPendingInvite(org.id, userEmail);
   }
 
   let logoUrl: string | null = null;
@@ -1627,6 +1649,7 @@ router.post("/my/members/:userId/approve", authenticate, async (req: Authenticat
     .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
 
   const targetUser = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
+  await clearPendingInvite(membership.orgId, targetUser?.email);
   enqueueOrgEvent({
     orgId: membership.orgId,
     eventType: "member.joined",
