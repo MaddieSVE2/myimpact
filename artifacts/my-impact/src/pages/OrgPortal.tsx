@@ -585,6 +585,9 @@ function OrgSelector({ selected, onSelect }: { selected: OrgListItem | null; onS
 
 function MemberConsentCard({ orgName }: { orgName: string }) {
   const queryClient = useQueryClient();
+  const [regrantOpen, setRegrantOpen] = useState(false);
+  const [regrantScope, setRegrantScope] = useState<"from_join" | "historic">("from_join");
+  const [regrantFrom, setRegrantFrom] = useState("");
   const consentQuery = useQuery<{
     consent: {
       status: "active" | "withdrawn";
@@ -619,6 +622,27 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
     },
   });
 
+  const regrantMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/org/my/consent/regrant`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consentScope: regrantScope,
+          ...(regrantScope === "historic" ? { consentHistoricFrom: regrantFrom } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to re-grant consent");
+      return data;
+    },
+    onSuccess: () => {
+      setRegrantOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["my-org-consent"] });
+    },
+  });
+
   const consent = consentQuery.data?.consent;
   if (consentQuery.isLoading || !consent) return null;
 
@@ -643,7 +667,9 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
           <p className="text-xs text-foreground mb-3" data-testid="text-consent-scope">
             {consent.shareScope === "historic" && consent.shareFrom
               ? <>You're sharing activities dated on or after <strong>{new Date(consent.shareFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong> (including past activities).</>
-              : <>You're sharing activities from the date you joined onwards.</>}
+              : consent.shareFrom
+                ? <>You're sharing activities from <strong>{new Date(consent.shareFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong> onwards.</>
+                : <>You're sharing activities from the date you joined onwards.</>}
             {" "}Consent given {new Date(consent.grantedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
           </p>
           <button
@@ -664,9 +690,83 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
           )}
         </>
       ) : (
-        <p className="text-xs text-muted-foreground" data-testid="text-consent-withdrawn">
-          You withdrew your data-sharing consent on {new Date(consent.withdrawnAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. New activities are no longer shared automatically with {orgName}.
-        </p>
+        <>
+          <p className="text-xs text-muted-foreground mb-3" data-testid="text-consent-withdrawn">
+            You withdrew your data-sharing consent on {new Date(consent.withdrawnAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. New activities are no longer shared automatically with {orgName}.
+          </p>
+          {!regrantOpen ? (
+            <button
+              type="button"
+              onClick={() => setRegrantOpen(true)}
+              className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+              data-testid="button-share-again"
+            >
+              Share again
+            </button>
+          ) : (
+            <div className="border border-border rounded-lg p-3 space-y-2" data-testid="regrant-consent-form">
+              <p className="text-xs font-semibold text-foreground">Choose how your activity is shared with {orgName}:</p>
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="regrant-scope"
+                  className="mt-0.5"
+                  checked={regrantScope === "from_join"}
+                  onChange={() => setRegrantScope("from_join")}
+                  data-testid="radio-regrant-from-now"
+                />
+                <span>Share activities from today onwards</span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="regrant-scope"
+                  className="mt-0.5"
+                  checked={regrantScope === "historic"}
+                  onChange={() => setRegrantScope("historic")}
+                  data-testid="radio-regrant-historic"
+                />
+                <span>Also share past activities, dated on or after a date I choose</span>
+              </label>
+              {regrantScope === "historic" && (
+                <input
+                  type="date"
+                  value={regrantFrom}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setRegrantFrom(e.target.value)}
+                  className="block w-full max-w-[200px] px-2 py-1.5 rounded-lg border border-border text-xs"
+                  data-testid="input-regrant-from-date"
+                />
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Your journals and pulse answers are never shared. This is recorded in the audit log.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => regrantMutation.mutate()}
+                  disabled={regrantMutation.isPending || (regrantScope === "historic" && !regrantFrom)}
+                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  data-testid="button-confirm-regrant"
+                >
+                  {regrantMutation.isPending ? "Sharing…" : "Start sharing"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegrantOpen(false)}
+                  disabled={regrantMutation.isPending}
+                  className="px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  data-testid="button-cancel-regrant"
+                >
+                  Cancel
+                </button>
+              </div>
+              {regrantMutation.isError && (
+                <p className="text-xs text-red-600" data-testid="text-regrant-error">{(regrantMutation.error as Error).message}</p>
+              )}
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   );

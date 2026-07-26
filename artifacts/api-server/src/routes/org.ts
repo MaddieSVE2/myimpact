@@ -544,6 +544,72 @@ router.post("/my/consent/withdraw", authenticate, async (req: AuthenticatedReque
   res.json({ ok: true });
 });
 
+// Re-grant consent after a withdrawal. The member picks a fresh scope/date;
+// sharing resumes immediately and the change is audit-logged as consent.granted.
+router.post("/my/consent/regrant", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+    columns: { dataSharingMode: true, revokedAt: true },
+  });
+  if (!org || org.dataSharingMode !== "consented_logging") {
+    res.status(400).json({ error: "Your organisation does not use consented logging." });
+    return;
+  }
+  if (org.revokedAt) {
+    res.status(403).json({ error: "This organisation is no longer active on My Impact." });
+    return;
+  }
+  const consent = await db.query.orgMemberConsentsTable.findFirst({
+    where: and(eq(orgMemberConsentsTable.orgId, membership.orgId), eq(orgMemberConsentsTable.userId, userId)),
+  });
+  if (consent && consent.status === "active") {
+    res.status(400).json({ error: "Your data-sharing consent is already active." });
+    return;
+  }
+
+  const scope = (req.body as Record<string, unknown>).consentScope;
+  let shareScope: "from_join" | "historic";
+  let shareFrom: Date;
+  if (scope === "from_join") {
+    shareScope = "from_join";
+    shareFrom = new Date();
+  } else if (scope === "historic") {
+    const raw = (req.body as Record<string, unknown>).consentHistoricFrom;
+    const parsed = typeof raw === "string" && raw ? new Date(raw) : null;
+    if (!parsed || isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+      res.status(400).json({ error: "Please choose a valid past date to share historic activity from." });
+      return;
+    }
+    shareScope = "historic";
+    shareFrom = parsed;
+  } else {
+    res.status(400).json({ error: "Please choose how your activity is shared." });
+    return;
+  }
+
+  const grantedAt = new Date();
+  await db.insert(orgMemberConsentsTable).values({
+    id: randomUUID(),
+    orgId: membership.orgId,
+    userId,
+    status: "active",
+    shareFrom,
+    shareScope,
+  }).onConflictDoUpdate({
+    target: [orgMemberConsentsTable.orgId, orgMemberConsentsTable.userId],
+    set: { status: "active", shareFrom, shareScope, grantedAt, withdrawnAt: null },
+  });
+  await writeAuditLog(membership.orgId, userId, "consent.granted", "member", userId, {
+    shareScope,
+    shareFrom: shareFrom.toISOString(),
+    regrant: true,
+  }).catch(err => console.error("[org.consent] failed to write audit log:", err));
+  res.json({ ok: true });
+});
+
 // ── Branding (logo + colours) ─────────────────────────────────────────────────
 const ALLOWED_LOGO_TYPES = new Set([
   "image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml",
