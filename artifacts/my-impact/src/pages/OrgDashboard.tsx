@@ -200,6 +200,9 @@ export default function OrgDashboard() {
   // Super-admin controlled dashboard sections (server also enforces these).
   const dashboardSections = orgData?.org?.dashboardSections as Record<string, boolean> | undefined;
   const showSroi = isDemoOrg || dashboardSections?.sroi !== false;
+  const showCategories = isDemoOrg || dashboardSections?.categories !== false;
+  const showValuePerMember = isDemoOrg || dashboardSections?.valuePerMember !== false;
+  const showPulseSummary = isDemoOrg || dashboardSections?.pulseSummary !== false;
 
   const timelineData = useMemo<MonthlyDataPoint[]>(() => {
     if (isDemoOrg) return demoTrend.map(p => ({ month: p.label.split(" ")[0]!, value: p.value }));
@@ -263,6 +266,7 @@ export default function OrgDashboard() {
         isCurrentPeriod={isCurrentPeriod}
         periodFrom={periodFrom}
         periodTo={periodTo}
+        sections={dashboardSections}
       />
     );
   }
@@ -510,7 +514,7 @@ export default function OrgDashboard() {
         <StatCard icon={Clock} label="Hours logged" value={headlineStats.totalHours} sub={`${headlineStats.totalActivities} activities`} />
       </motion.div>
       <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <StatCard icon={BadgeCheck} label="Avg per member" value={headlineStats.averagePerMember} prefix="£" sub={t("orgDashboard.avgPerMemberSub")} />
+        {showValuePerMember && <StatCard icon={BadgeCheck} label="Avg per member" value={headlineStats.averagePerMember} prefix="£" sub={t("orgDashboard.avgPerMemberSub")} />}
         <StatCard icon={Clock} label={t("orgDashboard.avgHoursPerMember")} value={headlineStats.totalMembers ? Math.round(headlineStats.totalHours / headlineStats.totalMembers) : 0} sub={t("orgDashboard.avgHoursPerMemberSub")} />
       </motion.div>
 
@@ -574,7 +578,7 @@ export default function OrgDashboard() {
       </div>}
 
       {/* Pulse summary — donut + sparkline aggregate of active surveys */}
-      <OrgPulseSummaryCard />
+      {showPulseSummary && <OrgPulseSummaryCard />}
 
       {/* Trend over the year — line/area chart matches the public charity-example dashboard */}
       <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-monthly-trend">
@@ -655,7 +659,7 @@ export default function OrgDashboard() {
       </div>}
 
       {/* Top categories */}
-      <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-top-categories">
+      {showCategories && <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="section-top-categories">
         <div className="flex items-center gap-2 mb-1">
           <Layers className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("orgDashboard.categoriesTitle")}</h3>
@@ -747,7 +751,7 @@ export default function OrgDashboard() {
             })}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Cross-links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

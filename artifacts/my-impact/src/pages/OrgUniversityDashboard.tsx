@@ -48,6 +48,8 @@ interface OrgUniversityDashboardProps {
   isCurrentPeriod: boolean;
   periodFrom: string;
   periodTo: string;
+  /** Super-admin controlled dashboard-section toggles (server also enforces these). */
+  sections?: Record<string, boolean>;
 }
 
 const BAR_PALETTE = ["#F06127", "#B5BE2E", "#A8C8DA", "#7E8FAD", "#E8633A", "#C5A3D0", "#8FBF9F"];
@@ -82,8 +84,11 @@ function AnimatedBar({ pct, delay = 0 }: { pct: number; delay?: number }) {
 export default function OrgUniversityDashboard({
   orgName, stats, timeline,
   periodOffset, setPeriodOffset, periodLabel, isCurrentPeriod,
-  periodFrom, periodTo,
+  periodFrom, periodTo, sections,
 }: OrgUniversityDashboardProps) {
+  const showCategories = sections?.categories !== false;
+  const showTopActivities = sections?.topActivities !== false;
+  const showPulseSummary = sections?.pulseSummary !== false;
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: UniversityActivity[] }>({
     queryKey: ["org-activities", periodFrom, periodTo],
     queryFn: async () => {
@@ -223,11 +228,12 @@ export default function OrgUniversityDashboard({
         </div>
 
         {/* Pulse summary */}
-        <OrgPulseSummaryCard />
+        {showPulseSummary && <OrgPulseSummaryCard />}
 
         {/* Social value by category + top activities */}
-        <div className="bg-white border border-border rounded-xl p-6" data-testid="section-category-breakdown">
+        {(showCategories || showTopActivities) && <div className="bg-white border border-border rounded-xl p-6" data-testid="section-category-breakdown">
           <SectionLabel>Activity breakdown</SectionLabel>
+          {showCategories && <>
           <SectionTitle>Social value by category</SectionTitle>
           {valueByCategory.length === 0 ? (
             <p className="text-[13px] text-muted-foreground py-6 text-center">No activity has been logged in this period yet.</p>
@@ -248,7 +254,9 @@ export default function OrgUniversityDashboard({
               </ResponsiveContainer>
             </div>
           )}
+          </>}
 
+          {showTopActivities && <>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Top activities</p>
           {activitiesLoading ? (
             <div className="py-6 flex justify-center">
@@ -282,8 +290,9 @@ export default function OrgUniversityDashboard({
               ))}
             </div>
           )}
+          </>}
           <p className="text-[11px] text-muted-foreground mt-3">All data is anonymised. Member-level detail lives in <Link href="/org/activities" className="underline">Activities</Link>.</p>
-        </div>
+        </div>}
 
         {/* Skills & development */}
         <div className="bg-white border border-border rounded-xl p-6" data-testid="section-skills-development">

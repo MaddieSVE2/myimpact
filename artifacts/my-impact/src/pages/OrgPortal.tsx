@@ -31,6 +31,7 @@ interface OrgInfo {
   role: string;
   membershipStatus?: string;
   fullTierEnabled?: boolean;
+  dashboardSections?: Record<string, boolean>;
   branding?: OrgBranding;
 }
 
@@ -2025,6 +2026,11 @@ export default function OrgPortal() {
   // so applying branding here means all org users see the firm's colours and
   // logo, not just managers. Demo org is intentionally never branded.
   const isDemoOrgUser = orgData?.org?.id === DEMO_ORG_ID;
+  // Super-admin controlled dashboard sections (server also enforces these).
+  const dashboardSections = orgData?.org?.dashboardSections as Record<string, boolean> | undefined;
+  const showValuePerMember = isDemoOrgUser || dashboardSections?.valuePerMember !== false;
+  const showCategories = isDemoOrgUser || dashboardSections?.categories !== false;
+  const showLocationMap = isDemoOrgUser || dashboardSections?.locationMap !== false;
   const branding = !isDemoOrgUser ? orgData?.org?.branding ?? null : null;
   const brandStyle: React.CSSProperties = {};
   const primaryHsl = hexToHslVar(branding?.brandPrimary ?? null);
@@ -2273,15 +2279,15 @@ export default function OrgPortal() {
               </p>
               <p className="text-xs text-muted-foreground mt-1">{stats.totalUsers} with saved records</p>
             </div>
-            <div className="bg-white border border-border rounded-xl p-5">
+            {showValuePerMember && <div className="bg-white border border-border rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <BarChart2 className="w-4 h-4 text-primary" />
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg per person</p>
               </div>
               <p className="text-2xl font-display font-bold text-foreground">
-                £<AnimatedNumber value={stats.averageValuePerPerson} formatter={v => v.toLocaleString("en-GB")} />
+                £<AnimatedNumber value={stats.averageValuePerPerson ?? 0} formatter={v => v.toLocaleString("en-GB")} />
               </p>
-            </div>
+            </div>}
             <div className="bg-white border border-border rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-4 h-4 text-primary" />
@@ -2350,7 +2356,7 @@ export default function OrgPortal() {
             <ImpactTimeline data={monthlyData?.monthly ?? []} isLoading={monthlyLoading} />
           </motion.div>
 
-          {stats.valueByCategory.length > 0 && (
+          {showCategories && stats.valueByCategory.length > 0 && (
             <motion.div
               className="bg-white border border-border rounded-xl p-5 mb-6"
               initial={{ opacity: 0, y: 10 }}
@@ -2374,7 +2380,7 @@ export default function OrgPortal() {
           )}
 
           {/* Regional map */}
-          <motion.div
+          {showLocationMap && <motion.div
             className="bg-white border border-border rounded-xl p-5 mb-6"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2415,7 +2421,7 @@ export default function OrgPortal() {
                 </div>
               </div>
             )}
-          </motion.div>
+          </motion.div>}
 
           {stats.totalUsers === 0 && (
             <motion.div
