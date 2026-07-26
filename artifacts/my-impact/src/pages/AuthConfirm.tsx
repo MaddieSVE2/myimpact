@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { BirthDateForm } from "@/components/BirthDateForm";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function AuthConfirm() {
   const [, navigate] = useLocation();
 
-  const [status, setStatus] = useState<"verifying" | "ready" | "confirming" | "error">("verifying");
+  const [status, setStatus] = useState<"verifying" | "ready" | "confirming" | "birthdate" | "error">("verifying");
   const [email, setEmail] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -45,6 +46,28 @@ export default function AuthConfirm() {
       });
   }, [token]);
 
+  const proceedAfterSignIn = async () => {
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+    const safeReturnTo =
+      returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
+        ? returnToParam
+        : "/history";
+
+    try {
+      const profileRes = await fetch(`${BASE}/api/profile`, { credentials: "include" });
+      const profileData = await profileRes.json();
+      if (profileData.profile === null) {
+        const setupUrl = `${base}/profile/setup?returnTo=${encodeURIComponent(safeReturnTo)}`;
+        window.location.href = setupUrl;
+        return;
+      }
+    } catch {
+    }
+
+    window.location.href = base + safeReturnTo;
+  };
+
   const handleConfirm = async () => {
     setStatus("confirming");
     try {
@@ -61,25 +84,13 @@ export default function AuthConfirm() {
         throw new Error("non-json");
       }
       if (data.ok) {
-        const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-
-        const safeReturnTo =
-          returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
-            ? returnToParam
-            : "/history";
-
-        try {
-          const profileRes = await fetch(`${BASE}/api/profile`, { credentials: "include" });
-          const profileData = await profileRes.json();
-          if (profileData.profile === null) {
-            const setupUrl = `${base}/profile/setup?returnTo=${encodeURIComponent(safeReturnTo)}`;
-            window.location.href = setupUrl;
-            return;
-          }
-        } catch {
+        // First sign-in (or an account still missing birth data): the age
+        // gate now runs here, after the magic link is confirmed.
+        if (data.needsBirthDate) {
+          setStatus("birthdate");
+          return;
         }
-
-        window.location.href = base + safeReturnTo;
+        await proceedAfterSignIn();
       } else {
         setStatus("error");
         setErrorMsg((data.error as string) ?? "Failed to confirm sign-in.");
@@ -131,6 +142,10 @@ export default function AuthConfirm() {
                 Confirm sign in
               </button>
             </>
+          )}
+
+          {status === "birthdate" && (
+            <BirthDateForm onComplete={() => { void proceedAfterSignIn(); }} />
           )}
 
           {status === "confirming" && (

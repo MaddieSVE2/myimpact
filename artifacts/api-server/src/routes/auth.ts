@@ -159,22 +159,26 @@ router.post("/request", async (req, res) => {
   });
 
   if (!user) {
-    // Age gate: a birth month/year is required whenever a NEW account would
-    // be created. Under-13s are rejected here, BEFORE any row (user, profile,
-    // magic token) is written and before any email is sent.
-    const ageGate = checkAgeGate(birthMonth, birthYear);
-    if (!ageGate.ok) {
-      res.status(ageGate.status).json(ageGate.body);
-      return;
+    // New accounts are created WITHOUT birth details. The age gate now runs
+    // after the user clicks their magic link (POST /birth-date): under-13s
+    // are blocked there and the account is erased. If the client still sends
+    // birthMonth/birthYear (older cached bundles), validate and store them so
+    // the DOB step can be skipped.
+    let birthValues: { birthMonth: number; birthYear: number; isMinor: boolean } | null = null;
+    if (birthMonth != null && birthYear != null) {
+      const ageGate = checkAgeGate(birthMonth, birthYear);
+      if (!ageGate.ok) {
+        res.status(ageGate.status).json(ageGate.body);
+        return;
+      }
+      birthValues = { birthMonth: ageGate.birthMonth, birthYear: ageGate.birthYear, isMinor: ageGate.isMinor };
     }
     const [created] = await db
       .insert(usersTable)
       .values({
         id: randomBytes(12).toString("hex"),
         email: normalizedEmail,
-        birthMonth: ageGate.birthMonth,
-        birthYear: ageGate.birthYear,
-        isMinor: ageGate.isMinor,
+        ...(birthValues ?? {}),
       })
       .returning();
     user = created;
@@ -417,11 +421,84 @@ router.post("/confirm", async (req, res) => {
     }
 
     issueSession(res, user);
-    res.json({ ok: true, user: { id: user.id, email: user.email } });
+    res.json({
+      ok: true,
+      user: { id: user.id, email: user.email },
+      // The client must collect a date of birth before letting the user
+      // proceed when the account has none (brand-new accounts, or older
+      // accounts from interrupted flows).
+      needsBirthDate: user.birthMonth == null || user.birthYear == null,
+    });
   } catch (err) {
     console.error("[auth/confirm] error:", err);
     res.status(500).json({ error: "Something went wrong. Please try again." });
   }
+});
+
+/**
+ * Submit a date of birth for the signed-in user. This is the age gate for
+ * magic-link accounts, now applied AFTER the first magic-link confirmation
+ * rather than at request time:
+ *   - under-13 → the account (and everything stored so far) is erased, the
+ *     session is cleared, and a 403/under_13 is returned;
+ *   - 13–17    → stored with is_minor = true;
+ *   - 18+      → stored with is_minor = false.
+ */
+router.post("/birth-date", async (req: any, res) => {
+  const sessionToken = req.cookies?.mi_session;
+  if (!sessionToken) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  let payload: { id: string; email: string };
+  try {
+    payload = jwt.verify(sessionToken, process.env.SESSION_SECRET!) as { id: string; email: string };
+  } catch {
+    res.status(401).json({ error: "Invalid session" });
+    return;
+  }
+
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, payload.id) });
+  if (!user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { birthMonth, birthYear } = req.body ?? {};
+  const ageGate = checkAgeGate(birthMonth, birthYear);
+
+  if (!ageGate.ok) {
+    // Under-13: block sign-up and erase the just-created account, but ONLY
+    // when the account has no birth data yet (i.e. it's mid-signup). An
+    // existing verified account can never be deleted through this endpoint.
+    if (
+      ageGate.status === 403 &&
+      user.birthMonth == null &&
+      user.birthYear == null
+    ) {
+      try {
+        const { eraseUserData } = await import("../lib/userDeletion.js");
+        await eraseUserData(user.id);
+      } catch (err) {
+        console.error("[auth/birth-date] failed to erase under-13 account:", err);
+      }
+      res.clearCookie("mi_session", { path: "/", secure: true, sameSite: "lax" });
+    }
+    res.status(ageGate.status).json(ageGate.body);
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({
+      birthMonth: ageGate.birthMonth,
+      birthYear: ageGate.birthYear,
+      isMinor: ageGate.isMinor,
+    })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ ok: true, isMinor: ageGate.isMinor });
 });
 
 const DEMO_ORG_ID = "demo-org-0000000000000";
@@ -632,6 +709,12 @@ router.get("/me", async (req: any, res) => {
         voiceAccent: user.voiceAccent ?? "neutral",
         preferredLocale: user.preferredLocale ?? "en",
         gamificationEnabled: user.gamificationEnabled,
+        birthMonth: user.birthMonth ?? null,
+        birthYear: user.birthYear ?? null,
+        isMinor: user.isMinor ?? null,
+        // Persona/demo accounts never provide a date of birth.
+        needsBirthDate:
+          !isPersonaEmail(user.email) && (user.birthMonth == null || user.birthYear == null),
       },
     });
   } catch {
@@ -647,7 +730,7 @@ router.patch("/me", async (req: any, res) => {
     const secret = process.env.SESSION_SECRET!;
     const payload = jwt.verify(token, secret) as { id: string; email: string };
 
-    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, voiceAccent, preferredLocale, gamificationEnabled } = req.body ?? {};
+    const { displayName, emailDigestOptIn, voiceEnabled, voicePersona, voiceAccent, preferredLocale, gamificationEnabled, birthMonth, birthYear } = req.body ?? {};
     const updates: {
       displayName?: string | null;
       emailDigestOptIn?: boolean;
@@ -656,6 +739,9 @@ router.patch("/me", async (req: any, res) => {
       voiceAccent?: string;
       preferredLocale?: string;
       gamificationEnabled?: boolean;
+      birthMonth?: number;
+      birthYear?: number;
+      isMinor?: boolean;
     } = {};
 
     if (displayName !== undefined) {
@@ -717,6 +803,20 @@ router.patch("/me", async (req: any, res) => {
       updates.gamificationEnabled = gamificationEnabled;
     }
 
+    if (birthMonth !== undefined || birthYear !== undefined) {
+      // Both must be supplied together; the same age gate as sign-up applies
+      // (no under-13 values, minor flag recomputed). Clearing a stored date
+      // of birth is not allowed.
+      const ageGate = checkAgeGate(birthMonth, birthYear);
+      if (!ageGate.ok) {
+        res.status(ageGate.status).json(ageGate.body);
+        return;
+      }
+      updates.birthMonth = ageGate.birthMonth;
+      updates.birthYear = ageGate.birthYear;
+      updates.isMinor = ageGate.isMinor;
+    }
+
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "No updatable fields supplied" });
       return;
@@ -739,6 +839,11 @@ router.patch("/me", async (req: any, res) => {
         voiceAccent: updated.voiceAccent ?? "neutral",
         preferredLocale: updated.preferredLocale ?? "en",
         gamificationEnabled: updated.gamificationEnabled,
+        birthMonth: updated.birthMonth ?? null,
+        birthYear: updated.birthYear ?? null,
+        isMinor: updated.isMinor ?? null,
+        needsBirthDate:
+          !isPersonaEmail(updated.email) && (updated.birthMonth == null || updated.birthYear == null),
       },
     });
   } catch {

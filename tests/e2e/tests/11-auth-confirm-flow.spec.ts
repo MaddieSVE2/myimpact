@@ -38,9 +38,6 @@ test.describe("Spec 11 — auth confirm flow", () => {
     const emailInput = page.locator("#email");
     await emailInput.waitFor({ state: "visible" });
     await emailInput.fill(email);
-    // Age gate: new accounts need an adult birth date.
-    await page.locator("#birth-month").selectOption("1");
-    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
 
     // Step 2: The "check your inbox" screen must appear (proves /api/auth/request worked).
@@ -63,6 +60,12 @@ test.describe("Spec 11 — auth confirm flow", () => {
 
     // Step 6: Click the button to complete sign-in.
     await page.getByRole("button", { name: /^confirm sign in$/i }).click();
+
+    // Step 6b: New account — the age gate asks for a date of birth here.
+    await expect(page.getByTestId("select-birth-month")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("select-birth-month").selectOption("1");
+    await page.getByTestId("select-birth-year").selectOption(String(new Date().getFullYear() - 30));
+    await page.getByTestId("button-save-birth-date").click();
 
     // Step 7: The app redirects to /history or /profile/setup (new user) or /wizard.
     await page.waitForURL(/\/(history|profile\/setup|wizard)/, { timeout: 15_000 });
@@ -101,9 +104,6 @@ test.describe("Spec 11 — auth confirm flow", () => {
     const emailInput = page.locator("#email");
     await emailInput.waitFor({ state: "visible" });
     await emailInput.fill(email);
-    // Age gate: new accounts need an adult birth date.
-    await page.locator("#birth-month").selectOption("1");
-    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
     await expect(
       page.getByText(/we['']ve sent a sign-in link/i),
@@ -111,9 +111,13 @@ test.describe("Spec 11 — auth confirm flow", () => {
 
     const token = await api.getLatestMagicToken(email);
 
-    // Confirm once (succeeds).
+    // Confirm once (succeeds) — includes the new-account birth-date step.
     await page.goto(`/auth/confirm?token=${encodeURIComponent(token)}`);
     await page.getByRole("button", { name: /^confirm sign in$/i }).click();
+    await expect(page.getByTestId("select-birth-month")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("select-birth-month").selectOption("1");
+    await page.getByTestId("select-birth-year").selectOption(String(new Date().getFullYear() - 30));
+    await page.getByTestId("button-save-birth-date").click();
     await page.waitForURL(/\/(history|profile\/setup|wizard)/, { timeout: 15_000 });
 
     // Navigate back to the same confirm URL in a new page context.

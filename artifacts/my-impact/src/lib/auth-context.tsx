@@ -18,6 +18,10 @@ interface User {
   voiceAccent?: VoiceAccent;
   preferredLocale?: "en" | "cy";
   gamificationEnabled?: boolean;
+  birthMonth?: number | null;
+  birthYear?: number | null;
+  isMinor?: boolean | null;
+  needsBirthDate?: boolean;
 }
 
 interface DemoLoginResult {
@@ -38,7 +42,7 @@ interface AuthContextType {
   requestMagicLink: (
     email: string,
     returnTo?: string,
-    options?: { marketingOptIn?: boolean; birthMonth?: number | null; birthYear?: number | null },
+    options?: { marketingOptIn?: boolean },
   ) => Promise<MagicLinkResult>;
   demoLogin: (email: string) => Promise<DemoLoginResult>;
   updateProfile: (fields: {
@@ -49,7 +53,10 @@ interface AuthContextType {
     voiceAccent?: VoiceAccent;
     preferredLocale?: "en" | "cy";
     gamificationEnabled?: boolean;
+    birthMonth?: number;
+    birthYear?: number;
   }) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -57,9 +64,10 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   user: null,
   isLoading: true,
-  requestMagicLink: async (_e: string, _r?: string, _o?: { marketingOptIn?: boolean; birthMonth?: number | null; birthYear?: number | null }) => ({ instantLogin: false }),
+  requestMagicLink: async (_e: string, _r?: string, _o?: { marketingOptIn?: boolean }) => ({ instantLogin: false }),
   demoLogin: async () => { throw new Error("Not implemented") as Error & { status: number }; },
   updateProfile: async () => {},
+  refreshUser: async () => {},
   logout: async () => {},
 });
 
@@ -83,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestMagicLink = async (
     email: string,
     returnTo?: string,
-    options?: { marketingOptIn?: boolean; birthMonth?: number | null; birthYear?: number | null },
+    options?: { marketingOptIn?: boolean },
   ): Promise<MagicLinkResult> => {
     const res = await fetch(`${BASE}/api/auth/request`, {
       method: "POST",
@@ -93,8 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         returnTo: returnTo ?? null,
         marketingOptIn: options?.marketingOptIn === true,
-        birthMonth: options?.birthMonth ?? null,
-        birthYear: options?.birthYear ?? null,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -153,6 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     voiceAccent?: VoiceAccent;
     preferredLocale?: "en" | "cy";
     gamificationEnabled?: boolean;
+    birthMonth?: number;
+    birthYear?: number;
   }) => {
     const res = await fetch(`${BASE}/api/auth/me`, {
       method: "PATCH",
@@ -167,6 +175,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
+      const data = await res.json();
+      setUser(data.user ?? null);
+    } catch {
+      // Keep the current user on transient failures.
+    }
+  };
+
   const logout = async () => {
     await fetch(`${BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
@@ -176,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, updateProfile, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, updateProfile, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

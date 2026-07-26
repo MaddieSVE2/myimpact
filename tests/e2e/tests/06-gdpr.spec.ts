@@ -140,10 +140,8 @@ test.describe("GDPR self-service", () => {
     // Terms link is present at sign-up.
     await expect(page.getByRole("link", { name: /^terms$/i })).toBeVisible();
 
-    // Submit without ticking. A new account needs an adult birth date (age gate).
+    // Submit without ticking.
     await page.locator("#email").fill(email);
-    await page.locator("#birth-month").selectOption("1");
-    await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
     await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
     await expect(page.getByText(/we['']ve sent a sign-in link/i)).toBeVisible({ timeout: 15_000 });
 
@@ -151,6 +149,11 @@ test.describe("GDPR self-service", () => {
     const token = await api.getLatestMagicToken(email);
     await page.goto(`/auth/confirm?token=${encodeURIComponent(token)}`);
     await page.getByRole("button", { name: /^confirm sign in$/i }).click();
+    // New account: fill the birth-date step of the age gate.
+    await expect(page.getByTestId("select-birth-month")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("select-birth-month").selectOption("1");
+    await page.getByTestId("select-birth-year").selectOption(String(new Date().getFullYear() - 30));
+    await page.getByTestId("button-save-birth-date").click();
     await page.waitForURL(/\/(history|profile\/setup|wizard)/, { timeout: 15_000 });
 
     const profileRes = await context.request.get("/api/profile");

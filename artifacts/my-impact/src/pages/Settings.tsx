@@ -215,6 +215,9 @@ export default function Settings() {
               {t("settings.emailHelp")}
             </p>
           </div>
+
+          {/* Date of birth */}
+          <BirthDateSettings />
         </div>
       </section>
 
@@ -435,6 +438,98 @@ export default function Settings() {
         <LogOut className="w-4 h-4" aria-hidden="true" />
         {t("settings.signOut")}
       </button>
+    </div>
+  );
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function BirthDateSettings() {
+  const { user, updateProfile } = useAuth();
+  const { toast } = useToast();
+
+  const [birthMonth, setBirthMonth] = useState<string>(user?.birthMonth ? String(user.birthMonth) : "");
+  const [birthYear, setBirthYear] = useState<string>(user?.birthYear ? String(user.birthYear) : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The user loads asynchronously; sync stored values into the selects once known.
+  useEffect(() => {
+    setBirthMonth(user?.birthMonth ? String(user.birthMonth) : "");
+    setBirthYear(user?.birthYear ? String(user.birthYear) : "");
+  }, [user?.birthMonth, user?.birthYear]);
+
+  const changed =
+    birthMonth !== (user?.birthMonth ? String(user.birthMonth) : "") ||
+    birthYear !== (user?.birthYear ? String(user.birthYear) : "");
+
+  const handleSave = async () => {
+    if (saving || !birthMonth || !birthYear) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateProfile({ birthMonth: Number(birthMonth), birthYear: Number(birthYear) });
+      toast({
+        title: "Date of birth saved",
+        description: "Your date of birth has been updated.",
+      });
+    } catch (err: any) {
+      setError(err?.message ?? "Couldn't save your date of birth. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="settings-birth-month">
+        Date of birth
+      </label>
+      <p className="text-xs text-muted-foreground mb-2">
+        Your birth month and year, used to keep My Impact safe for younger people.
+      </p>
+      <div className="flex gap-2">
+        <select
+          id="settings-birth-month"
+          value={birthMonth}
+          onChange={(e) => { setBirthMonth(e.target.value); setError(null); }}
+          data-testid="select-settings-birth-month"
+          aria-label="Birth month"
+          className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Month</option>
+          {MONTH_NAMES.map((name, i) => (
+            <option key={name} value={i + 1}>{name}</option>
+          ))}
+        </select>
+        <select
+          id="settings-birth-year"
+          value={birthYear}
+          onChange={(e) => { setBirthYear(e.target.value); setError(null); }}
+          data-testid="select-settings-birth-year"
+          aria-label="Birth year"
+          className="w-28 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Year</option>
+          {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <button
+          onClick={handleSave}
+          disabled={!changed || !birthMonth || !birthYear || saving}
+          data-testid="button-save-settings-birth-date"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {error && (
+        <p className="mt-1.5 text-xs text-red-600" data-testid="text-birth-date-error">{error}</p>
+      )}
     </div>
   );
 }

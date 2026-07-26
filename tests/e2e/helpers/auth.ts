@@ -20,15 +20,11 @@ export async function signInWithMagicLink(
 ): Promise<void> {
   await page.goto("/login");
 
-  // Fill the email and submit the request-link form.
+  // Fill the email and submit the request-link form. (No birth date here —
+  // the age gate now runs after the magic link is confirmed.)
   const emailInput = page.locator("#email");
   await emailInput.waitFor({ state: "visible" });
   await emailInput.fill(email);
-
-  // Age gate: a birth month/year is required when the email would create a
-  // new account. Fill an adult date so every helper-driven sign-up passes.
-  await page.locator("#birth-month").selectOption("1");
-  await page.locator("#birth-year").selectOption(String(new Date().getFullYear() - 30));
 
   await page.getByRole("button", { name: /send sign-in link|sign in/i }).first().click();
 
@@ -43,6 +39,20 @@ export async function signInWithMagicLink(
   await page.goto(`/auth/confirm?token=${encodeURIComponent(token)}`);
 
   await page.getByRole("button", { name: /^confirm sign in$/i }).click();
+
+  // First-ever sign-in: the age gate asks for a date of birth right after
+  // confirmation. Fill an adult date when the step appears; returning users
+  // skip straight to the redirect.
+  const birthMonth = page.getByTestId("select-birth-month");
+  const sawBirthStep = await birthMonth
+    .waitFor({ state: "visible", timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (sawBirthStep) {
+    await birthMonth.selectOption("1");
+    await page.getByTestId("select-birth-year").selectOption(String(new Date().getFullYear() - 30));
+    await page.getByTestId("button-save-birth-date").click();
+  }
 
   // After confirm, the app navigates to either /profile/setup (new user) or
   // /history (returning user). Wait for one of the two so subsequent

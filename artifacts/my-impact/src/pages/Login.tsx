@@ -40,9 +40,6 @@ export default function Login() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
-  const [birthMonth, setBirthMonth] = useState("");
-  const [birthYear, setBirthYear] = useState("");
-  const [underageBlocked, setUnderageBlocked] = useState(false);
   const [undeliverable, setUndeliverable] = useState(false);
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -96,37 +93,16 @@ export default function Login() {
     navigate(closeTo);
   };
 
-  // Mirror of the server rule: with only month + year known, treat the
-  // unknown day conservatively — the person only counts as `years` old once
-  // their birth month has fully passed.
-  const isAtLeastAge = (m: number, y: number, years: number) => {
-    const now = new Date();
-    const ty = y + years;
-    return now.getFullYear() > ty || (now.getFullYear() === ty && now.getMonth() + 1 > m);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setUnderageBlocked(false);
     setUndeliverable(false);
-
-    // Client-side age gate: if a birth date is provided and it makes the
-    // person under 13, block before any request is sent.
-    const m = birthMonth ? Number(birthMonth) : null;
-    const y = birthYear ? Number(birthYear) : null;
-    if (m !== null && y !== null && !isAtLeastAge(m, y, 13)) {
-      setUnderageBlocked(true);
-      return;
-    }
 
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
       const result = await requestMagicLink(normalizedEmail, postLoginTo ?? undefined, {
         marketingOptIn,
-        birthMonth: m,
-        birthYear: y,
       });
       if (result.instantLogin) {
         const target = result.orgRedirect ? "/org" : postLoginTo ?? "/";
@@ -241,55 +217,6 @@ export default function Login() {
                     />
                   </div>
                 </div>
-
-                {!enforced && (
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="birth-month">
-                      Date of birth <span className="text-muted-foreground font-normal">(needed for new accounts)</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        id="birth-month"
-                        value={birthMonth}
-                        onChange={(e) => { setBirthMonth(e.target.value); setUnderageBlocked(false); setError(null); }}
-                        data-testid="select-birth-month"
-                        className="flex-1 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
-                        aria-label="Birth month"
-                      >
-                        <option value="">Month</option>
-                        {["January","February","March","April","May","June","July","August","September","October","November","December"].map((name, i) => (
-                          <option key={name} value={i + 1}>{name}</option>
-                        ))}
-                      </select>
-                      <select
-                        id="birth-year"
-                        value={birthYear}
-                        onChange={(e) => { setBirthYear(e.target.value); setUnderageBlocked(false); setError(null); }}
-                        data-testid="select-birth-year"
-                        className="w-28 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
-                        aria-label="Birth year"
-                      >
-                        <option value="">Year</option>
-                        {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Already have an account? You can leave this blank.
-                    </p>
-                  </div>
-                )}
-
-                {underageBlocked && (
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3" data-testid="text-underage-blocked">
-                    <p className="text-xs text-amber-900 leading-relaxed">
-                      Sorry — you must be 13 or older to create a My Impact account.
-                      We haven't stored any of your details. We'd love to see you back
-                      when you're 13!
-                    </p>
-                  </div>
-                )}
 
                 {showSsoButton && (
                   <div className={enforced ? "rounded-lg bg-blue-50 border border-blue-100 p-3 space-y-2" : "space-y-2"}>
