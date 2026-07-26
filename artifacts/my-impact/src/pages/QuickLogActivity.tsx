@@ -63,6 +63,10 @@ interface ProxyMatch {
   proxyYear: string;
   valuePerUnit: number;
   unit: string;
+  fullValuePerUnit?: number;
+  deflationFactor?: number;
+  deflationNote?: string | null;
+  horizon?: string;
 }
 interface AnalysedActivity {
   friendlyQuestion: string;
@@ -892,6 +896,11 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
                   <span className="text-muted-foreground font-normal"> · {analysed.proxyMatch.proxyYear}</span>
                 )}
               </p>
+              {analysed.proxyMatch.deflationNote && (
+                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                  {analysed.proxyMatch.deflationNote}
+                </p>
+              )}
             </div>
           </div>
         ) : (

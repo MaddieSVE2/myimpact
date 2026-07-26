@@ -15,6 +15,8 @@ async function bootstrap(): Promise<void> {
   const { startRetentionCleanupJob } = await import("./lib/retentionCleanup.js");
   const { startPremappedRefreshJob } = await import("./lib/premappedCharities.js");
   const { startApprovalDigestJob } = await import("./lib/approvalDigest.js");
+  const { seedProxies } = await import("./lib/proxyStore.js");
+  const { runProxyRepairSweep } = await import("./lib/proxyRepair.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -63,6 +65,12 @@ async function bootstrap(): Promise<void> {
     startRetentionCleanupJob();
     startPremappedRefreshJob();
     startApprovalDigestJob();
+    // Seed the proxies table from proxyData.json (insert-only), then run the
+    // one-shot repair sweep for records valued with undeflated long-horizon
+    // proxies. Both are idempotent and non-fatal.
+    seedProxies()
+      .then(() => runProxyRepairSweep())
+      .catch((err) => console.error("[proxy-seed] Failed (non-fatal):", err));
   });
 }
 

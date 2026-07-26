@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable } from "@workspace/db";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable } from "@workspace/db";
+import { eq, desc, and, inArray, sql, asc, ilike, count } from "drizzle-orm";
+import { invalidateProxyCache } from "../lib/proxyStore.js";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient, removeFromResendSuppressionList } from "../lib/resend.js";
@@ -893,6 +894,111 @@ router.delete("/sidekick-templates/:id", authenticate, async (req: Authenticated
     .delete(sidekickTemplateOverridesTable)
     .where(eq(sidekickTemplateOverridesTable.templateId, templateId));
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Financial proxy management (super-admin)
+// ---------------------------------------------------------------------------
+
+const VALID_HORIZONS = new Set(["per_instance", "annual", "multi_year", "lifetime"]);
+const VALID_UNITS = new Set(["hour", "session", "person", "item", "household"]);
+
+router.get("/proxies", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const search = String(req.query.search ?? "").trim();
+  const horizon = String(req.query.horizon ?? "").trim();
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "50"), 10) || 50));
+
+  const conditions = [];
+  if (search) conditions.push(ilike(proxiesTable.title, `%${search}%`));
+  if (horizon && VALID_HORIZONS.has(horizon)) conditions.push(eq(proxiesTable.horizon, horizon));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [proxies, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(proxiesTable)
+      .where(where)
+      .orderBy(asc(sql`lower(${proxiesTable.title})`))
+      .limit(limit)
+      .offset((page - 1) * limit),
+    db.select({ total: count() }).from(proxiesTable).where(where),
+  ]);
+
+  res.json({ proxies, total, page, limit });
+});
+
+router.put("/proxies/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const id = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  const { deflationFactor, allowedUnits, enabled, value, horizon } = req.body ?? {};
+
+  if (deflationFactor !== undefined) {
+    const f = Number(deflationFactor);
+    if (!Number.isFinite(f) || f <= 0 || f > 1) {
+      res.status(400).json({ error: "deflationFactor must be a number in (0, 1]" });
+      return;
+    }
+    updates.deflationFactor = f;
+  }
+  if (allowedUnits !== undefined) {
+    if (!Array.isArray(allowedUnits) || allowedUnits.length === 0 || !allowedUnits.every((u) => typeof u === "string" && VALID_UNITS.has(u))) {
+      res.status(400).json({ error: `allowedUnits must be a non-empty array of: ${[...VALID_UNITS].join(", ")}` });
+      return;
+    }
+    updates.allowedUnits = allowedUnits;
+  }
+  if (enabled !== undefined) {
+    if (typeof enabled !== "boolean") {
+      res.status(400).json({ error: "enabled must be a boolean" });
+      return;
+    }
+    updates.enabled = enabled;
+  }
+  if (value !== undefined) {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) {
+      res.status(400).json({ error: "value must be a positive number" });
+      return;
+    }
+    updates.value = String(v);
+  }
+  if (horizon !== undefined) {
+    if (typeof horizon !== "string" || !VALID_HORIZONS.has(horizon)) {
+      res.status(400).json({ error: `horizon must be one of: ${[...VALID_HORIZONS].join(", ")}` });
+      return;
+    }
+    updates.horizon = horizon;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  updates.updatedBy = req.user!.email;
+  updates.updatedAt = new Date();
+
+  const [row] = await db.update(proxiesTable).set(updates).where(eq(proxiesTable.id, id)).returning();
+  if (!row) {
+    res.status(404).json({ error: "Proxy not found" });
+    return;
+  }
+  invalidateProxyCache();
+  res.json({ ok: true, proxy: row });
 });
 
 export default router;

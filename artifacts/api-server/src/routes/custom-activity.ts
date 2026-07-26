@@ -3,16 +3,9 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { textAiQuota } from "../lib/textAiUsage.js";
-import proxiesData from "../lib/proxyData.json";
 import { ACTIVITIES } from "../lib/impactData";
-
-interface ProxyEntry {
-  title: string;
-  value: number;
-  unit: string;
-}
-
-const proxies: ProxyEntry[] = proxiesData as ProxyEntry[];
+import { getEnabledProxies, type StoredProxy } from "../lib/proxyStore.js";
+import { deflateProxyValue } from "../lib/proxyValuation.js";
 
 const STOP_WORDS = new Set([
   "a","an","the","and","or","of","in","at","to","for","is","are","by","with",
@@ -27,7 +20,7 @@ function extractKeywords(name: string): string[] {
     .filter(w => w.length > 2 && !STOP_WORDS.has(w));
 }
 
-function candidateProxies(activityName: string, limit = 20): ProxyEntry[] {
+function candidateProxies(proxies: StoredProxy[], activityName: string, limit = 20): StoredProxy[] {
   const keywords = extractKeywords(activityName);
   if (keywords.length === 0) return proxies.slice(0, limit);
 
@@ -52,6 +45,14 @@ function candidateProxies(activityName: string, limit = 20): ProxyEntry[] {
     .slice(0, limit)
     .map(s => s.proxy);
 }
+
+const UNIT_LABELS: Record<string, string> = {
+  hour: "hours per year",
+  session: "sessions per year",
+  person: "people helped",
+  item: "items per year",
+  household: "households",
+};
 
 const FUNDRAISING_RE = /fund[\s-]?rais/i;
 
@@ -160,7 +161,9 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
       return;
     }
 
-    const candidates = candidateProxies(name.trim());
+    // Only admin-enabled proxies are ever offered to the AI matcher.
+    const enabledProxies = await getEnabledProxies();
+    const candidates = candidateProxies(enabledProxies, name.trim());
     const candidateList = candidates
       .map((p, i) => `${i + 1}. "${p.title}" | £${p.value} per ${p.unit}`)
       .join("\n");
@@ -199,16 +202,41 @@ ${candidateList || "No candidates found."}`,
       2000,
     )) ?? {};
 
-    let proxyMatch: { title: string; proxyYear: string; valuePerUnit: number; unit: string } | null = null;
+    let matchedUnit = typeof parsed.unit === "string" ? parsed.unit : "hour";
+    let unitLabel = typeof parsed.unitLabel === "string" ? parsed.unitLabel : "hours per year";
+
+    let proxyMatch:
+      | {
+          title: string;
+          proxyYear: string;
+          valuePerUnit: number;
+          unit: string;
+          fullValuePerUnit: number;
+          deflationFactor: number;
+          deflationNote: string | null;
+          horizon: string;
+        }
+      | null = null;
     if (typeof parsed.proxyIndex === "number" && parsed.proxyIndex >= 1) {
       const picked = candidates[parsed.proxyIndex - 1];
       if (picked) {
-        const yearMatch = picked.title.match(/\((\d{4})\)/);
+        // Respect admin-configured allowed units: if the AI's chosen unit
+        // isn't permitted for this proxy, fall back to the proxy's first
+        // allowed unit.
+        if (picked.allowedUnits.length > 0 && !picked.allowedUnits.includes(matchedUnit)) {
+          matchedUnit = picked.allowedUnits[0];
+          unitLabel = UNIT_LABELS[matchedUnit] ?? `${matchedUnit}s per year`;
+        }
+        const valuation = deflateProxyValue(picked, matchedUnit);
         proxyMatch = {
           title: picked.title,
-          proxyYear: yearMatch ? yearMatch[1] : "",
-          valuePerUnit: picked.value,
-          unit: typeof parsed.unit === "string" ? parsed.unit : "hour",
+          proxyYear: picked.sourceYear,
+          valuePerUnit: valuation.valuePerUnit,
+          unit: matchedUnit,
+          fullValuePerUnit: picked.value,
+          deflationFactor: valuation.appliedFactor,
+          deflationNote: valuation.note,
+          horizon: picked.horizon,
         };
       }
     }
@@ -218,8 +246,8 @@ ${candidateList || "No candidates found."}`,
         typeof parsed.friendlyQuestion === "string" && parsed.friendlyQuestion.trim()
           ? parsed.friendlyQuestion
           : `How many hours a year do you spend on ${name}?`,
-      unit: typeof parsed.unit === "string" ? parsed.unit : "hour",
-      unitLabel: typeof parsed.unitLabel === "string" ? parsed.unitLabel : "hours per year",
+      unit: matchedUnit,
+      unitLabel,
       defaultQuantity: typeof parsed.defaultQuantity === "number" ? parsed.defaultQuantity : 20,
       sdgHint: typeof parsed.sdgHint === "string" ? parsed.sdgHint : "",
       proxyMatch,

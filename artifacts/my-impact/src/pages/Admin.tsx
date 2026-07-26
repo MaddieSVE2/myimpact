@@ -302,6 +302,12 @@ export default function Admin() {
         >
           Edit Sidekick template copy →
         </a>
+        <a
+          href="/admin/proxies"
+          className="ml-4 text-sm font-medium text-primary hover:underline"
+        >
+          Manage financial proxies →
+        </a>
       </p>
 
       {error && (

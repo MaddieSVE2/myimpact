@@ -16,3 +16,4 @@ export * from "./attachment-pending-reservations";
 export * from "./audit-log";
 export * from "./local-charities";
 export * from "./sidekick-template-overrides";
+export * from "./proxies";

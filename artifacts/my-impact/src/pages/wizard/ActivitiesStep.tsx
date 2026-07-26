@@ -40,6 +40,10 @@ interface ProxyMatch {
   proxyYear: string;
   valuePerUnit: number;
   unit: string;
+  fullValuePerUnit?: number;
+  deflationFactor?: number;
+  deflationNote?: string | null;
+  horizon?: string;
 }
 
 interface AnalysedActivity {
@@ -928,6 +932,9 @@ export default function ActivitiesStep() {
                                           £{analysed.proxyMatch.valuePerUnit.toLocaleString()} per {analysed.proxyMatch.unit}
                                           {analysed.proxyMatch.proxyYear && <span className="text-muted-foreground font-normal"> · {analysed.proxyMatch.proxyYear}</span>}
                                         </p>
+                                        {analysed.proxyMatch.deflationNote && (
+                                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{analysed.proxyMatch.deflationNote}</p>
+                                        )}
                                       </div>
                                     </div>
                                   )}
@@ -1250,6 +1257,9 @@ export default function ActivitiesStep() {
                                 £{pendingItem.analysed.proxyMatch.valuePerUnit.toLocaleString()} per {pendingItem.analysed.proxyMatch.unit}
                                 {pendingItem.analysed.proxyMatch.proxyYear && <span className="text-muted-foreground font-normal"> · {pendingItem.analysed.proxyMatch.proxyYear}</span>}
                               </p>
+                              {pendingItem.analysed.proxyMatch.deflationNote && (
+                                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{pendingItem.analysed.proxyMatch.deflationNote}</p>
+                              )}
                             </div>
                           </div>
                         )}
