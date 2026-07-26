@@ -224,7 +224,7 @@ router.post("/org-requests/:id/approve", authenticate, async (req: Authenticated
             <p style="color:#E8633A;font-size:32px;font-weight:bold;letter-spacing:4px;margin:0;">${escHtmlAdmin(inviteCode)}</p>
           </div>
           <p style="color:#444;line-height:1.6;">Share this code with members of <strong>${escHtmlAdmin(registration.orgName)}</strong> so they can join your organisation when they sign up to My Impact.</p>
-          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="https://myimpact.replit.app" style="color:#aaa;">myimpact.replit.app</a></p>
+          <p style="color:#aaa;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">My Impact · <a href="https://myimpact.uk" style="color:#aaa;">myimpact.uk</a></p>
         </div>
       `,
     });

@@ -54,7 +54,7 @@ router.post("/", contactRateLimit, async (req, res) => {
             <tr><td style="padding:12px 16px;color:#555;font-size:13px;"><strong>Email</strong></td><td style="padding:12px 16px;font-size:14px;"><a href="mailto:${escHtml(safeEmail)}" style="color:#E8633A;">${escHtml(safeEmail)}</a></td></tr>
             <tr style="background:#f7f5ef;"><td style="padding:12px 16px;color:#555;font-size:13px;vertical-align:top;"><strong>Message</strong></td><td style="padding:12px 16px;color:#213547;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escHtml(safeMessage)}</td></tr>
           </table>
-          <p style="color:#aaa;font-size:11px;margin-top:24px;">Sent from My Impact contact form · myimpact.replit.app</p>
+          <p style="color:#aaa;font-size:11px;margin-top:24px;">Sent from My Impact contact form · myimpact.uk</p>
         </div>
       `,
     });

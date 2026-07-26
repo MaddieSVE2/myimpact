@@ -51,7 +51,9 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
     where: eq(userProfilesTable.userId, userId),
   });
 
-  const origin = process.env.APP_ORIGIN ?? "https://myimpact.replit.app";
+  const origin =
+    process.env.APP_URL ??
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://myimpact.uk");
   const inviteUrl = `${origin}?ref=${inviteCode}`;
 
   res.json({
