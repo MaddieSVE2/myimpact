@@ -123,6 +123,12 @@ vi.mock("@workspace/db", () => {
     orgAuditLogTable: tableTag("org_audit_log"),
     usersTable: tableTag("users"),
     orgApiKeysTable: tableTag("org_api_keys"),
+    userProfilesTable: tableTag("user_profiles"),
+    attachmentsTable: tableTag("attachments"),
+    orgInvitesTable: tableTag("org_invites"),
+    orgMemberConsentsTable: tableTag("org_member_consents"),
+    orgMigrationsTable: tableTag("org_migrations"),
+    orgMigratedActivitiesTable: tableTag("org_migrated_activities"),
   };
 });
 
@@ -274,6 +280,8 @@ describe("POST /api/org/member-submit", () => {
   it("on success: inserts impact_record + auto-approved verification + audit log, fires webhook event, returns the new record", async () => {
     state.authUser = { id: "user-1", email: "user1@example.com" };
     state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    // Auto-verify on: the approved verification row is written immediately.
+    state.organisation = { revokedAt: null, autoVerifyActivities: true };
     state.insertedRecordId = 9999;
 
     const app = makeApp();
