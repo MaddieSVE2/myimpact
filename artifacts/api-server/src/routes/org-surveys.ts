@@ -22,17 +22,35 @@ const TEMPLATES = {
   meaningfulness: {
     label: "Meaningfulness",
     question: "How meaningful was your last activity?",
+    scaleLabels: ["Not at all", "A little", "Somewhat", "Quite a bit", "Very much"],
   },
   wellbeing: {
     label: "Wellbeing check-in",
     question: "How are you feeling about your volunteering this week?",
+    scaleLabels: ["Struggling", "Low", "OK", "Good", "Great"],
   },
   custom: {
     label: "Custom question",
     question: "",
+    scaleLabels: ["Not at all", "A little", "Somewhat", "Quite a bit", "Very much"],
   },
 } as const;
 type TemplateKey = keyof typeof TEMPLATES;
+
+const SCALE_LABEL_MAX_LENGTH = 30;
+
+/** Resolve the labels shown on the 1–5 buttons: stored custom labels, else template defaults. */
+export function resolveScaleLabels(template: string, stored: unknown): string[] {
+  if (
+    Array.isArray(stored) &&
+    stored.length === 5 &&
+    stored.every(l => typeof l === "string" && l.trim().length > 0)
+  ) {
+    return stored.map(l => (l as string).trim().slice(0, SCALE_LABEL_MAX_LENGTH));
+  }
+  const t = (template in TEMPLATES ? template : "custom") as TemplateKey;
+  return [...TEMPLATES[t].scaleLabels];
+}
 
 const SCHEDULES = ["one_off", "monthly", "quarterly"] as const;
 type Schedule = (typeof SCHEDULES)[number];
@@ -99,6 +117,7 @@ router.get("/surveys/templates", authenticate, async (_req: AuthenticatedRequest
       key,
       label: t.label,
       question: t.question,
+      scaleLabels: [...t.scaleLabels],
     })),
     schedules: SCHEDULES,
   });
@@ -152,6 +171,7 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
       anonymous: s.anonymous,
       createdAt: s.createdAt.toISOString(),
       archivedAt: s.archivedAt ? s.archivedAt.toISOString() : null,
+      scaleLabels: resolveScaleLabels(s.template, s.scaleLabels),
       latestAverage: latestAverageMap[s.id] ?? null,
     })),
   });
@@ -173,7 +193,7 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
   }
   const template = templateRaw as TemplateKey;
 
-  let question = TEMPLATES[template].question;
+  let question: string = TEMPLATES[template].question;
   if (template === "custom") {
     if (typeof body.question !== "string" || !body.question.trim()) {
       res.status(400).json({ error: "Custom surveys require a question." });
@@ -193,6 +213,32 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
 
   const anonymous = body.anonymous === false ? false : true;
 
+  // Optional custom labels for the 1–5 scale. When provided, must be exactly
+  // five non-empty short strings. Omitted/undefined = use template defaults.
+  let scaleLabels: string[] | null = null;
+  if (body.scaleLabels !== undefined && body.scaleLabels !== null) {
+    const raw = body.scaleLabels;
+    if (!Array.isArray(raw) || raw.length !== 5 || !raw.every(l => typeof l === "string")) {
+      res.status(400).json({ error: "scaleLabels must be an array of exactly 5 strings." });
+      return;
+    }
+    const trimmed = raw.map(l => (l as string).trim());
+    if (trimmed.some(l => l.length === 0)) {
+      res.status(400).json({ error: "All five scale labels must be non-empty." });
+      return;
+    }
+    if (trimmed.some(l => l.length > SCALE_LABEL_MAX_LENGTH)) {
+      res.status(400).json({ error: `Scale labels must be ${SCALE_LABEL_MAX_LENGTH} characters or fewer.` });
+      return;
+    }
+    // Store only if they differ from the template defaults, so default-label
+    // surveys keep tracking template wording.
+    const defaults = TEMPLATES[template].scaleLabels;
+    if (trimmed.some((l, i) => l !== defaults[i])) {
+      scaleLabels = trimmed;
+    }
+  }
+
   const id = randomUUID();
   await db.insert(orgSurveysTable).values({
     id,
@@ -201,6 +247,7 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
     question,
     schedule,
     anonymous,
+    scaleLabels,
     createdBy: req.user!.id,
   });
 
@@ -210,6 +257,7 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
     question,
     schedule,
     anonymous,
+    scaleLabels: resolveScaleLabels(template, scaleLabels),
     createdAt: new Date().toISOString(),
     archivedAt: null,
   });
@@ -336,6 +384,7 @@ router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedReques
       question: survey.question,
       schedule: survey.schedule,
       anonymous: survey.anonymous,
+      scaleLabels: resolveScaleLabels(survey.template, survey.scaleLabels),
       createdAt: survey.createdAt.toISOString(),
       archivedAt: survey.archivedAt ? survey.archivedAt.toISOString() : null,
     },
@@ -404,6 +453,7 @@ router.get("/surveys/active", authenticate, async (req: AuthenticatedRequest, re
       template: survey.template,
       schedule: survey.schedule,
       anonymous: survey.anonymous,
+      scaleLabels: resolveScaleLabels(survey.template, survey.scaleLabels),
       windowKey,
     }));
 

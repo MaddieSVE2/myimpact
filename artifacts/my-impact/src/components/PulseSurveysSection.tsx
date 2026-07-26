@@ -31,6 +31,7 @@ interface SurveyListItem {
   anonymous: boolean;
   createdAt: string;
   archivedAt: string | null;
+  scaleLabels?: string[];
   latestAverage: number | null;
 }
 
@@ -38,7 +39,11 @@ interface TemplateOption {
   key: Template;
   label: string;
   question: string;
+  scaleLabels?: string[];
 }
+
+const DEFAULT_SCALE_LABELS = ["Not at all", "A little", "Somewhat", "Quite a bit", "Very much"];
+const SCALE_LABEL_MAX_LENGTH = 30;
 
 interface SurveyResults {
   survey: SurveyListItem;
@@ -126,6 +131,7 @@ function LivePulseSurveysSection() {
   const [question, setQuestion] = useState("");
   const [schedule, setSchedule] = useState<Schedule>("monthly");
   const [anonymous, setAnonymous] = useState(true);
+  const [scaleLabels, setScaleLabels] = useState<string[]>([...DEFAULT_SCALE_LABELS]);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -133,6 +139,7 @@ function LivePulseSurveysSection() {
       const body: Record<string, unknown> = { template, schedule, anonymous };
       if (template === "custom") body.question = question.trim();
       else if (question.trim()) body.question = question.trim();
+      body.scaleLabels = scaleLabels.map(l => l.trim());
       const res = await fetch(`${BASE}/api/org/surveys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,6 +157,7 @@ function LivePulseSurveysSection() {
       setTemplate("meaningfulness");
       setSchedule("monthly");
       setAnonymous(true);
+      setScaleLabels([...DEFAULT_SCALE_LABELS]);
       setCreateError(null);
     },
     onError: (err: Error) => setCreateError(err.message),
@@ -176,13 +184,16 @@ function LivePulseSurveysSection() {
   // When user picks a built-in template, sync the question field as a hint
   function handleTemplateChange(next: Template) {
     setTemplate(next);
+    const t = templatesData?.templates.find(t => t.key === next);
     if (next !== "custom") {
-      const t = templatesData?.templates.find(t => t.key === next);
       setQuestion(t?.question ?? "");
     } else {
       setQuestion("");
     }
+    setScaleLabels([...(t?.scaleLabels ?? DEFAULT_SCALE_LABELS)]);
   }
+
+  const scaleLabelsInvalid = scaleLabels.some(l => !l.trim());
 
   return (
     <motion.div
@@ -250,6 +261,33 @@ function LivePulseSurveysSection() {
               data-testid="input-pulse-question"
             />
           </div>
+          <div>
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
+              Answer scale labels <span className="text-muted-foreground font-normal">(shown under the 1–5 buttons — edit if you like)</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+              {scaleLabels.map((label, i) => (
+                <div key={i}>
+                  <p className="text-[11px] text-muted-foreground mb-1 text-center sm:text-left">{i + 1}</p>
+                  <input
+                    type="text"
+                    value={label}
+                    onChange={e => {
+                      const next = [...scaleLabels];
+                      next[i] = e.target.value.slice(0, SCALE_LABEL_MAX_LENGTH);
+                      setScaleLabels(next);
+                    }}
+                    maxLength={SCALE_LABEL_MAX_LENGTH}
+                    className={`bg-white w-full px-2.5 py-2 rounded-lg border text-[13px] focus:outline-none focus:border-primary ${!label.trim() ? "border-red-400" : "border-border"}`}
+                    data-testid={`input-pulse-scale-label-${i + 1}`}
+                  />
+                </div>
+              ))}
+            </div>
+            {scaleLabelsInvalid && (
+              <p className="text-[12px] text-red-600 mt-1">All five labels are required.</p>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[13px] font-medium text-foreground mb-1.5">How often</label>
@@ -290,7 +328,7 @@ function LivePulseSurveysSection() {
             <button
               type="button"
               onClick={() => { setCreateError(null); createMutation.mutate(); }}
-              disabled={createMutation.isPending || (template === "custom" && !question.trim())}
+              disabled={createMutation.isPending || (template === "custom" && !question.trim()) || scaleLabelsInvalid}
               className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-pulse-survey"
             >
@@ -450,6 +488,7 @@ function SurveyResultsView({ surveyId }: { surveyId: string }) {
       allComments={data.comments}
       anonymous={data.survey.anonymous}
       commentPrivacyThreshold={data.commentPrivacyThreshold}
+      scaleLabels={data.survey.scaleLabels}
     />
   );
 }
@@ -463,6 +502,7 @@ function ResultsPanel({
   allComments,
   anonymous,
   commentPrivacyThreshold,
+  scaleLabels,
 }: {
   surveyId: string;
   initialDistribution: Array<{ rating: number; count: number }>;
@@ -472,7 +512,9 @@ function ResultsPanel({
   allComments: Array<{ id: string; comment: string; windowKey?: string; windowLabel: string }>;
   anonymous: boolean;
   commentPrivacyThreshold: number;
+  scaleLabels?: string[];
 }) {
+  const axisLabels = scaleLabels && scaleLabels.length === 5 ? scaleLabels : DEFAULT_SCALE_LABELS;
   const hasWindowSwitching = trend.some(t => t.distribution !== undefined) && trend.length > 1;
   const [windowKey, setWindowKey] = useState<string>("all");
 
@@ -639,8 +681,11 @@ function ResultsPanel({
             </div>
             <div className="flex items-start gap-2 mt-1">
               {distribution.map(d => (
-                <div key={d.rating} className="flex-1 flex justify-center">
+                <div key={d.rating} className="flex-1 flex flex-col items-center min-w-0">
                   <span className="text-[12px] text-muted-foreground">{d.rating}</span>
+                  <span className="text-[10px] text-muted-foreground/70 truncate max-w-full" data-testid={`survey-scale-label-${surveyId}-${d.rating}`}>
+                    {axisLabels[d.rating - 1]}
+                  </span>
                 </div>
               ))}
             </div>
@@ -982,6 +1027,7 @@ function DemoSurveyResultsView({ survey }: { survey: DemoPulseSurvey }) {
       allComments={survey.comments}
       anonymous={survey.anonymous}
       commentPrivacyThreshold={DEMO_COMMENT_PRIVACY_THRESHOLD}
+      scaleLabels={survey.template === "wellbeing" ? ["Struggling", "Low", "OK", "Good", "Great"] : DEFAULT_SCALE_LABELS}
     />
   );
 }

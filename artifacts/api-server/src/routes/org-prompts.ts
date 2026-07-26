@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { and, eq, isNull, desc, inArray, gte, lte } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
+import { resolveScaleLabels } from "./org-surveys.js";
 
 const router: IRouter = Router();
 
@@ -64,6 +65,7 @@ router.get("/prompts", authenticate, async (req: AuthenticatedRequest, res) => {
     template: string;
     schedule: Schedule;
     anonymous: boolean;
+    scaleLabels: string[];
     windowKey: string;
   }> = [];
 
@@ -89,6 +91,7 @@ router.get("/prompts", authenticate, async (req: AuthenticatedRequest, res) => {
           template: s.template,
           schedule: s.schedule as Schedule,
           anonymous: s.anonymous,
+          scaleLabels: resolveScaleLabels(s.template, s.scaleLabels),
           windowKey,
         }));
     }

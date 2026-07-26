@@ -17,6 +17,7 @@ interface ActiveSurvey {
   template: "meaningfulness" | "wellbeing" | "custom";
   schedule: "one_off" | "monthly" | "quarterly";
   anonymous: boolean;
+  scaleLabels?: string[];
   windowKey: string;
 }
 
@@ -114,7 +115,9 @@ function SurveyPromptFull({ survey, onResponded, onDismiss }: {
     onError: (err: Error) => setError(err.message),
   });
 
-  const labels = survey.template === "wellbeing" ? SCALE_LABELS_WELLBEING : SCALE_LABELS_MEANINGFULNESS;
+  const labels = survey.scaleLabels && survey.scaleLabels.length === 5
+    ? survey.scaleLabels
+    : survey.template === "wellbeing" ? SCALE_LABELS_WELLBEING : SCALE_LABELS_MEANINGFULNESS;
 
   return (
     <div

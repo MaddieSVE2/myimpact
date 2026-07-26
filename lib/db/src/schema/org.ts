@@ -261,6 +261,10 @@ export const orgSurveysTable = pgTable("org_surveys", {
   // 'one_off' | 'monthly' | 'quarterly'
   schedule: text("schedule").notNull(),
   anonymous: boolean("anonymous").notNull().default(true),
+  // Optional custom labels for the five 1–5 rating buttons, stored as a JSON
+  // array of exactly five short strings. NULL = use the template defaults
+  // (backward compatible with surveys created before this column existed).
+  scaleLabels: jsonb("scale_labels"),
   createdBy: text("created_by").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   archivedAt: timestamp("archived_at"),

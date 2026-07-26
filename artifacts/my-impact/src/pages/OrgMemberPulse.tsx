@@ -18,6 +18,7 @@ interface ActiveSurvey {
   template: "meaningfulness" | "wellbeing" | "custom";
   schedule: "one_off" | "monthly" | "quarterly";
   anonymous: boolean;
+  scaleLabels?: string[];
   windowKey: string;
 }
 
@@ -61,7 +62,9 @@ function SurveyCard({ survey, onResponded, onDismiss }: {
     onError: (err: Error) => setError(err.message),
   });
 
-  const labels = survey.template === "wellbeing" ? SCALE_LABELS_WELLBEING : SCALE_LABELS_MEANINGFULNESS;
+  const labels = survey.scaleLabels && survey.scaleLabels.length === 5
+    ? survey.scaleLabels
+    : survey.template === "wellbeing" ? SCALE_LABELS_WELLBEING : SCALE_LABELS_MEANINGFULNESS;
 
   return (
     <div className="bg-white border border-primary/30 rounded-2xl shadow-sm p-5" data-testid="member-pulse-survey-card">
