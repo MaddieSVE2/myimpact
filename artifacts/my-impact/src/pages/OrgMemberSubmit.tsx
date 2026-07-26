@@ -9,6 +9,7 @@ import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { NumberInput } from "@/components/ui/number-input";
+import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -145,6 +146,7 @@ export default function OrgMemberSubmit() {
 
   // Editing / withdrawing a past submission from the history list.
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
+  const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
   const [editLines, setEditLines] = useState<MySubmissionLine[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
@@ -558,13 +560,16 @@ export default function OrgMemberSubmit() {
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5" data-testid={`my-submission-evidence-${s.recordId}`}>
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Evidence</span>
                     {s.evidence!.map(ev => (
-                      <a
+                      <button
                         key={ev.id}
-                        href={`${BASE}${ev.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-10 h-10 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
-                        title="Open evidence photo"
+                        type="button"
+                        onClick={() => setLightbox({
+                          url: `${BASE}${ev.url}`,
+                          activityLabel: s.period || s.name,
+                          dateLabel: new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+                        })}
+                        className="block w-10 h-10 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
+                        title="View evidence photo"
                         data-testid={`my-submission-evidence-thumb-${ev.id}`}
                       >
                         <img
@@ -573,7 +578,7 @@ export default function OrgMemberSubmit() {
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1517,6 +1522,7 @@ export default function OrgMemberSubmit() {
           </div>
         </motion.div>
       )}
+      <EvidenceLightbox item={lightbox} onClose={() => setLightbox(null)} />
     </div>
     </>
   );

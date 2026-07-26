@@ -15,6 +15,7 @@ import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 import { NumberInput } from "@/components/ui/number-input";
+import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -254,6 +255,7 @@ function MemberSubmissionsPanel() {
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [withdrawReason, setWithdrawReason] = useState("");
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
 
   const withdrawMutation = useMutation({
     mutationFn: async (vars: { recordId: number; reason: string }) => {
@@ -416,13 +418,17 @@ function MemberSubmissionsPanel() {
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {s.evidence!.map(ev => (
-                            <a
+                            <button
                               key={ev.id}
-                              href={`${BASE}${ev.url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block w-16 h-16 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
-                              title="Open evidence photo in a new tab"
+                              type="button"
+                              onClick={() => setLightbox({
+                                url: `${BASE}${ev.url}`,
+                                memberName: s.memberName,
+                                activityLabel: s.period ? `${s.name} · ${s.period}` : s.name,
+                                dateLabel: new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+                              })}
+                              className="block w-16 h-16 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
+                              title="View evidence photo"
                               data-testid={`submission-evidence-thumb-${ev.id}`}
                             >
                               <img
@@ -431,7 +437,7 @@ function MemberSubmissionsPanel() {
                                 className="w-full h-full object-cover"
                                 loading="lazy"
                               />
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -498,6 +504,7 @@ function MemberSubmissionsPanel() {
       {withdrawError && (
         <p className="text-xs text-red-600 mt-2" data-testid="withdraw-error">{withdrawError}</p>
       )}
+      <EvidenceLightbox item={lightbox} onClose={() => setLightbox(null)} />
     </motion.div>
   );
 }
@@ -508,6 +515,7 @@ function VerificationQueue({ orgName }: { orgName: string }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
 
   const decideMutation = useMutation({
     mutationFn: async (vars: { recordId: number; decision: "approve" | "reject"; reason?: string }) => {
@@ -655,13 +663,17 @@ function VerificationQueue({ orgName }: { orgName: string }) {
                     <div className="flex flex-wrap items-center gap-1.5 mt-1" data-testid={`pending-evidence-${p.recordId}`}>
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Evidence</span>
                       {p.evidence!.map(ev => (
-                        <a
+                        <button
                           key={ev.id}
-                          href={`${BASE}${ev.url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block w-9 h-9 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
-                          title="Open evidence photo in a new tab"
+                          type="button"
+                          onClick={() => setLightbox({
+                            url: `${BASE}${ev.url}`,
+                            memberName: p.memberName,
+                            activityLabel: p.period || p.name,
+                            dateLabel: new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+                          })}
+                          className="block w-9 h-9 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
+                          title="View evidence photo"
                           data-testid={`pending-evidence-thumb-${ev.id}`}
                         >
                           <img
@@ -670,7 +682,7 @@ function VerificationQueue({ orgName }: { orgName: string }) {
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -721,6 +733,7 @@ function VerificationQueue({ orgName }: { orgName: string }) {
       {decideMutation.isError && (
         <p className="text-xs text-red-600 mt-2">{(decideMutation.error as Error).message}</p>
       )}
+      <EvidenceLightbox item={lightbox} onClose={() => setLightbox(null)} />
     </motion.div>
   );
 }
