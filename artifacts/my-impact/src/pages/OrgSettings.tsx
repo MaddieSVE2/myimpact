@@ -174,7 +174,9 @@ function AllowedDomainField({ initialDomain, isDemoOrg }: { initialDomain: strin
 
 function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; orgId: string; allowedDomain: string | null }) {
   const [removed, setRemoved] = useState<string[]>(() => isDemoOrg ? getRemovedMemberIds(orgId) : []);
-  const [inviteCode, setInviteCode] = useState<string>(() => isDemoOrg ? getOrgInviteCode(orgId, DEMO_INVITE_CODE) : DEMO_INVITE_CODE);
+  const [inviteCode, setInviteCode] = useState<string>(() => isDemoOrg ? getOrgInviteCode(orgId, DEMO_INVITE_CODE) : "");
+  const [inviteLoading, setInviteLoading] = useState(!isDemoOrg);
+  const [regenBusy, setRegenBusy] = useState(false);
   const [invites, setInvites] = useState<PendingInvite[]>([
     { id: "inv-1", email: "rachel.green@example.com", sentAt: "2026-04-22", resentAt: null },
     { id: "inv-2", email: "noor.iqbal@example.com",   sentAt: "2026-05-01", resentAt: null },
@@ -226,6 +228,22 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     if (!isDemoOrg) { fetchLiveMembers(page); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoOrg, page]);
+
+  useEffect(() => {
+    if (isDemoOrg) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/org/my-join-link`, { credentials: "include" });
+        if (res.ok) {
+          const j: { inviteCode?: string } = await res.json();
+          if (!cancelled && j.inviteCode) setInviteCode(j.inviteCode);
+        }
+      } catch { /* ignore */ }
+      finally { if (!cancelled) setInviteLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [isDemoOrg]);
 
   async function copyInviteLink() {
     try {
@@ -297,12 +315,27 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     finally { setActionBusy(null); }
   }
 
-  function regenerateInvite() {
+  async function regenerateInvite() {
     if (!window.confirm("Revoke and regenerate the invite code? Anyone with the old code won't be able to use it.")) return;
-    const next = generateInviteCode();
-    setInviteCode(next);
-    setOrgInviteCode(orgId, next);
-    flash("Invite code regenerated.");
+    if (isDemoOrg) {
+      const next = generateInviteCode();
+      setInviteCode(next);
+      setOrgInviteCode(orgId, next);
+      flash("Invite code regenerated.");
+      return;
+    }
+    setRegenBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/my-join-link/regenerate`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to regenerate the invite code.");
+      }
+      const j: { inviteCode: string } = await res.json();
+      setInviteCode(j.inviteCode);
+      flash("Invite code regenerated.");
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to regenerate the invite code."); }
+    finally { setRegenBusy(false); }
   }
 
   async function copyInvite() {
@@ -401,21 +434,23 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           <button
             type="button"
             onClick={regenerateInvite}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
+            disabled={regenBusy || inviteLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-60"
             data-testid="button-regenerate-invite"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Revoke & regenerate
+            {regenBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Revoke & regenerate
           </button>
         </div>
         <div className="space-y-2">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Code</p>
             <div className="flex items-center gap-2">
-              <code className="px-3 py-2 rounded-md bg-muted/40 font-mono text-sm font-semibold text-foreground" data-testid="text-invite-code">{inviteCode}</code>
+              <code className="px-3 py-2 rounded-md bg-muted/40 font-mono text-sm font-semibold text-foreground" data-testid="text-invite-code">{inviteLoading ? "Loading…" : inviteCode}</code>
               <button
                 type="button"
                 onClick={copyInvite}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
+                disabled={inviteLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-60"
                 data-testid="button-copy-invite"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "Copied" : "Copy"}
@@ -428,7 +463,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
               <input
                 type="text"
                 readOnly
-                value={inviteLink}
+                value={inviteLoading ? "Loading…" : inviteLink}
                 onFocus={e => e.currentTarget.select()}
                 className="flex-1 px-3 py-2 rounded-md bg-muted/40 font-mono text-[13px] text-foreground border border-border focus:outline-none focus:border-primary"
                 data-testid="text-invite-link"
@@ -436,7 +471,8 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
               <button
                 type="button"
                 onClick={copyInviteLink}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors"
+                disabled={inviteLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-60"
                 data-testid="button-copy-invite-link"
               >
                 {linkCopied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />} {linkCopied ? "Copied" : "Copy link"}

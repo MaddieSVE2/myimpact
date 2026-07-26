@@ -883,6 +883,63 @@ router.get("/my-join-link", authenticate, async (req: AuthenticatedRequest, res)
   res.json({ orgId: org.id, inviteCode: org.inviteCode, orgName: org.name });
 });
 
+function generateOrgInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+router.post("/my-join-link/regenerate", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+
+  if (!membership) {
+    res.status(404).json({ error: "You are not a member of any organisation." });
+    return;
+  }
+
+  if (membership.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can regenerate the invite code." });
+    return;
+  }
+
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+  });
+
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found." });
+    return;
+  }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const inviteCode = generateOrgInviteCode();
+    const clash = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.inviteCode, inviteCode),
+    });
+    if (clash) continue;
+    try {
+      await db.update(organisationsTable)
+        .set({ inviteCode })
+        .where(eq(organisationsTable.id, org.id));
+      res.json({ orgId: org.id, inviteCode, orgName: org.name });
+      return;
+    } catch (err) {
+      // Unique collision race — retry with a fresh code; log for diagnosability.
+      console.error("[org] invite code regenerate attempt failed, retrying:", err);
+      continue;
+    }
+  }
+
+  res.status(500).json({ error: "Could not generate a unique invite code. Please try again." });
+});
+
 interface StoredActivityBreakdownOrg {
   category: string;
   impactValue: number;
