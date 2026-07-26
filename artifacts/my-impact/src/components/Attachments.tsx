@@ -33,9 +33,53 @@ interface AttachmentsProps {
   onChange?: (items: AttachmentItem[]) => void;
 }
 
-const IMAGE_ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif";
-const RECEIPT_ACCEPT = "application/pdf";
+// Keep in sync with api-server attachments route (ALLOWED_IMAGE_TYPES / ALLOWED_PDF_TYPES / MAX_FILE_SIZE_BYTES).
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+]);
+const ALLOWED_RECEIPT_TYPES = new Set(["application/pdf"]);
+const IMAGE_ACCEPT = Array.from(ALLOWED_IMAGE_TYPES).join(",");
+const RECEIPT_ACCEPT = Array.from(ALLOWED_RECEIPT_TYPES).join(",");
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+// Some browsers report an empty MIME type (notably HEIC/HEIF on non-Apple
+// platforms), so fall back to the file extension when file.type is blank.
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif"]);
+const RECEIPT_EXTENSIONS = new Set(["pdf"]);
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+  pdf: "application/pdf",
+};
+
+/** Best-effort MIME type: browser-reported, or derived from extension when blank. */
+function effectiveMimeType(file: File): string {
+  const type = file.type.toLowerCase().split(";")[0].trim();
+  if (type) return type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return EXTENSION_TO_MIME[ext] ?? "";
+}
+
+function isAllowedFileType(file: File, kind: "photo" | "receipt"): boolean {
+  const mime = effectiveMimeType(file);
+  const allowedTypes = kind === "receipt" ? ALLOWED_RECEIPT_TYPES : ALLOWED_IMAGE_TYPES;
+  if (mime) return allowedTypes.has(mime);
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const allowedExts = kind === "receipt" ? RECEIPT_EXTENSIONS : IMAGE_EXTENSIONS;
+  return allowedExts.has(ext);
+}
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -134,14 +178,25 @@ export default function Attachments({
   useEffect(() => { void refresh(); }, [refresh]);
 
   const upload = async (file: File, kind: "photo" | "receipt") => {
+    if (!isAllowedFileType(file, kind)) {
+      toast({
+        title: "Unsupported file type",
+        description: kind === "receipt"
+          ? "Receipts must be a PDF file."
+          : "Photos must be JPEG, PNG, WebP, GIF, HEIC, or HEIF.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (file.size > MAX_FILE_BYTES) {
       toast({ title: "File too large", description: "Maximum size is 10 MB.", variant: "destructive" });
       return;
     }
     setUploading(true);
+    const mimeType = effectiveMimeType(file);
     try {
       const body: Record<string, unknown> = {
-        mimeType: file.type,
+        mimeType,
         byteSize: file.size,
         kind,
       };
@@ -167,7 +222,7 @@ export default function Attachments({
 
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: { "Content-Type": mimeType },
         body: file,
       });
       if (!putRes.ok) throw new Error("Upload to storage failed");
@@ -178,7 +233,7 @@ export default function Attachments({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storageKey,
-          mimeType: file.type,
+          mimeType,
           byteSize: file.size,
           kind,
           ...(recordId != null ? { recordId } : {}),
