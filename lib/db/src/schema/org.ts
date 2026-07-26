@@ -67,8 +67,9 @@ export const organisationsTable = pgTable("organisations", {
   // timestamp before becoming eligible for deletion.
   revokedAt: timestamp("revoked_at"),
   // Per-org dashboard section visibility, managed by the super-admin. NULL =
-  // all sections visible. Shape: { locationMap, categories, sroi,
-  // valuePerMember, topActivities, pulseSummary } — each boolean.
+  // defaults (all legacy sections visible; `skills` hidden). Shape:
+  // { locationMap, categories, sroi, valuePerMember, topActivities,
+  // pulseSummary, skills } — each boolean.
   dashboardSections: jsonb("dashboard_sections"),
   // Super-admin toggle: when true, managers of this org get the full
   // Organisation-tier dashboard (/org/dashboard and its sub-pages) instead of

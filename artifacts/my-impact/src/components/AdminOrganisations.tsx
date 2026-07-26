@@ -10,8 +10,13 @@ const SECTION_LABELS: Record<string, string> = {
   valuePerMember: "Value per member",
   topActivities: "Top activities",
   pulseSummary: "Pulse summary",
+  skills: "Skills",
 };
 const SECTION_KEYS = Object.keys(SECTION_LABELS);
+// Skills is opt-in (default off); all other sections default to visible.
+const SECTION_DEFAULTS: Record<string, boolean> = Object.fromEntries(
+  SECTION_KEYS.map(k => [k, k !== "skills"]),
+);
 
 interface AdminOrg {
   id: string;
@@ -56,7 +61,7 @@ export default function AdminOrganisations() {
     dataSharingMode: "explicit_submission" as AdminOrg["dataSharingMode"],
   });
   const [formSections, setFormSections] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(SECTION_KEYS.map(k => [k, true])),
+    () => ({ ...SECTION_DEFAULTS }),
   );
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -87,7 +92,7 @@ export default function AdminOrganisations() {
       setOrgs(prev => [data.org, ...prev]);
       setShowCreate(false);
       setForm({ name: "", type: "charity", contactName: "", contactEmail: "", dataSharingMode: "explicit_submission" });
-      setFormSections(Object.fromEntries(SECTION_KEYS.map(k => [k, true])));
+      setFormSections({ ...SECTION_DEFAULTS });
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : "Failed to create organisation");
     } finally {

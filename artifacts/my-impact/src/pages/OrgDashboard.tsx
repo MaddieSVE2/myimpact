@@ -30,6 +30,7 @@ import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import OrgUniversityDashboard from "@/pages/OrgUniversityDashboard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { VerificationQueue } from "@/components/VerificationQueue";
+import { SkillsBreakdownCard } from "@/components/SkillsBreakdownCard";
 
 function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: number; sub?: string; highlight?: boolean;
@@ -204,6 +205,26 @@ export default function OrgDashboard() {
   const showCategories = isDemoOrg || dashboardSections?.categories !== false;
   const showValuePerMember = isDemoOrg || dashboardSections?.valuePerMember !== false;
   const showPulseSummary = isDemoOrg || dashboardSections?.pulseSummary !== false;
+  // Skills is opt-in (default off) and driven by live activities, so it is
+  // never shown for the demo org (whose Activities feed is mock data).
+  const showSkills = !isDemoOrg && dashboardSections?.skills === true;
+
+  // Live activities feed powering the skills breakdown (same endpoint the
+  // University dashboard uses); only fetched when the section is enabled.
+  const { data: skillsActivitiesData, isLoading: skillsActivitiesLoading } = useQuery<{
+    activities: Array<{ id: string; memberId: string; category: string; activity: string; hours: number; socialValueGBP: number }>;
+  }>({
+    queryKey: ["org-activities", periodFrom, periodTo],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (periodFrom) params.set("from", periodFrom);
+      if (periodTo) params.set("to", periodTo);
+      const res = await fetch(`${BASE}/api/org/activities?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load activities");
+      return res.json();
+    },
+    enabled: showSkills && !!orgData?.org && isManager,
+  });
 
   const timelineData = useMemo<MonthlyDataPoint[]>(() => {
     if (isDemoOrg) return demoTrend.map(p => ({ month: p.label.split(" ")[0]!, value: p.value }));
@@ -756,6 +777,19 @@ export default function OrgDashboard() {
           </div>
         )}
       </div>}
+
+      {/* Skills & development — opt-in per org via the super-admin skills flag */}
+      {showSkills && (
+        <div className="mb-6">
+          <SkillsBreakdownCard
+            activities={skillsActivitiesData?.activities ?? []}
+            loading={skillsActivitiesLoading}
+            title="Top skills your members are building"
+            description="Skills are inferred from the types of activities members log. The percentage shows the share of actively logging members building each skill."
+            peopleNoun="members"
+          />
+        </div>
+      )}
 
       {/* Cross-links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

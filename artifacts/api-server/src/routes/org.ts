@@ -3687,7 +3687,9 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
     // members within each member's shared window (never journals or pulse).
     const sharingCtx = await getOrgSharingContext(orgId);
     // Server-side dashboard-section gating (super-admin controlled).
-    if (!sharingCtx.sections.topActivities) {
+    // The activities feed powers both the top-activities and skills sections;
+    // it stays accessible while either one is enabled.
+    if (!sharingCtx.sections.topActivities && !sharingCtx.sections.skills) {
       res.status(403).json({ error: "The activities section is disabled for this organisation." });
       return;
     }

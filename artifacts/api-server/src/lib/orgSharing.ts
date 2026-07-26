@@ -22,16 +22,33 @@ export const DASHBOARD_SECTION_KEYS = [
   "valuePerMember",
   "topActivities",
   "pulseSummary",
+  "skills",
 ] as const;
 export type DashboardSectionKey = (typeof DASHBOARD_SECTION_KEYS)[number];
 export type DashboardSections = Record<DashboardSectionKey, boolean>;
 
-/** NULL / missing keys mean "visible" so existing orgs are unaffected. */
+/**
+ * Per-key defaults when the stored value is NULL or the key is missing.
+ * Legacy sections default to visible so existing orgs are unaffected;
+ * "skills" is opt-in (default hidden) — the University dashboard shows its
+ * skills breakdown regardless of this flag.
+ */
+const SECTION_DEFAULTS: DashboardSections = {
+  locationMap: true,
+  categories: true,
+  sroi: true,
+  valuePerMember: true,
+  topActivities: true,
+  pulseSummary: true,
+  skills: false,
+};
+
 export function normalizeDashboardSections(raw: unknown): DashboardSections {
   const out = {} as DashboardSections;
   const obj = raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   for (const key of DASHBOARD_SECTION_KEYS) {
-    out[key] = obj[key] === false ? false : true;
+    const v = obj[key];
+    out[key] = typeof v === "boolean" ? v : SECTION_DEFAULTS[key];
   }
   return out;
 }
@@ -43,7 +60,7 @@ export function parseDashboardSectionsInput(raw: unknown): DashboardSections | n
   const out = {} as DashboardSections;
   for (const key of DASHBOARD_SECTION_KEYS) {
     const v = obj[key];
-    if (v === undefined) { out[key] = true; continue; }
+    if (v === undefined) { out[key] = SECTION_DEFAULTS[key]; continue; }
     if (typeof v !== "boolean") return "invalid";
     out[key] = v;
   }
