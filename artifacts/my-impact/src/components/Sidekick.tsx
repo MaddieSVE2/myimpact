@@ -19,6 +19,11 @@ import {
   type SidekickTemplateCategory,
   type SidekickUserContext,
 } from "@/lib/sidekick-templates";
+import {
+  useAudioDevices,
+  cleanDeviceLabel,
+  OUTPUT_SELECTION_SUPPORTED,
+} from "@/hooks/useAudioDevices";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -287,103 +292,6 @@ function pickRecorderMimeType(): string | undefined {
   return undefined;
 }
 
-// Chrome/Edge support routing playback to a chosen output via setSinkId;
-// Safari/Firefox don't, so we show "System default" without a picker there.
-const OUTPUT_SELECTION_SUPPORTED =
-  typeof HTMLMediaElement !== "undefined" &&
-  "setSinkId" in HTMLMediaElement.prototype;
-
-const MIC_DEVICE_KEY = "myimpact:sidekick:micDeviceId";
-const OUTPUT_DEVICE_KEY = "myimpact:sidekick:outputDeviceId";
-
-function loadStoredDeviceId(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function storeDeviceId(key: string, value: string | null) {
-  try {
-    if (value) window.localStorage.setItem(key, value);
-    else window.localStorage.removeItem(key);
-  } catch {
-    // ignore storage errors
-  }
-}
-
-/** Strip browser-added prefixes like "Default - " for a tidier display. */
-function cleanDeviceLabel(label: string): string {
-  return label.replace(/^(Default|Communications)\s*-\s*/i, "").trim();
-}
-
-/**
- * Enumerates audio input/output devices and tracks the user's preferred
- * mic/output. Device labels are only available once mic permission has been
- * granted, so `permissionGranted` doubles as "can we show real names yet".
- * Selections persist in localStorage; if a chosen device is unplugged the
- * selection is cleared so recording/playback fall back to the default.
- */
-function useAudioDevices(enabled: boolean) {
-  const [inputs, setInputs] = useState<MediaDeviceInfo[]>([]);
-  const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [micId, setMicIdState] = useState<string | null>(() => loadStoredDeviceId(MIC_DEVICE_KEY));
-  const [outputId, setOutputIdState] = useState<string | null>(() => loadStoredDeviceId(OUTPUT_DEVICE_KEY));
-
-  const refresh = useCallback(async () => {
-    if (!VOICE_SUPPORTED) return;
-    if (typeof navigator.mediaDevices.enumerateDevices !== "function") return;
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const ins = devices.filter((d) => d.kind === "audioinput");
-      const outs = devices.filter((d) => d.kind === "audiooutput");
-      setInputs(ins);
-      setOutputs(outs);
-      // Labels are empty strings until getUserMedia has been granted.
-      setPermissionGranted(ins.some((d) => d.label !== ""));
-    } catch {
-      // enumeration can fail in odd embeds; leave existing state alone
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!enabled || !VOICE_SUPPORTED) return;
-    refresh();
-    const md = navigator.mediaDevices;
-    if (typeof md.addEventListener !== "function") return;
-    md.addEventListener("devicechange", refresh);
-    return () => md.removeEventListener("devicechange", refresh);
-  }, [enabled, refresh]);
-
-  // Clear a stored selection once we can see the device list and the chosen
-  // device is no longer present (e.g. headset unplugged).
-  useEffect(() => {
-    if (!permissionGranted) return;
-    if (micId && inputs.length > 0 && !inputs.some((d) => d.deviceId === micId)) {
-      setMicIdState(null);
-      storeDeviceId(MIC_DEVICE_KEY, null);
-    }
-    if (outputId && outputs.length > 0 && !outputs.some((d) => d.deviceId === outputId)) {
-      setOutputIdState(null);
-      storeDeviceId(OUTPUT_DEVICE_KEY, null);
-    }
-  }, [permissionGranted, inputs, outputs, micId, outputId]);
-
-  const setMicId = useCallback((id: string | null) => {
-    setMicIdState(id);
-    storeDeviceId(MIC_DEVICE_KEY, id);
-  }, []);
-
-  const setOutputId = useCallback((id: string | null) => {
-    setOutputIdState(id);
-    storeDeviceId(OUTPUT_DEVICE_KEY, id);
-  }, []);
-
-  return { inputs, outputs, permissionGranted, micId, outputId, setMicId, setOutputId, refresh };
-}
 
 const AI_DISABLED_DISMISSED_KEY_PREFIX = "myimpact:aiDisabledByOrgNoticeDismissed";
 

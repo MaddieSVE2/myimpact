@@ -32,6 +32,12 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { describeCadence } from "@/components/QuickLog";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import {
+  useAudioDevices,
+  cleanDeviceLabel,
+  AUDIO_DEVICES_SUPPORTED,
+  OUTPUT_SELECTION_SUPPORTED,
+} from "@/hooks/useAudioDevices";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1083,6 +1089,7 @@ function SidekickVoiceSettings() {
               </option>
             ))}
           </select>
+          <VoiceDevicePickers />
           <button
             type="button"
             onClick={handlePreview}
@@ -1100,6 +1107,113 @@ function SidekickVoiceSettings() {
         <VoiceUsageMeter />
       </div>
     </section>
+  );
+}
+
+function VoiceDevicePickers() {
+  const {
+    inputs,
+    outputs,
+    permissionGranted,
+    micId,
+    outputId,
+    setMicId,
+    setOutputId,
+    refresh,
+  } = useAudioDevices(true);
+  const [requesting, setRequesting] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+
+  if (!AUDIO_DEVICES_SUPPORTED) return null;
+
+  const handleGrantAccess = async () => {
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setPermissionDenied(false);
+      await refresh();
+    } catch {
+      setPermissionDenied(true);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  if (!permissionGranted) {
+    return (
+      <div className="mt-4" data-testid="voice-device-permission">
+        <p className="block text-sm font-medium text-foreground mb-1">Microphone &amp; speakers</p>
+        <p className="text-xs text-muted-foreground mb-2">
+          Allow microphone access to see and choose which microphone{OUTPUT_SELECTION_SUPPORTED ? " and speakers" : ""} Sidekick uses for voice.
+        </p>
+        <button
+          type="button"
+          onClick={handleGrantAccess}
+          disabled={requesting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 disabled:opacity-60 transition-colors"
+          data-testid="voice-device-grant-button"
+        >
+          {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Mic className="w-3.5 h-3.5" aria-hidden="true" />}
+          {requesting ? "Requesting access…" : "Show my devices"}
+        </button>
+        {permissionDenied && (
+          <p className="text-[11px] text-destructive mt-2" data-testid="voice-device-permission-denied">
+            Microphone access was blocked. Allow it in your browser's site settings to pick a device.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4" data-testid="voice-device-pickers">
+      <label htmlFor="voice-mic-device" className="block text-sm font-medium text-foreground mb-1">
+        Microphone
+      </label>
+      <p className="text-xs text-muted-foreground mb-2">
+        The microphone Sidekick listens with when you speak. Your choice also applies in the Sidekick panel.
+      </p>
+      <select
+        id="voice-mic-device"
+        value={micId ?? ""}
+        onChange={(e) => setMicId(e.target.value || null)}
+        className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        data-testid="voice-mic-device-select"
+      >
+        <option value="">System default</option>
+        {inputs.map((d) => (
+          <option key={d.deviceId} value={d.deviceId}>
+            {cleanDeviceLabel(d.label) || "Microphone"}
+          </option>
+        ))}
+      </select>
+      {OUTPUT_SELECTION_SUPPORTED && (
+        <>
+          <label htmlFor="voice-output-device" className="block text-sm font-medium text-foreground mb-1 mt-4">
+            Speakers
+          </label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Where Sidekick's spoken replies play. Your choice also applies in the Sidekick panel.
+          </p>
+          <select
+            id="voice-output-device"
+            value={outputId ?? ""}
+            onChange={(e) => setOutputId(e.target.value || null)}
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            data-testid="voice-output-device-select"
+          >
+            <option value="">System default</option>
+            {outputs.map((d) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {cleanDeviceLabel(d.label) || "Speakers"}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+    </div>
   );
 }
 
