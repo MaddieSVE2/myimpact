@@ -227,6 +227,24 @@ router.post("/set-org-settings", async (req, res) => {
 });
 
 /**
+ * Read the verification status of an impact record for a given org so specs
+ * can assert whether a member submission landed as verified or pending.
+ * Returns status: "approved" | "rejected" | "pending" (no verification row).
+ */
+router.get("/record-verification", async (req, res) => {
+  const recordId = parseInt(String(req.query.recordId ?? ""), 10);
+  const orgId = typeof req.query.orgId === "string" ? req.query.orgId : "";
+  if (!Number.isInteger(recordId) || !orgId) {
+    res.status(400).json({ error: "recordId and orgId required" });
+    return;
+  }
+  const row = await db.query.recordVerificationsTable.findFirst({
+    where: and(eq(recordVerificationsTable.recordId, recordId), eq(recordVerificationsTable.orgId, orgId)),
+  });
+  res.json({ ok: true, status: row?.status ?? "pending" });
+});
+
+/**
  * Delete an org and all its dependents. Used to clean up between runs.
  *
  * Order matters: several tables reference organisations without ON DELETE

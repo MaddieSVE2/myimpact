@@ -2756,16 +2756,22 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         )!);
     }
 
-    // Auto-accept: insert an approved verification row attributed to the
-    // submitting member so it flows into verified-total dashboards.
-    await db.insert(recordVerificationsTable).values({
-      recordId: inserted.id,
-      orgId: membership.orgId,
-      status: "approved",
-      verifiedBy: userId,
-      decidedAt: now,
-      reason: "member-submitted",
-    });
+    // Approval mode: when the org has auto-verify enabled, insert an approved
+    // verification row attributed to the submitting member so it flows into
+    // verified-total dashboards immediately. When auto-verify is off, no
+    // verification row is created — the record lands in the managers' pending
+    // verifications queue until someone approves or rejects it.
+    const autoVerify = submitOrg?.autoVerifyActivities === true;
+    if (autoVerify) {
+      await db.insert(recordVerificationsTable).values({
+        recordId: inserted.id,
+        orgId: membership.orgId,
+        status: "approved",
+        verifiedBy: userId,
+        decidedAt: now,
+        reason: "member-submitted",
+      });
+    }
 
     // When saveToPersonal is true, also create a personal impact record for
     // the member so they can see this submission in their own impact report.
@@ -2862,8 +2868,9 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
 // ─── GET /api/org/member-submissions ──────────────────────────────────────
 // Manager-only list of records submitted by org members through the dedicated
 // flow (source='member-submitted'). Used by the Org portal's "Member
-// submissions" panel — they don't appear in the pending verifications queue
-// because they're auto-accepted.
+// submissions" panel. When the org has auto-verify enabled they're
+// auto-accepted; otherwise they also appear in the pending verifications
+// queue until a manager decides.
 router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const membership = await requireOrgManager(req, res);

@@ -10,6 +10,7 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
   const somethingElseEmail = uniqueEmail("submitter-se");
   const memberEmail = uniqueEmail("submitter");
   const evidenceEmail = uniqueEmail("submitter-ev");
+  const approvalEmail = uniqueEmail("submitter-ap");
   let orgId: string | undefined;
 
   test.beforeAll(async ({ baseURL }) => {
@@ -17,12 +18,14 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
     await api.resetUser(evidenceEmail);
+    await api.resetUser(approvalEmail);
   });
 
   test.afterAll(async () => {
     await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
     await api.resetUser(evidenceEmail);
+    await api.resetUser(approvalEmail);
     if (orgId) await api.deleteOrg(orgId);
     await api.dispose();
   });
@@ -188,6 +191,52 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     } finally {
       await ctx.close();
       await api.deleteOrg(evOrgId);
+    }
+  });
+
+  test("approval mode toggle controls whether submissions land verified or pending", async ({ browser }) => {
+    const created = await api.createOrg(`E2E Approval Org ${Date.now()}`, "charity");
+    const apOrgId = created.orgId;
+
+    const ctx = await browser.newContext();
+    try {
+      const page = await ctx.newPage();
+      await signInWithMagicLink(page, api, approvalEmail);
+
+      const join = await page.request.post("/api/org/join", {
+        data: { inviteCode: created.inviteCode, orgId: apOrgId },
+      });
+      expect(join.ok()).toBe(true);
+
+      const submit = async (name: string): Promise<number> => {
+        const res = await page.request.post("/api/org/member-submit", {
+          data: {
+            name,
+            activityDate: "2026-07-01",
+            activities: [{ activityId: "tree_planting", quantity: 1, hoursPerYear: 1 }],
+          },
+        });
+        expect(res.status()).toBe(201);
+        const body = (await res.json()) as { record: { id: number } };
+        return body.record.id;
+      };
+
+      // ── Auto-verify OFF: submission lands as pending manager approval ────
+      await api.setOrgSettings(apOrgId, { autoVerifyActivities: false });
+      const pendingRecordId = await submit("Pending submission");
+      expect(await api.getRecordVerification(pendingRecordId, apOrgId)).toBe("pending");
+
+      // ── Auto-verify ON: submission is verified immediately ───────────────
+      await api.setOrgSettings(apOrgId, { autoVerifyActivities: true });
+      const verifiedRecordId = await submit("Auto-verified submission");
+      expect(await api.getRecordVerification(verifiedRecordId, apOrgId)).toBe("approved");
+
+      // The earlier pending record stays pending — flipping the toggle only
+      // affects new submissions, it doesn't retroactively verify old ones.
+      expect(await api.getRecordVerification(pendingRecordId, apOrgId)).toBe("pending");
+    } finally {
+      await ctx.close();
+      await api.deleteOrg(apOrgId);
     }
   });
 });

@@ -127,6 +127,15 @@ export class TestApi {
     }
   }
 
+  /** Read a record's verification status for an org: approved | rejected | pending. */
+  async getRecordVerification(recordId: number, orgId: string): Promise<string> {
+    const res = await this.ctx.get(`/api/test/record-verification?recordId=${recordId}&orgId=${encodeURIComponent(orgId)}`);
+    if (!res.ok()) {
+      throw new Error(`record-verification failed (${res.status()}): ${await res.text()}`);
+    }
+    return ((await res.json()) as { status: string }).status;
+  }
+
   /** Delete an org and all members. */
   async deleteOrg(orgId: string): Promise<void> {
     await this.ctx.post("/api/test/delete-org", { data: { orgId } });
