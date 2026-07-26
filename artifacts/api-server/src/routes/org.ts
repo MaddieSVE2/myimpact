@@ -3073,6 +3073,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         submittedToOrgId: membership.orgId,
         submittedToOrgAt: now.toISOString(),
         personalRecordId: personalRecordId ?? undefined,
+        verificationStatus: autoVerify ? "approved" : "pending",
       },
     });
   } catch (err) {
@@ -3230,6 +3231,20 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
 
     const evidenceByRecord = await loadEvidenceForRecords(records.map(r => r.id));
 
+    // Verification status for each submission, scoped to the member's org.
+    // No verification row means the record is still awaiting manager review.
+    const verificationByRecord = new Map<number, string>();
+    if (records.length > 0) {
+      const verifications = await db
+        .select({ recordId: recordVerificationsTable.recordId, status: recordVerificationsTable.status })
+        .from(recordVerificationsTable)
+        .where(and(
+          eq(recordVerificationsTable.orgId, membership.orgId),
+          inArray(recordVerificationsTable.recordId, records.map(r => r.id)),
+        )!);
+      for (const v of verifications) verificationByRecord.set(v.recordId, v.status);
+    }
+
     const nowMs = Date.now();
     const items = records.map(r => {
       const lines = Array.isArray(r.activitiesJson)
@@ -3247,6 +3262,7 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
         activityCount: lines.length,
         editableUntil: editableUntil.toISOString(),
         canEdit: nowMs < editableUntil.getTime(),
+        verificationStatus: (verificationByRecord.get(r.id) ?? "pending") as "pending" | "approved" | "rejected",
         lines: lines.map(l => {
           const def = ACTIVITIES.find(a => a.id === l.activityId);
           return {

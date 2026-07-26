@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info, Camera,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info, Camera, Clock,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -79,8 +79,31 @@ interface MySubmission {
   activityCount: number;
   editableUntil?: string;
   canEdit?: boolean;
+  verificationStatus?: "pending" | "approved" | "rejected";
   lines?: MySubmissionLine[];
   evidence?: SubmissionEvidence[];
+}
+
+function VerificationBadge({ status, recordId }: { status?: "pending" | "approved" | "rejected"; recordId: number }) {
+  if (status === "approved") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200" data-testid={`submission-status-${recordId}`}>
+        <ShieldCheck className="w-3 h-3" /> Verified
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" data-testid={`submission-status-${recordId}`}>
+        Not approved
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200" data-testid={`submission-status-${recordId}`}>
+      <Clock className="w-3 h-3" /> Awaiting approval
+    </span>
+  );
 }
 
 function formatGBP(n: number): string {
@@ -131,6 +154,7 @@ export default function OrgMemberSubmit() {
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
   const [personalRecordId, setPersonalRecordId] = useState<number | null>(null);
+  const [submittedStatus, setSubmittedStatus] = useState<"pending" | "approved" | null>(null);
   const [mySubs, setMySubs] = useState<MySubmission[] | null>(null);
   const [mySubsError, setMySubsError] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -432,6 +456,7 @@ export default function OrgMemberSubmit() {
       if (!res.ok) throw new Error(data?.error ?? "Submission failed.");
       setCreatedRecordId(data?.record?.id ?? null);
       setPersonalRecordId(data?.record?.personalRecordId ?? null);
+      setSubmittedStatus(data?.record?.verificationStatus === "pending" ? "pending" : "approved");
       setWithdrawn(false);
       setWithdrawError(null);
       setStep("done");
@@ -520,9 +545,12 @@ export default function OrgMemberSubmit() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">
-                      {s.period || s.name}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {s.period || s.name}
+                      </p>
+                      <VerificationBadge status={s.verificationStatus} recordId={s.recordId} />
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                       {" · "}
@@ -1442,15 +1470,23 @@ export default function OrgMemberSubmit() {
             </>
           ) : (
             <>
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-6 h-6 text-green-600" />
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${submittedStatus === "pending" ? "bg-amber-100" : "bg-green-100"}`}>
+                {submittedStatus === "pending" ? <Clock className="w-6 h-6 text-amber-600" /> : <Check className="w-6 h-6 text-green-600" />}
               </div>
               <h2 className="text-lg font-display font-semibold text-foreground mb-1">Sent to {orgName}</h2>
-              <p className="text-sm text-muted-foreground mb-1">
-                Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are now part of your organisation's totals.
-              </p>
+              {submittedStatus === "pending" ? (
+                <p className="text-sm text-muted-foreground mb-1" data-testid="member-submit-status-pending">
+                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are awaiting your manager's approval. They'll count toward {orgName}'s verified totals once approved.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground mb-1" data-testid="member-submit-status-verified">
+                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} were automatically verified and are now part of your organisation's totals.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mb-4">
-                Your organisation manager can see them flagged as member-submitted.{" "}
+                {submittedStatus === "pending"
+                  ? "Your organisation manager will review them in their pending approvals queue."
+                  : "Your organisation manager can see them flagged as member-submitted."}{" "}
                 <Link
                   href="/org/submit/history"
                   className="text-primary underline font-medium"
@@ -1504,6 +1540,7 @@ export default function OrgMemberSubmit() {
                 setEvidenceError(null);
                 setCreatedRecordId(null);
                 setPersonalRecordId(null);
+                setSubmittedStatus(null);
                 setWithdrawn(false);
                 setWithdrawError(null);
                 setStep("select");

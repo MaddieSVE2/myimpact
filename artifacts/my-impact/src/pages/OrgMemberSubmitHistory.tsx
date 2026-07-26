@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { History, ArrowLeft, Loader2, AlertCircle, Plus } from "lucide-react";
+import { History, ArrowLeft, Loader2, AlertCircle, Plus, ShieldCheck, Clock } from "lucide-react";
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
@@ -23,6 +23,29 @@ interface MySubmission {
   submittedAt: string;
   activityCount: number;
   evidence?: SubmissionEvidence[];
+  verificationStatus?: "pending" | "approved" | "rejected";
+}
+
+function StatusBadge({ status, recordId }: { status?: "pending" | "approved" | "rejected"; recordId: number }) {
+  if (status === "approved") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200" data-testid={`history-status-${recordId}`}>
+        <ShieldCheck className="w-3 h-3" /> Verified
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" data-testid={`history-status-${recordId}`}>
+        Not approved
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200" data-testid={`history-status-${recordId}`}>
+      <Clock className="w-3 h-3" /> Awaiting approval
+    </span>
+  );
 }
 
 function formatGBP(n: number): string {
@@ -162,6 +185,7 @@ export default function OrgMemberSubmitHistory() {
               <thead>
                 <tr className="bg-muted/40 text-left">
                   <th className="py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Submission</th>
+                  <th className="py-2.5 pr-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Status</th>
                   <th className="py-2.5 pr-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Activities</th>
                   <th className="py-2.5 pr-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Hours</th>
                   <th className="py-2.5 pr-4 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Est. value</th>
@@ -200,6 +224,7 @@ export default function OrgMemberSubmitHistory() {
                         </div>
                       )}
                     </td>
+                    <td className="py-2.5 pr-3 whitespace-nowrap"><StatusBadge status={s.verificationStatus} recordId={s.recordId} /></td>
                     <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">{s.activityCount}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">{Math.round(s.totalHours).toLocaleString("en-GB")}</td>
                     <td className="py-2.5 pr-4 text-right font-semibold tabular-nums whitespace-nowrap">{formatGBP(s.totalValue)}</td>
