@@ -9,8 +9,9 @@ import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
   BookOpen, Award, ChevronDown, ChevronUp, FlaskConical,
-  Clipboard, ClipboardCheck, MessageSquare, FileText, Mountain
+  MessageSquare, FileText, Mountain
 } from "lucide-react";
+import CopyField from "@/components/CopyField";
 import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
@@ -586,7 +587,6 @@ function generateDofEPortfolioText(results: DofESectionResult[]): string {
 
 function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; activityName: string; hours: number }> }) {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const sectionResults = buildDofEResults(breakdowns);
@@ -595,15 +595,6 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
   if (!hasAny) return null;
 
   const portfolioText = generateDofEPortfolioText(sectionResults);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(portfolioText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {
-      toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
-    });
-  };
 
   return (
     <motion.div
@@ -721,21 +712,14 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
           {/* Portfolio copy */}
           <div className="px-5 py-4 border-t border-border">
             <p className="text-xs font-semibold text-foreground mb-2">Copy for my DofE portfolio</p>
-            <textarea
-              readOnly
+            <CopyField
               value={portfolioText}
-              rows={5}
-              className="copy-field w-full px-3 py-2.5 rounded-lg border border-border text-xs bg-white resize-none focus:outline-none leading-relaxed"
+              multiline
+              copyLabel="Copy for my portfolio"
+              copiedLabel="Copied!"
+              ariaLabel="DofE portfolio text"
+              onCopyError={() => toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" })}
             />
-            <button
-              onClick={handleCopy}
-              className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
-            >
-              {copied
-                ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
-                : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy for my portfolio</>
-              }
-            </button>
           </div>
         </div>
       )}
@@ -948,7 +932,6 @@ export default function Results() {
   } | null>(null);
   const [chosenPeriod, setChosenPeriod] = useState("");
   const [customPeriod, setCustomPeriod] = useState("");
-  const [statementCopied, setStatementCopied] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -1503,28 +1486,14 @@ export default function Results() {
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">
               Use this in your UCAS personal statement, CV, or job application. Copy and adapt it to fit your context. It gives you a verified, specific number to stand behind.
             </p>
-            <textarea
-              readOnly
+            <CopyField
               value={generateCVText(result, interests, careerBreak, situation)}
-              rows={5}
-              className="copy-field w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white resize-none focus:outline-none leading-relaxed"
+              multiline
+              copyLabel="Copy statement"
+              copiedLabel="Copied!"
+              ariaLabel="impact statement"
+              onCopyError={() => toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" })}
             />
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(generateCVText(result, interests, careerBreak, situation)).then(() => {
-                  setStatementCopied(true);
-                  setTimeout(() => setStatementCopied(false), 2500);
-                }).catch(() => {
-                  toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" });
-                });
-              }}
-              className="mt-2.5 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-all"
-            >
-              {statementCopied
-                ? <><ClipboardCheck className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Copied!</>
-                : <><Clipboard className="w-3.5 h-3.5" aria-hidden="true" /> Copy statement</>
-              }
-            </button>
           </div>
         </div>
       </motion.div>

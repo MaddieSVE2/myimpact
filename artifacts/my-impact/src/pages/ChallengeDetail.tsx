@@ -4,9 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Trophy, Users, Calendar, Target, ChevronLeft, Loader2, AlertCircle,
-  Share2, Copy, Check, LogOut, Trash2, Mail, Crown, Building2, PartyPopper,
+  Share2, LogOut, Trash2, Mail, Crown, Building2, PartyPopper,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import CopyField from "@/components/CopyField";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -103,7 +104,6 @@ export default function ChallengeDetail() {
 
   const { data, isLoading, isError, error, refetch } = useChallenge(id);
 
-  const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [summaryStatus, setSummaryStatus] = useState<"idle" | "sent" | "already">("idle");
 
@@ -194,16 +194,6 @@ export default function ChallengeDetail() {
   const { challenge, progress, leaderboard, myContribution } = data;
   const inviteUrl = `${window.location.origin}${BASE}/challenges/join?code=${challenge.inviteCode}`;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setActionError("Could not copy link");
-    }
-  };
-
   const handleNativeShare = async () => {
     const text = `Join my "${challenge.name}" challenge on My Impact`;
     if ((navigator as { share?: (data: { url: string; text: string }) => Promise<void> }).share) {
@@ -216,7 +206,11 @@ export default function ChallengeDetail() {
         // user cancelled
       }
     } else {
-      handleCopy();
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+      } catch {
+        setActionError("Could not copy link");
+      }
     }
   };
 
@@ -309,30 +303,20 @@ export default function ChallengeDetail() {
             <h3 className="text-sm font-semibold text-foreground">Invite friends</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Share this link or invite code. One click and they're in.</p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              value={inviteUrl}
-              className="copy-field flex-1 px-3 py-2 rounded-lg border border-border text-xs font-mono bg-white truncate"
-              onFocus={e => e.currentTarget.select()}
-            />
-            <button
-              onClick={handleCopy}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/30 transition-colors inline-flex items-center gap-1.5"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
-              {copied ? "Copied" : "Copy"}
-            </button>
+          <CopyField
+            value={inviteUrl}
+            ariaLabel="challenge invite link"
+            onCopyError={() => setActionError("Could not copy link")}
+          >
             <button
               onClick={handleNativeShare}
-              className="px-3 py-2 rounded-lg text-white text-sm font-bold inline-flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-white text-sm font-bold inline-flex items-center gap-1.5 shrink-0"
               style={{ background: "#F06127" }}
             >
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
               Share
             </button>
-          </div>
+          </CopyField>
           <p className="text-[10px] text-muted-foreground mt-2">Code: <code className="font-mono">{challenge.inviteCode}</code></p>
         </div>
       )}

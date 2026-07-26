@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { X, Copy, Check, Share2, Gift } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Share2, Gift } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import CopyField from "@/components/CopyField";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -17,9 +18,7 @@ interface InviteModalProps {
 export default function InviteModal({ onClose }: InviteModalProps) {
   const [data, setData] = useState<InviteData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [usedShare, setUsedShare] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -38,21 +37,6 @@ export default function InviteModal({ onClose }: InviteModalProps) {
     } catch {}
   };
 
-  const handleCopy = async () => {
-    if (!data) return;
-    try {
-      await navigator.clipboard.writeText(data.inviteUrl);
-    } catch {
-      if (inputRef.current) {
-        inputRef.current.select();
-        document.execCommand("copy");
-      }
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    await markUsed();
-  };
-
   const handleShare = async () => {
     if (!data) return;
     try {
@@ -64,7 +48,10 @@ export default function InviteModal({ onClose }: InviteModalProps) {
       await markUsed();
     } catch (err: unknown) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
-        await handleCopy();
+        try {
+          await navigator.clipboard.writeText(data.inviteUrl);
+          await markUsed();
+        } catch {}
       }
     }
   };
@@ -106,25 +93,14 @@ export default function InviteModal({ onClose }: InviteModalProps) {
           </div>
         ) : data ? (
           <>
-            <div className="flex gap-2 mb-3">
-              <input
-                ref={inputRef}
-                type="text"
-                readOnly
+            <div className="mb-3">
+              <CopyField
                 value={data.inviteUrl}
-                className="copy-field flex-1 text-xs px-3 py-2.5 rounded-lg border border-border bg-white font-mono focus:outline-none"
-                onClick={e => (e.target as HTMLInputElement).select()}
-                aria-label="Your personal invite link"
+                buttonVariant="primary"
+                copiedLabel="Copied!"
+                ariaLabel="invite link"
+                onCopied={() => { void markUsed(); }}
               />
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium text-white transition-colors shrink-0"
-                style={{ background: "#F06127" }}
-                aria-label="Copy invite link"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Copied!" : "Copy"}
-              </button>
             </div>
 
             {canNativeShare && (

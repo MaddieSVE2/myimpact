@@ -6,6 +6,7 @@ import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, 
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
+import CopyField from "@/components/CopyField";
 import {
   DEMO_ORG_ID, DEMO_ORG_NAME, DEMO_ORG_TYPE, DEMO_INVITE_CODE,
   DEMO_ORG_CONTACT_EMAIL, DEMO_MEMBERS, DEMO_PENDING_REQUESTS,
@@ -186,7 +187,6 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
   const [inviteBusy, setInviteBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
 
   // Pagination state (demo)
   const PAGE_SIZE = 20;
@@ -261,14 +261,6 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     })();
     return () => { cancelled = true; };
   }, [isDemoOrg]);
-
-  async function copyInviteLink() {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setLinkCopied(true);
-      window.setTimeout(() => setLinkCopied(false), 1500);
-    } catch { flash("Could not copy, copy it manually."); }
-  }
 
   const flash = (msg: string) => { setToast(msg); window.setTimeout(() => setToast(null), 2200); };
 
@@ -586,25 +578,15 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Link</p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={inviteLoading ? "Loading…" : inviteLink}
-                onFocus={e => e.currentTarget.select()}
-                className="copy-field flex-1 px-3 py-2 rounded-md bg-white font-mono text-[13px] border border-border focus:outline-none focus:border-primary"
-                data-testid="text-invite-link"
-              />
-              <button
-                type="button"
-                onClick={copyInviteLink}
-                disabled={inviteLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border text-[13px] font-semibold hover:bg-muted/30 transition-colors disabled:opacity-60"
-                data-testid="button-copy-invite-link"
-              >
-                {linkCopied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />} {linkCopied ? "Copied" : "Copy link"}
-              </button>
-            </div>
+            <CopyField
+              value={inviteLoading ? "Loading…" : inviteLink}
+              copyLabel="Copy link"
+              disabled={inviteLoading}
+              ariaLabel="organisation invite link"
+              inputTestId="text-invite-link"
+              buttonTestId="button-copy-invite-link"
+              onCopyError={() => flash("Could not copy, copy it manually.")}
+            />
           </div>
         </div>
         <AllowedDomainField initialDomain={allowedDomain} isDemoOrg={isDemoOrg} />
