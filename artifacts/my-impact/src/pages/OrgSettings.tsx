@@ -465,7 +465,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                 readOnly
                 value={inviteLoading ? "Loading…" : inviteLink}
                 onFocus={e => e.currentTarget.select()}
-                className="flex-1 px-3 py-2 rounded-md bg-white font-mono text-[13px] text-foreground border border-border focus:outline-none focus:border-primary"
+                className="copy-field flex-1 px-3 py-2 rounded-md bg-white font-mono text-[13px] border border-border focus:outline-none focus:border-primary"
                 data-testid="text-invite-link"
               />
               <button

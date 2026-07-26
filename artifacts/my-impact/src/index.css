@@ -330,6 +330,12 @@
   .text-gradient {
     @apply text-primary;
   }
+
+  /* Read-only copy fields (invite codes, share links, generated text).
+     Keeps the white background but signals "copy me, don't type here". */
+  .copy-field {
+    @apply text-muted-foreground cursor-copy select-all;
+  }
 }
 
 /* Recharts Customizations */
