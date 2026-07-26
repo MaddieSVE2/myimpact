@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Send, ChevronRight, Sparkles, X, Bot, Copy, RefreshCw, RotateCcw, Check, MessageSquare, LayoutGrid, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -1083,16 +1083,16 @@ export function Sidekick() {
               {voiceMode ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
           )}
-          {messages.length > 0 && (
-            <button
-              onClick={handleClear}
-              className="min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              title="Clear conversation"
-              aria-label="Clear conversation"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            onClick={handleClear}
+            disabled={messages.length === 0}
+            className="min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            title="Reset conversation"
+            aria-label="Reset conversation"
+            data-testid="sidekick-reset"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setOpen(false)}
             className="min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
