@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Plus,
   Archive,
+  Pencil,
   ChevronDown,
   ChevronUp,
   X,
@@ -410,6 +411,7 @@ function SurveyRow({
   disabled?: boolean;
 }) {
   const isArchived = !!survey.archivedAt;
+  const [editingLabels, setEditingLabels] = useState(false);
   const { data: resultsData } = useSurveyResults(survey.id);
   const sentimentBadge = resultsData
     ? getSentimentBadge(resultsData.distribution, resultsData.totals.responses)
@@ -448,6 +450,16 @@ function SurveyRow({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {!isArchived && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); setEditingLabels(v => !v); }}
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors"
+              data-testid={`button-edit-labels-${survey.id}`}
+            >
+              <Pencil className="w-3 h-3" /> Edit labels
+            </button>
+          )}
           {!isArchived && onArchive && (
             <button
               type="button"
@@ -464,7 +476,95 @@ function SurveyRow({
           </div>
         </div>
       </div>
+      {editingLabels && !isArchived && (
+        <EditLabelsForm survey={survey} onClose={() => setEditingLabels(false)} />
+      )}
       {open && <SurveyResultsView surveyId={survey.id} />}
+    </div>
+  );
+}
+
+function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [labels, setLabels] = useState<string[]>(() => {
+    const current = survey.scaleLabels;
+    return current && current.length === 5 ? [...current] : [...DEFAULT_SCALE_LABELS];
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/api/org/surveys/${survey.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ scaleLabels: labels.map(l => l.trim()) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to save labels");
+      return json;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-surveys"] });
+      qc.invalidateQueries({ queryKey: ["org-survey-results", survey.id] });
+      onClose();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const invalid = labels.some(l => !l.trim());
+
+  return (
+    <div
+      className="border-t border-border p-4 bg-muted/20 cursor-default"
+      onClick={e => e.stopPropagation()}
+      data-testid={`edit-labels-form-${survey.id}`}
+    >
+      <label className="block text-[13px] font-medium text-foreground mb-1.5">
+        Answer scale labels <span className="text-muted-foreground font-normal">(shown under the 1–5 buttons)</span>
+      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        {labels.map((label, i) => (
+          <div key={i}>
+            <p className="text-[11px] text-muted-foreground mb-1 text-center sm:text-left">{i + 1}</p>
+            <input
+              type="text"
+              value={label}
+              onChange={e => {
+                const next = [...labels];
+                next[i] = e.target.value.slice(0, SCALE_LABEL_MAX_LENGTH);
+                setLabels(next);
+              }}
+              maxLength={SCALE_LABEL_MAX_LENGTH}
+              className={`bg-white w-full px-2.5 py-2 rounded-lg border text-[13px] focus:outline-none focus:border-primary ${!label.trim() ? "border-red-400" : "border-border"}`}
+              data-testid={`input-edit-scale-label-${i + 1}`}
+            />
+          </div>
+        ))}
+      </div>
+      {invalid && (
+        <p className="text-[12px] text-red-600 mt-1">All five labels are required.</p>
+      )}
+      {error && <p className="text-[13px] text-red-600 mt-2">{error}</p>}
+      <div className="flex justify-end gap-2 pt-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-2 rounded-lg border border-border text-[13px] font-semibold text-foreground hover:bg-muted/30 transition-colors"
+          data-testid={`button-cancel-edit-labels-${survey.id}`}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => { setError(null); saveMutation.mutate(); }}
+          disabled={saveMutation.isPending || invalid}
+          className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+          data-testid={`button-save-labels-${survey.id}`}
+        >
+          {saveMutation.isPending ? "Saving…" : "Save labels"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -52,6 +52,30 @@ export function resolveScaleLabels(template: string, stored: unknown): string[] 
   return [...TEMPLATES[t].scaleLabels];
 }
 
+/**
+ * Validate raw scaleLabels input. Returns:
+ * - { ok: true, value } where value is the trimmed labels, or null when the
+ *   labels match the template defaults (store NULL to keep tracking template wording)
+ * - { ok: false, error } on validation failure
+ */
+function validateScaleLabels(
+  raw: unknown,
+  template: TemplateKey,
+): { ok: true; value: string[] | null } | { ok: false; error: string } {
+  if (!Array.isArray(raw) || raw.length !== 5 || !raw.every(l => typeof l === "string")) {
+    return { ok: false, error: "scaleLabels must be an array of exactly 5 strings." };
+  }
+  const trimmed = raw.map(l => (l as string).trim());
+  if (trimmed.some(l => l.length === 0)) {
+    return { ok: false, error: "All five scale labels must be non-empty." };
+  }
+  if (trimmed.some(l => l.length > SCALE_LABEL_MAX_LENGTH)) {
+    return { ok: false, error: `Scale labels must be ${SCALE_LABEL_MAX_LENGTH} characters or fewer.` };
+  }
+  const defaults = TEMPLATES[template].scaleLabels;
+  return { ok: true, value: trimmed.some((l, i) => l !== defaults[i]) ? trimmed : null };
+}
+
 const SCHEDULES = ["one_off", "monthly", "quarterly"] as const;
 type Schedule = (typeof SCHEDULES)[number];
 
@@ -217,26 +241,14 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
   // five non-empty short strings. Omitted/undefined = use template defaults.
   let scaleLabels: string[] | null = null;
   if (body.scaleLabels !== undefined && body.scaleLabels !== null) {
-    const raw = body.scaleLabels;
-    if (!Array.isArray(raw) || raw.length !== 5 || !raw.every(l => typeof l === "string")) {
-      res.status(400).json({ error: "scaleLabels must be an array of exactly 5 strings." });
-      return;
-    }
-    const trimmed = raw.map(l => (l as string).trim());
-    if (trimmed.some(l => l.length === 0)) {
-      res.status(400).json({ error: "All five scale labels must be non-empty." });
-      return;
-    }
-    if (trimmed.some(l => l.length > SCALE_LABEL_MAX_LENGTH)) {
-      res.status(400).json({ error: `Scale labels must be ${SCALE_LABEL_MAX_LENGTH} characters or fewer.` });
+    const validated = validateScaleLabels(body.scaleLabels, template);
+    if (!validated.ok) {
+      res.status(400).json({ error: validated.error });
       return;
     }
     // Store only if they differ from the template defaults, so default-label
     // surveys keep tracking template wording.
-    const defaults = TEMPLATES[template].scaleLabels;
-    if (trimmed.some((l, i) => l !== defaults[i])) {
-      scaleLabels = trimmed;
-    }
+    scaleLabels = validated.value;
   }
 
   const id = randomUUID();
@@ -287,6 +299,60 @@ router.post("/surveys/:id/archive", authenticate, async (req: AuthenticatedReque
     .set({ archivedAt: new Date() })
     .where(eq(orgSurveysTable.id, id));
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Manager: edit scale labels on an existing (non-archived) survey
+// ---------------------------------------------------------------------------
+
+router.patch("/surveys/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  const m = await requireManager(req, res);
+  if (!m) return;
+  const id = req.params.id as string;
+
+  const existing = await db.query.orgSurveysTable.findFirst({
+    where: and(eq(orgSurveysTable.id, id), eq(orgSurveysTable.orgId, m.orgId)),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Survey not found." });
+    return;
+  }
+  if (existing.archivedAt) {
+    res.status(400).json({ error: "Archived surveys can't be edited." });
+    return;
+  }
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  if (body.scaleLabels === undefined) {
+    res.status(400).json({ error: "scaleLabels is required." });
+    return;
+  }
+
+  const template = (existing.template in TEMPLATES ? existing.template : "custom") as TemplateKey;
+  const validated = validateScaleLabels(body.scaleLabels, template);
+  if (!validated.ok) {
+    res.status(400).json({ error: validated.error });
+    return;
+  }
+
+  await db.update(orgSurveysTable)
+    .set({ scaleLabels: validated.value })
+    .where(and(
+      eq(orgSurveysTable.id, id),
+      eq(orgSurveysTable.orgId, m.orgId),
+      isNull(orgSurveysTable.archivedAt),
+    ));
+
+  res.json({
+    id: existing.id,
+    template: existing.template,
+    question: existing.question,
+    schedule: existing.schedule,
+    anonymous: existing.anonymous,
+    scaleLabels: resolveScaleLabels(existing.template, validated.value),
+    createdAt: existing.createdAt.toISOString(),
+    archivedAt: null,
+  });
 });
 
 // ---------------------------------------------------------------------------
