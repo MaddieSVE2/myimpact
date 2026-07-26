@@ -37,6 +37,23 @@ export function usePendingVerifications(enabled: boolean) {
   });
 }
 
+/**
+ * Lightweight pending-approvals count for navigation badges. Only enable
+ * for organisation managers — the endpoint 403s for everyone else.
+ */
+export function usePendingApprovalsCount(enabled: boolean) {
+  return useQuery<{ count: number }>({
+    queryKey: ["org-pending-approvals-count"],
+    enabled,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/verifications/pending-count`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load pending count");
+      return res.json();
+    },
+  });
+}
+
 export function VerificationQueue({ orgName }: { orgName: string }) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = usePendingVerifications(true);
@@ -44,6 +61,12 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
+
+  function invalidateAfterDecision() {
+    queryClient.invalidateQueries({ queryKey: ["org-pending-verifications"] });
+    queryClient.invalidateQueries({ queryKey: ["org-pending-approvals-count"] });
+    queryClient.invalidateQueries({ queryKey: ["org-stats"] });
+  }
 
   const decideMutation = useMutation({
     mutationFn: async (vars: { recordId: number; decision: "approve" | "reject"; reason?: string }) => {
@@ -59,10 +82,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org-pending-verifications"] });
-      queryClient.invalidateQueries({ queryKey: ["org-stats"] });
-    },
+    onSuccess: invalidateAfterDecision,
   });
 
   const bulkApproveMutation = useMutation({
@@ -81,8 +101,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
     },
     onSuccess: () => {
       setSelected(new Set());
-      queryClient.invalidateQueries({ queryKey: ["org-pending-verifications"] });
-      queryClient.invalidateQueries({ queryKey: ["org-stats"] });
+      invalidateAfterDecision();
     },
   });
 
@@ -125,6 +144,14 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
           <div className="flex items-center gap-2 mb-1">
             <BadgeCheck className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Pending verification</h3>
+            {pending.length > 0 && (
+              <span
+                className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold tabular-nums"
+                data-testid="pending-approvals-count"
+              >
+                {pending.length}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Review and confirm hours logged by {orgName} members. Verified hours appear with a chip on members&apos; profiles and feed into funder reports.

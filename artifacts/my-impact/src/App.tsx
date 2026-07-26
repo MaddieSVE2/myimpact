@@ -71,6 +71,7 @@ const OrgMemberSubmit = lazyWithRetry(() => import("@/pages/OrgMemberSubmit"));
 const OrgMemberSubmitHistory = lazyWithRetry(() => import("@/pages/OrgMemberSubmitHistory"));
 const OrgDashboard = lazyWithRetry(() => import("@/pages/OrgDashboard"));
 const OrgActivities = lazyWithRetry(() => import("@/pages/OrgActivities"));
+const OrgApprovals = lazyWithRetry(() => import("@/pages/OrgApprovals"));
 const OrgChallenges = lazyWithRetry(() => import("@/pages/OrgChallenges"));
 const OrgPulse = lazyWithRetry(() => import("@/pages/OrgPulse"));
 const OrgMemberPulse = lazyWithRetry(() => import("@/pages/OrgMemberPulse"));
@@ -414,6 +415,9 @@ function AppRouter() {
               </Route>
               <Route path="/org/activities">
                 {() => <PrivateRoute component={OrgActivities} />}
+              </Route>
+              <Route path="/org/approvals">
+                {() => <PrivateRoute component={OrgApprovals} />}
               </Route>
               <Route path="/org/challenges">
                 {() => <PrivateRoute component={OrgChallenges} />}

@@ -14,6 +14,7 @@ async function bootstrap(): Promise<void> {
   const { startInflightReservationSweepJob } = await import("./lib/aiUsage.js");
   const { startRetentionCleanupJob } = await import("./lib/retentionCleanup.js");
   const { startPremappedRefreshJob } = await import("./lib/premappedCharities.js");
+  const { startApprovalDigestJob } = await import("./lib/approvalDigest.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -61,6 +62,7 @@ async function bootstrap(): Promise<void> {
     startInflightReservationSweepJob();
     startRetentionCleanupJob();
     startPremappedRefreshJob();
+    startApprovalDigestJob();
   });
 }
 

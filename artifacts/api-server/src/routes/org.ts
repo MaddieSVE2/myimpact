@@ -2575,6 +2575,32 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
   }
 });
 
+// ─── GET /api/org/verifications/pending-count ──────────────────────────────
+// Lightweight count used for the manager navigation badge. Same eligibility
+// rules as the full pending list, but skips the user/evidence joins.
+router.get("/verifications/pending-count", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const membership = await requireOrgManager(req, res);
+    if (!membership) return;
+    const orgId = membership.orgId;
+
+    const eligible = await getEligibleRecordsForOrg(orgId);
+    if (eligible.length === 0) { res.json({ count: 0 }); return; }
+
+    const recordIds = eligible.map(e => e.record.id);
+    const verifications = await db
+      .select({ recordId: recordVerificationsTable.recordId })
+      .from(recordVerificationsTable)
+      .where(and(eq(recordVerificationsTable.orgId, orgId), inArray(recordVerificationsTable.recordId, recordIds)));
+    const verifiedRecordIds = new Set(verifications.map(v => v.recordId));
+
+    res.json({ count: eligible.filter(e => !verifiedRecordIds.has(e.record.id)).length });
+  } catch (err) {
+    console.error("Pending verification count error:", err);
+    res.status(500).json({ error: "Failed to load pending count" });
+  }
+});
+
 // ─── POST /api/org/verifications/decide ────────────────────────────────────
 router.post("/verifications/decide", authenticate, async (req: AuthenticatedRequest, res) => {
   try {

@@ -480,6 +480,7 @@ function MemberSubmissionsPanel() {
   );
 }
 
+
 function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
   return (
     <div className="bg-white border border-border rounded-xl p-5">

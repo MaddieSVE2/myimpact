@@ -6,8 +6,9 @@ import {
   Sparkles, History, Lightbulb, BookOpen, Award,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
   MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
-  Users as UsersIcon, Flag, ClipboardList, Download,
+  Users as UsersIcon, Flag, ClipboardList, ClipboardCheck, Download,
 } from "lucide-react";
+import { usePendingApprovalsCount } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
 import { useSidekick } from "@/lib/sidekick-context";
 import { useTheme } from "@/lib/theme-context";
@@ -248,10 +249,17 @@ export function Navbar() {
   const orgHomeHref = isOrgDashboardManager ? "/org/dashboard" : "/org";
 
   const isOrgMemberOnly = inOrg && !isOrgManager;
+
+  // Pending-approvals badge for managers. Lite managers review on /org,
+  // dashboard managers on /org/approvals.
+  const { data: approvalsCountData } = usePendingApprovalsCount(Boolean(isOrgManager));
+  const pendingApprovals = approvalsCountData?.count ?? 0;
+
   const navItems = isOrgDashboardManager
     ? [
         { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
         { href: "/org/activities", label: "Activities", icon: UsersIcon },
+        { href: "/org/approvals",  label: "Approvals",  icon: ClipboardCheck, badge: pendingApprovals },
         { href: "/org/challenges", label: "Challenges", icon: Flag },
         { href: "/org/pulse",      label: "Pulse",      icon: ClipboardList },
         { href: "/org/export",     label: "Export",     icon: Download },
@@ -320,6 +328,14 @@ export function Navbar() {
                   >
                     <item.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     {item.label}
+                    {"badge" in item && (item.badge ?? 0) > 0 && (
+                      <span
+                        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold tabular-nums"
+                        data-testid="nav-approvals-badge"
+                      >
+                        {(item.badge ?? 0) > 99 ? "99+" : item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -449,6 +465,14 @@ export function Navbar() {
                           >
                             <Building2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                             {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
+                            {isOrgManager && !isOrgDashboardManager && pendingApprovals > 0 && (
+                              <span
+                                className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold tabular-nums"
+                                data-testid="menu-approvals-badge"
+                              >
+                                {pendingApprovals > 99 ? "99+" : pendingApprovals}
+                              </span>
+                            )}
                           </Link>
                         )}
                         {isOrgDashboardManager && (
@@ -579,6 +603,14 @@ export function Navbar() {
                 >
                   <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                   {item.label}
+                  {"badge" in item && (item.badge ?? 0) > 0 && (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold tabular-nums"
+                      data-testid="nav-approvals-badge-mobile"
+                    >
+                      {(item.badge ?? 0) > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -734,6 +766,14 @@ export function Navbar() {
               >
                 <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {inOrg ? t("navbar.myOrganisation") : t("navbar.joinMyOrganisation")}
+                {isOrgManager && !isOrgDashboardManager && pendingApprovals > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold tabular-nums"
+                    data-testid="menu-approvals-badge-mobile"
+                  >
+                    {pendingApprovals > 99 ? "99+" : pendingApprovals}
+                  </span>
+                )}
               </Link>
             )}
 
