@@ -30,7 +30,7 @@ function getFeatureCards(type: OrgType) {
       {
         icon: BarChart2,
         title: "Aggregated anonymous dashboard",
-        desc: "See total social value, volunteering hours, and activity breakdown across your student body. No individual names, just collective graduate outcomes.",
+        desc: "See total social value, hours contributed, and activity breakdown across your student body. No individual names, just collective graduate outcomes.",
       },
       {
         icon: Users,
@@ -53,7 +53,7 @@ function getFeatureCards(type: OrgType) {
     {
       icon: BarChart2,
       title: "Aggregated anonymous dashboard",
-      desc: "See total social value, volunteer hours, and activity breakdown across your organisation. No individual names, just collective impact.",
+      desc: "See total social value, hours contributed, and activity breakdown across your organisation. No individual names, just collective impact.",
     },
     {
       icon: Users,
@@ -130,8 +130,8 @@ function DemoLink({ type }: { type: OrgType }) {
 
 function WhatMembersSeeCallout({ type }: { type: OrgType }) {
   const isEdu = isEducation(type);
-  const memberLabel = isEdu ? "student" : "volunteer";
-  const memberLabelPlural = isEdu ? "students" : "volunteers";
+  const memberLabel = isEdu ? "student" : "member";
+  const memberLabelPlural = isEdu ? "students" : "members";
   const evidenceLabel = isEdu
     ? "UCAS portfolio, employability statement, or graduate outcomes evidence"
     : "CV-ready evidence pack or reference alternative";
@@ -458,7 +458,7 @@ export default function OrgRegister() {
                   placeholder={
                     edu
                       ? "e.g. Evidencing student employability portfolios, improving UCAS outcomes data, tracking student engagement with extracurricular activities..."
-                      : "e.g. Tracking volunteer impact for annual report, evidencing outcomes for funders..."
+                      : "e.g. Tracking member impact for annual report, evidencing outcomes for funders..."
                   }
                   className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
                 />

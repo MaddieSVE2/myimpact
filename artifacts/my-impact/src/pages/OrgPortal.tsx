@@ -1010,14 +1010,14 @@ function JoinOrgPanel() {
             ? [
                 { shared: true, label: "Activities you log (automatically, from the date you choose)" },
                 { shared: true, label: "Your total social value (£ amount)" },
-                { shared: true, label: "Total volunteer hours" },
+                { shared: true, label: "Total hours" },
                 { shared: false, label: "Your journal entries" },
                 { shared: false, label: "Your pulse survey answers" },
               ]
             : [
                 { shared: true, label: "Your total social value (£ amount)" },
                 { shared: true, label: "Activity breakdown by category" },
-                { shared: true, label: "Total volunteer hours" },
+                { shared: true, label: "Total hours" },
                 { shared: false, label: "Your journal entries" },
                 { shared: false, label: "Your personal notes and ideas" },
                 { shared: false, label: "Your name or any identifying information" },
@@ -2050,10 +2050,10 @@ export default function OrgPortal() {
             >
               <div className="flex items-center gap-2 mb-2">
                 <BadgeCheck className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Share volunteering with {orgData!.org!.name}</p>
+                <p className="text-sm font-semibold text-foreground">Share your hours with {orgData!.org!.name}</p>
               </div>
               <p className="text-xs text-muted-foreground mb-4 flex-1">
-                Send your volunteering hours into your organisation's totals. Submitted now, no manager approval needed. {orgData!.org!.name}'s manager can see what you submitted (with your name on it) and it counts towards their reporting.
+                Send your hours into your organisation's totals. Submitted now, no manager approval needed. {orgData!.org!.name}'s manager can see what you submitted (with your name on it) and it counts towards their reporting.
               </p>
               <Link
                 href="/org/submit"

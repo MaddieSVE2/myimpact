@@ -263,9 +263,9 @@ export const en = {
     monthlyTrendSubtitle: "(£ generated each month)",
     monthlyTrendEmpty: "No activity yet.",
     sroiTitle: "What is SROI?",
-    sroiBody: "Social Return on Investment shows how much social value is created for every £1 your organisation invests in its volunteers. We estimate the total cost (recruitment, onboarding, support and admin) at around {{costPerVolunteer}} per volunteer. With {{members}} members that gives a total investment of {{totalInvestment}}. Dividing the {{socialValue}} of social value by that gives an SROI of {{ratio}}.",
+    sroiBody: "Social Return on Investment shows how much social value is created for every £1 your organisation invests in its members. We estimate the total cost (recruitment, onboarding, support and admin) at around {{costPerVolunteer}} per member. With {{members}} members that gives a total investment of {{totalInvestment}}. Dividing the {{socialValue}} of social value by that gives an SROI of {{ratio}}.",
     sroiOrgInvestmentLabel: "Org. investment",
-    sroiOrgInvestmentSub: "per volunteer",
+    sroiOrgInvestmentSub: "per member",
     sroiTotalInvestmentLabel: "Total investment",
     sroiTotalInvestmentSub: "across the org",
     sroiSocialValueLabel: "Social value",
@@ -275,10 +275,10 @@ export const en = {
     sroiCardLabel: "SROI ratio",
     sroiCardSub: "for every £1 invested",
     sdgKey: "Sustainable Development Goals key",
-    sroiCsvAssumptionCost: "SROI assumption: {{costPerVolunteer}} per volunteer (recruitment, onboarding, support, admin)",
+    sroiCsvAssumptionCost: "SROI assumption: {{costPerVolunteer}} per member (recruitment, onboarding, support, admin)",
     sroiCsvAssumptionTotal: "Total investment: {{totalInvestment}} across {{members}} members",
     sroiCsvAssumptionRatio: "SROI ratio: {{ratio}} of social value per £1 invested",
-    sroiCsvAssumptionBreakdownLine: "Per-volunteer cost breakdown — {{label}}: {{amount}}",
+    sroiCsvAssumptionBreakdownLine: "Per-member cost breakdown — {{label}}: {{amount}}",
     avgPerMemberSub: "social value across all members",
     avgHoursPerMember: "Avg hours per member",
     avgHoursPerMemberSub: "across all members",
@@ -321,7 +321,7 @@ export const en = {
   metricHelp: {
     totalValue: "Your total social value is the sum of four things: the impact of your activities, the value of your time, your donations, and the skills you gain. It's an estimate in pounds of the difference you make, using recognised Social Value Engine proxies.",
     totalSocialValue: "The total estimated social value your members have created, in pounds. Each logged activity is matched to a recognised Social Value Engine proxy and summed. Verified figures are hours an organisation manager has confirmed.",
-    sroi: "Social Return on Investment: the social value created for every £1 your organisation invests in its volunteers (recruitment, onboarding, support and admin). An SROI of £4 means £4 of social value for every £1 spent.",
+    sroi: "Social Return on Investment: the social value created for every £1 your organisation invests in its members (recruitment, onboarding, support and admin). An SROI of £4 means £4 of social value for every £1 spent.",
   },
 } as const;
 

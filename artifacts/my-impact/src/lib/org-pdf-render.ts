@@ -231,7 +231,7 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     const cardH = 80;
     const statCards = [
       { label: "Social value", value: `£${totals.value.toLocaleString("en-GB")}`, sub: "Total generated" },
-      { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member volunteer time" },
+      { label: "Hours logged", value: Math.round(totals.hours).toLocaleString("en-GB"), sub: "Member time contributed" },
       { label: "Activities",   value: totals.activities.toLocaleString("en-GB"),       sub: "Logged in this period" },
     ];
     // Surface the SROI ratio in the headline row when cost-per-volunteer is
@@ -494,7 +494,7 @@ export function renderOrgPdf(args: RenderOrgPdfArgs): jsPDF {
     if (breakdownLines.length > 0) {
       y = ensureSpace(y, 26 + breakdownLines.length * 14);
       doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(MUTED);
-      doc.text("Per-volunteer cost breakdown", margin, y);
+      doc.text("Per-member cost breakdown", margin, y);
       y += 6;
       setDraw(HAIRLINE); doc.setLineWidth(0.5);
       doc.line(margin, y, margin + contentW, y);

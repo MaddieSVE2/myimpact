@@ -121,7 +121,7 @@ export default function OrgSharePage() {
     : "Organisation Impact Report — My Impact";
   const shareMetaDescription = orgName && metaSummary
     ? `${orgName} has generated £${metaSummary.totalSocialValue.toLocaleString("en-GB")} in social value across ${metaSummary.totalMemberCount.toLocaleString("en-GB")} members. Anonymised impact data shared via My Impact.`
-    : "View an organisation's anonymised, aggregated impact data — total social value, volunteer hours, and member activity. Shared via My Impact.";
+    : "View an organisation's anonymised, aggregated impact data — total social value, hours contributed, and member activity. Shared via My Impact.";
   const shareMetaCanonical = slug ? `https://myimpact.uk/org/share/${encodeURIComponent(slug)}` : undefined;
 
   if (loading) {
@@ -218,19 +218,19 @@ export default function OrgSharePage() {
               <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Total hours given</p>
             </div>
             <p className="text-2xl font-display font-bold text-foreground">{Math.round(summary.totalHours).toLocaleString("en-GB")}</p>
-            <p className="text-[13px] text-muted-foreground mt-1">volunteering hours</p>
+            <p className="text-[13px] text-muted-foreground mt-1">hours contributed</p>
           </div>
         </div>
       )}
 
-      {/* Per-volunteer cost breakdown */}
+      {/* Per-member cost breakdown */}
       {share.sroiCostPerVolunteer !== null && (
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-1">Per-volunteer investment</h3>
-          <p className="text-[13px] text-muted-foreground mb-4">The estimated cost this organisation invests per volunteer.</p>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Per-member investment</h3>
+          <p className="text-[13px] text-muted-foreground mb-4">The estimated cost this organisation invests per member.</p>
           <div className="flex items-end gap-3 mb-3">
             <p className="text-2xl font-display font-bold text-foreground">£{share.sroiCostPerVolunteer.toLocaleString("en-GB")}</p>
-            <p className="text-[13px] text-muted-foreground mb-1">per volunteer</p>
+            <p className="text-[13px] text-muted-foreground mb-1">per member</p>
           </div>
           <CostBreakdownTable breakdown={share.sroiCostBreakdown} />
         </div>
@@ -243,7 +243,7 @@ export default function OrgSharePage() {
             <TrendingUp className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Social return on investment</h3>
           </div>
-          <p className="text-[13px] text-muted-foreground mb-3">Social value created for every £1 this organisation invests in its volunteers.</p>
+          <p className="text-[13px] text-muted-foreground mb-3">Social value created for every £1 this organisation invests in its members.</p>
           <p className="text-3xl font-display font-bold text-primary">
             £{share.sroiRatio.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             <span className="text-base font-semibold text-foreground"> social value per £1 invested</span>

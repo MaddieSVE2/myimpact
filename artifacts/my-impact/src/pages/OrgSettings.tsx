@@ -1258,7 +1258,7 @@ function SroiAssumptionsSection({
       <div>
         <h3 className="text-sm font-semibold mb-1">SROI assumptions</h3>
         <p className="text-[13px] text-muted-foreground max-w-prose">
-          Break the per-volunteer investment into recruitment, onboarding, support and admin so the total is auditable for funders. The dashboard SROI explainer uses the sum. Leave every line blank to fall back to the My Impact default of £{DEFAULT_SROI_COST_PER_VOLUNTEER}.
+          Break the per-member investment into recruitment, onboarding, support and admin so the total is auditable for funders. The dashboard SROI explainer uses the sum. Leave every line blank to fall back to the My Impact default of £{DEFAULT_SROI_COST_PER_VOLUNTEER}.
         </p>
       </div>
 
@@ -1293,7 +1293,7 @@ function SroiAssumptionsSection({
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border">
         <p className="text-[13px] text-muted-foreground">
-          Total per volunteer: <strong className="text-foreground" data-testid="text-sroi-derived-total">£{effectiveCost.toLocaleString("en-GB")}</strong>
+          Total per member: <strong className="text-foreground" data-testid="text-sroi-derived-total">£{effectiveCost.toLocaleString("en-GB")}</strong>
           {hasAnyBreakdown
             ? <span className="text-[11px] ml-1">(sum of {filled.length} line{filled.length === 1 ? "" : "s"})</span>
             : usingDefault

@@ -250,7 +250,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
             <p className="text-2xl font-display font-bold text-foreground">
               <AnimatedNumber value={DEMO.headline.totalHours} formatter={v => v.toLocaleString("en-GB")} />
             </p>
-            <p className="text-xs mt-1 text-muted-foreground">volunteering hours</p>
+            <p className="text-xs mt-1 text-muted-foreground">hours contributed</p>
           </div>
         </div>
 
@@ -268,17 +268,17 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Demo Organisation, the estimated organisational investment (covering volunteer finding, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per volunteer</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
+                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Demo Organisation, the estimated organisational investment (covering member recruitment, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per member</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Demo Organisation invested in its volunteers, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
+                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Demo Organisation invested in its members, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/30 rounded-xl p-4 text-center">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Org. investment</p>
                 <p className="text-3xl font-display font-bold text-foreground">£{orgCostPerVolunteer}</p>
-                <p className="text-xs text-muted-foreground mt-1">per volunteer</p>
+                <p className="text-xs text-muted-foreground mt-1">per member</p>
               </div>
               <div className="bg-muted/30 rounded-xl p-4 text-center">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Per member</p>
@@ -476,12 +476,12 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           </div>
         </div>
 
-        {/* Volunteer Progression */}
+        {/* Member Progression */}
         <div className="bg-white border border-border rounded-xl p-6">
-          <SectionLabel>Volunteer progression</SectionLabel>
+          <SectionLabel>Member progression</SectionLabel>
           <SectionTitle>Employability evidence your members are building</SectionTitle>
           <p className="text-sm text-muted-foreground -mt-4 mb-6">
-            Beyond the collective social value figure, every volunteer is building a personal My Impact record, portable proof of their contribution that goes far beyond what any reference letter can say.
+            Beyond the collective social value figure, every member is building a personal My Impact record, portable proof of their contribution that goes far beyond what any reference letter can say.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 text-center">
@@ -530,7 +530,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
             <div>
               <p className="text-sm font-semibold text-amber-800 mb-1">Better than a reference letter</p>
               <p className="text-xs text-amber-700 leading-relaxed">
-                Each volunteer's My Impact record shows calculated social value, logged hours, and evidenced skills, something they can share directly with employers or include in applications. Your organisation's investment in their development becomes visible, measurable proof rather than an unsupported claim.
+                Each member's My Impact record shows calculated social value, logged hours, and evidenced skills, something they can share directly with employers or include in applications. Your organisation's investment in their development becomes visible, measurable proof rather than an unsupported claim.
               </p>
             </div>
           </div>
