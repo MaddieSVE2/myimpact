@@ -457,7 +457,7 @@ function SurveyRow({
               className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[13px] font-semibold text-muted-foreground border border-border hover:bg-muted/30 transition-colors"
               data-testid={`button-edit-labels-${survey.id}`}
             >
-              <Pencil className="w-3 h-3" /> Edit labels
+              <Pencil className="w-3 h-3" /> Edit
             </button>
           )}
           {!isArchived && onArchive && (
@@ -490,6 +490,7 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
     const current = survey.scaleLabels;
     return current && current.length === 5 ? [...current] : [...DEFAULT_SCALE_LABELS];
   });
+  const [question, setQuestion] = useState(survey.question);
   const [error, setError] = useState<string | null>(null);
 
   const saveMutation = useMutation({
@@ -498,10 +499,10 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ scaleLabels: labels.map(l => l.trim()) }),
+        body: JSON.stringify({ question: question.trim(), scaleLabels: labels.map(l => l.trim()) }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to save labels");
+      if (!res.ok) throw new Error(json.error ?? "Failed to save changes");
       return json;
     },
     onSuccess: () => {
@@ -512,7 +513,8 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
     onError: (err: Error) => setError(err.message),
   });
 
-  const invalid = labels.some(l => !l.trim());
+  const questionInvalid = !question.trim();
+  const invalid = labels.some(l => !l.trim()) || questionInvalid;
 
   return (
     <div
@@ -521,6 +523,20 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
       data-testid={`edit-labels-form-${survey.id}`}
     >
       <label className="block text-[13px] font-medium text-foreground mb-1.5">
+        Question
+      </label>
+      <input
+        type="text"
+        value={question}
+        onChange={e => setQuestion(e.target.value.slice(0, 200))}
+        maxLength={200}
+        className={`bg-white w-full px-2.5 py-2 rounded-lg border text-[13px] focus:outline-none focus:border-primary mb-1 ${questionInvalid ? "border-red-400" : "border-border"}`}
+        data-testid={`input-edit-question-${survey.id}`}
+      />
+      {questionInvalid && (
+        <p className="text-[12px] text-red-600 mb-2">The question can't be empty.</p>
+      )}
+      <label className="block text-[13px] font-medium text-foreground mb-1.5 mt-3">
         Answer scale labels <span className="text-muted-foreground font-normal">(shown under the 1–5 buttons)</span>
       </label>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
@@ -542,7 +558,7 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
           </div>
         ))}
       </div>
-      {invalid && (
+      {labels.some(l => !l.trim()) && (
         <p className="text-[12px] text-red-600 mt-1">All five labels are required.</p>
       )}
       {error && <p className="text-[13px] text-red-600 mt-2">{error}</p>}
@@ -562,7 +578,7 @@ function EditLabelsForm({ survey, onClose }: { survey: SurveyListItem; onClose: 
           className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
           data-testid={`button-save-labels-${survey.id}`}
         >
-          {saveMutation.isPending ? "Saving…" : "Save labels"}
+          {saveMutation.isPending ? "Saving…" : "Save changes"}
         </button>
       </div>
     </div>

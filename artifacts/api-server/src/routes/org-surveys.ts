@@ -323,20 +323,38 @@ router.patch("/surveys/:id", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  if (body.scaleLabels === undefined) {
-    res.status(400).json({ error: "scaleLabels is required." });
+  if (body.scaleLabels === undefined && body.question === undefined) {
+    res.status(400).json({ error: "Provide scaleLabels and/or question to update." });
     return;
   }
 
   const template = (existing.template in TEMPLATES ? existing.template : "custom") as TemplateKey;
-  const validated = validateScaleLabels(body.scaleLabels, template);
-  if (!validated.ok) {
-    res.status(400).json({ error: validated.error });
-    return;
+
+  const updates: { scaleLabels?: string[] | null; question?: string } = {};
+
+  let newScaleLabels: string[] | null = existing.scaleLabels;
+  if (body.scaleLabels !== undefined) {
+    const validated = validateScaleLabels(body.scaleLabels, template);
+    if (!validated.ok) {
+      res.status(400).json({ error: validated.error });
+      return;
+    }
+    updates.scaleLabels = validated.value;
+    newScaleLabels = validated.value;
+  }
+
+  let newQuestion = existing.question;
+  if (body.question !== undefined) {
+    if (typeof body.question !== "string" || !body.question.trim()) {
+      res.status(400).json({ error: "Question can't be empty." });
+      return;
+    }
+    updates.question = body.question.trim().slice(0, 200);
+    newQuestion = updates.question;
   }
 
   await db.update(orgSurveysTable)
-    .set({ scaleLabels: validated.value })
+    .set(updates)
     .where(and(
       eq(orgSurveysTable.id, id),
       eq(orgSurveysTable.orgId, m.orgId),
@@ -346,10 +364,10 @@ router.patch("/surveys/:id", authenticate, async (req: AuthenticatedRequest, res
   res.json({
     id: existing.id,
     template: existing.template,
-    question: existing.question,
+    question: newQuestion,
     schedule: existing.schedule,
     anonymous: existing.anonymous,
-    scaleLabels: resolveScaleLabels(existing.template, validated.value),
+    scaleLabels: resolveScaleLabels(existing.template, newScaleLabels),
     createdAt: existing.createdAt.toISOString(),
     archivedAt: null,
   });
