@@ -58,6 +58,10 @@ args = "lighthouse-mobile"
 task = "workflow.run"
 args = "typecheck-api"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "copy-fields"
+
 [[workflows.workflow]]
 name = "e2e"
 author = "agent"
@@ -153,6 +157,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/api-server run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "copy-fields"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5004 E2E_WEB_PORT=3004 pnpm --filter @workspace/e2e exec playwright test tests/17-copy-fields.spec.ts"
 
 [workflows.workflow.metadata]
 isValidation = true
