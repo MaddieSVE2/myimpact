@@ -457,7 +457,7 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
                       onChange={e => setLineDetails(p => ({ ...p, [l.activityId]: { ...det, title: e.target.value } }))}
                       maxLength={120}
                       placeholder="Short title (optional)"
-                      className="w-full px-3 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary mb-2"
+                      className="bg-white w-full px-3 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary mb-2"
                       data-testid={`share-with-org-title-${l.activityId}`}
                     />
                     <textarea
@@ -466,7 +466,7 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
                       maxLength={500}
                       rows={2}
                       placeholder="A short note (optional)"
-                      className="w-full px-3 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary resize-y"
+                      className="bg-white w-full px-3 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary resize-y"
                       data-testid={`share-with-org-note-${l.activityId}`}
                     />
                   </div>

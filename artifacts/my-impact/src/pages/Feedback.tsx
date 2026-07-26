@@ -88,7 +88,7 @@ export default function Feedback() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Your name"
-                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-background placeholder:text-muted-foreground"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-white placeholder:text-muted-foreground"
                 maxLength={100}
                 disabled={submitting}
                 autoComplete="name"
@@ -104,7 +104,7 @@ export default function Feedback() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-background placeholder:text-muted-foreground"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-white placeholder:text-muted-foreground"
                 maxLength={200}
                 disabled={submitting}
                 autoComplete="email"
@@ -121,7 +121,7 @@ export default function Feedback() {
               value={message}
               onChange={e => setMessage(e.target.value)}
               placeholder="Tell us what's on your mind, bugs, feature requests, general thoughts, anything goes."
-              className="w-full text-sm border border-border rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-background placeholder:text-muted-foreground"
+              className="w-full text-sm border border-border rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-white placeholder:text-muted-foreground"
               rows={6}
               maxLength={5000}
               required

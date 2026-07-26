@@ -107,7 +107,7 @@ export default function Contact() {
               onChange={handleChange}
               required
               placeholder="First and last name"
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -122,7 +122,7 @@ export default function Contact() {
               onChange={handleChange}
               required
               placeholder="you@example.com"
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -137,7 +137,7 @@ export default function Contact() {
               required
               rows={5}
               placeholder="How can we help?"
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
+              className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
             />
           </div>
 

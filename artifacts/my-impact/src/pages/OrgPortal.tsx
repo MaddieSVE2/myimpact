@@ -617,7 +617,7 @@ function VerificationQueue({ orgName }: { orgName: string }) {
                       value={rejectReason}
                       onChange={e => setRejectReason(e.target.value)}
                       placeholder="Reason (optional)"
-                      className="flex-1 text-xs px-2 py-1 border border-border rounded focus:outline-none focus:border-primary"
+                      className="bg-white flex-1 text-xs px-2 py-1 border border-border rounded focus:outline-none focus:border-primary"
                     />
                     <button onClick={confirmReject} className="p-1 text-red-600 hover:bg-red-50 rounded" aria-label="Confirm reject">
                       <CheckCircle2 className="w-4 h-4" />
@@ -1059,7 +1059,7 @@ function JoinOrgPanel() {
                       value={consentHistoricFrom}
                       max={new Date().toISOString().slice(0, 10)}
                       onChange={e => setConsentHistoricFrom(e.target.value)}
-                      className="mt-2 block px-3 py-1.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                      className="bg-white mt-2 block px-3 py-1.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                       data-testid="input-consent-historic-from"
                     />
                   )}
@@ -1140,7 +1140,7 @@ function JoinOrgPanel() {
                   value={code}
                   onChange={e => { setCode(e.target.value.toUpperCase()); setError(null); }}
                   placeholder="e.g. CHARITY-ABC123"
-                  className="flex-1 px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary"
+                  className="bg-white flex-1 px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary"
                 />
                 <button
                   onClick={() => { if (canSubmit) validateMutation.mutate({ inviteCode: code, orgId: selectedOrg.id }); }}
@@ -1224,7 +1224,7 @@ function PeriodSelector({
             type="date"
             value={from}
             onChange={e => { onFromChange(e.target.value); }}
-            className="px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
+            className="bg-white px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -1233,7 +1233,7 @@ function PeriodSelector({
             type="date"
             value={to}
             onChange={e => { onToChange(e.target.value); }}
-            className="px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
+            className="bg-white px-2 py-1.5 rounded-lg border border-border text-xs focus:outline-none focus:border-primary"
           />
         </div>
       </div>
@@ -1537,7 +1537,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
                 value={hourlyRate}
                 onChange={e => setHourlyRate(e.target.value)}
                 placeholder="e.g. 5.00"
-                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
               />
             </div>
             <div>
@@ -1549,7 +1549,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
                 value={donationMultiplier}
                 onChange={e => setDonationMultiplier(e.target.value)}
                 placeholder="e.g. 1.0 = double"
-                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
               />
             </div>
             <div>
@@ -1561,7 +1561,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
                 value={monthlyCap}
                 onChange={e => setMonthlyCap(e.target.value)}
                 placeholder="optional"
-                className="w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
               />
             </div>
           </div>
@@ -1572,7 +1572,7 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
               type="date"
               value={effectiveFrom}
               onChange={e => setEffectiveFrom(e.target.value)}
-              className="px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white px-2.5 py-1.5 rounded-md border border-border text-sm focus:outline-none focus:border-primary"
             />
           </div>
 

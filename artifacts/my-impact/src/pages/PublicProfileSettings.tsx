@@ -589,7 +589,7 @@ export default function PublicProfileSettings() {
                 onChange={e => handleSlugChange(e.target.value)}
                 disabled={profile.slugCustomised}
                 maxLength={30}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed pr-8"
+                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed pr-8"
                 placeholder="your-slug"
               />
               {slugChanged && (
@@ -644,7 +644,7 @@ export default function PublicProfileSettings() {
             maxLength={500}
             rows={3}
             placeholder="e.g. I'm passionate about community volunteering and looking for opportunities to make a difference…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition resize-none"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition resize-none"
           />
           <p className="text-xs text-muted-foreground text-right mt-0.5">{customMessage.length}/500</p>
         </div>

@@ -314,7 +314,7 @@ export default function ChallengeDetail() {
               type="text"
               readOnly
               value={inviteUrl}
-              className="flex-1 px-3 py-2 rounded-lg border border-border text-xs font-mono bg-muted/20 truncate"
+              className="flex-1 px-3 py-2 rounded-lg border border-border text-xs font-mono bg-white truncate"
               onFocus={e => e.currentTarget.select()}
             />
             <button

@@ -204,7 +204,7 @@ export function PdfPager({ src, height = 520 }: PdfPagerProps) {
               const clamped = Math.min(numPages, Math.max(1, Math.floor(v)));
               setCurrentPage(clamped);
             }}
-            className="w-12 text-center px-1 py-0.5 rounded border border-border text-xs"
+            className="bg-white w-12 text-center px-1 py-0.5 rounded border border-border text-xs"
             data-testid="pdf-pager-input"
             aria-label="Jump to page"
           />{" "}

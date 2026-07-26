@@ -537,7 +537,7 @@ export default function Admin() {
                 <select
                   value={aiFilter}
                   onChange={(e) => { setAiFilter(e.target.value as AiFilter); setAiPage(1); }}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  className="rounded-md border border-border bg-white px-2 py-1 text-sm"
                   data-testid="admin-ai-filter"
                 >
                   <option value="all">All callers</option>
@@ -550,7 +550,7 @@ export default function Admin() {
                 <select
                   value={aiSort}
                   onChange={(e) => { setAiSort(e.target.value as AiSortKey); setAiPage(1); }}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  className="rounded-md border border-border bg-white px-2 py-1 text-sm"
                   data-testid="admin-ai-sort"
                 >
                   <option value="cost">Cost</option>

@@ -217,7 +217,7 @@ function CreateChallengeForm({
           onChange={e => setName(e.target.value)}
           placeholder="e.g. Spring volunteering sprint"
           maxLength={120}
-          className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+          className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -229,7 +229,7 @@ function CreateChallengeForm({
           rows={2}
           maxLength={500}
           placeholder="A short note about why this matters"
-          className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-y"
+          className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-y"
         />
       </div>
 
@@ -251,7 +251,7 @@ function CreateChallengeForm({
             value={target}
             onChange={e => setTarget(e.target.value)}
             min="1"
-            className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+            className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
           />
         </div>
       </div>
@@ -263,7 +263,7 @@ function CreateChallengeForm({
             type="date"
             value={startDate}
             onChange={e => setStartDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+            className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
           />
         </div>
         <div className="space-y-1.5">
@@ -273,7 +273,7 @@ function CreateChallengeForm({
             value={endDate}
             onChange={e => setEndDate(e.target.value)}
             min={startDate}
-            className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+            className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
           />
         </div>
       </div>

@@ -222,7 +222,7 @@ function AddConfigForm({ availableProviders, onCancel, onSaved }: {
           value={domain}
           onChange={(e) => { setDomain(e.target.value); setError(null); }}
           placeholder="e.g. acmecharity.org"
-          className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+          className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
         />
         <p className="text-[11px] text-muted-foreground mt-1">
           Users with email addresses on this domain can sign in via {provider === "google" ? "Google" : "Microsoft"}.
@@ -239,7 +239,7 @@ function AddConfigForm({ availableProviders, onCancel, onSaved }: {
             value={tenantId}
             onChange={(e) => { setTenantId(e.target.value); setError(null); }}
             placeholder="00000000-0000-0000-0000-000000000000"
-            className="w-full px-3 py-2 rounded-lg border border-border text-sm font-mono focus:outline-none focus:border-primary"
+            className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm font-mono focus:outline-none focus:border-primary"
           />
           <p className="text-[11px] text-muted-foreground mt-1">
             Find this in your Azure portal under Microsoft Entra ID → Overview → Tenant ID.

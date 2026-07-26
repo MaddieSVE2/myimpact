@@ -601,7 +601,7 @@ export default function Journal() {
               onChange={e => setDraft(e.target.value)}
               placeholder="Write freely. This is just for you…"
               rows={4}
-              className="w-full p-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+              className="w-full p-3 rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
               autoFocus
             />
             <ReflectionPrompts

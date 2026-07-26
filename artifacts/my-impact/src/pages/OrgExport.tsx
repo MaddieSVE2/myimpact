@@ -396,7 +396,7 @@ export default function OrgExport() {
             <label className="block text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">From</label>
             <input
               type="date" value={from} onChange={e => setFrom(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
+              className="bg-white w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
               data-testid="export-from"
             />
           </div>
@@ -404,7 +404,7 @@ export default function OrgExport() {
             <label className="block text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">To</label>
             <input
               type="date" value={to} onChange={e => setTo(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
+              className="bg-white w-full px-2 py-1.5 rounded-md border border-border text-[13px]"
               data-testid="export-to"
             />
           </div>

@@ -687,7 +687,7 @@ export default function OrgMemberSubmit() {
                             onChange={e => updateLine(SOMETHING_ELSE_ID, { title: e.target.value })}
                             maxLength={120}
                             placeholder="Describe what you did"
-                            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                            className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                             data-testid="member-submit-something-else-title"
                             onClick={e => e.stopPropagation()}
                           />
@@ -728,7 +728,7 @@ export default function OrgMemberSubmit() {
               value={activityDate}
               onChange={e => setActivityDate(e.target.value || todayIso())}
               max={todayIso()}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="member-submit-activity-date"
             />
           </div>
@@ -797,7 +797,7 @@ export default function OrgMemberSubmit() {
                         step={0.5}
                         value={line.hoursPerYear || ""}
                         onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                        className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                         data-testid={`member-submit-hours-${line.activityId}`}
                       />
                     </div>
@@ -813,7 +813,7 @@ export default function OrgMemberSubmit() {
                             step={1}
                             value={line.hoursPerYear || ""}
                             onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                            className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                             data-testid={`member-submit-hours-${line.activityId}`}
                           />
                         </div>
@@ -826,7 +826,7 @@ export default function OrgMemberSubmit() {
                               step={1}
                               value={line.quantity || ""}
                               onChange={e => updateLine(line.activityId, { quantity: Number(e.target.value) || 0 })}
-                              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                               data-testid={`member-submit-quantity-${line.activityId}`}
                             />
                           </div>
@@ -840,7 +840,7 @@ export default function OrgMemberSubmit() {
                               step={1}
                               value={line.hoursPerYear || ""}
                               onChange={e => updateLine(line.activityId, { hoursPerYear: Number(e.target.value) || 0, hoursManual: true })}
-                              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                               data-testid={`member-submit-hours-${line.activityId}`}
                             />
                           </div>
@@ -854,7 +854,7 @@ export default function OrgMemberSubmit() {
                           onChange={e => updateLine(line.activityId, { title: e.target.value })}
                           maxLength={120}
                           placeholder="Short label"
-                          className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                          className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                           data-testid={`member-submit-title-${line.activityId}`}
                         />
                       </div>
@@ -888,21 +888,21 @@ export default function OrgMemberSubmit() {
                                 <NumberInput min="0.5" step="0.5"
                                   value={calc.hrsPerSession}
                                   onChange={e => updateSessionCalc(line.activityId, { hrsPerSession: Number(e.target.value) || 0 })}
-                                  className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  className="bg-white w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   data-testid={`member-submit-calc-hrs-${line.activityId}`}
                                 />
                                 <span className="text-muted-foreground text-xs">hrs/session ×</span>
                                 <NumberInput min="1"
                                   value={calc.sessionsPerWeek}
                                   onChange={e => updateSessionCalc(line.activityId, { sessionsPerWeek: Number(e.target.value) || 0 })}
-                                  className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   data-testid={`member-submit-calc-sessions-${line.activityId}`}
                                 />
                                 <span className="text-muted-foreground text-xs">/week ×</span>
                                 <NumberInput min="1" max="52"
                                   value={calc.weeksPerYear}
                                   onChange={e => updateSessionCalc(line.activityId, { weeksPerYear: Number(e.target.value) || 0 })}
-                                  className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                  className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   data-testid={`member-submit-calc-weeks-${line.activityId}`}
                                 />
                                 <span className="text-muted-foreground text-xs">weeks =</span>
@@ -924,7 +924,7 @@ export default function OrgMemberSubmit() {
                         maxLength={500}
                         rows={2}
                         placeholder="e.g. Helped serve lunch to 40 older residents at the community centre"
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none resize-y focus:border-primary"
+                        className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none resize-y focus:border-primary"
                         data-testid={`member-submit-detail-${line.activityId}`}
                       />
                       <p className="mt-1 text-[11px] text-muted-foreground">This is what your manager will see in the activity feed.</p>

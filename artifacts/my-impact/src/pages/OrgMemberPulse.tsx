@@ -131,7 +131,7 @@ function SurveyCard({ survey, onResponded, onDismiss }: {
                 onChange={e => setComment(e.target.value.slice(0, 500))}
                 placeholder="Anything you'd like to add? (optional)"
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
                 data-testid="member-pulse-comment"
               />
               {error && <p className="text-xs text-red-600 mt-2">{error}</p>}

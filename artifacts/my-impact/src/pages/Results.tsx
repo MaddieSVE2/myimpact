@@ -725,7 +725,7 @@ function DofEPanel({ breakdowns }: { breakdowns: Array<{ activityId: string; act
               readOnly
               value={portfolioText}
               rows={5}
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-xs text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-xs text-foreground bg-white resize-none focus:outline-none leading-relaxed"
             />
             <button
               onClick={handleCopy}
@@ -1507,7 +1507,7 @@ export default function Results() {
               readOnly
               value={generateCVText(result, interests, careerBreak, situation)}
               rows={5}
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-muted/20 resize-none focus:outline-none leading-relaxed"
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground bg-white resize-none focus:outline-none leading-relaxed"
             />
             <button
               onClick={() => {

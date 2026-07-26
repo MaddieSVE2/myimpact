@@ -237,7 +237,7 @@ export default function Login() {
                       onChange={(e) => { setEmail(e.target.value); setError(null); setUndeliverable(false); }}
                       placeholder={t("login.emailPlaceholder")}
                       required
-                      className="w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+                      className="bg-white w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
                     />
                   </div>
                 </div>

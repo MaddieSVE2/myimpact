@@ -112,7 +112,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
                 type="text"
                 readOnly
                 value={data.inviteUrl}
-                className="flex-1 text-xs px-3 py-2.5 rounded-lg border border-border bg-muted/30 text-foreground font-mono focus:outline-none"
+                className="flex-1 text-xs px-3 py-2.5 rounded-lg border border-border bg-white text-foreground font-mono focus:outline-none"
                 onClick={e => (e.target as HTMLInputElement).select()}
                 aria-label="Your personal invite link"
               />

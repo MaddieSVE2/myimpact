@@ -252,7 +252,7 @@ function LiveShareLinkManager() {
               value={funderLabel}
               onChange={e => setFunderLabel(e.target.value.slice(0, 80))}
               placeholder="e.g. National Lottery Community Fund"
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-funder-label"
             />
           </div>
@@ -277,7 +277,7 @@ function LiveShareLinkManager() {
                 value={expiresAt}
                 min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
                 onChange={e => setExpiresAt(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-expires-at"
               />
             </div>

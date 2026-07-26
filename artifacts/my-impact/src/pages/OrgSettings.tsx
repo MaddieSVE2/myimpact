@@ -465,7 +465,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                 readOnly
                 value={inviteLoading ? "Loading…" : inviteLink}
                 onFocus={e => e.currentTarget.select()}
-                className="flex-1 px-3 py-2 rounded-md bg-muted/40 font-mono text-[13px] text-foreground border border-border focus:outline-none focus:border-primary"
+                className="flex-1 px-3 py-2 rounded-md bg-white font-mono text-[13px] text-foreground border border-border focus:outline-none focus:border-primary"
                 data-testid="text-invite-link"
               />
               <button
@@ -690,7 +690,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
             value={newInviteEmail}
             onChange={e => setNewInviteEmail(e.target.value)}
             placeholder="person@example.com"
-            className="flex-1 px-3 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
+            className="bg-white flex-1 px-3 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
             data-testid="input-new-invite"
           />
           <button type="submit" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors" data-testid="button-send-invite">
@@ -1363,7 +1363,7 @@ function ColourField({ label, value, onChange, testId }: { label: string; value:
         value={value}
         onChange={e => setHex(e.target.value)}
         maxLength={7}
-        className="font-mono text-[13px] px-2 py-1.5 rounded border border-border w-24 uppercase"
+        className="bg-white font-mono text-[13px] px-2 py-1.5 rounded border border-border w-24 uppercase"
         data-testid={`hex-${testId}`}
       />
       {!isValid && <span className="text-[11px] text-red-600">Invalid hex</span>}

@@ -336,12 +336,12 @@ export default function AdminOrganisations() {
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Organisation name</label>
             <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-org-name" />
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-org-name" />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Type</label>
             <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background" data-testid="select-org-type">
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white" data-testid="select-org-type">
               <option value="charity">Charity</option>
               <option value="company">Company</option>
               <option value="university">University</option>
@@ -353,12 +353,12 @@ export default function AdminOrganisations() {
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Contact name</label>
             <input required value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-contact-name" />
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-contact-name" />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Contact email</label>
             <input required type="email" value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-contact-email" />
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary" data-testid="input-contact-email" />
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-foreground mb-1.5">

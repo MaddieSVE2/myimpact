@@ -117,7 +117,7 @@ export default function ChallengeJoin() {
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
           placeholder="e.g. AB12CD34"
-          className="w-full px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary mb-4"
+          className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:border-primary mb-4"
         />
 
         {loadingPreview && (

@@ -391,7 +391,7 @@ export default function OrgActivities() {
                 value={query}
                 onChange={e => { setQuery(e.target.value); setPage(1); }}
                 placeholder="Search description, activity, member…"
-                className="w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
+                className="bg-white w-full pl-8 pr-2 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
                 data-testid="input-search"
               />
             </div>
@@ -411,8 +411,8 @@ export default function OrgActivities() {
               }
             </select>
             <div className="flex gap-1">
-              <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="From" />
-              <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="To" />
+              <input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className="bg-white flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="From" />
+              <input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className="bg-white flex-1 min-w-0 px-2 py-1.5 rounded-md border border-border text-[13px]" aria-label="To" />
             </div>
           </div>
 

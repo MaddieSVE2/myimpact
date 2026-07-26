@@ -96,7 +96,7 @@ export function FeedbackWidget() {
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="What's on your mind? Any issues, ideas, or general thoughts..."
-                  className="w-full text-sm border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-background placeholder:text-muted-foreground"
+                  className="w-full text-sm border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 text-foreground bg-white placeholder:text-muted-foreground"
                   rows={4}
                   maxLength={2000}
                   aria-label="Feedback message"

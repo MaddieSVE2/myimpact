@@ -372,7 +372,7 @@ export default function CalendarSyncSection() {
                 <select
                   value={picker.calendarId}
                   onChange={(e) => setPicker({ ...picker, calendarId: e.target.value })}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
                 >
                   {picker.calendars.length === 0 ? (
                     <option value="">No calendars available</option>
@@ -394,7 +394,7 @@ export default function CalendarSyncSection() {
                   value={picker.filterText}
                   onChange={(e) => setPicker({ ...picker, filterText: e.target.value })}
                   placeholder="e.g. volunteer, mentoring"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Comma-separated. Leave blank to include every event in the chosen calendar.

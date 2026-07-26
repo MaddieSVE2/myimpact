@@ -52,7 +52,7 @@ export function RecurringTemplateDialog({
           value={tplLabel}
           onChange={(e) => setTplLabel(e.target.value)}
           placeholder="e.g. Tuesday food bank shift"
-          className="w-full px-3 py-2.5 mb-4 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+          className="bg-white w-full px-3 py-2.5 mb-4 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
           data-testid="recurring-template-label-input"
         />
 
@@ -84,7 +84,7 @@ export function RecurringTemplateDialog({
           <select
             value={tplDay}
             onChange={(e) => setTplDay(parseInt(e.target.value, 10))}
-            className="w-full px-3 py-2.5 mb-5 text-sm border border-border rounded-md"
+            className="bg-white w-full px-3 py-2.5 mb-5 text-sm border border-border rounded-md"
           >
             {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d}>{`Day ${d}`}</option>

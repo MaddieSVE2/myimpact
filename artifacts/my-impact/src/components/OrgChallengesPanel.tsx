@@ -181,7 +181,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
             <input
               type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-challenge-name"
             />
           </div>
@@ -189,7 +189,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
             <textarea
               value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-challenge-description"
             />
           </div>
@@ -208,7 +208,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <div>
               <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
               <NumberInput min="1" value={target} onChange={e => setTarget(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-target"
               />
             </div>
@@ -216,7 +216,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
               <input
                 type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-start"
               />
             </div>
@@ -224,7 +224,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               <label className="block text-[13px] font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
               <input
                 type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-end"
               />
             </div>
@@ -234,7 +234,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <input
               type="text" value={departmentTag} onChange={e => setDepartmentTag(e.target.value.slice(0, 60))} maxLength={60}
               placeholder="e.g. Engineering, HR"
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-challenge-department-tag"
             />
           </div>
@@ -408,7 +408,7 @@ function DemoOrgChallengesPanel() {
             <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesName")}</label>
             <input
               type="text" value={name} onChange={e => setName(e.target.value.slice(0, 120))} maxLength={120}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-challenge-name"
             />
           </div>
@@ -416,7 +416,7 @@ function DemoOrgChallengesPanel() {
             <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesDescription")}</label>
             <textarea
               value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-challenge-description"
             />
           </div>
@@ -435,7 +435,7 @@ function DemoOrgChallengesPanel() {
             <div>
               <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesTarget")}</label>
               <NumberInput min="1" value={target} onChange={e => setTarget(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-target"
               />
             </div>
@@ -443,7 +443,7 @@ function DemoOrgChallengesPanel() {
               <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesStart")}</label>
               <input
                 type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-start"
               />
             </div>
@@ -451,7 +451,7 @@ function DemoOrgChallengesPanel() {
               <label className="block text-xs font-medium text-foreground mb-1.5">{t("orgDashboard.challengesEnd")}</label>
               <input
                 type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 data-testid="input-challenge-end"
               />
             </div>

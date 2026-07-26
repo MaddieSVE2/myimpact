@@ -332,7 +332,7 @@ export default function ActionsStep() {
               }}
               onBlur={handleLocationBlur}
               placeholder={t("wizard.postcodePlaceholder")}
-              className="w-full pl-9 pr-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              className="w-full pl-9 pr-4 py-3 min-h-[44px] rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
           <div className="mt-1.5 h-5">
@@ -403,7 +403,7 @@ export default function ActionsStep() {
                 value={customInterest}
                 onChange={e => setCustomInterest(e.target.value)}
                 placeholder={t("wizard.customInterestPlaceholder")}
-                className="w-full px-4 py-3 min-h-[44px] rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                className="w-full px-4 py-3 min-h-[44px] rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 autoFocus
               />
             </motion.div>

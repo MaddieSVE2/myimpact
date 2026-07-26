@@ -246,7 +246,7 @@ function LivePulseSurveysSection() {
               onChange={e => setQuestion(e.target.value.slice(0, 200))}
               placeholder={template === "custom" ? "e.g. How connected do you feel to your community?" : ""}
               maxLength={200}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-pulse-question"
             />
           </div>
@@ -834,7 +834,7 @@ function DemoPulseSurveysSection() {
               onChange={e => setQuestion(e.target.value.slice(0, 200))}
               placeholder={template === "custom" ? "e.g. How connected do you feel to your community?" : ""}
               maxLength={200}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
               data-testid="input-pulse-question"
             />
           </div>

@@ -189,7 +189,7 @@ export default function Settings() {
                 onKeyDown={e => { if (e.key === "Enter" && nameChanged) handleSaveName(); }}
                 placeholder={t("settings.displayNamePlaceholder")}
                 maxLength={80}
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                className="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
               />
               <button
                 onClick={handleSaveName}
@@ -672,7 +672,7 @@ function YourDataSection() {
               onChange={(e) => { setConfirmEmail(e.target.value); setDeleteError(null); }}
               placeholder={userEmail}
               data-testid="input-confirm-delete-email"
-              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              className="bg-white w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
             />
             {deleteError && (
               <p className="mt-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
@@ -959,7 +959,7 @@ function SidekickVoiceSettings() {
             value={voicePersona}
             disabled={saving}
             onChange={(e) => handleChangePersona(e.target.value as VoicePersona)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
             data-testid="voice-persona-select"
           >
             {VOICE_PERSONA_OPTIONS.map((opt) => (
@@ -979,7 +979,7 @@ function SidekickVoiceSettings() {
             value={voiceAccent}
             disabled={saving}
             onChange={(e) => handleChangeAccent(e.target.value as VoiceAccent)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
             data-testid="voice-accent-select"
           >
             {VOICE_ACCENT_OPTIONS.map((opt) => (
@@ -1534,7 +1534,7 @@ function TemplatesSettings() {
                       <input
                         value={editLabel}
                         onChange={(e) => setEditLabel(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                        className="bg-white w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
                         placeholder="Label"
                       />
                       <div className="flex items-center gap-2">
@@ -1546,7 +1546,7 @@ function TemplatesSettings() {
                             if (c === "monthly" && editDay > 28) setEditDay(1);
                             if ((c === "weekly" || c === "fortnightly") && editDay > 6) setEditDay(1);
                           }}
-                          className="px-2 py-2 text-xs border border-border rounded-md"
+                          className="bg-white px-2 py-2 text-xs border border-border rounded-md"
                         >
                           <option value="weekly">Weekly</option>
                           <option value="fortnightly">Fortnightly</option>
@@ -1556,7 +1556,7 @@ function TemplatesSettings() {
                           <select
                             value={editDay}
                             onChange={(e) => setEditDay(parseInt(e.target.value, 10))}
-                            className="px-2 py-2 text-xs border border-border rounded-md"
+                            className="bg-white px-2 py-2 text-xs border border-border rounded-md"
                           >
                             {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
                               <option key={d} value={d}>{`Day ${d}`}</option>
@@ -1566,7 +1566,7 @@ function TemplatesSettings() {
                           <select
                             value={editDay}
                             onChange={(e) => setEditDay(parseInt(e.target.value, 10))}
-                            className="px-2 py-2 text-xs border border-border rounded-md"
+                            className="bg-white px-2 py-2 text-xs border border-border rounded-md"
                           >
                             {DAYS_OF_WEEK.map((d, i) => (
                               <option key={d} value={i}>{d}</option>

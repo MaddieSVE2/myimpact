@@ -383,7 +383,7 @@ export default function OrgRegister() {
                   onChange={handleChange}
                   required
                   placeholder={edu ? "e.g. Northfield University" : "e.g. Riverside Youth Trust"}
-                  className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                  className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                 />
               </div>
 
@@ -414,7 +414,7 @@ export default function OrgRegister() {
                     onChange={handleChange}
                     required
                     placeholder="First and last name"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                    className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
@@ -426,7 +426,7 @@ export default function OrgRegister() {
                     onChange={handleChange}
                     required
                     placeholder="you@organisation.org"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
+                    className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -460,7 +460,7 @@ export default function OrgRegister() {
                       ? "e.g. Evidencing student employability portfolios, improving UCAS outcomes data, tracking student engagement with extracurricular activities..."
                       : "e.g. Tracking volunteer impact for annual report, evidencing outcomes for funders..."
                   }
-                  className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
+                  className="bg-white w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary resize-none"
                 />
               </div>
 

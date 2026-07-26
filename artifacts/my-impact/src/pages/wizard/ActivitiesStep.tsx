@@ -593,7 +593,7 @@ export default function ActivitiesStep() {
                       placeholder="e.g. I cycle to work, help at a food bank and donate blood"
                       rows={4}
                       disabled={describeLoading}
-                      className="w-full p-3 rounded-lg border border-border bg-background text-sm focus:border-primary outline-none resize-none leading-relaxed disabled:opacity-60"
+                      className="w-full p-3 rounded-lg border border-border bg-white text-sm focus:border-primary outline-none resize-none leading-relaxed disabled:opacity-60"
                     />
 
                     {!describeLoading && (
@@ -714,7 +714,7 @@ export default function ActivitiesStep() {
                         value={pickSearch}
                         onChange={e => setPickSearch(e.target.value)}
                         placeholder="Search activities…"
-                        className="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                        className="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                       />
                     </div>
 
@@ -861,7 +861,7 @@ export default function ActivitiesStep() {
                                     onChange={e => { setCustomName(e.target.value); setAnalysed(null); setAnalyseError(""); }}
                                     onKeyDown={e => e.key === "Enter" && !analysed && analyseActivity()}
                                     placeholder="e.g. Litter picking, befriending scheme, peer support…"
-                                    className="flex-1 p-2.5 rounded-md border border-border bg-background text-sm focus:border-primary outline-none"
+                                    className="flex-1 p-2.5 rounded-md border border-border bg-white text-sm focus:border-primary outline-none"
                                     autoFocus
                                     disabled={analysing}
                                   />
@@ -1111,7 +1111,7 @@ export default function ActivitiesStep() {
                                       setSessionHrs(v);
                                       setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(v * sessionsPerWeek * weeksPerYear) }));
                                     }}
-                                    className="w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                    className="bg-white w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   />
                                   <span className="text-muted-foreground text-xs">hrs/session ×</span>
                                   <NumberInput min="1"
@@ -1121,7 +1121,7 @@ export default function ActivitiesStep() {
                                       setSessionsPerWeek(v);
                                       setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * v * weeksPerYear) }));
                                     }}
-                                    className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                    className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   />
                                   <span className="text-muted-foreground text-xs">×</span>
                                   <NumberInput min="1" max="52"
@@ -1131,7 +1131,7 @@ export default function ActivitiesStep() {
                                       setWeeksPerYear(v);
                                       setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * sessionsPerWeek * v) }));
                                     }}
-                                    className="w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
+                                    className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
                                   />
                                   <span className="text-muted-foreground text-xs">weeks =</span>
                                   <span className="font-bold text-foreground text-sm">
