@@ -432,8 +432,8 @@ async function buildWidgetPayload(slug: string) {
 }
 
 // ── GET /api/public-profile/:slug/widget.json — widget data (cached) ──────────
-router.get("/:slug/widget.json", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = String(req.params.slug ?? "").trim().toLowerCase();
+router.get("/:slug/widget.json", publicRateLimit, async (req: Request<Record<string, string>>, res: Response) => {
+  const slug = (req.params.slug ?? "").trim().toLowerCase();
   const payload = await buildWidgetPayload(slug);
 
   // Allow cross-origin reads from third-party host pages (the iframe loads
@@ -544,8 +544,8 @@ async function buildWidgetStatus(
   return { enabled: true, version };
 }
 
-router.get("/:slug/widget.status", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = String(req.params.slug ?? "").trim().toLowerCase();
+router.get("/:slug/widget.status", publicRateLimit, async (req: Request<Record<string, string>>, res: Response) => {
+  const slug = (req.params.slug ?? "").trim().toLowerCase();
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "no-store");
 
@@ -831,8 +831,8 @@ function renderWidgetHtml(
 }
 
 // ── GET /api/public-profile/:slug — public page data (no auth, rate limited) ──
-router.get("/:slug", publicRateLimit, async (req: Request, res: Response) => {
-  const slug = String(req.params.slug ?? "").trim().toLowerCase();
+router.get("/:slug", publicRateLimit, async (req: Request<Record<string, string>>, res: Response) => {
+  const slug = (req.params.slug ?? "").trim().toLowerCase();
 
   const profile = await db.query.publicProfilesTable.findFirst({
     where: eq(publicProfilesTable.slug, slug),

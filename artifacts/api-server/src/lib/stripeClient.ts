@@ -6,15 +6,15 @@ import Stripe from "stripe";
 
 let cached: Stripe | null = null;
 
+// The SDK's types pin apiVersion to the latest release literal, but we
+// deliberately stay on the version our webhook handlers were built against.
+type StripeApiVersion = NonNullable<ConstructorParameters<typeof Stripe>[1]>["apiVersion"];
+
 export function getStripeClient(): Stripe | null {
   if (cached) return cached;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  // The SDK types pin `apiVersion` to the latest release literal, but Stripe
-  // accepts any valid dated version string at runtime; keep ours pinned.
-  cached = new Stripe(key, {
-    apiVersion: "2025-08-27.basil",
-  } as unknown as ConstructorParameters<typeof Stripe>[1]);
+  cached = new Stripe(key, { apiVersion: "2025-08-27.basil" as StripeApiVersion });
   return cached;
 }
 

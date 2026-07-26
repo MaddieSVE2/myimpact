@@ -4,7 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Sentry, isSentryEnabled } from "../lib/sentry.js";
 
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request<Record<string, string>> {
   user?: { id: string; email: string };
 }
 

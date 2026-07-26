@@ -24,3 +24,4 @@
 - [Express 5 req.params typing](express5-params-typing.md) — @types v5.1 types params as string|string[]; normalize with String(req.params.x), don't pin the types package. api-server typecheck runs via the typecheck-api validation.
 - [Admin session for tests](admin-session-for-tests.md) — demo personas aren't admins; mint an mi_session JWT with SESSION_SECRET for an allowlisted email to test admin API/UI in dev.
 - [Org manager review surfaces](org-manager-review-surfaces.md) — manager per-record features need both OrgPortal (lite) and OrgActivities (full tier); demo org's Activities page is mock data, test with the university org.
+- [Express 5 param types](express5-param-types.md) — @types/express v5 types req.params as string|string[]; AuthenticatedRequest pins Request<Record<string,string>>; plain Request handlers need same generic.

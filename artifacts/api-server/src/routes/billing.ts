@@ -48,7 +48,15 @@ router.get("/tiers", (_req: Request, res: Response) => {
 // ── Per-org subscription state ──────────────────────────────────────────────
 // Manager-only. Returns the resolved tier + feature snapshot so the org
 // portal can render badges / "upgrade" CTAs.
-async function getManagerOrg(req: AuthenticatedRequest) {
+type ManagerOrgResult =
+  | { error: { status: number; message: string }; membership?: never; org?: never }
+  | {
+      error?: never;
+      membership: typeof orgMembersTable.$inferSelect;
+      org: typeof organisationsTable.$inferSelect;
+    };
+
+async function getManagerOrg(req: AuthenticatedRequest): Promise<ManagerOrgResult> {
   const userId = req.user!.id;
   const membership = await db.query.orgMembersTable.findFirst({
     where: eq(orgMembersTable.userId, userId),
@@ -66,8 +74,8 @@ async function getManagerOrg(req: AuthenticatedRequest) {
 
 router.get("/subscription", authenticate, async (req: AuthenticatedRequest, res) => {
   const result = await getManagerOrg(req);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
   const snapshot = await getFeatureSnapshot(result.org.id);
@@ -96,8 +104,8 @@ router.post("/checkout", authenticate, checkoutRateLimit, async (req: Authentica
   }
 
   const result = await getManagerOrg(req);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
 
@@ -176,8 +184,8 @@ router.post("/portal", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   const result = await getManagerOrg(req);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
 

@@ -1306,7 +1306,11 @@ function generateShareSlug(): string {
   return randomBytes(6).toString("hex");
 }
 
-async function requireManager(userId: string) {
+type RequireManagerResult =
+  | { error: { status: number; message: string }; membership?: never }
+  | { error?: never; membership: typeof orgMembersTable.$inferSelect };
+
+async function requireManager(userId: string): Promise<RequireManagerResult> {
   const membership = await db.query.orgMembersTable.findFirst({
     where: eq(orgMembersTable.userId, userId),
   });
@@ -1318,8 +1322,8 @@ async function requireManager(userId: string) {
 router.get("/share-links", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const result = await requireManager(userId);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
 
@@ -1346,8 +1350,8 @@ router.get("/share-links", authenticate, async (req: AuthenticatedRequest, res) 
 router.post("/share-links", authenticate, shareLinkCreateRateLimit, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const result = await requireManager(userId);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
 
@@ -1435,8 +1439,8 @@ router.post("/share-links", authenticate, shareLinkCreateRateLimit, async (req: 
 router.post("/share-links/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const result = await requireManager(userId);
-  if ("error" in result) {
-    res.status(result.error!.status).json({ error: result.error!.message });
+  if (result.error) {
+    res.status(result.error.status).json({ error: result.error.message });
     return;
   }
 
