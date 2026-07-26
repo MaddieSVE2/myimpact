@@ -18,6 +18,7 @@ import { PulseSurveysSection } from "@/components/PulseSurveysSection";
 import { NumberInput } from "@/components/ui/number-input";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 import { VerificationQueue } from "@/components/VerificationQueue";
+import { useAuth } from "@/lib/auth-context";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -822,6 +823,9 @@ function JoinOrgPanel() {
   }
   const [orgName, setOrgName] = useState("");
   const [allowedDomain, setAllowedDomain] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userEmailDomain = user?.email?.split("@")[1]?.toLowerCase() ?? null;
+  const domainMismatch = !!(allowedDomain && userEmailDomain && userEmailDomain !== allowedDomain.toLowerCase());
   const [dataSharingMode, setDataSharingMode] = useState<"explicit_submission" | "consented_logging">("explicit_submission");
   const [consentScope, setConsentScope] = useState<"from_join" | "historic">("from_join");
   const [consentHistoricFrom, setConsentHistoricFrom] = useState("");
@@ -959,10 +963,17 @@ function JoinOrgPanel() {
           <p className="text-sm text-muted-foreground">Before you confirm, here's exactly what will and won't be shared:</p>
         </div>
         {allowedDomain && (
-          <div className="mx-6 mb-2 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-800">
-            <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-blue-500" />
-            <span>This organisation restricts membership to <strong>@{allowedDomain}</strong> email addresses. Your account email must match to be accepted.</span>
-          </div>
+          domainMismatch ? (
+            <div className="mx-6 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800" data-testid="notice-domain-mismatch">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
+              <span>This organisation only accepts members with an <strong>@{allowedDomain}</strong> email address. You're signed in as <strong>{user?.email}</strong>, which doesn't match — so you won't be able to join with this account. Sign in with your @{allowedDomain} email to join.</span>
+            </div>
+          ) : (
+            <div className="mx-6 mb-2 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-800">
+              <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-blue-500" />
+              <span>This organisation restricts membership to <strong>@{allowedDomain}</strong> email addresses. Your account email must match to be accepted.</span>
+            </div>
+          )
         )}
         <div className="px-6 pb-4 space-y-2">
           {(dataSharingMode === "consented_logging"
@@ -1039,7 +1050,7 @@ function JoinOrgPanel() {
             </button>
             <button
               onClick={() => joinMutation.mutate({ inviteCode: code, orgId: selectedOrg!.id })}
-              disabled={joinMutation.isPending || (dataSharingMode === "consented_logging" && consentScope === "historic" && !consentHistoricFrom)}
+              disabled={joinMutation.isPending || domainMismatch || (dataSharingMode === "consented_logging" && consentScope === "historic" && !consentHistoricFrom)}
               className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-confirm-join"
             >
