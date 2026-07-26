@@ -1,5 +1,5 @@
 import { db, organisationsTable, orgMembersTable, orgMemberConsentsTable, impactRecordsTable } from "@workspace/db";
-import { and, eq, gte, inArray, or, type SQL } from "drizzle-orm";
+import { and, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
 
 /**
  * Helpers for the two organisation data-sharing modes and the super-admin
@@ -51,6 +51,7 @@ export function parseDashboardSectionsInput(raw: unknown): DashboardSections | n
 }
 
 export interface OrgSharingContext {
+  orgId: string;
   mode: DataSharingMode;
   revoked: boolean;
   sections: DashboardSections;
@@ -95,7 +96,7 @@ export async function getOrgSharingContext(orgId: string): Promise<OrgSharingCon
     }
   }
 
-  return { mode, revoked, sections, memberIds, shareFromByUser };
+  return { orgId, mode, revoked, sections, memberIds, shareFromByUser };
 }
 
 /** True when a record dated `entryDate` for `userId` is inside the member's shared window. */
@@ -116,7 +117,7 @@ export function recordInSharedWindow(ctx: OrgSharingContext, userId: string, ent
 export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined {
   if (ctx.memberIds.length === 0) return undefined;
   if (ctx.mode !== "consented_logging") {
-    return inArray(impactRecordsTable.userId, ctx.memberIds);
+    return and(inArray(impactRecordsTable.userId, ctx.memberIds), notOrgTwinCondition(ctx.orgId));
   }
   const parts: SQL[] = [];
   for (const userId of ctx.memberIds) {
@@ -126,7 +127,48 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
     if (cond) parts.push(cond);
   }
   if (parts.length === 0) return undefined;
-  return or(...parts);
+  return and(or(...parts), notOrgTwinCondition(ctx.orgId));
+}
+
+/**
+ * Excludes "personal twin" records from org-facing views/aggregates.
+ *
+ * When a member submits activities through the member-submit flow with
+ * "save to personal" enabled, two records are created: the org submission
+ * (source='member-submitted', submittedToOrgId set) and an identical personal
+ * copy (source='user'). Both would otherwise satisfy the shared-records
+ * condition for the org, so the same activity appeared twice in the org feed
+ * and was double-counted in dashboard totals.
+ *
+ * A personal record is treated as a twin (and excluded) when a
+ * member-submitted record for THIS org exists for the same user and either:
+ *   - the personal record's resultJson carries an explicit `orgRecordId` link
+ *     pointing at that org submission (written by the member-submit flow), or
+ *   - (legacy rows without the link) the org submission has the same
+ *     entry_date and identical activities_json.
+ *
+ * Genuine personal-only records never match and remain visible.
+ */
+export function notOrgTwinCondition(orgId: string): SQL {
+  return sql`NOT (
+    ${impactRecordsTable.source} = 'user'
+    AND EXISTS (
+      SELECT 1 FROM impact_records AS org_twin
+      WHERE org_twin.source = 'member-submitted'
+        AND org_twin.submitted_to_org_id = ${orgId}
+        AND org_twin.user_id = ${impactRecordsTable.userId}
+        AND (
+          (
+            (${impactRecordsTable.resultJson} ->> 'orgRecordId') ~ '^[0-9]+$'
+            AND org_twin.id = (${impactRecordsTable.resultJson} ->> 'orgRecordId')::int
+          )
+          OR (
+            org_twin.entry_date = ${impactRecordsTable.entryDate}
+            AND org_twin.activities_json = ${impactRecordsTable.activitiesJson}
+          )
+        )
+    )
+  )`;
 }
 
 /** Returns true (and sends a 403) when the org has been revoked. */

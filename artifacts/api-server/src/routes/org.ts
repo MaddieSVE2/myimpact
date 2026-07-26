@@ -2724,7 +2724,9 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         personalDevelopmentValue: String(personalCalc.personalDevelopmentValue),
         totalHours: Math.round(personalCalc.totalHours),
         activitiesJson: personalActivitiesJson,
-        resultJson: personalCalc,
+        // orgRecordId links this personal copy to its org submission so
+        // org-facing views can exclude the twin (see notOrgTwinCondition).
+        resultJson: { ...personalCalc, orgRecordId: inserted.id },
         source: "user",
         entryDate: parsedActivityDate,
       }).returning({ id: impactRecordsTable.id });

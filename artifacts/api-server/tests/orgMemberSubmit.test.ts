@@ -335,6 +335,37 @@ describe("POST /api/org/member-submit", () => {
     expect(state.tracked.some(t => t.eventName === "org_member_submit_completed")).toBe(true);
   });
 
+  it("saveToPersonal: links the personal copy to its org submission via resultJson.orgRecordId", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.insertedRecordId = 7777;
+
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      name: "May submission",
+      saveToPersonal: true,
+      activities: [{ activityId: "tree_planting", quantity: 3 }],
+    });
+
+    expect(res.status).toBe(201);
+
+    // Writes in order: org record, verification, personal record, audit log.
+    const impactInserts = state.inserts.filter(i => i.table === "impact_records");
+    expect(impactInserts).toHaveLength(2);
+
+    const orgValues = impactInserts[0].values as Record<string, unknown>;
+    expect(orgValues.source).toBe("member-submitted");
+    expect(orgValues.submittedToOrgId).toBe("org-1");
+
+    const personalValues = impactInserts[1].values as Record<string, unknown>;
+    expect(personalValues.source).toBe("user");
+    expect(personalValues.submittedToOrgId).toBeUndefined();
+    // The dedupe link: the personal twin must carry the org record's id so
+    // org-facing views can exclude it (see notOrgTwinCondition).
+    const personalResult = personalValues.resultJson as Record<string, unknown>;
+    expect(personalResult.orgRecordId).toBe(7777);
+  });
+
   it("rejects sneaky wizard fields like donations or actions", async () => {
     state.authUser = { id: "user-1", email: "user1@example.com" };
     state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
