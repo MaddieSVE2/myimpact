@@ -7,6 +7,8 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"./tests/**\" --if-present run typecheck",
+    "size": "pnpm --filter @workspace/my-impact run build && node scripts/check-bundle-size.mjs",
+    "size:check": "node scripts/check-bundle-size.mjs",
     "lhci": "pnpm --filter @workspace/my-impact run build && lhci autorun",
     "lhci:collect": "pnpm --filter @workspace/my-impact run build && lhci collect",
     "lhci:assert": "lhci assert",

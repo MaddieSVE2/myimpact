@@ -1,0 +1,15 @@
+{
+  "$comment": "Gzipped-size budgets for artifacts/my-impact JS chunks, enforced by scripts/check-bundle-size.mjs (pnpm size). Sizes in KiB (gzip). Patterns are matched against chunk filenames without the content hash. First matching pattern wins; 'default' applies to everything else. Tighten after deliberate optimisations; document any loosening in the PR.",
+  "chunks": [
+    { "pattern": "^index$", "maxKiB": 225, "note": "main entry + shared vendor (React, wouter, tanstack-query, UI kit)" },
+    { "pattern": "^orgPdfWorker", "maxKiB": 185, "note": "org PDF export web worker (jspdf)" },
+    { "pattern": "^org-export", "maxKiB": 160, "note": "shared org export pipeline" },
+    { "pattern": "^generateCategoricalChart", "maxKiB": 115, "note": "recharts core, lazy-loaded with charts" },
+    { "pattern": "^OrgExport", "maxKiB": 115, "note": "org export page" },
+    { "pattern": "^index\\.es", "maxKiB": 60, "note": "jspdf-autotable / pdf deps split chunks" },
+    { "pattern": "^html2canvas", "maxKiB": 55, "note": "share-card / export rasteriser" },
+    { "pattern": "^leaflet-src", "maxKiB": 50, "note": "leaflet map, lazy-loaded on map routes" },
+    { "pattern": "default", "maxKiB": 32, "note": "route-level lazy chunks and everything else" }
+  ],
+  "totalMaxKiB": 1650
+}
