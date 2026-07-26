@@ -905,8 +905,8 @@ const VOICE_PERSONA_OPTIONS: { value: VoicePersona; label: string; description: 
 ];
 
 const VOICE_ACCENT_OPTIONS: { value: VoiceAccent; label: string; description: string }[] = [
+  { value: "british", label: "British", description: "A British English accent (default)" },
   { value: "neutral", label: "Standard", description: "The voice's natural accent" },
-  { value: "british", label: "British", description: "A British English accent" },
 ];
 
 const VOICE_PREVIEW_TEXT =
@@ -917,7 +917,7 @@ function SidekickVoiceSettings() {
   const { toast } = useToast();
   const voiceEnabled = user?.voiceEnabled ?? false;
   const voicePersona = (user?.voicePersona ?? "alloy") as VoicePersona;
-  const voiceAccent = (user?.voiceAccent ?? "neutral") as VoiceAccent;
+  const voiceAccent = (user?.voiceAccent ?? "british") as VoiceAccent;
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);

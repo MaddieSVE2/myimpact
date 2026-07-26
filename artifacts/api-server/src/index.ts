@@ -17,6 +17,7 @@ async function bootstrap(): Promise<void> {
   const { startApprovalDigestJob } = await import("./lib/approvalDigest.js");
   const { seedProxies } = await import("./lib/proxyStore.js");
   const { runProxyRepairSweep } = await import("./lib/proxyRepair.js");
+  const { runVoiceAccentBackfill } = await import("./lib/voiceAccentBackfill.js");
 
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO_LOGIN === "true") {
     console.warn(
@@ -71,6 +72,10 @@ async function bootstrap(): Promise<void> {
     seedProxies()
       .then(() => runProxyRepairSweep())
       .catch((err) => console.error("[proxy-seed] Failed (non-fatal):", err));
+    // Idempotent one-shot backfill: British is now the default Sidekick accent.
+    runVoiceAccentBackfill().catch((err) =>
+      console.error("[voice-accent-backfill] Failed (non-fatal):", err)
+    );
   });
 }
 
