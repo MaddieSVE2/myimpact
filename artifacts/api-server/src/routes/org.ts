@@ -18,7 +18,7 @@ import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, get
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
-import { getOrgSharingContext, sharedRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -520,6 +520,37 @@ router.get("/my/consent", authenticate, async (req: AuthenticatedRequest, res) =
       orgName: org.name,
     } : null,
   });
+});
+
+// Preview how many of my activities would be shared if I (re-)grant consent
+// with a historic from-date. Lightweight count only — no record data returned.
+router.get("/my/consent/preview", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const membership = await db.query.orgMembersTable.findFirst({ where: eq(orgMembersTable.userId, userId) });
+  if (!membership) { res.status(404).json({ error: "You are not a member of any organisation." }); return; }
+  const org = await db.query.organisationsTable.findFirst({
+    where: eq(organisationsTable.id, membership.orgId),
+    columns: { dataSharingMode: true, name: true },
+  });
+  if (!org || org.dataSharingMode !== "consented_logging") {
+    res.status(400).json({ error: "Your organisation does not use consented logging." });
+    return;
+  }
+  const raw = req.query.from;
+  const fromStr = typeof raw === "string" ? raw : "";
+  const from = fromStr ? new Date(fromStr) : null;
+  if (!from || isNaN(from.getTime()) || from.getTime() > Date.now()) {
+    res.status(400).json({ error: "Please provide a valid past date." });
+    return;
+  }
+  const [row] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(impactRecordsTable)
+    .where(and(
+      eq(impactRecordsTable.userId, userId),
+      gte(impactRecordsTable.entryDate, from),
+      notOrgTwinCondition(membership.orgId),
+    ));
+  res.json({ count: row?.count ?? 0, from: from.toISOString(), orgName: org.name });
 });
 
 // Withdraw my consent — immediately removes my activities from org aggregates.

@@ -622,6 +622,19 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
     },
   });
 
+  const previewQuery = useQuery<{ count: number; from: string; orgName: string }>({
+    queryKey: ["my-org-consent-preview", regrantFrom],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/org/my/consent/preview?from=${encodeURIComponent(regrantFrom)}`, { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to load preview");
+      return data;
+    },
+    enabled: regrantOpen && regrantScope === "historic" && !!regrantFrom,
+    retry: false,
+    staleTime: 30_000,
+  });
+
   const regrantMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`${BASE}/api/org/my/consent/regrant`, {
@@ -729,14 +742,27 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
                 <span>Also share past activities, dated on or after a date I choose</span>
               </label>
               {regrantScope === "historic" && (
-                <input
-                  type="date"
-                  value={regrantFrom}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setRegrantFrom(e.target.value)}
-                  className="block w-full max-w-[200px] px-2 py-1.5 rounded-lg border border-border text-xs"
-                  data-testid="input-regrant-from-date"
-                />
+                <>
+                  <input
+                    type="date"
+                    value={regrantFrom}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setRegrantFrom(e.target.value)}
+                    className="block w-full max-w-[200px] px-2 py-1.5 rounded-lg border border-border text-xs"
+                    data-testid="input-regrant-from-date"
+                  />
+                  {regrantFrom && previewQuery.isLoading && (
+                    <p className="text-[11px] text-muted-foreground" data-testid="text-regrant-preview-loading">Checking how many activities this would share…</p>
+                  )}
+                  {regrantFrom && previewQuery.data && (
+                    <p className="text-xs text-foreground bg-primary/5 border border-primary/20 rounded-lg px-2.5 py-2" data-testid="text-regrant-preview">
+                      This will share <strong>{previewQuery.data.count}</strong> {previewQuery.data.count === 1 ? "activity" : "activities"} dated since <strong>{new Date(regrantFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong> with {orgName}, plus everything you log from now on.
+                    </p>
+                  )}
+                  {regrantFrom && previewQuery.isError && (
+                    <p className="text-[11px] text-muted-foreground" data-testid="text-regrant-preview-error">Couldn't check how many activities this would share — you can still continue.</p>
+                  )}
+                </>
               )}
               <p className="text-[11px] text-muted-foreground">
                 Your journals and pulse answers are never shared. This is recorded in the audit log.
@@ -744,8 +770,17 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => regrantMutation.mutate()}
-                  disabled={regrantMutation.isPending || (regrantScope === "historic" && !regrantFrom)}
+                  onClick={() => {
+                    if (regrantScope === "historic") {
+                      const dateLabel = new Date(regrantFrom).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                      const countLine = previewQuery.data
+                        ? `This will share ${previewQuery.data.count} ${previewQuery.data.count === 1 ? "activity" : "activities"} dated since ${dateLabel} with ${orgName}, plus everything you log from now on.`
+                        : `This will share all your activities dated since ${dateLabel} with ${orgName}, plus everything you log from now on.`;
+                      if (!window.confirm(`${countLine}\n\nYour journals and pulse answers are never shared. Continue?`)) return;
+                    }
+                    regrantMutation.mutate();
+                  }}
+                  disabled={regrantMutation.isPending || (regrantScope === "historic" && (!regrantFrom || previewQuery.isLoading))}
                   className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
                   data-testid="button-confirm-regrant"
                 >
