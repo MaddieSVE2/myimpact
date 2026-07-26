@@ -228,7 +228,7 @@ export function Navbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, logout } = useAuth();
   const gamificationEnabled = user?.gamificationEnabled ?? true;
-  const isAdmin = ["hello@myimpact.uk", "maddie@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
+  const isAdmin = ["hello@myimpact.uk", "maddie@socialvalueengine.com", "lorna@socialvalueengine.com", "ivan.annibal@roseregeneration.co.uk"].includes(
     (user?.email ?? "").toLowerCase()
   );
   const { setOpen: openSidekick } = useSidekick();

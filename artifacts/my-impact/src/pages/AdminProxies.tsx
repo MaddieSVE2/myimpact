@@ -5,7 +5,7 @@ import { NoIndexMeta } from "@/components/PageMeta";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
-  "maddie@socialvalueengine.com",
+  "maddie@socialvalueengine.com", "lorna@socialvalueengine.com",
   "ivan.annibal@roseregeneration.co.uk",
 ];
 

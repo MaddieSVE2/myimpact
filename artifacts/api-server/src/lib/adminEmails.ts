@@ -11,6 +11,7 @@
 const DEFAULT_ADMIN_EMAILS = [
   "hello@myimpact.uk",
   "maddie@socialvalueengine.com",
+  "lorna@socialvalueengine.com",
   "ivan.annibal@roseregeneration.co.uk",
 ];
 
