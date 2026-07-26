@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BadgeCheck, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
+import { BadgeCheck, CheckCircle2, XCircle, ShieldCheck, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 
@@ -13,6 +13,27 @@ export interface PendingVerificationEvidence {
   mimeType: string;
 }
 
+export interface PendingVerificationLine {
+  activityName: string;
+  category: string | null;
+  title: string | null;
+  detail: string | null;
+  hours: number;
+  quantity: number;
+  valuePerUnit: number;
+  unitLabel: string;
+  value: number;
+}
+
+export interface PendingVerificationValueBreakdown {
+  impact: number;
+  contribution: number;
+  donations: number;
+  personalDevelopment: number;
+}
+
+export type PendingVerificationSource = "member-submitted" | "org-attested" | "shared";
+
 export interface PendingVerification {
   recordId: number;
   memberName: string;
@@ -22,7 +43,47 @@ export interface PendingVerification {
   totalHours: number;
   totalValue: number;
   createdAt: string;
+  entryDate?: string | null;
+  source?: PendingVerificationSource;
+  activityCount?: number;
+  lines?: PendingVerificationLine[];
+  valueBreakdown?: PendingVerificationValueBreakdown;
   evidence?: PendingVerificationEvidence[];
+}
+
+const SOURCE_LABELS: Record<PendingVerificationSource, string> = {
+  "member-submitted": "Member-submitted",
+  "org-attested": "Org-attested",
+  "shared": "Shared from personal log",
+};
+
+const SOURCE_BADGE_CLASSES: Record<PendingVerificationSource, string> = {
+  "member-submitted": "bg-blue-50 text-blue-700 border border-blue-200",
+  "org-attested": "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  "shared": "bg-amber-50 text-amber-700 border border-amber-200",
+};
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// e.g. "Volunteering · Mentoring — 2 activities"
+function summaryLine(p: PendingVerification): string | null {
+  const lines = p.lines ?? [];
+  if (lines.length === 0) return null;
+  const names = Array.from(new Set(lines.map(l => l.activityName))).slice(0, 2);
+  const suffix = lines.length > 1 ? ` — ${lines.length} activities` : "";
+  const more = new Set(lines.map(l => l.activityName)).size > 2 ? "…" : "";
+  return `${names.join(" · ")}${more}${suffix}`;
+}
+
+function lineFormula(l: PendingVerificationLine): string {
+  if (l.valuePerUnit <= 0) return "No standard rate";
+  const rate = l.valuePerUnit % 1 === 0 ? `£${l.valuePerUnit.toFixed(0)}` : `£${l.valuePerUnit.toFixed(2)}`;
+  const unit = l.unitLabel.toLowerCase();
+  const isHourBased = unit.includes("hr") || unit.includes("hour");
+  const qty = isHourBased ? l.hours : l.quantity;
+  return `${qty.toLocaleString("en-GB")} ${isHourBased ? "hrs" : l.unitLabel} × ${rate}${isHourBased ? "/hr" : ""}`;
 }
 
 export function usePendingVerifications(enabled: boolean) {
@@ -61,6 +122,15 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  function toggleExpand(id: number) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function invalidateAfterDecision() {
     queryClient.invalidateQueries({ queryKey: ["org-pending-verifications"] });
@@ -198,93 +268,192 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
             <span className="w-44" />
           </div>
           <ul className="divide-y divide-border">
-            {pending.map(p => (
-              <li key={p.recordId} className="px-3 py-2.5 flex items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selected.has(p.recordId)}
-                  onChange={() => toggle(p.recordId)}
-                  className="w-3.5 h-3.5"
-                  aria-label={`Select ${p.memberName}'s record`}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">
-                    <span className="font-medium">{p.memberName}</span>
-                    <span className="text-muted-foreground"> · {p.period || p.name}</span>
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Logged {new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
-                  {(p.evidence?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1" data-testid={`pending-evidence-${p.recordId}`}>
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Evidence</span>
-                      {p.evidence!.map(ev => (
-                        <button
-                          key={ev.id}
-                          type="button"
-                          onClick={() => setLightbox({
-                            url: `${BASE}${ev.url}`,
-                            memberName: p.memberName,
-                            activityLabel: p.period || p.name,
-                            dateLabel: new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-                          })}
-                          className="block w-9 h-9 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
-                          title="View evidence photo"
-                          data-testid={`pending-evidence-thumb-${ev.id}`}
-                        >
-                          <img
-                            src={`${BASE}${ev.url}`}
-                            alt={`Evidence photo from ${p.memberName}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </button>
-                      ))}
+            {pending.map(p => {
+              const isOpen = expanded.has(p.recordId);
+              const summary = summaryLine(p);
+              const loggedLabel = formatDate(p.createdAt);
+              const activityLabel = p.period || p.name;
+              const vb = p.valueBreakdown;
+              const breakdownParts = vb
+                ? ([
+                    { label: "Impact", value: vb.impact },
+                    { label: "Contribution", value: vb.contribution },
+                    { label: "Donations", value: vb.donations },
+                    { label: "Personal development", value: vb.personalDevelopment },
+                  ].filter(x => x.value > 0))
+                : [];
+              const rejectControls = rejectingId === p.recordId ? (
+                <div className="w-full sm:w-44 flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={rejectReason}
+                    onChange={e => setRejectReason(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="bg-white flex-1 min-w-0 text-xs px-2 py-1 border border-border rounded focus:outline-none focus:border-primary"
+                  />
+                  <button onClick={confirmReject} className="p-1 text-red-600 hover:bg-red-50 rounded" aria-label="Confirm reject">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setRejectingId(null)} className="p-1 text-muted-foreground hover:bg-muted/30 rounded" aria-label="Cancel">
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => decideMutation.mutate({ recordId: p.recordId, decision: "approve" })}
+                    disabled={decideMutation.isPending}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors disabled:opacity-60"
+                    data-testid={`approve-record-${p.recordId}`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startReject(p.recordId)}
+                    disabled={decideMutation.isPending}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition-colors disabled:opacity-60"
+                    data-testid={`reject-record-${p.recordId}`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                </div>
+              );
+              return (
+                <li key={p.recordId} className="px-3 py-2.5 text-sm" data-testid={`pending-row-${p.recordId}`}>
+                  <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.recordId)}
+                      onChange={() => toggle(p.recordId)}
+                      className="w-3.5 h-3.5"
+                      aria-label={`Select ${p.memberName}'s record`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(p.recordId)}
+                      className="flex-1 min-w-0 text-left cursor-pointer"
+                      aria-expanded={isOpen}
+                      data-testid={`expand-record-${p.recordId}`}
+                    >
+                      <p className="text-sm text-foreground truncate">
+                        <span className="font-medium">{p.memberName}</span>
+                        <span className="text-muted-foreground"> · {activityLabel}</span>
+                      </p>
+                      {summary && (
+                        <p className="text-[11px] text-foreground/80 truncate" data-testid={`pending-summary-${p.recordId}`}>
+                          {summary}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        Logged {loggedLabel}
+                        {(p.evidence?.length ?? 0) > 0 && <span> · {p.evidence!.length} evidence photo{p.evidence!.length === 1 ? "" : "s"}</span>}
+                      </p>
+                    </button>
+                    <span className="w-16 text-right text-xs text-foreground tabular-nums">{p.totalHours}</span>
+                    <span className="w-20 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(p.totalValue)}</span>
+                    <div className="w-full sm:w-auto flex items-center justify-end gap-1.5 order-last sm:order-none">
+                      {rejectControls}
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(p.recordId)}
+                        className="p-1 rounded hover:bg-muted/30 text-muted-foreground"
+                        aria-label={isOpen ? "Hide details" : "Show details"}
+                        aria-expanded={isOpen}
+                        data-testid={`toggle-details-${p.recordId}`}
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {isOpen && (
+                    <div className="mt-2 ml-6 pl-3 border-l-2 border-primary/20 space-y-3" data-testid={`pending-detail-${p.recordId}`}>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                        {p.source && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${SOURCE_BADGE_CLASSES[p.source]}`}>
+                            {SOURCE_LABELS[p.source]}
+                          </span>
+                        )}
+                        {p.entryDate && <span>Activity date: <span className="text-foreground">{formatDate(p.entryDate)}</span></span>}
+                        <span>Logged: <span className="text-foreground">{loggedLabel}</span></span>
+                        {p.memberEmail && <span className="truncate">{p.memberEmail}</span>}
+                      </div>
+
+                      {(p.lines?.length ?? 0) > 0 && (
+                        <ul className="space-y-1.5">
+                          {p.lines!.map((l, idx) => (
+                            <li key={idx} className="text-xs">
+                              <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                                <p className="text-foreground">
+                                  <span className="font-medium">{l.title || l.activityName}</span>
+                                  {l.title && l.title !== l.activityName && <span className="text-muted-foreground"> · {l.activityName}</span>}
+                                  {l.category && <span className="text-muted-foreground"> · {l.category}</span>}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                  {lineFormula(l)}
+                                  {l.value > 0 && <span className="text-foreground font-semibold"> = {formatCurrency(l.value)}</span>}
+                                </p>
+                              </div>
+                              {l.detail && <p className="text-[11px] text-muted-foreground italic mt-0.5">"{l.detail}"</p>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {breakdownParts.length > 0 && (
+                        <div data-testid={`pending-value-breakdown-${p.recordId}`}>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Value breakdown</p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                            {breakdownParts.map(part => (
+                              <span key={part.label} className="text-muted-foreground">
+                                {part.label}: <span className="text-foreground font-semibold tabular-nums">{formatCurrency(part.value)}</span>
+                              </span>
+                            ))}
+                            <span className="text-muted-foreground">
+                              Total: <span className="text-foreground font-semibold tabular-nums">{formatCurrency(p.totalValue)}</span>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {(p.evidence?.length ?? 0) > 0 && (
+                        <div data-testid={`pending-evidence-${p.recordId}`}>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                            Evidence ({p.evidence!.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {p.evidence!.map(ev => (
+                              <button
+                                key={ev.id}
+                                type="button"
+                                onClick={() => setLightbox({
+                                  url: `${BASE}${ev.url}`,
+                                  memberName: p.memberName,
+                                  activityLabel,
+                                  dateLabel: loggedLabel,
+                                })}
+                                className="block w-14 h-14 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
+                                title="View evidence photo"
+                                data-testid={`pending-evidence-thumb-${ev.id}`}
+                              >
+                                <img
+                                  src={`${BASE}${ev.url}`}
+                                  alt={`Evidence photo from ${p.memberName}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-                <span className="w-16 text-right text-xs text-foreground tabular-nums">{p.totalHours}</span>
-                <span className="w-20 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(p.totalValue)}</span>
-                {rejectingId === p.recordId ? (
-                  <div className="w-44 flex items-center gap-1">
-                    <input
-                      type="text"
-                      value={rejectReason}
-                      onChange={e => setRejectReason(e.target.value)}
-                      placeholder="Reason (optional)"
-                      className="bg-white flex-1 text-xs px-2 py-1 border border-border rounded focus:outline-none focus:border-primary"
-                    />
-                    <button onClick={confirmReject} className="p-1 text-red-600 hover:bg-red-50 rounded" aria-label="Confirm reject">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setRejectingId(null)} className="p-1 text-muted-foreground hover:bg-muted/30 rounded" aria-label="Cancel">
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="w-44 flex items-center justify-end gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => decideMutation.mutate({ recordId: p.recordId, decision: "approve" })}
-                      disabled={decideMutation.isPending}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors disabled:opacity-60"
-                      data-testid={`approve-record-${p.recordId}`}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startReject(p.recordId)}
-                      disabled={decideMutation.isPending}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition-colors disabled:opacity-60"
-                      data-testid={`reject-record-${p.recordId}`}
-                    >
-                      <XCircle className="w-3.5 h-3.5" /> Reject
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

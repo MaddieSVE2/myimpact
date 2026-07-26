@@ -2652,6 +2652,46 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
       .sort((a, b) => new Date(b.record.createdAt).getTime() - new Date(a.record.createdAt).getTime())
       .map(({ record }) => {
         const u = userMap.get(record.userId);
+
+        // Per-activity lines with value detail, mirroring the shapes used by
+        // the member-submissions panel and the full-tier activities feed.
+        const rawLines = Array.isArray(record.activitiesJson)
+          ? (record.activitiesJson as Array<Record<string, unknown>>)
+          : [];
+        const lines = rawLines.map(l => {
+          const actId = typeof l.activityId === "string" ? l.activityId : "";
+          const def = ACTIVITIES.find(a => a.id === actId);
+          const hours = typeof l.hoursPerYear === "number" ? l.hoursPerYear : 0;
+          const quantity = typeof l.quantity === "number" ? l.quantity : 0;
+          const isSomethingElse = actId === "something_else" || !def;
+          const isHourBased = def ? def.unit === "hour" || def.unit === "hour_per_week" : false;
+          const formulaQty = isHourBased ? hours : quantity;
+          const valuePerUnit = def?.valuePerUnit ?? 0;
+          const value = isSomethingElse ? 0 : Math.round(formulaQty * valuePerUnit * 100) / 100;
+          const title = typeof l.title === "string" ? l.title : null;
+          const detail =
+            typeof l.detail === "string" ? l.detail :
+            typeof l.description === "string" ? l.description : null;
+          return {
+            activityName: actId === "something_else"
+              ? (title ?? "Something else")
+              : (def?.name ?? (title || actId) ?? "Activity"),
+            category: def?.category ?? null,
+            title,
+            detail,
+            hours,
+            quantity,
+            valuePerUnit,
+            unitLabel: def?.unitLabel ?? "hrs",
+            value,
+          };
+        });
+
+        const source: "member-submitted" | "org-attested" | "shared" =
+          record.source === "member-submitted" ? "member-submitted"
+          : record.attestedAt ? "org-attested"
+          : "shared";
+
         return {
           recordId: record.id,
           memberName: u?.displayName ?? u?.email ?? "Member",
@@ -2661,6 +2701,16 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
           totalHours: record.totalHours,
           totalValue: Number(record.totalValue),
           createdAt: record.createdAt.toISOString(),
+          entryDate: record.entryDate ? record.entryDate.toISOString() : null,
+          source,
+          activityCount: lines.length,
+          lines,
+          valueBreakdown: {
+            impact: Number(record.impactValue),
+            contribution: Number(record.contributionValue),
+            donations: Number(record.donationsValue),
+            personalDevelopment: Number(record.personalDevelopmentValue),
+          },
           evidence: evidenceByRecord.get(record.id) ?? [],
         };
       });
