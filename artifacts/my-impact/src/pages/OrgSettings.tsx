@@ -304,6 +304,9 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     flash(`Approved ${req?.name ?? "request"}.`);
   }
 
+  const [rejectingUserId, setRejectingUserId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
   function rejectDemoPending(id: string) {
     const req = demoPending.find(r => r.id === id);
     setDemoPending(prev => prev.filter(r => r.id !== id));
@@ -321,14 +324,20 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     finally { setActionBusy(null); }
   }
 
-  async function rejectLiveMember(userId: string) {
+  async function rejectLiveMember(userId: string, reason?: string): Promise<boolean> {
     setActionBusy(userId);
     try {
-      const res = await fetch(`${BASE}/api/org/my/members/${userId}/reject`, { method: "POST", credentials: "include" });
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/reject`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reason && reason.trim() ? { reason: reason.trim() } : {}),
+      });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error((j as { error?: string }).error ?? "Failed"); }
       flash("Rejected.");
       await fetchLiveMembers(page);
-    } catch (e) { flash(e instanceof Error ? e.message : "Failed to reject."); }
+      return true;
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to reject."); return false; }
     finally { setActionBusy(null); }
   }
 
@@ -463,34 +472,79 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           </div>
           <ul className="divide-y divide-amber-200">
             {pendingRequests.map(r => (
-              <li key={r.userId} className="flex items-center justify-between gap-3 py-2.5 text-xs" data-testid={`row-request-${r.userId}`}>
-                <div>
-                  <p className="font-semibold text-foreground">{r.name}</p>
-                  <p className="text-muted-foreground">{r.email}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Requested {new Date(r.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  </p>
+              <li key={r.userId} className="py-2.5 text-xs" data-testid={`row-request-${r.userId}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-foreground">{r.name}</p>
+                    <p className="text-muted-foreground">{r.email}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Requested {new Date(r.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={actionBusy === r.userId}
+                      onClick={() => isDemoOrg ? approveDemoPending(r.userId) : approveLiveMember(r.userId)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-600 text-white text-[11px] font-semibold hover:bg-green-700 disabled:opacity-60"
+                      data-testid={`button-approve-${r.userId}`}
+                    >
+                      {actionBusy === r.userId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionBusy === r.userId}
+                      onClick={() => {
+                        if (rejectingUserId === r.userId) { setRejectingUserId(null); setRejectReason(""); }
+                        else { setRejectingUserId(r.userId); setRejectReason(""); }
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                      data-testid={`button-reject-${r.userId}`}
+                    >
+                      <X className="w-3 h-3" /> Reject
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={actionBusy === r.userId}
-                    onClick={() => isDemoOrg ? approveDemoPending(r.userId) : approveLiveMember(r.userId)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-600 text-white text-[11px] font-semibold hover:bg-green-700 disabled:opacity-60"
-                    data-testid={`button-approve-${r.userId}`}
-                  >
-                    {actionBusy === r.userId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Approve
-                  </button>
-                  <button
-                    type="button"
-                    disabled={actionBusy === r.userId}
-                    onClick={() => isDemoOrg ? rejectDemoPending(r.userId) : rejectLiveMember(r.userId)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                    data-testid={`button-reject-${r.userId}`}
-                  >
-                    <X className="w-3 h-3" /> Reject
-                  </button>
-                </div>
+                {rejectingUserId === r.userId && (
+                  <div className="mt-2 bg-white border border-red-200 rounded-lg p-3 space-y-2" data-testid={`panel-reject-${r.userId}`}>
+                    <p className="text-[11px] font-semibold text-foreground">Reject this join request?</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      You can add a short optional note that will be included in the decline email — for example why it wasn't approved, or where to apply instead.
+                    </p>
+                    <textarea
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value.slice(0, 500))}
+                      rows={2}
+                      maxLength={500}
+                      placeholder="Optional note to the applicant (e.g. wrong organisation — try the Leeds branch)"
+                      className="w-full border border-border rounded-md px-2.5 py-1.5 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-300"
+                      data-testid={`input-reject-reason-${r.userId}`}
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={actionBusy === r.userId}
+                        onClick={async () => {
+                          if (isDemoOrg) { rejectDemoPending(r.userId); }
+                          else if (!(await rejectLiveMember(r.userId, rejectReason))) { return; }
+                          setRejectingUserId(null); setRejectReason("");
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-red-600 text-white text-[11px] font-semibold hover:bg-red-700 disabled:opacity-60"
+                        data-testid={`button-confirm-reject-${r.userId}`}
+                      >
+                        {actionBusy === r.userId ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />} Confirm reject
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setRejectingUserId(null); setRejectReason(""); }}
+                        className="px-2.5 py-1.5 rounded-md border border-border text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+                        data-testid={`button-cancel-reject-${r.userId}`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

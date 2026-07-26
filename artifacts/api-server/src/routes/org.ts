@@ -1689,6 +1689,19 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
     res.status(409).json({ error: "Only pending join requests can be rejected." }); return;
   }
 
+  const rawReason = (req.body as { reason?: unknown } | undefined)?.reason;
+  let reason: string | null = null;
+  if (rawReason !== undefined && rawReason !== null) {
+    if (typeof rawReason !== "string") {
+      res.status(400).json({ error: "reason must be a string." }); return;
+    }
+    const trimmed = rawReason.trim();
+    if (trimmed.length > 500) {
+      res.status(400).json({ error: "reason must be 500 characters or fewer." }); return;
+    }
+    reason = trimmed.length > 0 ? trimmed : null;
+  }
+
   await db.delete(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "pending")));
 
@@ -1712,6 +1725,11 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
               Thanks for your interest in joining <strong>${escHtml(orgName)}</strong>.
               Unfortunately, a manager has reviewed your request and it wasn't approved this time.
             </p>
+            ${reason ? `
+            <div style="background:#fff;border-left:3px solid #d97706;border-radius:4px;padding:12px 16px;margin:16px 0;">
+              <p style="color:#666;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.5px;">Note from the manager</p>
+              <p style="color:#444;font-size:15px;line-height:1.5;margin:0;">${escHtml(reason)}</p>
+            </div>` : ""}
             <p style="color:#444;font-size:15px;line-height:1.5;">
               If you think this was a mistake, please get in touch with the organisation directly —
               they may be able to send you a fresh invite. You can still use My Impact to track your
