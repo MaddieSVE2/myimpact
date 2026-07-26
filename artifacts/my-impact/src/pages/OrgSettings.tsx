@@ -178,11 +178,12 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
   const [inviteCode, setInviteCode] = useState<string>(() => isDemoOrg ? getOrgInviteCode(orgId, DEMO_INVITE_CODE) : "");
   const [inviteLoading, setInviteLoading] = useState(!isDemoOrg);
   const [regenBusy, setRegenBusy] = useState(false);
-  const [invites, setInvites] = useState<PendingInvite[]>([
+  const [invites, setInvites] = useState<PendingInvite[]>(() => isDemoOrg ? [
     { id: "inv-1", email: "rachel.green@example.com", sentAt: "2026-04-22", resentAt: null },
     { id: "inv-2", email: "noor.iqbal@example.com",   sentAt: "2026-05-01", resentAt: null },
-  ]);
+  ] : []);
   const [newInviteEmail, setNewInviteEmail] = useState("");
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -229,6 +230,21 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     if (!isDemoOrg) { fetchLiveMembers(page); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoOrg, page]);
+
+  useEffect(() => {
+    if (isDemoOrg) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/org/my/invites`, { credentials: "include" });
+        if (res.ok) {
+          const j: { invites: PendingInvite[] } = await res.json();
+          if (!cancelled) setInvites(j.invites);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isDemoOrg]);
 
   useEffect(() => {
     if (isDemoOrg) return;
@@ -347,23 +363,79 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
     } catch { flash("Could not copy, copy it manually."); }
   }
 
-  function sendInvite() {
+  async function sendInvite() {
     const email = newInviteEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { flash("Please enter a valid email."); return; }
     if (invites.some(i => i.email === email)) { flash("That invite is already pending."); return; }
-    setInvites(prev => [...prev, { id: `inv-${Date.now()}`, email, sentAt: new Date().toISOString().slice(0, 10), resentAt: null }]);
-    setNewInviteEmail("");
-    flash(`Invite sent to ${email}.`);
+    if (isDemoOrg) {
+      setInvites(prev => [...prev, { id: `inv-${Date.now()}`, email, sentAt: new Date().toISOString().slice(0, 10), resentAt: null }]);
+      setNewInviteEmail("");
+      flash(`Invite sent to ${email}.`);
+      return;
+    }
+    setInviteBusy("send");
+    try {
+      const res = await fetch(`${BASE}/api/org/my/invites`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to send the invite.");
+      }
+      const j: { invite: PendingInvite } = await res.json();
+      setInvites(prev => [...prev, j.invite]);
+      setNewInviteEmail("");
+      flash(`Invite sent to ${email}.`);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to send the invite."); }
+    finally { setInviteBusy(null); }
   }
 
-  function resendInvite(id: string) {
-    setInvites(prev => prev.map(i => i.id === id ? { ...i, resentAt: new Date().toISOString().slice(0, 10) } : i));
-    flash("Invite resent.");
+  async function resendInvite(id: string) {
+    if (isDemoOrg) {
+      setInvites(prev => prev.map(i => i.id === id ? { ...i, resentAt: new Date().toISOString().slice(0, 10) } : i));
+      flash("Invite resent.");
+      return;
+    }
+    setInviteBusy(id);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/invites/${encodeURIComponent(id)}/resend`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to resend the invite.");
+      }
+      const j: { invite: PendingInvite } = await res.json();
+      setInvites(prev => prev.map(i => i.id === id ? j.invite : i));
+      flash("Invite resent.");
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to resend the invite."); }
+    finally { setInviteBusy(null); }
   }
 
-  function revokeInvite(id: string) {
-    setInvites(prev => prev.filter(i => i.id !== id));
-    flash("Invite revoked.");
+  async function revokeInvite(id: string) {
+    if (isDemoOrg) {
+      setInvites(prev => prev.filter(i => i.id !== id));
+      flash("Invite revoked.");
+      return;
+    }
+    setInviteBusy(id);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/invites/${encodeURIComponent(id)}/revoke`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to revoke the invite.");
+      }
+      setInvites(prev => prev.filter(i => i.id !== id));
+      flash("Invite revoked.");
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to revoke the invite."); }
+    finally { setInviteBusy(null); }
   }
 
   const pendingCount = isDemoOrg ? demoPending.length : livePending.length;
@@ -675,8 +747,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
         )}
       </div>
 
-      {/* Pending invites (demo only) */}
-      {isDemoOrg && (
+      {/* Pending invites */}
       <div className="bg-white border border-border rounded-xl p-5" data-testid="section-pending-invites">
         <div className="flex items-center gap-2 mb-3">
           <Mail className="w-4 h-4 text-primary" />
@@ -694,8 +765,8 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
             className="bg-white flex-1 px-3 py-1.5 rounded-md border border-border text-[13px] focus:outline-none focus:border-primary"
             data-testid="input-new-invite"
           />
-          <button type="submit" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors" data-testid="button-send-invite">
-            <Plus className="w-3.5 h-3.5" /> Send invite
+          <button type="submit" disabled={inviteBusy === "send"} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors" data-testid="button-send-invite">
+            {inviteBusy === "send" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Send invite
           </button>
         </form>
         {invites.length === 0 ? (
@@ -712,10 +783,10 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => resendInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold hover:bg-muted/30" data-testid={`button-resend-${inv.id}`}>
+                  <button onClick={() => resendInvite(inv.id)} disabled={inviteBusy === inv.id} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold hover:bg-muted/30 disabled:opacity-60" data-testid={`button-resend-${inv.id}`}>
                     <RefreshCw className="w-3 h-3" /> Resend
                   </button>
-                  <button onClick={() => revokeInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold text-red-600 hover:bg-red-50" data-testid={`button-revoke-${inv.id}`}>
+                  <button onClick={() => revokeInvite(inv.id)} disabled={inviteBusy === inv.id} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[12px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60" data-testid={`button-revoke-${inv.id}`}>
                     <X className="w-3 h-3" /> Revoke
                   </button>
                 </div>
@@ -724,7 +795,6 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           </ul>
         )}
       </div>
-      )}
     </div>
   );
 }

@@ -107,6 +107,22 @@ export const orgMembersTable = pgTable("org_members", {
   membershipUnique: unique("org_members_membership_unique").on(table.orgId, table.userId),
 }));
 
+// Email invites sent by an org manager from Organisation settings → Members.
+// Each row is one pending invite; the recipient receives a join link
+// containing the org's invite code. Revoking deletes the row. `resentAt`
+// tracks the most recent re-send for display in the manager UI.
+export const orgInvitesTable = pgTable("org_invites", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  invitedByUserId: text("invited_by_user_id").notNull().references(() => usersTable.id),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  resentAt: timestamp("resent_at"),
+}, (t) => ({
+  orgEmailUnique: unique("org_invites_org_email_unique").on(t.orgId, t.email),
+  orgIdx: index("org_invites_org_idx").on(t.orgId),
+}));
+
 export const orgRegistrationsTable = pgTable("org_registrations", {
   id: text("id").primaryKey(),
   orgName: text("org_name").notNull(),

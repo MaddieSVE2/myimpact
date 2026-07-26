@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable, orgInvitesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
@@ -1727,6 +1727,174 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
     }
   })();
 
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Email invites — manager sends an invite from Organisation settings →
+// Members. The recipient gets a join link containing the org's invite code.
+// Invites are persisted in org_invites so resend/revoke act on real rows.
+// ---------------------------------------------------------------------------
+
+async function requireManagerMembership(req: AuthenticatedRequest, res: import("express").Response) {
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.userId, req.user!.id), eq(orgMembersTable.status, "active")),
+  });
+  if (!membership) {
+    res.status(404).json({ error: "You are not a member of any organisation." });
+    return null;
+  }
+  if (membership.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can manage invites." });
+    return null;
+  }
+  return membership;
+}
+
+async function sendOrgInviteEmail(orgId: string, email: string): Promise<{ ok: boolean; error?: string }> {
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId) });
+  if (!org) return { ok: false, error: "Organisation not found." };
+  const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
+  const joinUrl = `${appUrl}/org?invite=${encodeURIComponent(org.inviteCode)}`;
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const { error } = await client.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: `You're invited to join ${org.name} on My Impact`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
+          <h2 style="color:#213547;margin-top:0;">Join ${escHtml(org.name)} on My Impact</h2>
+          <p style="color:#444;font-size:15px;line-height:1.5;">
+            A manager at <strong>${escHtml(org.name)}</strong> has invited you to join their organisation
+            on My Impact — a simple way to track your volunteering and giving, and see the difference it makes.
+          </p>
+          <p style="color:#444;font-size:15px;line-height:1.5;">
+            Use the button below to join. If you don't have a My Impact account yet, you can create one first —
+            it only takes a minute.
+          </p>
+          <div style="margin-top:24px;">
+            <a href="${joinUrl}" style="display:inline-block;background:#E8633A;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:600;">Join ${escHtml(org.name)}</a>
+          </div>
+          <p style="color:#888;font-size:12px;margin-top:20px;">
+            Or enter this invite code after signing in: <strong style="letter-spacing:1px;">${escHtml(org.inviteCode)}</strong>
+          </p>
+          <p style="color:#aaa;font-size:11px;margin-top:32px;">My Impact · myimpact.uk</p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.error("[org.invite] Resend rejected invite email:", error);
+      return { ok: false, error: "The email service rejected the invite. Please try again later." };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("[org.invite] failed to send invite email:", err);
+    return { ok: false, error: "Could not send the invite email. Please try again later." };
+  }
+}
+
+function serializeInvite(inv: { id: string; email: string; sentAt: Date; resentAt: Date | null }) {
+  return {
+    id: inv.id,
+    email: inv.email,
+    sentAt: inv.sentAt.toISOString(),
+    resentAt: inv.resentAt ? inv.resentAt.toISOString() : null,
+  };
+}
+
+router.get("/my/invites", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireManagerMembership(req, res);
+  if (!membership) return;
+  const rows = await db.select().from(orgInvitesTable)
+    .where(eq(orgInvitesTable.orgId, membership.orgId))
+    .orderBy(asc(orgInvitesTable.sentAt));
+  res.json({ invites: rows.map(serializeInvite) });
+});
+
+const inviteSendLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "Too many invites sent recently. Please try again later.",
+});
+
+router.post("/my/invites", authenticate, inviteSendLimiter, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireManagerMembership(req, res);
+  if (!membership) return;
+
+  const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
+    res.status(400).json({ error: "Please enter a valid email address." });
+    return;
+  }
+
+  const existing = await db.query.orgInvitesTable.findFirst({
+    where: and(eq(orgInvitesTable.orgId, membership.orgId), eq(orgInvitesTable.email, emailRaw)),
+  });
+  if (existing) {
+    res.status(409).json({ error: "That invite is already pending." });
+    return;
+  }
+
+  // Don't invite someone who is already an active member of this org.
+  const existingUser = await db.query.usersTable.findFirst({ where: eq(usersTable.email, emailRaw) });
+  if (existingUser) {
+    const existingMembership = await db.query.orgMembersTable.findFirst({
+      where: and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, existingUser.id)),
+    });
+    if (existingMembership) {
+      res.status(409).json({ error: "That person is already a member of your organisation (or has a pending join request)." });
+      return;
+    }
+  }
+
+  const sendResult = await sendOrgInviteEmail(membership.orgId, emailRaw);
+  if (!sendResult.ok) {
+    res.status(502).json({ error: sendResult.error });
+    return;
+  }
+
+  const invite = {
+    id: randomUUID(),
+    orgId: membership.orgId,
+    email: emailRaw,
+    invitedByUserId: req.user!.id,
+    sentAt: new Date(),
+    resentAt: null as Date | null,
+  };
+  await db.insert(orgInvitesTable).values(invite);
+  res.status(201).json({ invite: serializeInvite(invite) });
+});
+
+router.post("/my/invites/:id/resend", authenticate, inviteSendLimiter, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireManagerMembership(req, res);
+  if (!membership) return;
+  const id = String(req.params.id);
+  const invite = await db.query.orgInvitesTable.findFirst({
+    where: and(eq(orgInvitesTable.id, id), eq(orgInvitesTable.orgId, membership.orgId)),
+  });
+  if (!invite) { res.status(404).json({ error: "Invite not found." }); return; }
+
+  const sendResult = await sendOrgInviteEmail(membership.orgId, invite.email);
+  if (!sendResult.ok) {
+    res.status(502).json({ error: sendResult.error });
+    return;
+  }
+
+  const resentAt = new Date();
+  await db.update(orgInvitesTable).set({ resentAt }).where(eq(orgInvitesTable.id, id));
+  res.json({ invite: serializeInvite({ ...invite, resentAt }) });
+});
+
+router.post("/my/invites/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
+  const membership = await requireManagerMembership(req, res);
+  if (!membership) return;
+  const id = String(req.params.id);
+  const invite = await db.query.orgInvitesTable.findFirst({
+    where: and(eq(orgInvitesTable.id, id), eq(orgInvitesTable.orgId, membership.orgId)),
+  });
+  if (!invite) { res.status(404).json({ error: "Invite not found." }); return; }
+  await db.delete(orgInvitesTable).where(eq(orgInvitesTable.id, id));
   res.json({ ok: true });
 });
 
