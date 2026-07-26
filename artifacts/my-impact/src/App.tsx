@@ -50,6 +50,7 @@ const NOINDEX_PATH_PREFIXES = [
   "/settings",
   "/profile/setup",
   "/profile",
+  "/unsubscribe",
 ];
 
 // Paths that must be indexable even though a prefix above would catch them.
@@ -104,6 +105,7 @@ const ChallengeDetail = lazyWithRetry(() => import("@/pages/ChallengeDetail"));
 const ChallengeJoin = lazyWithRetry(() => import("@/pages/ChallengeJoin"));
 const QuickLogPhoto = lazyWithRetry(() => import("@/pages/QuickLogPhoto"));
 const QuickLogActivity = lazyWithRetry(() => import("@/pages/QuickLogActivity"));
+const Unsubscribe = lazyWithRetry(() => import("@/pages/Unsubscribe"));
 
 const queryClient = new QueryClient();
 
@@ -352,6 +354,7 @@ function AppRouter() {
               <Route path="/terms" component={Terms} />
               <Route path="/security" component={Security} />
               <Route path="/pricing" component={Pricing} />
+              <Route path="/unsubscribe" component={Unsubscribe} />
 
               {/* Wizard routes, open to all */}
               <Route path="/wizard/actions" component={ActionsStep} />

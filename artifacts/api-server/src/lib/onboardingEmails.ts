@@ -11,6 +11,8 @@ export interface OnboardingContext {
   displayName: string | null;
   appUrl: string;
   locale?: EmailLocale;
+  /** Signed one-click unsubscribe URL (frontend confirmation page). */
+  unsubscribeUrl?: string;
 }
 
 export interface OnboardingActivity {
@@ -33,16 +35,19 @@ function shellOpen(): string {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:${TEXT};">`;
 }
 
-function shellClose(appUrl: string, locale: EmailLocale = "en"): string {
+function shellClose(appUrl: string, locale: EmailLocale = "en", unsubscribeUrl?: string): string {
   const text = locale === "cy"
     ? `Rydych yn derbyn negeseuon e-bost croeso a chrynodeb misol gan My Impact.`
     : `You're receiving onboarding and monthly digest emails from My Impact.`;
   const link = locale === "cy" ? "Rheoli dewisiadau e-bost" : "Manage email preferences";
+  const unsubLabel = locale === "cy" ? "Dad-danysgrifio gydag un clic" : "Unsubscribe with one click";
+  const unsubPart = unsubscribeUrl
+    ? ` <a href="${unsubscribeUrl}" style="color:${MUTED};text-decoration:underline;">${unsubLabel}</a> ${locale === "cy" ? "neu" : "or"} `
+    : " ";
   return `
     <hr style="border:none;border-top:1px solid ${BORDER};margin:32px 0 16px;" />
     <p style="color:${MUTED};font-size:12px;line-height:1.6;margin:0;">
-      ${text}
-      <a href="${appUrl}/settings" style="color:${MUTED};text-decoration:underline;">${link}</a>.
+      ${text}${unsubPart}<a href="${appUrl}/settings" style="color:${MUTED};text-decoration:underline;">${link}</a>.
     </p>
   </div>`;
 }
@@ -102,7 +107,7 @@ export function buildDay1Email(ctx: OnboardingContext): { subject: string; html:
       ${ctaButton(`${ctx.appUrl}/wizard`, cta)}
     </p>
     <p style="color:${MUTED};line-height:1.6;margin:0;font-size:14px;">${footer}</p>
-    ${shellClose(ctx.appUrl, ctx.locale)}
+    ${shellClose(ctx.appUrl, ctx.locale, ctx.unsubscribeUrl)}
   `;
   return { subject, html };
 }
@@ -144,7 +149,7 @@ export function buildDay7ActiveEmail(
     <p style="margin:0 0 8px;">
       ${ctaButton(`${ctx.appUrl}/wizard`, "Add another activity")}
     </p>
-    ${shellClose(ctx.appUrl)}
+    ${shellClose(ctx.appUrl, "en", ctx.unsubscribeUrl)}
   `;
   return { subject, html };
 }
@@ -166,7 +171,7 @@ export function buildDay7GentleEmail(ctx: OnboardingContext): { subject: string;
     <p style="margin:0 0 8px;">
       ${ctaButton(`${ctx.appUrl}/wizard`, "Log your first activity")}
     </p>
-    ${shellClose(ctx.appUrl)}
+    ${shellClose(ctx.appUrl, "en", ctx.unsubscribeUrl)}
   `;
   return { subject, html };
 }
@@ -216,7 +221,7 @@ export function buildDay30Email(
     <p style="margin:0 0 8px;">
       ${ctaButton(`${ctx.appUrl}/milestones`, "See your milestones")}
     </p>
-    ${shellClose(ctx.appUrl)}
+    ${shellClose(ctx.appUrl, "en", ctx.unsubscribeUrl)}
   `;
   return { subject, html };
 }
@@ -229,9 +234,19 @@ export async function sendOnboardingEmail(
   fromEmail: string,
   to: string,
   subject: string,
-  html: string
+  html: string,
+  oneClickUnsubscribeUrl?: string
 ): Promise<void> {
-  const { error } = await client.emails.send({ from: fromEmail, to, subject, html });
+  // RFC 8058 one-click unsubscribe headers: inbox providers (Gmail, Yahoo,
+  // etc.) surface their own "Unsubscribe" button and POST to this URL with
+  // no cookies. Strongly favoured by deliverability heuristics.
+  const headers = oneClickUnsubscribeUrl
+    ? {
+        "List-Unsubscribe": `<${oneClickUnsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }
+    : undefined;
+  const { error } = await client.emails.send({ from: fromEmail, to, subject, html, headers });
   if (error) {
     throw new Error(`Resend error: ${JSON.stringify(error)}`);
   }

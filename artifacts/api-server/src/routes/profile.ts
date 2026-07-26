@@ -11,8 +11,83 @@ import { buildUserExport } from "../lib/userExport.js";
 import { eraseUserData } from "../lib/userDeletion.js";
 import { recordAuditEvent } from "../lib/auditLog.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { verifyUnsubscribeToken } from "../lib/unsubscribeToken.js";
+import { createRateLimiter } from "../lib/rateLimiter.js";
 
 const router: IRouter = Router();
+
+// Public endpoint: keep the limit tight since it needs no auth.
+const unsubscribeRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: "Too many requests. Please try again in a minute.",
+});
+
+/**
+ * One-click email unsubscribe. Public (no session) — the signed token in the
+ * query string proves the request came from a link we emailed to the user.
+ * Single-purpose: only ever flips email_opt_in to false. Accepts POST so
+ * mail-scanner GET prefetches can't silently unsubscribe people; RFC 8058
+ * one-click unsubscribe also uses POST.
+ */
+router.post("/unsubscribe", unsubscribeRateLimit, async (req, res) => {
+  const token =
+    typeof req.query.token === "string"
+      ? req.query.token
+      : typeof (req.body as { token?: unknown } | undefined)?.token === "string"
+        ? ((req.body as { token: string }).token)
+        : null;
+
+  if (!token) {
+    res.status(400).json({ error: "Missing token" });
+    return;
+  }
+
+  const result = verifyUnsubscribeToken(token);
+  if (!result.ok) {
+    res.status(400).json({
+      error:
+        result.reason === "expired"
+          ? "This unsubscribe link has expired. You can manage email preferences in Settings."
+          : "This unsubscribe link is not valid.",
+      reason: result.reason,
+    });
+    return;
+  }
+
+  // Verify the user still exists; deleted accounts just get a success page
+  // (there is nothing to unsubscribe, and we don't want to leak existence).
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.id, result.userId),
+    columns: { id: true, email: true },
+  });
+
+  if (user) {
+    await db
+      .insert(userProfilesTable)
+      .values({
+        userId: user.id,
+        emailOptIn: false,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userProfilesTable.userId,
+        set: {
+          emailOptIn: false,
+          updatedAt: new Date(),
+        },
+      });
+
+    await recordAuditEvent({
+      userId: user.id,
+      userEmail: user.email,
+      action: "email_unsubscribe",
+      req,
+    });
+  }
+
+  res.json({ ok: true });
+});
 
 async function buildStreak(userId: string, lastAcked: number) {
   const records = await db

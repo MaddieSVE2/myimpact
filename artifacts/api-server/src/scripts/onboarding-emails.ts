@@ -37,6 +37,10 @@ import {
   sendOnboardingEmail,
 } from "../lib/onboardingEmails.js";
 import { ACTIVITIES } from "../lib/impactData.js";
+import {
+  buildUnsubscribeUrl,
+  buildOneClickUnsubscribeUrl,
+} from "../lib/unsubscribeToken.js";
 
 // Emails we never enrol in the sequence — demo personas used in screenshots
 // and the like. Mirror of PERSONA_ACCOUNTS in routes/auth.ts plus the seeded
@@ -197,7 +201,12 @@ async function processStep(step: OnboardingStep, now: Date): Promise<StepResult>
 
   for (const user of users) {
     try {
-      const ctx = { email: user.email, displayName: user.displayName, appUrl };
+      const ctx = {
+        email: user.email,
+        displayName: user.displayName,
+        appUrl,
+        unsubscribeUrl: buildUnsubscribeUrl(appUrl, user.id),
+      };
 
       let payload: { subject: string; html: string };
       if (step === 1) {
@@ -227,7 +236,14 @@ async function processStep(step: OnboardingStep, now: Date): Promise<StepResult>
       }
 
       try {
-        await sendOnboardingEmail(client, fromEmail, user.email, payload.subject, payload.html);
+        await sendOnboardingEmail(
+          client,
+          fromEmail,
+          user.email,
+          payload.subject,
+          payload.html,
+          buildOneClickUnsubscribeUrl(appUrl, user.id)
+        );
         result.sent += 1;
       } catch (sendErr) {
         // Roll back the claim so a later run can retry.
