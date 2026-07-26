@@ -14,7 +14,7 @@
  * keeps both the live app and the pre-rendered HTML in sync.
  */
 
-import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PRERENDER_PAGES, DEFAULT_OG_IMAGE } from "./src/lib/page-metadata.ts";
@@ -100,7 +100,26 @@ function main(): void {
     process.exit(1);
   }
 
-  const template = readFileSync(indexPath, "utf-8");
+  let template = readFileSync(indexPath, "utf-8");
+
+  // Preload the lazily-loaded route/layout chunks that every first paint
+  // needs, so the browser fetches them in parallel with the entry bundle
+  // instead of discovering them one network round-trip later. This directly
+  // improves LCP on the homepage (and any SPA route served from this shell).
+  const assetsDir = join(DIST, "assets");
+  if (existsSync(assetsDir)) {
+    const preloadChunks = readdirSync(assetsDir).filter((f) =>
+      /^(Intro|layout|page-metadata)-.*\.js$/.test(f)
+    );
+    if (preloadChunks.length > 0) {
+      const links = preloadChunks
+        .map((f) => `  <link rel="modulepreload" crossorigin href="/assets/${f}" />`)
+        .join("\n");
+      template = template.replace(/<\/head>/, `${links}\n</head>`);
+      // Also patch the root shell itself so non-prerendered SPA routes benefit.
+      writeFileSync(indexPath, template, "utf-8");
+    }
+  }
 
   for (const page of PRERENDER_PAGES) {
     const html = injectMeta(template, page);

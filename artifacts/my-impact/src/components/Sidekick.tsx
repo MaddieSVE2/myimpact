@@ -1541,14 +1541,14 @@ export function Sidekick() {
           <div
             onClick={() => setOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors pt-16 select-none group"
-            style={{ backgroundColor: "#F06127" }}
+            style={{ backgroundColor: "#C8451A" }}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#fff")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#F06127")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#C8451A")}
             title="Open Sidekick AI"
           >
-            <Bot className="w-5 h-5 text-white group-hover:text-[#F06127] transition-colors" />
+            <Bot className="w-5 h-5 text-white group-hover:text-[#C8451A] transition-colors" />
             <span
-              className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[#F06127]"
+              className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[#C8451A]"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
             >
               SIDEKICK

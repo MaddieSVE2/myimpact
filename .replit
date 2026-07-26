@@ -42,6 +42,10 @@ args = "e2e-edit-record"
 task = "workflow.run"
 args = "subnav-alignment"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "lighthouse"
+
 [[workflows.workflow]]
 name = "e2e"
 author = "agent"
@@ -93,6 +97,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5001 E2E_WEB_PORT=3001 pnpm --filter @workspace/e2e exec playwright test tests/12-org-subnav-alignment.spec.ts"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "lighthouse"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun"
 
 [workflows.workflow.metadata]
 isValidation = true

@@ -337,7 +337,7 @@ export function Navbar() {
                   <Link
                     href="/wizard/actions"
                     className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
-                    style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
+                    style={{ background: "#C8451A", boxShadow: "0 2px 12px #C8451A40" }}
                   >
                     {t("navbar.calculateCta")}
                   </Link>
@@ -522,7 +522,7 @@ export function Navbar() {
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
-                  style={{ background: "#F06127", boxShadow: "0 2px 12px #F0612740" }}
+                  style={{ background: "#C8451A", boxShadow: "0 2px 12px #C8451A40" }}
                 >
                   {t("navbar.calculateCta")}
                 </Link>

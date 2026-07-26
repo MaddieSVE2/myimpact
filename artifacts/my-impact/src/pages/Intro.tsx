@@ -166,7 +166,7 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
     }}>
       <div style={{ padding: "24px 24px 16px", flex: 1 }}>
         <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
-        <p style={{ fontSize: 12, color: C.orange, fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
+        <p style={{ fontSize: 12, color: "var(--brand-orange-text)", fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
         <p style={{ fontSize: 14, color: "var(--brand-muted-text)", lineHeight: 1.65, marginTop: 10, fontStyle: "italic", marginBottom: 0 }}>"{s.quote}"</p>
       </div>
       <div style={{ padding: "12px 24px", background: C.cream, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -342,15 +342,21 @@ function TestimonialsCarousel() {
           const isCenter = offset === 0;
           const isSide   = Math.abs(offset) === 1;
 
-          // On mobile: hide all non-center cards completely
-          const opacity = isCenter ? 1 : isMobile ? 0 : isSide ? 0.28 : 0;
+          // On mobile: hide all non-center cards completely.
+          // Side cards are dimmed with filter (not opacity) so axe's
+          // color-contrast check reads the real text colors; they are
+          // decorative previews and marked aria-hidden below.
+          const opacity = isCenter ? 1 : isMobile || !isSide ? 0 : 1;
+          const filter = isSide && !isMobile ? "opacity(0.28)" : "opacity(1)";
 
           return (
             <motion.div
               key={i}
+              aria-hidden={!isCenter}
               animate={{
                 x: `${offset * 100}%`,
                 opacity,
+                filter,
               }}
               transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
               onClick={() => {
@@ -398,12 +404,22 @@ function TestimonialsCarousel() {
             onClick={() => setCurrent(i)}
             aria-label={`Go to story ${i + 1}`}
             style={{
-              width: i === current ? 20 : 6, height: 6, borderRadius: 3,
+              width: i === current ? 38 : 24, height: 24,
               border: "none", padding: 0, cursor: "pointer",
-              background: i === current ? C.orange : "rgba(0,0,0,0.15)",
+              background: "transparent",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
               transition: "all 0.3s",
             }}
-          />
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: i === current ? 20 : 6, height: 6, borderRadius: 3,
+                background: i === current ? C.orange : "rgba(0,0,0,0.15)",
+                transition: "all 0.3s",
+              }}
+            />
+          </button>
         ))}
       </div>
     </div>
@@ -927,7 +943,7 @@ export default function Intro() {
         <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
           <FadeIn>
             <p className="mi-section-label">What counts</p>
-            <p className="mi-section-title">If it helps people or planet, it counts.</p>
+            <h2 className="mi-section-title" style={{ marginTop: 0 }}>If it helps people or planet, it counts.</h2>
           </FadeIn>
           <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "stretch" }}>
             {[
@@ -1027,7 +1043,7 @@ export default function Intro() {
 
           <FadeIn delay={0.15}>
             <div style={{ background: C.cream, borderRadius: 20, padding: "36px 32px", border: "1px solid rgba(0,0,0,0.04)" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-orange-text)", letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 20 }}>Sample Impact Card</p>
               <p style={{ fontSize: 24, fontWeight: 800, color: C.dark, marginBottom: 4, fontFamily: "'Outfit', sans-serif" }}>Chloe M.</p>
               <p style={{ fontSize: 14, color: "var(--brand-subtle-text)", marginBottom: 20 }}>Sept 2025 – Apr 2026</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

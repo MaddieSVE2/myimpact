@@ -101,6 +101,8 @@
   --brand-off-black: #0D1B1E;
   --brand-muted-text: #4A5568;
   --brand-subtle-text: #5A6572;
+  /* Darker orange for small text on light backgrounds (WCAG 4.5:1) */
+  --brand-orange-text: #C74E22;
 
   /* Semi-transparent tinted backgrounds for tag chips and card icons */
   --brand-light-blue-chip: rgba(168, 200, 218, 0.33);
@@ -167,6 +169,7 @@
   --brand-cream: #f5f5f5;
   --brand-off-black: #000000;
   --brand-orange-hex: #b84e00;
+  --brand-orange-text: #b84e00;
   --brand-muted-text: #222222;
   --brand-subtle-text: #333333;
 
@@ -217,7 +220,7 @@
 .mi-fraunces { font-family: 'Fraunces', Georgia, serif; }
 .mi-section-label {
   font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--brand-orange); margin-bottom: 12px;
+  color: var(--brand-orange-text); margin-bottom: 12px;
 }
 .mi-section-title {
   font-family: 'Outfit', sans-serif; font-size: clamp(26px, 4vw, 42px);

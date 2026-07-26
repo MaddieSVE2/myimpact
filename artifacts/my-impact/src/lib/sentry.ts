@@ -1,4 +1,9 @@
-import * as Sentry from "@sentry/react";
+// Thin facade over @sentry/react that keeps the SDK out of the initial
+// bundle. The heavy SDK is loaded via dynamic import when initSentry() runs
+// (deferred to browser idle time from main.tsx). Calls made before the SDK
+// is ready are queued and replayed once it loads.
+
+type SentryModule = typeof import("@sentry/react");
 
 const DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const ENVIRONMENT =
@@ -9,7 +14,13 @@ const TRACES_SAMPLE_RATE = Number(
   import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE ?? "0.1"
 );
 
-let initialized = false;
+let sdk: SentryModule | null = null;
+let initStarted = false;
+let pendingUser: { id: string } | null | undefined;
+const pendingExceptions: Array<{
+  err: unknown;
+  context?: Record<string, unknown>;
+}> = [];
 
 const BENIGN_ERROR_PATTERNS: RegExp[] = [
   /AbortError/i,
@@ -38,7 +49,7 @@ function isValidDsn(value: string): boolean {
 }
 
 export function initSentry(): void {
-  if (initialized) return;
+  if (initStarted) return;
   if (!DSN) return;
   if (!isValidDsn(DSN)) {
     console.warn(
@@ -46,45 +57,66 @@ export function initSentry(): void {
     );
     return;
   }
+  initStarted = true;
 
-  Sentry.init({
-    dsn: DSN,
-    environment: ENVIRONMENT,
-    release: RELEASE,
-    integrations: [Sentry.browserTracingIntegration()],
-    tracesSampleRate: Number.isFinite(TRACES_SAMPLE_RATE)
-      ? TRACES_SAMPLE_RATE
-      : 0.1,
-    sendDefaultPii: false,
-    beforeSend(event, hint) {
-      const err = hint?.originalException;
-      const message =
-        (err instanceof Error ? err.message : undefined) ??
-        event.message ??
-        event.exception?.values?.[0]?.value;
-      if (isBenign(message)) return null;
-      return event;
-    },
-  });
+  import("@sentry/react")
+    .then((Sentry) => {
+      Sentry.init({
+        dsn: DSN,
+        environment: ENVIRONMENT,
+        release: RELEASE,
+        integrations: [Sentry.browserTracingIntegration()],
+        tracesSampleRate: Number.isFinite(TRACES_SAMPLE_RATE)
+          ? TRACES_SAMPLE_RATE
+          : 0.1,
+        sendDefaultPii: false,
+        beforeSend(event, hint) {
+          const err = hint?.originalException;
+          const message =
+            (err instanceof Error ? err.message : undefined) ??
+            event.message ??
+            event.exception?.values?.[0]?.value;
+          if (isBenign(message)) return null;
+          return event;
+        },
+      });
+      sdk = Sentry;
 
-  initialized = true;
+      // Replay anything that happened before the SDK finished loading.
+      if (pendingUser !== undefined) {
+        Sentry.setUser(pendingUser ? { id: pendingUser.id } : null);
+        pendingUser = undefined;
+      }
+      for (const { err, context } of pendingExceptions.splice(0)) {
+        Sentry.captureException(err, context ? { extra: context } : undefined);
+      }
+    })
+    .catch(() => {
+      initStarted = false; // allow a retry on a later call
+    });
 }
 
 export function setSentryUser(user: { id: string } | null): void {
-  if (!initialized) return;
-  if (user) {
-    Sentry.setUser({ id: user.id });
-  } else {
-    Sentry.setUser(null);
+  if (sdk) {
+    sdk.setUser(user ? { id: user.id } : null);
+  } else if (initStarted) {
+    pendingUser = user;
   }
 }
 
-export function captureException(err: unknown, context?: Record<string, unknown>): void {
-  if (!initialized) {
-    console.error("[sentry:disabled]", err, context);
+export function captureException(
+  err: unknown,
+  context?: Record<string, unknown>
+): void {
+  if (sdk) {
+    sdk.captureException(err, context ? { extra: context } : undefined);
     return;
   }
-  Sentry.captureException(err, context ? { extra: context } : undefined);
+  if (initStarted) {
+    pendingExceptions.push({ err, context });
+    return;
+  }
+  console.error("[sentry:disabled]", err, context);
 }
 
-export const isSentryEnabled = (): boolean => initialized;
+export const isSentryEnabled = (): boolean => sdk !== null;
