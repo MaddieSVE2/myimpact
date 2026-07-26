@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable, localCharitySubmissionsTable, localCharityOverridesTable, type StoredCharityPlace } from "@workspace/db";
 import { eq, desc, and, inArray, sql, asc, ilike, count } from "drizzle-orm";
 import { invalidateProxyCache } from "../lib/proxyStore.js";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
@@ -18,6 +18,7 @@ import {
 } from "../lib/voiceUsage.js";
 import { getMonthlyUsageReport, AI_BUDGET_ALERT_USD } from "../lib/aiUsage.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
+import { normalizeSubmittedUrl } from "../lib/charitySubmissionVerification.js";
 
 const router: IRouter = Router();
 
@@ -999,6 +1000,226 @@ router.put("/proxies/:id", authenticate, async (req: AuthenticatedRequest, res) 
   }
   invalidateProxyCache();
   res.json({ ok: true, proxy: row });
+});
+
+// ── Local charity submissions review queue ──────────────────────────────────
+
+router.get("/charity-submissions", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const page = Math.max(1, Math.floor(Number(req.query.page ?? 1)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit ?? 20)) || 20));
+  const offset = (page - 1) * limit;
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(localCharitySubmissionsTable);
+
+  const rows = await db
+    .select({
+      submission: localCharitySubmissionsTable,
+      reporterEmail: usersTable.email,
+      reporterName: usersTable.displayName,
+    })
+    .from(localCharitySubmissionsTable)
+    .leftJoin(usersTable, eq(localCharitySubmissionsTable.userId, usersTable.id))
+    .orderBy(
+      // Pending reviews first, then newest first.
+      sql`case when ${localCharitySubmissionsTable.status} = 'needs_review' then 0 else 1 end`,
+      desc(localCharitySubmissionsTable.createdAt),
+    )
+    .limit(limit)
+    .offset(offset);
+
+  res.json({
+    submissions: rows.map((r) => ({
+      id: r.submission.id,
+      type: r.submission.type,
+      localAuthority: r.submission.localAuthority,
+      country: r.submission.country,
+      category: r.submission.category,
+      charityName: r.submission.charityName,
+      issueType: r.submission.issueType,
+      submittedWebsite: r.submission.submittedWebsite,
+      note: r.submission.note,
+      status: r.submission.status,
+      verificationDetail: r.submission.verificationDetail,
+      createdAt: r.submission.createdAt,
+      reporterEmail: r.reporterEmail ?? null,
+      reporterName: r.reporterName ?? null,
+    })),
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
+});
+
+/**
+ * Approve a needs-review charity submission. Applies the correction or
+ * suggestion as an override (same mechanism the auto-verification path
+ * uses), then marks the submission approved.
+ */
+router.post("/charity-submissions/:id/approve", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  try {
+    const [submission] = await db
+      .select()
+      .from(localCharitySubmissionsTable)
+      .where(eq(localCharitySubmissionsTable.id, req.params.id))
+      .limit(1);
+
+    if (!submission) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+    if (submission.status !== "needs_review") {
+      res.status(409).json({ error: `Submission has already been ${submission.status.replace("_", " ")}` });
+      return;
+    }
+
+    // Work out what change (if any) approval applies, then write the
+    // override and the status update atomically in one transaction.
+    let appliedChange = "";
+    let overrideValues: typeof localCharityOverridesTable.$inferInsert | null = null;
+
+    if (submission.type === "correction") {
+      if (submission.issueType === "wrong_website" && submission.submittedWebsite) {
+        const url = normalizeSubmittedUrl(submission.submittedWebsite);
+        if (!url) {
+          res.status(400).json({ error: "Submitted website is not a valid web address, so it cannot be applied. Reject the submission instead." });
+          return;
+        }
+        overrideValues = {
+          localAuthority: submission.localAuthority,
+          targetName: submission.charityName,
+          kind: "patch",
+          patch: { website: url },
+        };
+        appliedChange = `Website updated to ${url}`;
+      } else if (submission.issueType === "closed") {
+        overrideValues = {
+          localAuthority: submission.localAuthority,
+          targetName: submission.charityName,
+          kind: "remove",
+        };
+        appliedChange = "Charity removed from suggestions";
+      } else if (submission.issueType === "wrong_description" && submission.note) {
+        overrideValues = {
+          localAuthority: submission.localAuthority,
+          targetName: submission.charityName,
+          kind: "patch",
+          patch: { description: submission.note.slice(0, 140) },
+        };
+        appliedChange = "Description updated from the reporter's note";
+      } else {
+        // No automatic change is derivable (e.g. issue type "other" or a
+        // description report with no note); the decision is still recorded.
+        appliedChange = "";
+      }
+    } else if (submission.type === "suggestion") {
+      const website = submission.submittedWebsite
+        ? (normalizeSubmittedUrl(submission.submittedWebsite) ?? undefined)
+        : undefined;
+      const place: StoredCharityPlace = {
+        name: submission.charityName,
+        description: submission.note
+          ? submission.note.slice(0, 140)
+          : "Suggested by a local volunteer.",
+        howToJoin: "Contact them to ask about volunteering opportunities.",
+        website,
+        source: "community",
+        verified: false,
+      };
+      overrideValues = {
+        localAuthority: submission.localAuthority,
+        category: submission.category || "Community",
+        kind: "add",
+        place,
+      };
+      appliedChange = "Charity added to local suggestions";
+    } else {
+      res.status(400).json({ error: `Unknown submission type: ${submission.type}` });
+      return;
+    }
+
+    const detailSuffix = appliedChange
+      ? `Approved by admin — ${appliedChange}`
+      : "Approved by admin — no automatic change applied";
+    await db.transaction(async (tx) => {
+      if (overrideValues) {
+        await tx.insert(localCharityOverridesTable).values(overrideValues);
+      }
+      await tx
+        .update(localCharitySubmissionsTable)
+        .set({
+          status: "approved",
+          verificationDetail: submission.verificationDetail
+            ? `${submission.verificationDetail}. ${detailSuffix}`
+            : detailSuffix,
+        })
+        .where(eq(localCharitySubmissionsTable.id, submission.id));
+    });
+
+    res.json({
+      ok: true,
+      status: "approved",
+      appliedChange: appliedChange || null,
+      warning: appliedChange
+        ? undefined
+        : "Approved, but no automatic change could be applied for this issue type — apply any fix manually if needed.",
+    });
+  } catch (err) {
+    console.error("[admin] charity submission approve error:", err);
+    res.status(500).json({ error: "Failed to approve submission" });
+  }
+});
+
+/** Reject a needs-review charity submission (records the decision, changes nothing else). */
+router.post("/charity-submissions/:id/reject", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  try {
+    const [submission] = await db
+      .select()
+      .from(localCharitySubmissionsTable)
+      .where(eq(localCharitySubmissionsTable.id, req.params.id))
+      .limit(1);
+
+    if (!submission) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+    if (submission.status !== "needs_review") {
+      res.status(409).json({ error: `Submission has already been ${submission.status.replace("_", " ")}` });
+      return;
+    }
+
+    await db
+      .update(localCharitySubmissionsTable)
+      .set({
+        status: "rejected",
+        verificationDetail: submission.verificationDetail
+          ? `${submission.verificationDetail}. Rejected by admin`
+          : "Rejected by admin",
+      })
+      .where(eq(localCharitySubmissionsTable.id, submission.id));
+
+    res.json({ ok: true, status: "rejected" });
+  } catch (err) {
+    console.error("[admin] charity submission reject error:", err);
+    res.status(500).json({ error: "Failed to reject submission" });
+  }
 });
 
 export default router;

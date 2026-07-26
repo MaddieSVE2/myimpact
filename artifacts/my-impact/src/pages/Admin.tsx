@@ -85,18 +85,48 @@ interface OrgRequest {
   createdAt: string;
 }
 
+interface CharitySubmission {
+  id: string;
+  type: string;
+  localAuthority: string;
+  country: string;
+  category: string | null;
+  charityName: string;
+  issueType: string | null;
+  submittedWebsite: string | null;
+  note: string | null;
+  status: string;
+  verificationDetail: string | null;
+  createdAt: string;
+  reporterEmail: string | null;
+  reporterName: string | null;
+}
+
+const ISSUE_LABELS: Record<string, string> = {
+  wrong_website: "Wrong website",
+  wrong_description: "Wrong description",
+  closed: "Charity closed",
+  other: "Other issue",
+};
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    needs_review: "bg-yellow-100 text-yellow-800 border-yellow-200",
     approved: "bg-green-100 text-green-800 border-green-200",
+    applied: "bg-green-100 text-green-800 border-green-200",
     rejected: "bg-red-100 text-red-700 border-red-200",
+  };
+  const labels: Record<string, string> = {
+    needs_review: "Needs review",
+    applied: "Auto-applied",
   };
   const style = styles[status] ?? "bg-secondary text-muted-foreground border-border";
   return (
     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${style} capitalize`}>
-      {status}
+      {labels[status] ?? status}
     </span>
   );
 }
@@ -131,6 +161,13 @@ export default function Admin() {
   const [suppFetching, setSuppFetching] = useState(true);
   const [suppError, setSuppError] = useState<string | null>(null);
   const [suppClearing, setSuppClearing] = useState<string | null>(null);
+
+  const [charitySubs, setCharitySubs] = useState<CharitySubmission[]>([]);
+  const [charityFetching, setCharityFetching] = useState(true);
+  const [charityError, setCharityError] = useState<string | null>(null);
+  const [charityPage, setCharityPage] = useState(1);
+  const [charityTotal, setCharityTotal] = useState(0);
+  const [charityTotalPages, setCharityTotalPages] = useState(1);
 
   const [aiReport, setAiReport] = useState<AiUsageReport | null>(null);
   const [aiFetching, setAiFetching] = useState(true);
@@ -223,6 +260,41 @@ export default function Admin() {
       .catch((err) => setSuppError(err.message ?? "Failed to load suppressed emails"))
       .finally(() => setSuppFetching(false));
   }, [isLoading, user, isAdmin]);
+
+  useEffect(() => {
+    if (isLoading || !user || !isAdmin) return;
+    setCharityFetching(true);
+    fetch(`${BASE}/api/admin/charity-submissions?page=${charityPage}&limit=20`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setCharitySubs(data.submissions);
+        setCharityTotal(data.total ?? data.submissions.length);
+        setCharityTotalPages(data.totalPages ?? 1);
+      })
+      .catch((err) => setCharityError(err.message ?? "Failed to load charity submissions"))
+      .finally(() => setCharityFetching(false));
+  }, [isLoading, user, isAdmin, charityPage]);
+
+  async function handleCharityDecision(id: string, decision: "approve" | "reject") {
+    setActionLoading(id + "-" + decision);
+    try {
+      const r = await fetch(`${BASE}/api/admin/charity-submissions/${id}/${decision}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setCharitySubs((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: data.status } : s))
+      );
+      if (data.warning) alert(data.warning);
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : null) ?? `Failed to ${decision} submission`);
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   async function handleClearSuppression(email: string) {
     if (!confirm(`Clear the suppression for ${email}? This also removes it from Resend's suppression list so emails can be delivered again.`)) return;
@@ -755,6 +827,142 @@ export default function Admin() {
             <button
               onClick={() => setOrgPage((p) => Math.min(orgTotalPages, p + 1))}
               disabled={orgPage >= orgTotalPages || orgFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+
+      <h2 className="text-xl font-display font-bold text-foreground mt-12 mb-2">Local charity submissions</h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        Corrections and suggestions from volunteers about local charity listings. Verified ones are
+        auto-applied; the rest wait here for your decision. Approving applies the change to the
+        charity listing; rejecting dismisses it.
+      </p>
+
+      {charityError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">
+          {charityError}
+        </div>
+      )}
+
+      {charityFetching && !charityError && (
+        <p className="text-sm text-muted-foreground">Loading charity submissions…</p>
+      )}
+
+      {!charityFetching && !charityError && charitySubs.length === 0 && (
+        <p className="text-sm text-muted-foreground italic">No charity submissions yet.</p>
+      )}
+
+      {!charityFetching && !charityError && charitySubs.length > 0 && (
+        <div className="flex flex-col gap-4" data-testid="admin-charity-submissions">
+          {charitySubs.map((s) => (
+            <div
+              key={s.id}
+              className="rounded-xl border border-border shadow-sm bg-background overflow-hidden"
+            >
+              <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border bg-secondary/30">
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground text-base truncate block">{s.charityName}</span>
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {s.type}
+                    {s.issueType ? ` · ${ISSUE_LABELS[s.issueType] ?? s.issueType}` : ""}
+                    {" · "}{s.localAuthority}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <StatusBadge status={s.status} />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(s.createdAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+              </div>
+              <div className="px-5 py-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Category</span>
+                  <p className="text-foreground mt-0.5">{s.category ?? <span className="italic text-muted-foreground">Not specified</span>}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Reported by</span>
+                  <p className="text-foreground mt-0.5">
+                    {s.reporterEmail ? (
+                      <a href={`mailto:${s.reporterEmail}`} className="text-primary hover:underline">{s.reporterEmail}</a>
+                    ) : (
+                      <span className="italic text-muted-foreground">Unknown</span>
+                    )}
+                  </p>
+                </div>
+                {s.submittedWebsite && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Submitted website</span>
+                    <p className="mt-0.5 break-all">
+                      <a href={s.submittedWebsite} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {s.submittedWebsite}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                {s.note && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Note</span>
+                    <p className="text-foreground mt-0.5">{s.note}</p>
+                  </div>
+                )}
+                {s.verificationDetail && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Verification</span>
+                    <p className="text-foreground mt-0.5">{s.verificationDetail}</p>
+                  </div>
+                )}
+              </div>
+              {s.status === "needs_review" && (
+                <div className="px-5 py-3 border-t border-border flex gap-3">
+                  <button
+                    onClick={() => handleCharityDecision(s.id, "approve")}
+                    disabled={actionLoading !== null}
+                    data-testid={`button-approve-charity-${s.id}`}
+                    className="px-4 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading === s.id + "-approve" ? "Approving…" : "Approve"}
+                  </button>
+                  <button
+                    onClick={() => handleCharityDecision(s.id, "reject")}
+                    disabled={actionLoading !== null}
+                    data-testid={`button-reject-charity-${s.id}`}
+                    className="px-4 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm font-medium transition-colors border border-destructive/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading === s.id + "-reject" ? "Rejecting…" : "Reject"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+        <p className="text-xs text-muted-foreground">
+          {charityTotal} submission{charityTotal !== 1 ? "s" : ""} total
+          {charityTotalPages > 1 ? ` · page ${charityPage} of ${charityTotalPages}` : ""}
+        </p>
+        {charityTotalPages > 1 && (
+          <div className="flex items-center gap-2" data-testid="admin-charity-submissions-pagination">
+            <button
+              onClick={() => setCharityPage((p) => Math.max(1, p - 1))}
+              disabled={charityPage <= 1 || charityFetching}
+              className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCharityPage((p) => Math.min(charityTotalPages, p + 1))}
+              disabled={charityPage >= charityTotalPages || charityFetching}
               className="px-3 py-1 rounded-md border border-border text-xs text-foreground disabled:opacity-40 hover:border-primary/40"
             >
               Next
