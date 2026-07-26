@@ -65,8 +65,11 @@ router.post("/questions", authenticate, reflectionRateLimit, textAiQuota, async 
 
     const completion = await openai.chat.completions.create(
       {
-        model: "gpt-4.1-mini",
-        max_completion_tokens: 300,
+        model: "gpt-5.4-mini",
+        // Low effort keeps latency down and stops reasoning tokens from
+        // eating the completion budget before the JSON is emitted.
+        reasoning_effort: "low",
+        max_completion_tokens: 1000,
         response_format: { type: "json_object" },
         messages: [
           {
