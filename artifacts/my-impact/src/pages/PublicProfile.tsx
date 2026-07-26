@@ -217,7 +217,7 @@ export default function PublicProfile() {
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, background: "#F06127" }}
+                          style={{ width: `${pct}%`, background: "var(--brand-orange-bright)" }}
                         />
                       </div>
                     </div>
@@ -244,7 +244,7 @@ export default function PublicProfile() {
           </div>
           <div className="space-y-3">
             {journalHighlights.map((entry, i) => (
-              <div key={i} className="border-l-2 pl-3" style={{ borderColor: "#F06127" }}>
+              <div key={i} className="border-l-2 pl-3" style={{ borderColor: "var(--brand-orange-bright)" }}>
                 <p className="text-sm text-foreground leading-relaxed">{entry.text}</p>
                 <p className="text-xs text-muted-foreground mt-1">{formatDate(entry.createdAt)}</p>
               </div>

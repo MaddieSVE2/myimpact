@@ -161,7 +161,7 @@ export default function Login() {
           {sent ? (
             <div className="text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
-                <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} aria-hidden="true" />
+                <CheckCircle className="w-7 h-7" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">
                 {isOrgLogin ? t("login.checkWorkInbox") : t("login.checkInbox")}
@@ -213,7 +213,7 @@ export default function Login() {
                       onChange={(e) => { setEmail(e.target.value); setError(null); setUndeliverable(false); }}
                       placeholder={t("login.emailPlaceholder")}
                       required
-                      className="bg-white w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+                      className="bg-white w-full pl-10 pr-4 py-3 min-h-[44px] border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
                     />
                   </div>
                 </div>
@@ -274,7 +274,7 @@ export default function Login() {
                       type="checkbox"
                       checked={marketingOptIn}
                       onChange={(e) => setMarketingOptIn(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-border text-[#F06127] focus:ring-[#F06127]/40"
+                      className="mt-0.5 h-4 w-4 rounded border-border text-[var(--brand-orange-bright)] focus:ring-[#F06127]/40"
                       data-testid="checkbox-marketing-opt-in"
                     />
                     <span>
@@ -298,7 +298,7 @@ export default function Login() {
                     type="submit"
                     disabled={loading || !email}
                     className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
-                    style={{ background: "#F06127" }}
+                    style={{ background: "var(--brand-orange-bright)" }}
                   >
                     {loading ? t("login.sending") : <>{t("login.sendLink")} <ArrowRight className="w-4 h-4" aria-hidden="true" /></>}
                   </button>

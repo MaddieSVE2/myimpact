@@ -52,7 +52,7 @@ interface OrgUniversityDashboardProps {
   sections?: Record<string, boolean>;
 }
 
-const BAR_PALETTE = ["#F06127", "#B5BE2E", "#A8C8DA", "#7E8FAD", "#E8633A", "#C5A3D0", "#8FBF9F"];
+const BAR_PALETTE = ["var(--brand-orange-bright)", "#B5BE2E", "#A8C8DA", "#7E8FAD", "var(--brand-orange)", "#C5A3D0", "#8FBF9F"];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

@@ -217,15 +217,15 @@ function ActivityCardItem({
       exit={{ opacity: 0, scale: 0.97 }}
       className="rounded-xl overflow-hidden group"
       style={{
-        border: "2px solid #F06127",
+        border: "2px solid var(--brand-orange-bright)",
         background: "#fff9f7",
       }}
     >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: "#F06127" }} />
-            <span className="text-xs font-semibold" style={{ color: "#F06127" }}>Activity recorded</span>
+            <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--brand-orange-bright)" }} />
+            <span className="text-xs font-semibold" style={{ color: "var(--brand-orange-bright)" }}>Activity recorded</span>
           </div>
           <button
             onClick={() => onDelete(card.id)}
@@ -245,7 +245,7 @@ function ActivityCardItem({
           <p className="text-xs font-medium text-foreground mb-2">
             Reflect on this…
           </p>
-          <p className="text-xs italic mb-3" style={{ color: "#F06127" }}>
+          <p className="text-xs italic mb-3" style={{ color: "var(--brand-orange-bright)" }}>
             "{card.reflectionPrompt}"
           </p>
 
@@ -282,7 +282,7 @@ function ActivityCardItem({
                   onClick={handleSaveReflection}
                   disabled={!draft.trim()}
                   className="px-4 py-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-40"
-                  style={{ background: "#F06127" }}
+                  style={{ background: "var(--brand-orange-bright)" }}
                 >
                   Save reflection
                 </button>
@@ -416,7 +416,7 @@ export default function Journal() {
     requestAnimationFrame(() => {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
       target.style.transition = "box-shadow 0.6s ease";
-      target.style.boxShadow = "0 0 0 3px rgba(240,97,39,0.45)";
+      target.style.boxShadow = "0 0 0 3px color-mix(in srgb, var(--brand-orange-bright) 45%, transparent)";
       setTimeout(() => { target.style.boxShadow = ""; }, 1800);
     });
   }, [loadingEntries, entries.length]);

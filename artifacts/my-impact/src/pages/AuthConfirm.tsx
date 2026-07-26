@@ -126,7 +126,7 @@ export default function AuthConfirm() {
           {status === "ready" && (
             <>
               <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
-                <CheckCircle className="w-7 h-7" style={{ color: "#F06127" }} />
+                <CheckCircle className="w-7 h-7" style={{ color: "var(--brand-orange-bright)" }} />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">Confirm sign in</h2>
               {email && (
@@ -137,7 +137,7 @@ export default function AuthConfirm() {
               <button
                 onClick={handleConfirm}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-white text-sm font-bold"
-                style={{ background: "#F06127" }}
+                style={{ background: "var(--brand-orange-bright)" }}
               >
                 Confirm sign in
               </button>
@@ -150,7 +150,7 @@ export default function AuthConfirm() {
 
           {status === "confirming" && (
             <>
-              <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4" style={{ color: "#F06127" }} />
+              <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4" style={{ color: "var(--brand-orange-bright)" }} />
               <h2 className="text-lg font-bold text-foreground">Signing you in…</h2>
             </>
           )}
@@ -165,7 +165,7 @@ export default function AuthConfirm() {
               <Link
                 href="/login"
                 className="inline-block px-5 py-2.5 rounded-lg text-white text-sm font-bold"
-                style={{ background: "#F06127" }}
+                style={{ background: "var(--brand-orange-bright)" }}
               >
                 Request a new link
               </Link>

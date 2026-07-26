@@ -60,7 +60,7 @@ function buildPopupElement(region: RegionData): HTMLElement {
     rows.appendChild(row);
   }
 
-  addRow("Members", String(region.members), "#F06127");
+  addRow("Members", String(region.members), "var(--brand-orange-bright)");
   if (region.hours !== undefined) addRow("Hours given", region.hours.toLocaleString("en-GB"));
   if (region.value !== undefined) addRow("Social value", formatCurrencyShort(region.value));
   if (region.sroi != null) addRow("SROI", `£${region.sroi.toFixed(2)} per £1`);
@@ -151,9 +151,9 @@ export function UKRegionMap({ regions }: UKRegionMapProps) {
 
         const layer: LeafletGeoJSON = L.geoJSON(geoInput, {
           style: {
-            color: "#F06127",
+            color: "var(--brand-orange-bright)",
             weight: 1.5,
-            fillColor: "#F06127",
+            fillColor: "var(--brand-orange-bright)",
             fillOpacity,
           },
         });

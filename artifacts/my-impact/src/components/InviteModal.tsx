@@ -70,7 +70,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#F06127" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--brand-orange-bright)" }}>
               <Gift className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div>

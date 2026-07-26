@@ -1169,7 +1169,7 @@ export function Sidekick() {
               key={t.id}
               onClick={() => fireTemplate(t)}
               disabled={streaming}
-              className="text-left px-3.5 py-3 rounded-lg border border-border hover:border-[#F06127] hover:bg-[#FFF7F3] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-left px-3.5 py-3 rounded-lg border border-border hover:border-[var(--brand-orange-bright)] hover:bg-[#FFF7F3] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               data-testid={`template-${t.id}`}
             >
               <p className="text-[13px] font-medium text-foreground leading-snug">{t.label}</p>
@@ -1192,7 +1192,7 @@ export function Sidekick() {
         className={cn(
           "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-medium border-b-2 transition-colors",
           tab === "chat"
-            ? "border-[#F06127] text-[#F06127]"
+            ? "border-[var(--brand-orange-bright)] text-[var(--brand-orange-bright)]"
             : "border-transparent text-muted-foreground hover:text-foreground"
         )}
         data-testid="sidekick-tab-chat"
@@ -1205,7 +1205,7 @@ export function Sidekick() {
         className={cn(
           "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-medium border-b-2 transition-colors",
           tab === "templates"
-            ? "border-[#F06127] text-[#F06127]"
+            ? "border-[var(--brand-orange-bright)] text-[var(--brand-orange-bright)]"
             : "border-transparent text-muted-foreground hover:text-foreground"
         )}
         data-testid="sidekick-tab-templates"
@@ -1223,7 +1223,7 @@ export function Sidekick() {
        <div className="flex items-center justify-between min-h-[36px]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#FFF0E8" }}>
-            <Sparkles className="w-4 h-4" style={{ color: "#F06127" }} />
+            <Sparkles className="w-4 h-4" style={{ color: "var(--brand-orange-bright)" }} />
           </div>
           <div>
             <p className="font-semibold text-sm text-foreground leading-none">Sidekick</p>
@@ -1241,7 +1241,7 @@ export function Sidekick() {
               className={cn(
                 "min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center transition-colors",
                 voiceMode
-                  ? "text-[#F06127] hover:bg-[#FFF0E8]"
+                  ? "text-[var(--brand-orange-bright)] hover:bg-[#FFF0E8]"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
               title={voiceMode ? "Voice replies on. Tap to mute." : "Voice replies off. Tap to read replies aloud."}
@@ -1292,7 +1292,7 @@ export function Sidekick() {
               </span>
             </span>
             {!quotaQuery.data.quota.isAuthenticated && (
-              <span className="text-[10px] text-[#F06127] font-medium whitespace-nowrap">
+              <span className="text-[10px] text-[var(--brand-orange-bright)] font-medium whitespace-nowrap">
                 Sign in for higher limits
               </span>
             )}
@@ -1322,7 +1322,7 @@ export function Sidekick() {
                     <button
                       key={action}
                       onClick={() => sendMessage(action)}
-                      className="text-left px-3.5 py-2.5 rounded-lg border border-border text-[13px] text-foreground hover:border-[#F06127] hover:bg-[#FFF7F3] transition-all"
+                      className="text-left px-3.5 py-2.5 rounded-lg border border-border text-[13px] text-foreground hover:border-[var(--brand-orange-bright)] hover:bg-[#FFF7F3] transition-all"
                     >
                       {action}
                     </button>
@@ -1346,7 +1346,7 @@ export function Sidekick() {
                           "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
                           msg.role === "user" ? "text-white rounded-br-sm" : "bg-[#f4f4f5] text-foreground rounded-bl-sm"
                         )}
-                        style={msg.role === "user" ? { backgroundColor: "#F06127" } : undefined}
+                        style={msg.role === "user" ? { backgroundColor: "var(--brand-orange-bright)" } : undefined}
                       >
                         {msg.content || (
                           <span
@@ -1484,7 +1484,7 @@ export function Sidekick() {
                             className={cn(
                               "w-full flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md text-[12px] transition-colors",
                               isActive
-                                ? "text-[#F06127] bg-[#FFF7F3] font-medium"
+                                ? "text-[var(--brand-orange-bright)] bg-[#FFF7F3] font-medium"
                                 : "text-foreground hover:bg-accent"
                             )}
                             data-testid={`sidekick-mic-option-${d.deviceId}`}
@@ -1515,7 +1515,7 @@ export function Sidekick() {
                               className={cn(
                                 "w-full flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md text-[12px] transition-colors",
                                 isActive
-                                  ? "text-[#F06127] bg-[#FFF7F3] font-medium"
+                                  ? "text-[var(--brand-orange-bright)] bg-[#FFF7F3] font-medium"
                                   : "text-foreground hover:bg-accent"
                               )}
                               data-testid={`sidekick-output-option-${d.deviceId}`}
@@ -1538,10 +1538,10 @@ export function Sidekick() {
             )}
             {voiceState === "recording" && (
               <div
-                className="text-[12px] text-[#F06127] font-medium mb-2 flex items-center gap-2"
+                className="text-[12px] text-[var(--brand-orange-bright)] font-medium mb-2 flex items-center gap-2"
                 data-testid="sidekick-recording-indicator"
               >
-                <span className="w-2 h-2 rounded-full bg-[#F06127] animate-pulse shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-[var(--brand-orange-bright)] animate-pulse shrink-0" />
                 <span>Listening… tap the mic again to send.</span>
                 {/* Live input level meter: bars fill as the mic picks up sound */}
                 <span
@@ -1554,7 +1554,7 @@ export function Sidekick() {
                       key={i}
                       className={cn(
                         "w-[3px] rounded-full transition-colors duration-75",
-                        micLevel >= threshold ? "bg-[#F06127]" : "bg-border"
+                        micLevel >= threshold ? "bg-[var(--brand-orange-bright)]" : "bg-border"
                       )}
                       style={{ height: `${6 + i * 2.5}px` }}
                     />
@@ -1592,7 +1592,7 @@ export function Sidekick() {
                     : "Ask Sidekick anything…"
                 }
                 disabled={inputDisabled || voiceState === "recording" || voiceState === "transcribing"}
-                className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#F06127] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
+                className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[var(--brand-orange-bright)] transition-colors min-h-[44px] max-h-[120px] leading-snug disabled:opacity-50"
                 style={{ fontFamily: "inherit" }}
                 onInput={(e) => {
                   const el = e.currentTarget;
@@ -1608,7 +1608,7 @@ export function Sidekick() {
                     "w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 transition-colors disabled:opacity-40",
                     voiceState === "recording"
                       ? "bg-red-500 text-white animate-pulse"
-                      : "bg-white border border-border text-foreground hover:border-[#F06127] hover:text-[#F06127]"
+                      : "bg-white border border-border text-foreground hover:border-[var(--brand-orange-bright)] hover:text-[var(--brand-orange-bright)]"
                   )}
                   aria-label={
                     voiceState === "recording" ? "Stop recording and send" : "Record a voice message"
@@ -1633,7 +1633,7 @@ export function Sidekick() {
                 onClick={handleSubmit}
                 disabled={!input.trim() || inputDisabled || voiceState !== "idle"}
                 className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 text-white transition-opacity disabled:opacity-40"
-                style={{ backgroundColor: "#F06127" }}
+                style={{ backgroundColor: "var(--brand-orange-bright)" }}
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
@@ -1666,14 +1666,14 @@ export function Sidekick() {
           <div
             onClick={() => setOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors pt-16 select-none group"
-            style={{ backgroundColor: "#C8451A" }}
+            style={{ backgroundColor: "var(--brand-orange-solid)" }}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#fff")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#C8451A")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--brand-orange-solid)")}
             title="Open Sidekick AI"
           >
-            <Bot className="w-5 h-5 text-white group-hover:text-[#C8451A] transition-colors" />
+            <Bot className="w-5 h-5 text-white group-hover:text-[var(--brand-orange-solid)] transition-colors" />
             <span
-              className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[#C8451A]"
+              className="text-[11px] font-semibold tracking-[1.5px] uppercase transition-colors text-white group-hover:text-[var(--brand-orange-solid)]"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
             >
               SIDEKICK

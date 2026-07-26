@@ -67,7 +67,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
         <Link
           href="/"
           className="inline-block px-5 py-2.5 rounded-lg text-white text-sm font-bold"
-          style={{ background: "#F06127" }}
+          style={{ background: "var(--brand-orange-bright)" }}
         >
           Back to home
         </Link>
@@ -78,7 +78,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="text-left">
       <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#FFF3ED" }}>
-        <Cake className="w-7 h-7" style={{ color: "#F06127" }} aria-hidden="true" />
+        <Cake className="w-7 h-7" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
       </div>
       <h2 className="text-xl font-bold text-foreground mb-2 text-center">When were you born?</h2>
       <p className="text-sm text-muted-foreground leading-relaxed mb-5 text-center">
@@ -91,7 +91,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
           value={birthMonth}
           onChange={(e) => { setBirthMonth(e.target.value); setError(null); }}
           data-testid="select-birth-month"
-          className="flex-1 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+          className="flex-1 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
           aria-label="Birth month"
           required
         >
@@ -105,7 +105,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
           value={birthYear}
           onChange={(e) => { setBirthYear(e.target.value); setError(null); }}
           data-testid="select-birth-year"
-          className="w-28 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+          className="w-28 px-3 py-3 min-h-[44px] border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
           aria-label="Birth year"
           required
         >
@@ -125,7 +125,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
         disabled={saving || !birthMonth || !birthYear}
         data-testid="button-save-birth-date"
         className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
-        style={{ background: "#F06127" }}
+        style={{ background: "var(--brand-orange-bright)" }}
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : null}
         {saving ? "Saving…" : "Continue"}

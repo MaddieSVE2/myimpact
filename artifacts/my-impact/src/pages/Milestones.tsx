@@ -170,7 +170,7 @@ export default function Milestones() {
           <Link
             href="/settings"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
           >
             {t("milestones.openSettings")}
           </Link>
@@ -222,7 +222,7 @@ export default function Milestones() {
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: reached ? "#22c55e" : "#F06127" }}
+                        style={{ width: `${pct}%`, backgroundColor: reached ? "#22c55e" : "var(--brand-orange-bright)" }}
                       />
                     </div>
                   </div>

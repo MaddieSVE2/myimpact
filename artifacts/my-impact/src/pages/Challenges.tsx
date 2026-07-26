@@ -323,7 +323,7 @@ function CreateChallengeForm({
           onClick={handleSubmit}
           disabled={createMutation.isPending}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-bold disabled:opacity-50 transition-opacity"
-          style={{ background: "#F06127" }}
+          style={{ background: "var(--brand-orange-bright)" }}
         >
           {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
           Create challenge
@@ -387,7 +387,7 @@ export default function Challenges() {
           <button
             onClick={() => { setShowCreate(true); setCreatedId(null); setLocation(null); }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-white text-sm font-bold shrink-0"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             New
@@ -431,7 +431,7 @@ export default function Challenges() {
           <button
             onClick={() => setShowCreate(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-bold"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             Create your first

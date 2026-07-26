@@ -316,7 +316,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.valueByCategory.map((_, i) => (
-                    <Cell key={i} fill={i === 0 ? "#F06127" : i === 1 ? "#B5BE2E" : i === 2 ? "#A8C8DA" : i === 3 ? "#7E8FAD" : "#E8633A"} />
+                    <Cell key={i} fill={i === 0 ? "var(--brand-orange-bright)" : i === 1 ? "#B5BE2E" : i === 2 ? "#A8C8DA" : i === 3 ? "#7E8FAD" : "var(--brand-orange)"} />
                   ))}
                 </Bar>
               </BarChart>

@@ -29,7 +29,7 @@ export function QuickLogFab() {
     <Link
       href={href}
       className="lg:hidden fixed bottom-20 right-5 z-40 inline-flex items-center gap-2 pl-4 pr-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg transition-transform active:scale-95"
-      style={{ background: "#F06127", boxShadow: "0 6px 20px rgba(240,97,39,0.45)" }}
+      style={{ background: "var(--brand-orange-bright)", boxShadow: "0 6px 20px color-mix(in srgb, var(--brand-orange-bright) 45%, transparent)" }}
       aria-label="Log activity"
       data-testid="fab-log-activity"
     >

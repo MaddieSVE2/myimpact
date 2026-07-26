@@ -852,7 +852,7 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
 
       <div className="bg-muted/30 rounded-lg p-4">
         <div className="flex items-start gap-2 mb-3">
-          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
+          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
           <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
         </div>
 

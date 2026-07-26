@@ -57,7 +57,7 @@ export default function CopyField({
     buttonVariant === "primary"
       ? "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white transition-colors shrink-0 disabled:opacity-60"
       : "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors shrink-0 disabled:opacity-60";
-  const buttonStyle = buttonVariant === "primary" ? { background: "#F06127" } : undefined;
+  const buttonStyle = buttonVariant === "primary" ? { background: "var(--brand-orange-bright)" } : undefined;
 
   const copyButton = (
     <button

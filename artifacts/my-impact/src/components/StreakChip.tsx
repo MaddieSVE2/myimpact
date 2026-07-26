@@ -26,7 +26,7 @@ export default function StreakChip({ streak, size = "sm", showLongest = false }:
 
   const broken = current === 0;
   const bg = broken ? "#F3F4F6" : atRisk ? "#FEF3C7" : "#FEE4D6";
-  const border = broken ? "#E5E7EB" : atRisk ? "#FCD34D" : "#F06127";
+  const border = broken ? "#E5E7EB" : atRisk ? "#FCD34D" : "var(--brand-orange-bright)";
   const fg = broken ? "#6B7280" : atRisk ? "#92400E" : "#9A3412";
 
   const label = broken

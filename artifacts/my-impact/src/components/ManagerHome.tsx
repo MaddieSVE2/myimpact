@@ -280,7 +280,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
               data-testid="manager-cta-dashboard"
               className="inline-flex items-center gap-1.5"
               style={{
-                padding: "10px 18px", borderRadius: 10, background: "var(--brand-orange)",
+                padding: "10px 18px", borderRadius: 10, background: "var(--brand-orange-bright)",
                 color: "white", fontSize: 14, fontWeight: 700, textDecoration: "none",
               }}
             >

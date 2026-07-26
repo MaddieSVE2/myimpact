@@ -77,7 +77,7 @@ function CelebrationCard({ challenge, percent, total }: { challenge: ChallengeFu
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       className="rounded-2xl p-6 text-white relative overflow-hidden"
-      style={{ background: hit ? "linear-gradient(135deg, #F06127 0%, #E54B1F 100%)" : "linear-gradient(135deg, #213547 0%, #2d4a5e 100%)" }}
+      style={{ background: hit ? "linear-gradient(135deg, var(--brand-orange-bright) 0%, #E54B1F 100%)" : "linear-gradient(135deg, #213547 0%, #2d4a5e 100%)" }}
     >
       <div className="absolute top-3 right-3 opacity-20">
         <PartyPopper className="w-20 h-20" aria-hidden="true" />
@@ -311,7 +311,7 @@ export default function ChallengeDetail() {
             <button
               onClick={handleNativeShare}
               className="px-3 py-2 rounded-lg text-white text-sm font-bold inline-flex items-center gap-1.5 shrink-0"
-              style={{ background: "#F06127" }}
+              style={{ background: "var(--brand-orange-bright)" }}
             >
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
               Share

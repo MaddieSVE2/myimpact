@@ -632,7 +632,7 @@ export default function ActivitiesStep() {
                       onClick={handleDescribeSubmit}
                       disabled={!describeText.trim() || describeLoading}
                       className="mt-4 inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md text-sm font-semibold text-white disabled:opacity-40 transition-all"
-                      style={{ background: "#E8633A" }}
+                      style={{ background: "var(--brand-orange-bright)" }}
                     >
                       {describeLoading ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</>
@@ -870,7 +870,7 @@ export default function ActivitiesStep() {
                                       onClick={analyseActivity}
                                       disabled={!customName.trim() || analysing}
                                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white disabled:opacity-40 transition-all shrink-0"
-                                      style={{ background: "#E8633A" }}
+                                      style={{ background: "var(--brand-orange-bright)" }}
                                     >
                                       {analysing ? (
                                         <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</>
@@ -892,7 +892,7 @@ export default function ActivitiesStep() {
                                   className="bg-muted/30 rounded-lg p-4 space-y-3"
                                 >
                                   <div className="flex items-start gap-2">
-                                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
+                                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
                                     <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
                                   </div>
                                   <div className="flex items-center gap-3">
@@ -1212,7 +1212,7 @@ export default function ActivitiesStep() {
 
                       <div className="bg-muted/30 rounded-lg p-4">
                         <div className="flex items-start gap-2 mb-3">
-                          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#E8633A" }} />
+                          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
                           <p className="text-sm font-medium text-foreground leading-snug">
                             {pendingItem.analysed.friendlyQuestion}
                           </p>

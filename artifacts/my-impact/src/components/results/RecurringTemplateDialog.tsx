@@ -38,8 +38,8 @@ export function RecurringTemplateDialog({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F0612718" }}>
-            <Repeat className="w-4 h-4" style={{ color: "#F06127" }} aria-hidden="true" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--brand-orange-bright) 9%, transparent)" }}>
+            <Repeat className="w-4 h-4" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
           </div>
           <h2 className="text-base font-semibold text-foreground">Make this a regular activity?</h2>
         </div>
@@ -120,7 +120,7 @@ export function RecurringTemplateDialog({
             onClick={onSave}
             disabled={isSaving || !tplLabel.trim()}
             className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
             data-testid="recurring-template-save-button"
           >
             {isSaving ? "Saving…" : "Make it regular"}

@@ -190,7 +190,7 @@ export default function Profile() {
                   className="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                   style={
                     selected
-                      ? { background: "#F06127", borderColor: "#F06127", color: "white" }
+                      ? { background: "var(--brand-orange-bright)", borderColor: "var(--brand-orange-bright)", color: "white" }
                       : { background: "white", borderColor: "#d1d5db", color: "#374151" }
                   }
                 >
@@ -214,7 +214,7 @@ export default function Profile() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                   style={
                     selected
-                      ? { background: "#F06127", borderColor: "#F06127", color: "white" }
+                      ? { background: "var(--brand-orange-bright)", borderColor: "var(--brand-orange-bright)", color: "white" }
                       : { background: "white", borderColor: "#d1d5db", color: "#374151" }
                   }
                 >
@@ -235,7 +235,7 @@ export default function Profile() {
             onChange={e => handlePostcodeChange(e.target.value)}
             placeholder="e.g. SW1A 1AA"
             maxLength={8}
-            className="bg-white w-full max-w-xs px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[#F06127]"
+            className="bg-white w-full max-w-xs px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
             aria-describedby={postcodeError ? "postcode-error" : undefined}
           />
           {postcodeError && (
@@ -248,7 +248,7 @@ export default function Profile() {
             onClick={handleSave}
             disabled={saving || !dirty || !!postcodeError}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-50"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

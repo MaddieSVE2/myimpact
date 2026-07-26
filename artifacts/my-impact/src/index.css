@@ -103,6 +103,10 @@
   --brand-subtle-text: #5A6572;
   /* Darker orange for small text on light backgrounds (WCAG 4.5:1) */
   --brand-orange-text: #C74E22;
+  /* Darker orange for solid white-text CTAs (WCAG 4.5:1 with white) */
+  --brand-orange-solid: #C8451A;
+  /* Bright orange for solid buttons, accents and highlights */
+  --brand-orange-bright: #F06127;
 
   /* Semi-transparent tinted backgrounds for tag chips and card icons */
   --brand-light-blue-chip: rgba(168, 200, 218, 0.33);
@@ -170,6 +174,8 @@
   --brand-off-black: #000000;
   --brand-orange-hex: #b84e00;
   --brand-orange-text: #b84e00;
+  --brand-orange-solid: #b84e00;
+  --brand-orange-bright: #b84e00;
   --brand-muted-text: #222222;
   --brand-subtle-text: #333333;
 

@@ -391,9 +391,9 @@ export default function QuickLogPhoto() {
                           style={{ background: "rgba(240, 97, 39, 0.10)" }}
                         >
                           {savingTplId === t.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#F06127" }} />
+                            <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--brand-orange-bright)" }} />
                           ) : (
-                            <Camera className="w-4 h-4" style={{ color: "#F06127" }} />
+                            <Camera className="w-4 h-4" style={{ color: "var(--brand-orange-bright)" }} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">

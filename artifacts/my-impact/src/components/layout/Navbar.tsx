@@ -128,7 +128,7 @@ function AddToHomeModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#F06127" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--brand-orange-bright)" }}>
               <Smartphone className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div>
@@ -337,7 +337,7 @@ export function Navbar() {
                   <Link
                     href="/wizard/actions"
                     className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
-                    style={{ background: "#C8451A", boxShadow: "0 2px 12px #C8451A40" }}
+                    style={{ background: "var(--brand-orange-solid)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-solid) 25%, transparent)" }}
                   >
                     {t("navbar.calculateCta")}
                   </Link>
@@ -522,7 +522,7 @@ export function Navbar() {
                 <Link
                   href="/wizard/actions"
                   className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-px whitespace-nowrap"
-                  style={{ background: "#C8451A", boxShadow: "0 2px 12px #C8451A40" }}
+                  style={{ background: "var(--brand-orange-solid)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-solid) 25%, transparent)" }}
                 >
                   {t("navbar.calculateCta")}
                 </Link>
@@ -603,7 +603,7 @@ export function Navbar() {
                 href="/wizard/actions"
                 onClick={() => setMobileOpen(false)}
                 className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
-                style={{ background: "#F06127" }}
+                style={{ background: "var(--brand-orange-bright)" }}
               >
                 {t("navbar.calculateCta")}
               </Link>

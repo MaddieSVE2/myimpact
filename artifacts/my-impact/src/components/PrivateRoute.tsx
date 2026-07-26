@@ -26,7 +26,7 @@ export function PrivateRoute({ component: Component }: PrivateRouteProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-[#F06127] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--brand-orange-bright)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function PrivateRoute({ component: Component }: PrivateRouteProps) {
   if (!isLoggedIn) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
-        <div className="w-8 h-8 border-2 border-[#F06127] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--brand-orange-bright)] border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-muted-foreground">Redirecting to sign in…</p>
       </div>
     );

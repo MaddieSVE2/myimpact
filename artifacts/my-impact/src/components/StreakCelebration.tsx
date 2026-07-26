@@ -58,7 +58,7 @@ export default function StreakCelebration({ milestone, onDismiss }: StreakCelebr
               animate={{ rotate: [0, -10, 10, -8, 8, 0], scale: 1 }}
               transition={{ duration: 1.1, ease: "easeOut" }}
               className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#F06127,#FFB347)" }}
+              style={{ background: "linear-gradient(135deg,var(--brand-orange-bright),#FFB347)" }}
             >
               <Flame className="w-10 h-10 text-white" aria-hidden="true" />
             </motion.div>
@@ -88,7 +88,7 @@ export default function StreakCelebration({ milestone, onDismiss }: StreakCelebr
             <button
               onClick={onDismiss}
               className="w-full py-2.5 rounded-lg text-white text-sm font-bold"
-              style={{ background: "#F06127" }}
+              style={{ background: "var(--brand-orange-bright)" }}
             >
               Keep going
             </button>

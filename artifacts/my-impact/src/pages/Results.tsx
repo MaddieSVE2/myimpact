@@ -87,7 +87,7 @@ function MetricTile({
         <p className="text-xs text-muted-foreground">{label}</p>
         <Icon className="w-5 h-5 shrink-0" style={{ color: iconColour }} aria-hidden="true" />
       </div>
-      <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
+      <p className="text-2xl font-display font-bold" style={{ color: "var(--brand-orange-bright)" }}>
         {formatCurrency(value)}
       </p>
       <div className="flex items-center gap-1 mt-1">
@@ -210,7 +210,7 @@ function PersonalDevelopmentDetail({
             <Trophy className="w-4 h-4 shrink-0" style={{ color: "#f59e0b" }} aria-hidden="true" />
             <p className="text-xs text-muted-foreground font-medium">Personal Development</p>
           </div>
-          <p className="text-2xl font-display font-bold" style={{ color: "#F06127" }}>
+          <p className="text-2xl font-display font-bold" style={{ color: "var(--brand-orange-bright)" }}>
             {formatCurrency(value)}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -266,7 +266,7 @@ function PersonalDevelopmentDetail({
               </div>
               <div className="border-t border-border pt-1.5 flex justify-between">
                 <span className="text-muted-foreground">Total skill value</span>
-                <span className="font-bold" style={{ color: "#F06127" }}>{formatCurrency(value)}</span>
+                <span className="font-bold" style={{ color: "var(--brand-orange-bright)" }}>{formatCurrency(value)}</span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -370,7 +370,7 @@ function ProxyMethodology({ breakdowns }: {
                           <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 leading-none align-middle">closest match</span>
                         </p>
                       </div>
-                      <p className="text-sm font-bold shrink-0" style={{ color: "#F06127" }}>
+                      <p className="text-sm font-bold shrink-0" style={{ color: "var(--brand-orange-bright)" }}>
                         {formatCurrency(b.impactValue)}
                       </p>
                     </div>
@@ -958,7 +958,7 @@ export default function Results() {
         <div className="flex flex-wrap gap-3 justify-center mt-2">
           <button
             onClick={() => setLocation("/wizard/actions")}
-            className="px-5 py-2.5 rounded-xl bg-[#F06127] text-white text-sm font-bold hover:bg-[#d95420] transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[var(--brand-orange-bright)] text-white text-sm font-bold hover:bg-[#d95420] transition-colors"
           >
             Calculate my impact →
           </button>
@@ -1280,7 +1280,7 @@ export default function Results() {
                       data={result.activityBreakdowns.map((a: any) => ({
                         name: a.activityName,
                         value: a.impactValue,
-                        color: a.sdgColor || "#F06127",
+                        color: a.sdgColor || "var(--brand-orange-bright)",
                       }))}
                       cx="50%"
                       cy="50%"
@@ -1290,7 +1290,7 @@ export default function Results() {
                       dataKey="value"
                     >
                       {result.activityBreakdowns.map((a: any, i: number) => (
-                        <Cell key={i} fill={a.sdgColor || "#F06127"} />
+                        <Cell key={i} fill={a.sdgColor || "var(--brand-orange-bright)"} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -1303,7 +1303,7 @@ export default function Results() {
               <div className="space-y-1 mt-1">
                 {result.activityBreakdowns.map((a: any) => (
                   <div key={a.activityId} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "#F06127" }} aria-hidden="true" />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "var(--brand-orange-bright)" }} aria-hidden="true" />
                     <span className="truncate flex-1">{a.activityName}</span>
                     <span className="font-medium text-foreground shrink-0">{formatCurrency(a.impactValue)}</span>
                   </div>
@@ -1373,7 +1373,7 @@ export default function Results() {
         transition={{ delay: 0.15 }}
       >
         <MetricTile
-          icon={TrendingUp} iconColour="#F06127"
+          icon={TrendingUp} iconColour="var(--brand-orange-bright)"
           label="Impact" value={result.impactValue}
           subtitle="The impact of your activities"
           explanation={result.explanations.impact}
@@ -1461,7 +1461,7 @@ export default function Results() {
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-1000"
-              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "#F06127" }}
+              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "var(--brand-orange-bright)" }}
             />
           </div>
         </motion.div>
@@ -1538,7 +1538,7 @@ export default function Results() {
         transition={{ delay: 0.25 }}
       >
         <div className="px-5 py-4 flex items-center gap-4">
-          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "#F06127" }}>
+          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--brand-orange-bright)" }}>
             <MessageSquare className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
@@ -1548,7 +1548,7 @@ export default function Results() {
           <button
             onClick={() => openSidekick(true)}
             className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
-            style={{ background: "#F06127", boxShadow: "0 2px 8px #F0612730" }}
+            style={{ background: "var(--brand-orange-bright)", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" }}
           >
             Ask sidekick <ArrowRight className="w-3 h-3" aria-hidden="true" />
           </button>
@@ -1602,7 +1602,7 @@ export default function Results() {
             onClick={handleDownloadPdf}
             disabled={exportingPdf}
             className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border text-sm font-medium transition-all disabled:opacity-50 shrink-0"
-            style={{ borderColor: "#E8633A", color: "#E8633A" }}
+            style={{ borderColor: "var(--brand-orange)", color: "var(--brand-orange)" }}
           >
             <FileText className="w-3.5 h-3.5" aria-hidden="true" />
             {exportingPdf ? "Generating…" : "Download PDF"}
@@ -1658,7 +1658,7 @@ export default function Results() {
           <Link
             href="/suggestions"
             className="flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
-            style={{ background: "#E8633A", boxShadow: "0 2px 12px #E8633A40" }}
+            style={{ background: "var(--brand-orange-bright)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-bright) 25%, transparent)" }}
           >
             Get personalised ideas <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>

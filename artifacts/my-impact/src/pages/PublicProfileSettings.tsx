@@ -204,7 +204,7 @@ function Toggle({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: (
       onClick={onToggle}
       disabled={disabled}
       className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      style={{ background: enabled ? "#F06127" : "#d1d5db" }}
+      style={{ background: enabled ? "var(--brand-orange-bright)" : "#d1d5db" }}
     >
       <span
         className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"

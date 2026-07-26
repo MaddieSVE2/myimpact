@@ -248,7 +248,7 @@ export default function Settings() {
             </div>
             <div
               className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-              style={{ background: isHighContrast ? "#F06127" : "#d1d5db" }}
+              style={{ background: isHighContrast ? "var(--brand-orange-bright)" : "#d1d5db" }}
             >
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -269,7 +269,7 @@ export default function Settings() {
             </div>
             <div
               className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-              style={{ background: gamificationEnabled ? "#F06127" : "#d1d5db" }}
+              style={{ background: gamificationEnabled ? "var(--brand-orange-bright)" : "#d1d5db" }}
             >
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -315,7 +315,7 @@ export default function Settings() {
             </div>
             <div
               className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-              style={{ background: emailOptIn ? "#F06127" : "#d1d5db" }}
+              style={{ background: emailOptIn ? "var(--brand-orange-bright)" : "#d1d5db" }}
             >
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -337,7 +337,7 @@ export default function Settings() {
             </div>
             <div
               className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-              style={{ background: digestOptIn ? "#F06127" : "#d1d5db" }}
+              style={{ background: digestOptIn ? "var(--brand-orange-bright)" : "#d1d5db" }}
             >
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -884,7 +884,7 @@ function PulseOptOutRow() {
       </div>
       <div
         className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-        style={{ background: !optedOut ? "#F06127" : "#d1d5db" }}
+        style={{ background: !optedOut ? "var(--brand-orange-bright)" : "#d1d5db" }}
       >
         <span
           className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -1045,7 +1045,7 @@ function SidekickVoiceSettings() {
           </div>
           <div
             className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-            style={{ background: voiceEnabled ? "#F06127" : "#d1d5db" }}
+            style={{ background: voiceEnabled ? "var(--brand-orange-bright)" : "#d1d5db" }}
           >
             <span
               className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -1296,7 +1296,7 @@ function VoiceUsageMeter() {
           <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${transcribePct}%`, background: transcribePct >= 100 ? "#dc2626" : "#F06127" }}
+              style={{ width: `${transcribePct}%`, background: transcribePct >= 100 ? "#dc2626" : "var(--brand-orange-bright)" }}
             />
           </div>
         </div>
@@ -1310,7 +1310,7 @@ function VoiceUsageMeter() {
           <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${ttsPct}%`, background: ttsPct >= 100 ? "#dc2626" : "#F06127" }}
+              style={{ width: `${ttsPct}%`, background: ttsPct >= 100 ? "#dc2626" : "var(--brand-orange-bright)" }}
             />
           </div>
         </div>
@@ -1636,7 +1636,7 @@ function RemindersSettings() {
                     </div>
                     <div
                       className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
-                      style={{ background: value ? "#F06127" : "#d1d5db" }}
+                      style={{ background: value ? "var(--brand-orange-bright)" : "#d1d5db" }}
                     >
                       <span
                         className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"

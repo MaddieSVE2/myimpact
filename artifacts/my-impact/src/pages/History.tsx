@@ -120,7 +120,7 @@ function BreakdownRow({ b }: { b: Breakdown }) {
             )}
           </div>
         </div>
-        <p className="text-xs font-bold shrink-0" style={{ color: "#F06127" }}>
+        <p className="text-xs font-bold shrink-0" style={{ color: "var(--brand-orange-bright)" }}>
           {formatCurrency(b.impactValue)}
         </p>
       </div>
@@ -148,7 +148,7 @@ function RecordDetail({ result, recordId, hasDonations }: { result: any; recordI
   const breakdowns: Breakdown[] = result.activityBreakdowns ?? [];
 
   const metrics = [
-    { label: "Direct impact", value: result.impactValue, icon: TrendingUp, colour: "#F06127" },
+    { label: "Direct impact", value: result.impactValue, icon: TrendingUp, colour: "var(--brand-orange-bright)" },
     { label: "Contribution", value: result.contributionValue, icon: UserPlus, colour: "#3b82f6" },
     { label: "Donations", value: result.donationsValue, icon: HandCoins, colour: "#22c55e" },
     { label: "Personal dev", value: result.personalDevelopmentValue, icon: Trophy, colour: "#f59e0b" },
@@ -1014,8 +1014,8 @@ export default function History() {
                 >
                   <defs>
                     <linearGradient id="runningTotalFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#F06127" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#F06127" stopOpacity={0.05} />
+                      <stop offset="0%" stopColor="var(--brand-orange-bright)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--brand-orange-bright)" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -1061,10 +1061,10 @@ export default function History() {
                   <Area
                     type="stepAfter"
                     dataKey="total"
-                    stroke="#F06127"
+                    stroke="var(--brand-orange-bright)"
                     strokeWidth={2}
                     fill="url(#runningTotalFill)"
-                    dot={{ r: 3, fill: "#F06127", strokeWidth: 0 }}
+                    dot={{ r: 3, fill: "var(--brand-orange-bright)", strokeWidth: 0 }}
                     activeDot={{ r: 5 }}
                   />
                 </AreaChart>
@@ -1137,7 +1137,7 @@ export default function History() {
                     >
                       <div
                         className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors"
-                        style={{ backgroundColor: isOpen ? "#F06127" : "hsl(var(--muted))" }}
+                        style={{ backgroundColor: isOpen ? "var(--brand-orange-bright)" : "hsl(var(--muted))" }}
                       >
                         <Calendar className="w-3.5 h-3.5" style={{ color: isOpen ? "white" : "hsl(var(--muted-foreground))" }} aria-hidden="true" />
                       </div>
@@ -1456,7 +1456,7 @@ export default function History() {
                             onClick={() => handleDownloadPdf(record.id, record.period || record.name)}
                             disabled={downloadingPdfId === record.id}
                             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all disabled:opacity-50"
-                            style={{ borderColor: "#E8633A", color: "#E8633A" }}
+                            style={{ borderColor: "var(--brand-orange)", color: "var(--brand-orange)" }}
                           >
                             <FileText className="w-3.5 h-3.5" aria-hidden="true" />
                             {downloadingPdfId === record.id ? "Generating PDF…" : "Download Impact PDF"}

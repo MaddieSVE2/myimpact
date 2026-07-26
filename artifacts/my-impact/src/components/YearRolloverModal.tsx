@@ -194,7 +194,7 @@ export function YearRolloverModal() {
             onClick={handleConfirm}
             disabled={submitting}
             className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
-            style={{ background: "#F06127" }}
+            style={{ background: "var(--brand-orange-bright)" }}
             data-testid="button-rollover-confirm"
           >
             {submitting ? "Saving…" : state.habits.length === 0 ? "Get started" : "Carry forward"}

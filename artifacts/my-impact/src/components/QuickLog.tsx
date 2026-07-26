@@ -204,7 +204,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
     <section className={isCompact ? "mb-4" : "mb-6"} data-testid="quick-log-section">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Repeat className="w-3.5 h-3.5" style={{ color: "#F06127" }} aria-hidden="true" />
+          <Repeat className="w-3.5 h-3.5" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
             {onlyDue ? "Quick log: due now" : "Your regular activities"}
           </p>
@@ -226,8 +226,8 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
               animate={{ opacity: 1, y: 0 }}
               className="bg-white border rounded-xl overflow-hidden transition-shadow hover:shadow-sm"
               style={{
-                borderColor: template.isDue ? "#F06127" : "hsl(var(--border))",
-                boxShadow: template.isDue ? "0 0 0 1px #F0612730" : undefined,
+                borderColor: template.isDue ? "var(--brand-orange-bright)" : "hsl(var(--border))",
+                boxShadow: template.isDue ? "0 0 0 1px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" : undefined,
               }}
               data-testid={`quick-log-card-${template.id}`}
             >
@@ -238,7 +238,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
               >
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: template.isDue ? "#F06127" : "hsl(var(--muted))" }}
+                  style={{ background: template.isDue ? "var(--brand-orange-bright)" : "hsl(var(--muted))" }}
                   aria-hidden="true"
                 >
                   <Calendar
@@ -249,7 +249,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{template.label}</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    <span style={{ color: template.isDue ? "#F06127" : undefined, fontWeight: template.isDue ? 600 : 400 }}>
+                    <span style={{ color: template.isDue ? "var(--brand-orange-bright)" : undefined, fontWeight: template.isDue ? 600 : 400 }}>
                       {dueLabel}
                     </span>
                     <span className="text-muted-foreground/50"> · </span>
@@ -294,7 +294,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                                   ? "text-white border-transparent"
                                   : "bg-white text-foreground border-border hover:border-foreground/40"
                               }`}
-                              style={selectedYear === y ? { background: "#F06127" } : undefined}
+                              style={selectedYear === y ? { background: "var(--brand-orange-bright)" } : undefined}
                               data-testid={`quick-log-year-${template.id}-${y}`}
                             >
                               {y}
@@ -313,7 +313,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                         onClick={() => doConfirm(template, selectedYear ?? currentYear)}
                         disabled={confirmMutation.isPending}
                         className="mt-3 w-full py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-                        style={{ background: "#F06127" }}
+                        style={{ background: "var(--brand-orange-bright)" }}
                         data-testid={`quick-log-confirm-yes-${template.id}`}
                       >
                         Yes, add to {selectedYear ?? currentYear}

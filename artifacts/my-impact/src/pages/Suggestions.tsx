@@ -520,7 +520,7 @@ function PlaceCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: "#E8633A" }}
+                    style={{ backgroundColor: "var(--brand-orange-bright)" }}
                     data-testid={`place-website-${place.name}`}
                   >
                     <Globe className="w-3 h-3" /> Visit website <ExternalLink className="w-2.5 h-2.5" />
@@ -531,7 +531,7 @@ function PlaceCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: "#E8633A" }}
+                    style={{ backgroundColor: "var(--brand-orange-bright)" }}
                   >
                     <Globe className="w-3 h-3" /> Find their website <ExternalLink className="w-2.5 h-2.5" />
                   </a>
@@ -766,7 +766,7 @@ export default function Suggestions() {
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4" style={{ color: "#E8633A" }} aria-hidden="true" />
+                  <Compass className="w-4 h-4" style={{ color: "var(--brand-orange)" }} aria-hidden="true" />
                   <h2 className="text-sm font-semibold text-foreground">Search live opportunities</h2>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -837,7 +837,7 @@ export default function Suggestions() {
                       <button
                         onClick={() => handleToggleLocal(sug.activityId)}
                         className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold transition-all"
-                        style={{ color: "#E8633A" }}
+                        style={{ color: "var(--brand-orange)" }}
                       >
                         <MapPin className="w-3 h-3" />
                         {isOpen ? "Hide local places" : `See what's near you`}
@@ -878,7 +878,7 @@ export default function Suggestions() {
                     >
                       <div className="border-t border-border mx-5" />
                       <div className="px-5 py-4 space-y-3" style={{ background: "#FDF8F5" }}>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#E8633A" }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--brand-orange)" }}>
                           {areaLabel ? `Near ${areaLabel}` : "Near you"}
                         </p>
 
