@@ -4,8 +4,15 @@ import { motion } from "framer-motion";
 import { History, ArrowLeft, Loader2, AlertCircle, Plus } from "lucide-react";
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
+import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+
+interface SubmissionEvidence {
+  id: number;
+  url: string;
+  mimeType: string;
+}
 
 interface MySubmission {
   recordId: number;
@@ -15,6 +22,7 @@ interface MySubmission {
   totalValue: number;
   submittedAt: string;
   activityCount: number;
+  evidence?: SubmissionEvidence[];
 }
 
 function formatGBP(n: number): string {
@@ -31,6 +39,7 @@ export default function OrgMemberSubmitHistory() {
 
   const [subs, setSubs] = useState<MySubmission[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<EvidenceLightboxData | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -164,6 +173,32 @@ export default function OrgMemberSubmitHistory() {
                     <td className="py-2.5 px-4">
                       <p className="font-medium text-foreground">{s.period || s.name}</p>
                       <p className="text-[11px] text-muted-foreground">Submitted {formatDate(s.submittedAt)}</p>
+                      {(s.evidence?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5" data-testid={`submit-history-evidence-${s.recordId}`}>
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Evidence</span>
+                          {s.evidence!.map(ev => (
+                            <button
+                              key={ev.id}
+                              type="button"
+                              onClick={() => setLightbox({
+                                url: `${BASE}${ev.url}`,
+                                activityLabel: s.period || s.name,
+                                dateLabel: formatDate(s.submittedAt),
+                              })}
+                              className="block w-10 h-10 rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow cursor-pointer"
+                              title="View evidence photo"
+                              data-testid={`submit-history-evidence-thumb-${ev.id}`}
+                            >
+                              <img
+                                src={`${BASE}${ev.url}`}
+                                alt="Evidence attachment"
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">{s.activityCount}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">{Math.round(s.totalHours).toLocaleString("en-GB")}</td>
@@ -179,6 +214,8 @@ export default function OrgMemberSubmitHistory() {
           </p>
         </motion.div>
       )}
+
+      <EvidenceLightbox item={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }
