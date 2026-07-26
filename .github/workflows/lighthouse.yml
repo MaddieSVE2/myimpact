@@ -12,9 +12,14 @@ concurrency:
 
 jobs:
   lhci:
-    name: Lighthouse CI (my-impact)
+    name: Lighthouse CI (my-impact, ${{ matrix.preset }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [desktop, mobile]
 
     steps:
       - name: Checkout
@@ -37,8 +42,8 @@ jobs:
       - name: Build my-impact
         run: pnpm --filter @workspace/my-impact run build
 
-      - name: Run Lighthouse CI
-        run: pnpm exec lhci autorun
+      - name: Run Lighthouse CI (${{ matrix.preset }})
+        run: pnpm exec lhci autorun --config=lighthouserc.${{ matrix.preset }}.cjs
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
@@ -46,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-reports-${{ github.run_id }}
+          name: lighthouse-reports-${{ matrix.preset }}-${{ github.run_id }}
           path: .lighthouseci/
           if-no-files-found: ignore
           retention-days: 14
