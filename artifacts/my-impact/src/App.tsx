@@ -95,6 +95,7 @@ const NotFound = lazyWithRetry(() => import("@/pages/not-found"));
 const ProfileSetup = lazyWithRetry(() => import("@/pages/ProfileSetup"));
 const Profile = lazyWithRetry(() => import("@/pages/Profile"));
 const Admin = lazyWithRetry(() => import("@/pages/Admin"));
+const AdminSidekickTemplates = lazyWithRetry(() => import("@/pages/AdminSidekickTemplates"));
 const Contact = lazyWithRetry(() => import("@/pages/Contact"));
 const Feedback = lazyWithRetry(() => import("@/pages/Feedback"));
 const PublicProfile = lazyWithRetry(() => import("@/pages/PublicProfile"));
@@ -445,6 +446,7 @@ function AppRouter() {
                 {() => <PrivateRoute component={Challenges} />}
               </Route>
 
+              <Route path="/admin/sidekick-templates" component={AdminSidekickTemplates} />
               <Route path="/admin" component={Admin} />
               <Route path="/contact" component={Contact} />
 

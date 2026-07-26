@@ -22,4 +22,5 @@
 - [Org dashboard tiering](org-dashboard-tiering.md) — full Organisation-tier dashboard is gated by demo org, type=university, or the admin-toggled full_tier_enabled flag; all other orgs get the lite portal with upsell.
 - [Drizzle decimal param cast](drizzle-decimal-param-cast.md) — decimal JS constants in raw sql`` next to integer columns throw 22P02 at plan time; wrap in CAST(... AS numeric).
 - [Express 5 req.params typing](express5-params-typing.md) — @types v5.1 types params as string|string[]; normalize with String(req.params.x), don't pin the types package. api-server typecheck runs via the typecheck-api validation.
+- [Admin session for tests](admin-session-for-tests.md) — demo personas aren't admins; mint an mi_session JWT with SESSION_SECRET for an allowlisted email to test admin API/UI in dev.
 - [Org manager review surfaces](org-manager-review-surfaces.md) — manager per-record features need both OrgPortal (lite) and OrgActivities (full tier); demo org's Activities page is mock data, test with the university org.

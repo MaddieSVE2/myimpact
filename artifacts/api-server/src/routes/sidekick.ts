@@ -9,7 +9,7 @@ import {
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { recordSidekickChatFailure } from "../lib/sidekickFailureAlert.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
-import { db, organisationsTable, orgMembersTable, usersTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, usersTable, sidekickTemplateOverridesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Response } from "express";
 import { z } from "zod";
@@ -313,6 +313,28 @@ router.get("/quota", async (req, res) => {
   } catch (err) {
     console.error("[sidekick] quota error:", err);
     res.status(503).json({ error: "Quota check temporarily unavailable" });
+  }
+});
+
+/**
+ * Public read of admin-edited template copy overrides. Merged over the
+ * in-code defaults by the web app; contains no user data, so it is safe
+ * to serve without authentication.
+ */
+router.get("/template-overrides", async (_req, res) => {
+  try {
+    const rows = await db.select().from(sidekickTemplateOverridesTable);
+    res.json({
+      overrides: rows.map((r) => ({
+        templateId: r.templateId,
+        label: r.label,
+        description: r.description,
+        personaPrompts: r.personaPrompts,
+      })),
+    });
+  } catch (err) {
+    console.error("[sidekick] template-overrides error:", err);
+    res.status(500).json({ error: "Failed to load template overrides" });
   }
 });
 

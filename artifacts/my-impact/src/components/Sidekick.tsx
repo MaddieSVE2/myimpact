@@ -12,11 +12,14 @@ import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
   SIDEKICK_TEMPLATES,
   SIDEKICK_CATEGORY_LABELS,
+  applyTemplateOverrides,
   buildRegeneratePrompt,
+  buildTemplatePrompt,
   resolvePersona,
   templatesForPersona,
   type SidekickTemplate,
   type SidekickTemplateCategory,
+  type SidekickTemplateOverride,
   type SidekickUserContext,
 } from "@/lib/sidekick-templates";
 import {
@@ -603,7 +606,26 @@ export function Sidekick() {
     };
   }, [persona, result]);
 
-  const visibleTemplates = useMemo(() => templatesForPersona(persona), [persona]);
+  const overridesQuery = useQuery<{ overrides: SidekickTemplateOverride[] }>({
+    queryKey: ["sidekick-template-overrides"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/sidekick/template-overrides`);
+      if (!res.ok) throw new Error("Failed to load template overrides");
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const effectiveTemplates = useMemo(
+    () => applyTemplateOverrides(SIDEKICK_TEMPLATES, overridesQuery.data?.overrides),
+    [overridesQuery.data]
+  );
+
+  const visibleTemplates = useMemo(
+    () => templatesForPersona(persona, effectiveTemplates),
+    [persona, effectiveTemplates]
+  );
 
   const groupedTemplates = useMemo(() => {
     const groups = new Map<SidekickTemplateCategory, SidekickTemplate[]>();
@@ -836,7 +858,7 @@ export function Sidekick() {
 
   const fireTemplate = useCallback(
     (template: SidekickTemplate) => {
-      const prompt = template.build(templateUserContext);
+      const prompt = buildTemplatePrompt(template, templateUserContext);
       setTab("chat");
       sendMessage(prompt, { templateId: template.id, templatePrompt: prompt, regenerateAttempt: 0 });
     },

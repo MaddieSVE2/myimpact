@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable } from "@workspace/db";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -763,6 +763,135 @@ router.delete("/suppressed-emails/:email", authenticate, async (req: Authenticat
   }
 
   await db.delete(emailSuppressionsTable).where(eq(emailSuppressionsTable.email, email));
+  res.json({ ok: true });
+});
+
+// ---- Sidekick template copy overrides -----------------------------------
+//
+// Defaults live in the web app's `sidekick-templates.ts`. Admins can override
+// the label / description / persona prompt copy per template; rows here are
+// merged over the defaults at runtime. Deleting a row resets to default.
+
+const SIDEKICK_TEMPLATE_IDS = new Set([
+  "ucas_paragraph",
+  "linkedin_post",
+  "cv_bullets",
+  "cover_letter_line",
+  "employer_one_liner",
+  "dofe_writeup",
+]);
+
+const SIDEKICK_PERSONAS = new Set([
+  "default",
+  "veteran",
+  "carer",
+  "student",
+  "apprenticeship",
+  "career_break",
+  "org_manager",
+]);
+
+const MAX_COPY_LENGTH = 4000;
+
+router.get("/sidekick-templates", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const rows = await db.select().from(sidekickTemplateOverridesTable);
+  res.json({ overrides: rows });
+});
+
+router.put("/sidekick-templates/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const templateId = String(req.params.id ?? "");
+  if (!SIDEKICK_TEMPLATE_IDS.has(templateId)) {
+    res.status(404).json({ error: "Unknown template id" });
+    return;
+  }
+
+  const { label, description, personaPrompts } = req.body ?? {};
+
+  const cleanText = (value: unknown, field: string): string | null => {
+    if (value == null || value === "") return null;
+    if (typeof value !== "string") throw new Error(`${field} must be a string`);
+    if (value.length > MAX_COPY_LENGTH) throw new Error(`${field} is too long (max ${MAX_COPY_LENGTH} characters)`);
+    return value;
+  };
+
+  let cleanLabel: string | null;
+  let cleanDescription: string | null;
+  let cleanPrompts: Record<string, string> | null = null;
+  try {
+    cleanLabel = cleanText(label, "label");
+    cleanDescription = cleanText(description, "description");
+    if (personaPrompts != null) {
+      if (typeof personaPrompts !== "object" || Array.isArray(personaPrompts)) {
+        throw new Error("personaPrompts must be an object");
+      }
+      const entries: Record<string, string> = {};
+      for (const [persona, prompt] of Object.entries(personaPrompts)) {
+        if (!SIDEKICK_PERSONAS.has(persona)) continue;
+        const cleaned = cleanText(prompt, `personaPrompts.${persona}`);
+        if (cleaned && cleaned.trim().length > 0) entries[persona] = cleaned;
+      }
+      cleanPrompts = Object.keys(entries).length > 0 ? entries : null;
+    }
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid input" });
+    return;
+  }
+
+  if (cleanLabel == null && cleanDescription == null && cleanPrompts == null) {
+    // Nothing overridden — treat as a reset.
+    await db
+      .delete(sidekickTemplateOverridesTable)
+      .where(eq(sidekickTemplateOverridesTable.templateId, templateId));
+    res.json({ ok: true, override: null });
+    return;
+  }
+
+  const values = {
+    templateId,
+    label: cleanLabel,
+    description: cleanDescription,
+    personaPrompts: cleanPrompts,
+    updatedBy: req.user!.email,
+    updatedAt: new Date(),
+  };
+  const [row] = await db
+    .insert(sidekickTemplateOverridesTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: sidekickTemplateOverridesTable.templateId,
+      set: {
+        label: values.label,
+        description: values.description,
+        personaPrompts: values.personaPrompts,
+        updatedBy: values.updatedBy,
+        updatedAt: values.updatedAt,
+      },
+    })
+    .returning();
+  res.json({ ok: true, override: row });
+});
+
+router.delete("/sidekick-templates/:id", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const templateId = String(req.params.id ?? "");
+  if (!SIDEKICK_TEMPLATE_IDS.has(templateId)) {
+    res.status(404).json({ error: "Unknown template id" });
+    return;
+  }
+  await db
+    .delete(sidekickTemplateOverridesTable)
+    .where(eq(sidekickTemplateOverridesTable.templateId, templateId));
   res.json({ ok: true });
 });
 

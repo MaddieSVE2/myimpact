@@ -292,8 +292,16 @@ export default function Admin() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-display font-bold text-foreground mb-2">Admin Panel</h1>
-      <p className="text-sm text-muted-foreground mb-8">
+      <p className="text-sm text-muted-foreground mb-4">
         Registered users and the pages they have visited.
+      </p>
+      <p className="mb-8">
+        <a
+          href="/admin/sidekick-templates"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Edit Sidekick template copy →
+        </a>
       </p>
 
       {error && (
