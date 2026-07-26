@@ -7,6 +7,7 @@ import {
   textToSpeech,
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { recordSidekickChatFailure } from "../lib/sidekickFailureAlert.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { db, organisationsTable, orgMembersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -542,6 +543,7 @@ router.post(
           `[sidekick-chat] first-token-timeout user_key=${(res.locals.aiUserKey as string) ?? getUserKey(req)} ` +
             `timeout_ms=${FIRST_TOKEN_TIMEOUT_MS}`
         );
+        recordSidekickChatFailure("first-token-timeout");
         const message =
           "This is taking longer than usual. Try rephrasing your question, or asking something more specific — that usually helps me reply faster.";
         res.write(`data: ${JSON.stringify({ delta: message, timeout: true })}\n\n`);
@@ -561,6 +563,7 @@ router.post(
           `input_tokens=${usageInputTokens} output_tokens=${usageOutputTokens} — ` +
           "model stream completed without emitting any content"
       );
+      recordSidekickChatFailure("empty-stream");
       const message =
         "Sorry, I couldn't put together a reply for that one. Try rephrasing it or asking something a bit more specific.";
       res.write(`data: ${JSON.stringify({ delta: message })}\n\n`);
@@ -607,6 +610,7 @@ router.post(
         `upstream_status=${upstreamStatus ?? "n/a"}:`,
       err
     );
+    recordSidekickChatFailure("error", upstreamStatus as string | number | undefined);
     // Everything below is best-effort: the response may already be dead
     // (client gone, socket reset). Nothing here may throw, or the error
     // would escape the route as an unhandled rejection.
