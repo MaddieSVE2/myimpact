@@ -47,6 +47,13 @@ export const organisationsTable = pgTable("organisations", {
   // created at save time) — no manager verification queue step needed.
   // Journal entries live in a separate table and are never shared.
   autoVerifyActivities: boolean("auto_verify_activities").notNull().default(false),
+  // Evidence policy for member activity submissions to this org:
+  //   'required'     — a submission must include at least one evidence photo.
+  //   'optional'     — evidence can be attached but isn't mandatory (default).
+  //   'not_required' — the submission UI doesn't prompt for evidence at all.
+  // Managed from /org/settings → Approvals. Changing it never affects
+  // already-submitted activities.
+  evidencePolicy: text("evidence_policy").notNull().default("optional"),
   // Data-sharing model, fixed at creation and never editable afterwards:
   //   'explicit_submission' — members choose which activities to submit to the org (default / legacy behaviour).
   //   'consented_logging'   — all activities (never journals or pulse/wellbeing answers) are shared automatically

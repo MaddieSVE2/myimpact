@@ -119,6 +119,10 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
   if (orgLoading) return null;
   const org = orgData?.org;
   if (!org) return null;
+  // When the org requires evidence with every submission, this quick-share
+  // flow can't be used (it has no evidence upload). Point members at the
+  // full submission page instead.
+  const evidenceRequired = org.evidencePolicy === "required";
   if (org.role === "manager") return null;
   if (!result) return null;
   if (dismissed) return null;
@@ -270,7 +274,21 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
             <X className="w-4 h-4" />
           </button>
         </div>
+        {evidenceRequired && (
+          <p className="text-[11px] text-muted-foreground mt-2 ml-12" data-testid="share-with-org-evidence-note">
+            {org.name} requires an evidence photo with every submission, so you'll finish this on the submission page.
+          </p>
+        )}
         <div className="flex items-center gap-2 mt-3 ml-12">
+          {evidenceRequired ? (
+            <Link
+              href="/org/submit"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+              data-testid="share-with-org-start"
+            >
+              Share with evidence <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          ) : (
           <button
             type="button"
             onClick={() => setStep("summary")}
@@ -279,6 +297,7 @@ export function ShareWithOrgPrompt({ result, activities }: ShareWithOrgPromptPro
           >
             Share <ArrowRight className="w-3.5 h-3.5" />
           </button>
+          )}
           <button
             type="button"
             onClick={() => setDismissed(true)}

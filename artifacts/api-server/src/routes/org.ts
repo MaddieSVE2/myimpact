@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgMatchRatesTable, orgShareLinksTable, orgSsoConfigsTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
@@ -449,6 +449,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       autoVerifyActivities: org.autoVerifyActivities ?? false,
+      evidencePolicy: org.evidencePolicy ?? "optional",
       sroiCostPerVolunteer: mySections.sroi ? (org.sroiCostPerVolunteer ?? null) : null,
       sroiCostBreakdown: mySections.sroi ? {
         recruitment: org.sroiCostRecruitment ?? null,
@@ -665,13 +666,15 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart, allowedDomain } = body as {
+  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart, allowedDomain, autoVerifyActivities, evidencePolicy } = body as {
     aiSidekickEnabled?: unknown;
     challengeLeaderboardEnabled?: unknown;
     sroiCostPerVolunteer?: unknown;
     sroiCostBreakdown?: unknown;
     summaryYearStart?: unknown;
     allowedDomain?: unknown;
+    autoVerifyActivities?: unknown;
+    evidencePolicy?: unknown;
   };
   const updates: {
     aiSidekickEnabled?: boolean;
@@ -683,12 +686,31 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     sroiCostAdmin?: number | null;
     summaryYearStart?: string;
     allowedDomain?: string | null;
+    autoVerifyActivities?: boolean;
+    evidencePolicy?: string;
   } = {};
   if (typeof aiSidekickEnabled === "boolean") {
     updates.aiSidekickEnabled = aiSidekickEnabled;
   }
   if (typeof challengeLeaderboardEnabled === "boolean") {
     updates.challengeLeaderboardEnabled = challengeLeaderboardEnabled;
+  }
+
+  if ("autoVerifyActivities" in body) {
+    if (typeof autoVerifyActivities !== "boolean") {
+      res.status(400).json({ error: "autoVerifyActivities must be true or false." });
+      return;
+    }
+    updates.autoVerifyActivities = autoVerifyActivities;
+  }
+
+  if ("evidencePolicy" in body) {
+    const EVIDENCE_POLICIES = ["required", "optional", "not_required"];
+    if (typeof evidencePolicy !== "string" || !EVIDENCE_POLICIES.includes(evidencePolicy)) {
+      res.status(400).json({ error: "evidencePolicy must be one of 'required', 'optional' or 'not_required'." });
+      return;
+    }
+    updates.evidencePolicy = evidencePolicy;
   }
 
   if ("summaryYearStart" in body) {
@@ -850,6 +872,8 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       },
       summaryYearStart: updated.summaryYearStart ?? "01-01",
       allowedDomain: updated.allowedDomain ?? null,
+      autoVerifyActivities: updated.autoVerifyActivities ?? false,
+      evidencePolicy: updated.evidencePolicy ?? "optional",
     },
   });
 });
@@ -2617,6 +2641,50 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
     }
     const cleaned = parsed.cleaned;
 
+    // ── Evidence policy enforcement ─────────────────────────────────────────
+    // Evidence photos are uploaded before submission (purpose=org-evidence,
+    // rows with no recordId yet); the client passes their ids here and we
+    // link them to the created record. When the org's policy is 'required',
+    // a submission without at least one evidence attachment is rejected.
+    const submitOrg = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, membership.orgId),
+    });
+    const evidencePolicy = submitOrg?.evidencePolicy ?? "optional";
+
+    const evidenceIdsRaw = (body as Record<string, unknown>).evidenceAttachmentIds;
+    const evidenceIds: number[] = Array.isArray(evidenceIdsRaw)
+      ? Array.from(new Set(
+          evidenceIdsRaw
+            .map(v => (typeof v === "number" ? v : parseInt(String(v), 10)))
+            .filter(n => Number.isFinite(n) && n > 0),
+        )).slice(0, 4)
+      : [];
+
+    let evidenceRows: Array<{ id: number }> = [];
+    if (evidenceIds.length > 0) {
+      evidenceRows = await db
+        .select({ id: attachmentsTable.id })
+        .from(attachmentsTable)
+        .where(and(
+          eq(attachmentsTable.userId, userId),
+          inArray(attachmentsTable.id, evidenceIds),
+          isNull(attachmentsTable.recordId),
+          isNull(attachmentsTable.journalId),
+        )!);
+      if (evidenceRows.length !== evidenceIds.length) {
+        res.status(400).json({ error: "One or more evidence attachments could not be found. Please re-upload your evidence and try again." });
+        return;
+      }
+    }
+
+    if (evidencePolicy === "required" && evidenceRows.length === 0) {
+      res.status(400).json({
+        error: "Your organisation requires evidence (a photo or receipt) with every activity submission. Please attach at least one photo before submitting.",
+        code: "evidence_required",
+      });
+      return;
+    }
+
     // Separate standard activities (have SVE proxy) from custom "something_else" ones
     const standardCleaned = cleaned.filter(c => !c.isSomethingElse);
     const somethingElseHours = cleaned
@@ -2675,6 +2743,18 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       submittedToOrgAt: now,
       entryDate: parsedActivityDate,
     }).returning();
+
+    // Link pre-uploaded evidence photos to the newly created record.
+    if (evidenceRows.length > 0) {
+      await db
+        .update(attachmentsTable)
+        .set({ recordId: inserted.id })
+        .where(and(
+          eq(attachmentsTable.userId, userId),
+          inArray(attachmentsTable.id, evidenceRows.map(r => r.id)),
+          isNull(attachmentsTable.recordId),
+        )!);
+    }
 
     // Auto-accept: insert an approved verification row attributed to the
     // submitting member so it flows into verified-total dashboards.

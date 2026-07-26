@@ -119,6 +119,14 @@ export class TestApi {
     return (await res.json()) as { orgId: string; inviteCode: string; orgName: string };
   }
 
+  /** Set org settings directly (evidence policy / approval mode). */
+  async setOrgSettings(orgId: string, patch: { evidencePolicy?: string; autoVerifyActivities?: boolean }): Promise<void> {
+    const res = await this.ctx.post("/api/test/set-org-settings", { data: { orgId, ...patch } });
+    if (!res.ok()) {
+      throw new Error(`set-org-settings failed (${res.status()}): ${await res.text()}`);
+    }
+  }
+
   /** Delete an org and all members. */
   async deleteOrg(orgId: string): Promise<void> {
     await this.ctx.post("/api/test/delete-org", { data: { orgId } });

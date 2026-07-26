@@ -121,11 +121,24 @@ async function releasePendingReservation(storageKey: string): Promise<void> {
 }
 
 // Periodically sweep expired reservation rows so the table stays small.
+// Also sweeps abandoned org-evidence attachments: rows registered before a
+// member submission but never linked to a record (recordId AND journalId
+// null) that are older than 24h — the user gave up mid-submission.
 const reservationSweepTimer = setInterval(async () => {
   try {
     await db
       .delete(attachmentPendingReservationsTable)
       .where(sql`expires_at < NOW()`);
+  } catch { /* best-effort */ }
+  try {
+    const stale = await db
+      .select({ id: attachmentsTable.id, storageKey: attachmentsTable.storageKey })
+      .from(attachmentsTable)
+      .where(sql`record_id IS NULL AND journal_id IS NULL AND created_at < NOW() - INTERVAL '24 hours'`);
+    for (const row of stale) {
+      await deleteAttachment(row.storageKey).catch(() => {});
+      await db.delete(attachmentsTable).where(eq(attachmentsTable.id, row.id));
+    }
   } catch { /* best-effort */ }
 }, 5 * 60 * 1000);
 if (reservationSweepTimer.unref) reservationSweepTimer.unref();
@@ -227,6 +240,10 @@ router.post("/upload-url", authenticate, uploadUrlRateLimit, async (req: Authent
   const journalIdRaw = body.journalId;
   const kindRaw = typeof body.kind === "string" ? body.kind : "photo";
   const kind: "photo" | "receipt" = kindRaw === "receipt" ? "receipt" : "photo";
+  // purpose=org-evidence: evidence photo uploaded BEFORE the org submission
+  // record exists. The attachment row is created with no recordId; the
+  // member-submit endpoint links it to the record it creates.
+  const isOrgEvidence = body.purpose === "org-evidence";
 
   if (!Number.isFinite(byteSize) || byteSize <= 0) {
     res.status(400).json({ error: "Invalid file size" });
@@ -257,7 +274,25 @@ router.post("/upload-url", authenticate, uploadUrlRateLimit, async (req: Authent
   let recordId: number | null = null;
   let journalId: number | null = null;
 
-  if (recordIdRaw != null) {
+  if (isOrgEvidence) {
+    if (kind !== "photo") {
+      res.status(400).json({ error: "Evidence uploads must be photos." });
+      return;
+    }
+    // Cap outstanding unlinked evidence rows so users can't hoard them.
+    const unlinked = await db
+      .select({ id: attachmentsTable.id })
+      .from(attachmentsTable)
+      .where(and(
+        eq(attachmentsTable.userId, userId),
+        sql`${attachmentsTable.recordId} IS NULL`,
+        sql`${attachmentsTable.journalId} IS NULL`,
+      ));
+    if (unlinked.length >= MAX_PHOTOS_PER_RECORD) {
+      res.status(400).json({ error: `Maximum ${MAX_PHOTOS_PER_RECORD} evidence photos per submission.` });
+      return;
+    }
+  } else if (recordIdRaw != null) {
     const parsed = typeof recordIdRaw === "number"
       ? recordIdRaw
       : parseInt(String(recordIdRaw), 10);
@@ -418,6 +453,7 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
   const kind: "photo" | "receipt" = kindRaw === "receipt" ? "receipt" : "photo";
   const recordIdRaw = body.recordId;
   const journalIdRaw = body.journalId;
+  const isOrgEvidence = body.purpose === "org-evidence";
 
   if (!storageKey) {
     res.status(400).json({ error: "Missing required fields" });
@@ -481,7 +517,14 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
   let recordId: number | null = null;
   let journalId: number | null = null;
 
-  if (recordIdRaw != null) {
+  if (isOrgEvidence) {
+    if (kind !== "photo") {
+      await deleteAttachment(storageKey);
+      res.status(400).json({ error: "Evidence uploads must be photos." });
+      return;
+    }
+    // Registered with recordId null; linked by /api/org/member-submit.
+  } else if (recordIdRaw != null) {
     const parsed = typeof recordIdRaw === "number" ? recordIdRaw : parseInt(String(recordIdRaw), 10);
     if (!Number.isFinite(parsed)) {
       await deleteAttachment(storageKey);

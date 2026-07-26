@@ -38,6 +38,7 @@ export interface MyOrgResponse {
     dashboardSections?: Record<string, boolean>;
     fullTierEnabled?: boolean;
     membershipStatus?: string;
+    evidencePolicy?: string;
     branding?: OrgBranding;
   } | null;
 }

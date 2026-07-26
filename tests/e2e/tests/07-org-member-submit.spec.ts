@@ -9,17 +9,20 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
   // tests makes the second sign-in flake.
   const somethingElseEmail = uniqueEmail("submitter-se");
   const memberEmail = uniqueEmail("submitter");
+  const evidenceEmail = uniqueEmail("submitter-ev");
   let orgId: string | undefined;
 
   test.beforeAll(async ({ baseURL }) => {
     api = await TestApi.create({ baseURL: baseURL! });
     await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
+    await api.resetUser(evidenceEmail);
   });
 
   test.afterAll(async () => {
     await api.resetUser(somethingElseEmail);
     await api.resetUser(memberEmail);
+    await api.resetUser(evidenceEmail);
     if (orgId) await api.deleteOrg(orgId);
     await api.dispose();
   });
@@ -122,5 +125,69 @@ test.describe("Spec 7 — org member submits activities via /org/submit", () => 
     await expect(page.getByText(created.orgName).first()).toBeVisible();
 
     await ctx.close();
+  });
+
+  test("evidence-required org blocks submission until a photo is attached", async ({ browser }) => {
+    const created = await api.createOrg(`E2E Evidence Org ${Date.now()}`, "charity");
+    const evOrgId = created.orgId;
+    await api.setOrgSettings(evOrgId, { evidencePolicy: "required" });
+
+    const ctx = await browser.newContext();
+    try {
+      const page = await ctx.newPage();
+      await signInWithMagicLink(page, api, evidenceEmail);
+
+      const join = await page.request.post("/api/org/join", {
+        data: { inviteCode: created.inviteCode, orgId: evOrgId },
+      });
+      expect(join.ok()).toBe(true);
+
+      // API-level enforcement: submitting without evidence is rejected with
+      // a clear, coded error.
+      const bare = await page.request.post("/api/org/member-submit", {
+        data: {
+          name: "No evidence",
+          activityDate: "2026-07-01",
+          activities: [{ activityId: "tree_planting", quantity: 1, hoursPerYear: 1 }],
+        },
+      });
+      expect(bare.status()).toBe(400);
+      const bareBody = (await bare.json()) as { code?: string; error?: string };
+      expect(bareBody.code).toBe("evidence_required");
+      expect(bareBody.error).toMatch(/evidence/i);
+
+      // UI enforcement: walk the wizard to review; confirm stays disabled and
+      // the evidence section explains why.
+      await page.goto("/org/submit");
+      await expect(page.getByTestId("org-member-submit-root")).toBeVisible({ timeout: 15_000 });
+      await page.getByTestId("member-submit-activity-tree_planting").click();
+      await page.getByTestId("member-submit-next-details").click();
+      await page.getByTestId("member-submit-quantity-tree_planting").fill("2");
+      await page.getByTestId("member-submit-hours-tree_planting").fill("1");
+      await page.getByTestId("member-submit-next-review").click();
+
+      await expect(page.getByTestId("member-submit-evidence")).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByTestId("member-submit-evidence-needed")).toBeVisible();
+      await expect(page.getByTestId("member-submit-confirm")).toBeDisabled();
+
+      // Attach a small PNG through the evidence input — the upload goes
+      // upload-url → PUT → register, then the confirm button unlocks.
+      const png = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "base64",
+      );
+      await page.getByTestId("member-submit-evidence-input").setInputFiles({
+        name: "evidence.png",
+        mimeType: "image/png",
+        buffer: png,
+      });
+
+      await expect(page.getByTestId("member-submit-confirm")).toBeEnabled({ timeout: 20_000 });
+      await page.getByTestId("member-submit-confirm").click();
+      await expect(page.getByTestId("member-submit-success")).toBeVisible({ timeout: 15_000 });
+    } finally {
+      await ctx.close();
+      await api.deleteOrg(evOrgId);
+    }
   });
 });

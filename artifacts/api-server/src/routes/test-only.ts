@@ -206,6 +206,27 @@ router.post("/create-org", async (req, res) => {
 });
 
 /**
+ * Set org-level settings directly (evidence policy / approval mode) so specs
+ * can exercise member-facing enforcement without walking the manager UI.
+ */
+router.post("/set-org-settings", async (req, res) => {
+  const orgId = typeof req.body?.orgId === "string" ? req.body.orgId : "";
+  if (!orgId) {
+    res.status(400).json({ error: "orgId required" });
+    return;
+  }
+  const patch: Partial<{ evidencePolicy: string; autoVerifyActivities: boolean }> = {};
+  if (typeof req.body?.evidencePolicy === "string") patch.evidencePolicy = req.body.evidencePolicy;
+  if (typeof req.body?.autoVerifyActivities === "boolean") patch.autoVerifyActivities = req.body.autoVerifyActivities;
+  if (Object.keys(patch).length === 0) {
+    res.status(400).json({ error: "Nothing to update" });
+    return;
+  }
+  await db.update(organisationsTable).set(patch).where(eq(organisationsTable.id, orgId));
+  res.json({ ok: true });
+});
+
+/**
  * Delete an org and all its dependents. Used to clean up between runs.
  *
  * Order matters: several tables reference organisations without ON DELETE

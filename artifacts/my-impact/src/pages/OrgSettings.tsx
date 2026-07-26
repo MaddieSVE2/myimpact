@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette } from "lucide-react";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck } from "lucide-react";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
@@ -29,7 +29,7 @@ interface SroiCostBreakdown {
   support: number | null;
   admin: number | null;
 }
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; membershipStatus?: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding; allowedDomain?: string | null } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; membershipStatus?: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; autoVerifyActivities?: boolean; evidencePolicy?: string; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding; allowedDomain?: string | null } | null }
 
 const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
@@ -44,10 +44,11 @@ function useMyOrg() {
   });
 }
 
-type TabKey = "members" | "ai" | "sso" | "developer" | "share" | "profile";
+type TabKey = "members" | "approvals" | "ai" | "sso" | "developer" | "share" | "profile";
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: "members",   label: "Members",     icon: Users },
+  { key: "approvals", label: "Approvals",   icon: ClipboardCheck },
   { key: "ai",        label: "AI features", icon: Sparkles },
   { key: "sso",       label: "SSO",         icon: ShieldCheck },
   { key: "developer", label: "Developer",   icon: Code2 },
@@ -863,6 +864,150 @@ function AiFeaturesTab({ initialEnabled, initialLeaderboardEnabled }: { initialE
   );
 }
 
+const EVIDENCE_POLICY_OPTIONS: Array<{ value: string; label: string; description: string }> = [
+  { value: "required", label: "Required", description: "Members must attach at least one evidence photo (e.g. a photo or receipt) before a submission is accepted." },
+  { value: "optional", label: "Optional", description: "Members can attach evidence, but it isn't mandatory. This is the default." },
+  { value: "not_required", label: "Not required", description: "The submission flow won't ask members for evidence at all." },
+];
+
+const APPROVAL_MODE_OPTIONS: Array<{ value: "auto" | "manual"; label: string; description: string }> = [
+  { value: "auto", label: "Auto-approve", description: "Every activity a member logs is automatically approved into your organisation's verified totals — no review step." },
+  { value: "manual", label: "Manual review", description: "Member activities wait in the verification queue until a manager approves them." },
+];
+
+function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: { initialAutoVerify: boolean; initialEvidencePolicy: string; isDemoOrg: boolean }) {
+  const queryClient = useQueryClient();
+  const [autoVerify, setAutoVerify] = useState<boolean>(initialAutoVerify);
+  const [evidencePolicy, setEvidencePolicy] = useState<string>(initialEvidencePolicy);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { setAutoVerify(initialAutoVerify); }, [initialAutoVerify]);
+  useEffect(() => { setEvidencePolicy(initialEvidencePolicy); }, [initialEvidencePolicy]);
+
+  const mutation = useMutation<{ org: { autoVerifyActivities: boolean; evidencePolicy: string } }, Error, Record<string, boolean | string>>({
+    mutationFn: async (patch) => {
+      const res = await fetch(`${BASE}/api/org/my/settings`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to save");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setAutoVerify(data.org.autoVerifyActivities);
+      setEvidencePolicy(data.org.evidencePolicy);
+      setSavedAt(Date.now());
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["my-org"] });
+    },
+    onError: (err) => {
+      setAutoVerify(initialAutoVerify);
+      setEvidencePolicy(initialEvidencePolicy);
+      setError(err.message);
+    },
+  });
+
+  function chooseApprovalMode(next: "auto" | "manual") {
+    const nextAuto = next === "auto";
+    if (nextAuto === autoVerify) return;
+    setError(null);
+    if (isDemoOrg) { setAutoVerify(nextAuto); setSavedAt(Date.now()); return; }
+    setAutoVerify(nextAuto);
+    mutation.mutate({ autoVerifyActivities: nextAuto });
+  }
+
+  function chooseEvidencePolicy(next: string) {
+    if (next === evidencePolicy) return;
+    setError(null);
+    if (isDemoOrg) { setEvidencePolicy(next); setSavedAt(Date.now()); return; }
+    setEvidencePolicy(next);
+    mutation.mutate({ evidencePolicy: next });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white border border-border rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold">Activity approval mode</h3>
+        <p className="text-[13px] text-muted-foreground">
+          Choose what happens when members log or submit activities to your organisation. Changing this only affects new submissions — activities already approved stay approved.
+        </p>
+        <div className="space-y-2" role="radiogroup" aria-label="Activity approval mode">
+          {APPROVAL_MODE_OPTIONS.map(opt => {
+            const selected = (opt.value === "auto") === autoVerify;
+            return (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}
+                data-testid={`approval-mode-${opt.value}`}
+              >
+                <input
+                  type="radio"
+                  name="approval-mode"
+                  className="mt-1 accent-[hsl(var(--primary))]"
+                  checked={selected}
+                  onChange={() => chooseApprovalMode(opt.value)}
+                  disabled={mutation.isPending}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-foreground">{opt.label}</span>
+                  <span className="block text-[12px] text-muted-foreground">{opt.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white border border-border rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold">Evidence policy</h3>
+        <p className="text-[13px] text-muted-foreground">
+          Decide whether members need to attach evidence (like a photo) when they submit activities. This never affects activities that were already submitted.
+        </p>
+        <div className="space-y-2" role="radiogroup" aria-label="Evidence policy">
+          {EVIDENCE_POLICY_OPTIONS.map(opt => {
+            const selected = evidencePolicy === opt.value;
+            return (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}
+                data-testid={`evidence-policy-${opt.value}`}
+              >
+                <input
+                  type="radio"
+                  name="evidence-policy"
+                  className="mt-1 accent-[hsl(var(--primary))]"
+                  checked={selected}
+                  onChange={() => chooseEvidencePolicy(opt.value)}
+                  disabled={mutation.isPending}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-foreground">{opt.label}</span>
+                  <span className="block text-[12px] text-muted-foreground">{opt.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="text-[12px] pt-1">
+          {mutation.isPending && (
+            <p className="text-muted-foreground inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Saving…</p>
+          )}
+          {!mutation.isPending && savedAt && !error && (
+            <p className="text-muted-foreground inline-flex items-center gap-1" data-testid="approvals-saved"><Check className="w-3 h-3 text-green-600" /> Saved</p>
+          )}
+          {error && <p className="text-red-600" data-testid="approvals-error">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileTab({ org, isDemoOrg }: { org: { id: string; name: string; type: string; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding }; isDemoOrg: boolean }) {
   return (
     <div className="space-y-4">
@@ -1444,6 +1589,7 @@ export default function OrgSettings() {
 
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} allowedDomain={orgData.org.allowedDomain ?? null} />}
+        {active === "approvals" && <ApprovalsTab initialAutoVerify={orgData.org.autoVerifyActivities ?? false} initialEvidencePolicy={orgData.org.evidencePolicy ?? "optional"} isDemoOrg={isDemoOrg} />}
         {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} initialLeaderboardEnabled={orgData.org.challengeLeaderboardEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
         {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}

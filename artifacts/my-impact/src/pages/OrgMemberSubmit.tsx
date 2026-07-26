@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info,
+  Building2, Search, Plus, Trash2, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Lock, AlertCircle, History, Undo2, Eye, Info, Camera,
 } from "lucide-react";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
 import { useMyOrg } from "@/lib/org-export";
@@ -116,6 +116,12 @@ export default function OrgMemberSubmit() {
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawn, setWithdrawn] = useState(false);
   const [detailsAttempted, setDetailsAttempted] = useState(false);
+
+  // Evidence uploads (org evidence policy). Uploaded before submission via
+  // purpose=org-evidence, then linked to the record by the server.
+  const [evidence, setEvidence] = useState<Array<{ id: number; name: string }>>([]);
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   // Editing / withdrawing a past submission from the history list.
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
@@ -333,6 +339,41 @@ export default function OrgMemberSubmit() {
     }
   }
 
+  async function uploadEvidence(file: File) {
+    setEvidenceError(null);
+    setEvidenceUploading(true);
+    try {
+      const urlRes = await fetch(`${BASE}/api/attachments/upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ mimeType: file.type, byteSize: file.size, kind: "photo", purpose: "org-evidence" }),
+      });
+      const urlData = await urlRes.json().catch(() => ({}));
+      if (!urlRes.ok) throw new Error((urlData as { error?: string }).error ?? "Could not start the upload.");
+      const { uploadUrl, storageKey } = urlData as { uploadUrl: string; storageKey: string };
+
+      const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!putRes.ok) throw new Error("Upload failed. Please try again.");
+
+      const regRes = await fetch(`${BASE}/api/attachments/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ storageKey, kind: "photo", purpose: "org-evidence" }),
+      });
+      const regData = await regRes.json().catch(() => ({}));
+      if (!regRes.ok) throw new Error((regData as { error?: string }).error ?? "Could not save the photo.");
+      const id = parseInt(String((regData as { id?: string }).id), 10);
+      if (!Number.isFinite(id)) throw new Error("Could not save the photo.");
+      setEvidence(prev => [...prev, { id, name: file.name }]);
+    } catch (err) {
+      setEvidenceError((err as Error).message);
+    } finally {
+      setEvidenceUploading(false);
+    }
+  }
+
   async function submit() {
     if (orderedSelected.length === 0) return;
     setSubmitError(null);
@@ -347,6 +388,7 @@ export default function OrgMemberSubmit() {
           name: `Activities on ${dateLabel}`,
           activityDate,
           saveToPersonal,
+          evidenceAttachmentIds: evidence.map(e => e.id),
           activities: orderedSelected.map(l => ({
             activityId: l.activityId,
             quantity: l.quantity,
@@ -399,6 +441,7 @@ export default function OrgMemberSubmit() {
   }
 
   const orgName = orgData.org.name;
+  const evidencePolicy = orgData.org.evidencePolicy ?? "optional";
 
   return (
     <>
@@ -1237,6 +1280,67 @@ export default function OrgMemberSubmit() {
             </p>
           </div>
 
+          {evidencePolicy !== "not_required" && (
+            <div className="bg-white border border-border rounded-xl p-5 mb-4" data-testid="member-submit-evidence">
+              <div className="flex items-center gap-2 mb-1">
+                <Camera className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">
+                  Evidence {evidencePolicy === "required" ? "(required)" : "(optional)"}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                {evidencePolicy === "required"
+                  ? `${orgName} requires at least one photo (e.g. of the activity or a receipt) with every submission.`
+                  : `Add a photo (e.g. of the activity or a receipt) to support your submission. It's optional for ${orgName}.`}
+              </p>
+              {evidence.length > 0 && (
+                <ul className="space-y-1.5 mb-3">
+                  {evidence.map(ev => (
+                    <li key={ev.id} className="flex items-center gap-2 text-xs bg-muted/30 border border-border rounded-md px-2.5 py-1.5" data-testid={`member-submit-evidence-item-${ev.id}`}>
+                      <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                      <span className="flex-1 truncate text-foreground">{ev.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEvidence(prev => prev.filter(e => e.id !== ev.id))}
+                        aria-label="Remove evidence"
+                        className="text-muted-foreground hover:text-red-600"
+                        data-testid={`member-submit-evidence-remove-${ev.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {evidence.length < 4 && (
+                <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${evidenceUploading ? "opacity-60 pointer-events-none" : ""} border-border hover:bg-muted/30 text-foreground`}>
+                  {evidenceUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                  {evidenceUploading ? "Uploading…" : evidence.length > 0 ? "Add another photo" : "Add a photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={evidenceUploading}
+                    data-testid="member-submit-evidence-input"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) uploadEvidence(f);
+                    }}
+                  />
+                </label>
+              )}
+              {evidenceError && (
+                <p className="text-xs text-red-600 mt-2" data-testid="member-submit-evidence-error">{evidenceError}</p>
+              )}
+              {evidencePolicy === "required" && evidence.length === 0 && (
+                <p className="text-[11px] text-amber-700 mt-2" data-testid="member-submit-evidence-needed">
+                  You'll need to add at least one photo before you can submit.
+                </p>
+              )}
+            </div>
+          )}
+
           {submitError && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm text-red-700 flex items-start gap-2" data-testid="member-submit-error">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -1256,7 +1360,7 @@ export default function OrgMemberSubmit() {
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || orderedSelected.length === 0}
+              disabled={submitting || orderedSelected.length === 0 || (evidencePolicy === "required" && evidence.length === 0)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               data-testid="member-submit-confirm"
             >
@@ -1339,6 +1443,8 @@ export default function OrgMemberSubmit() {
                 setLines({});
                 setActivityDate(todayIso());
                 setSaveToPersonal(false);
+                setEvidence([]);
+                setEvidenceError(null);
                 setCreatedRecordId(null);
                 setPersonalRecordId(null);
                 setWithdrawn(false);
