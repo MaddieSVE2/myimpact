@@ -14,6 +14,19 @@ const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 const SOMETHING_ELSE_ID = "something_else";
 
+// Must match the server's attachment limits (api-server/src/routes/attachments.ts).
+const EVIDENCE_MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+const EVIDENCE_ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+]);
+const EVIDENCE_ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif";
+
 interface SelectedLine {
   activityId: string;
   quantity: number;
@@ -341,6 +354,14 @@ export default function OrgMemberSubmit() {
 
   async function uploadEvidence(file: File) {
     setEvidenceError(null);
+    if (file.size > EVIDENCE_MAX_FILE_BYTES) {
+      setEvidenceError(`"${file.name}" is too big (${(file.size / (1024 * 1024)).toFixed(1)} MB). Photos must be 10 MB or smaller.`);
+      return;
+    }
+    if (!EVIDENCE_ALLOWED_IMAGE_TYPES.has(file.type.toLowerCase())) {
+      setEvidenceError(`"${file.name}" isn't a supported photo type. Please use a JPEG, PNG, WebP, GIF, HEIC or HEIF image.`);
+      return;
+    }
     setEvidenceUploading(true);
     try {
       const urlRes = await fetch(`${BASE}/api/attachments/upload-url`, {
@@ -1318,7 +1339,7 @@ export default function OrgMemberSubmit() {
                   {evidenceUploading ? "Uploading…" : evidence.length > 0 ? "Add another photo" : "Add a photo"}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={EVIDENCE_ACCEPT}
                     className="hidden"
                     disabled={evidenceUploading}
                     data-testid="member-submit-evidence-input"
