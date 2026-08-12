@@ -461,6 +461,17 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
   // Server-side dashboard-section gating: when the SROI section is disabled
   // by the super-admin, the cost inputs that drive SROI panels are withheld.
   const mySections = normalizeDashboardSections(org.dashboardSections);
+
+  // Active manager count lets the client warn a sole manager before leaving.
+  const [{ activeManagerCount }] = await db
+    .select({ activeManagerCount: sql<number>`count(*)::int` })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.orgId, org.id),
+      eq(orgMembersTable.role, "manager"),
+      eq(orgMembersTable.status, "active"),
+    ));
+
   res.json({
     org: {
       id: org.id,
@@ -468,6 +479,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       type: org.type,
       role: membership.role,
       membershipStatus: membership.status,
+      activeManagerCount,
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       autoVerifyActivities: org.autoVerifyActivities ?? false,
@@ -493,6 +505,63 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       },
     },
   });
+});
+
+// ── Leave organisation ───────────────────────────────────────────────────────
+// Self-service: removes the caller's own membership. A sole active manager is
+// allowed to leave (the org's contact-email auto-manager rule means a future
+// joiner matching the contact email can reclaim the manager seat, and
+// superadmins can still administer the org) — the response flags it so the
+// UI can warn. Org data is left intact.
+router.post("/leave", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: eq(orgMembersTable.userId, userId),
+  });
+  if (!membership) {
+    res.status(404).json({ error: "You are not a member of any organisation." });
+    return;
+  }
+
+  const orgId = membership.orgId;
+
+  // Determine whether this leaver is the last active manager BEFORE deleting.
+  let leftWithoutManager = false;
+  if (membership.role === "manager" && membership.status === "active") {
+    const [{ managerCount }] = await db
+      .select({ managerCount: count() })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, orgId),
+        eq(orgMembersTable.role, "manager"),
+        eq(orgMembersTable.status, "active"),
+      ));
+    leftWithoutManager = Number(managerCount) <= 1;
+  }
+
+  await db.delete(orgMembersTable).where(
+    and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)),
+  );
+
+  // Consented-logging orgs: mark any active consent as withdrawn so the
+  // member's activities stop counting in org aggregates.
+  const consent = await db.query.orgMemberConsentsTable.findFirst({
+    where: and(eq(orgMemberConsentsTable.orgId, orgId), eq(orgMemberConsentsTable.userId, userId)),
+  });
+  if (consent && consent.status === "active") {
+    await db.update(orgMemberConsentsTable)
+      .set({ status: "withdrawn", withdrawnAt: new Date() })
+      .where(eq(orgMemberConsentsTable.id, consent.id));
+  }
+
+  await writeAuditLog(orgId, userId, "member.left", "member", userId, {
+    role: membership.role,
+    status: membership.status,
+    leftWithoutManager,
+  }).catch(err => console.error("[org.leave] failed to write audit log:", err));
+
+  res.json({ ok: true, leftWithoutManager });
 });
 
 // ── Member data-sharing consent (consented-logging orgs) ────────────────────

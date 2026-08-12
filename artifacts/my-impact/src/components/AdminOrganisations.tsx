@@ -45,6 +45,130 @@ function ModeBadge({ mode }: { mode: AdminOrg["dataSharingMode"] }) {
   );
 }
 
+interface AdminOrgMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  joinedAt: string;
+}
+
+/**
+ * Superadmin member list for an organisation, with per-member removal. Lets
+ * an admin unblock a user stuck in an org (e.g. a sole manager who cannot
+ * demote or leave otherwise).
+ */
+function OrgMembersPanel({ org, onOrgUpdated }: { org: AdminOrg; onOrgUpdated: (org: AdminOrg) => void }) {
+  const [open, setOpen] = useState(false);
+  const [members, setMembers] = useState<AdminOrgMember[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadMembers() {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/members`, { credentials: "include" });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to load members");
+      setMembers(data.members);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load members");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleOpen() {
+    const next = !open;
+    setOpen(next);
+    if (next && members === null) loadMembers();
+  }
+
+  async function removeMember(m: AdminOrgMember) {
+    const confirmed = window.confirm(
+      `Remove ${m.name} (${m.email || "no email"}) from "${org.name}"?\n\nTheir membership is deleted immediately; their personal activity history is kept. They can rejoin another organisation via the normal invite flow.`
+    );
+    if (!confirmed) return;
+    setBusyId(m.userId);
+    setError(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/members/${m.userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to remove member");
+      setMembers(prev => (prev ?? []).filter(x => x.userId !== m.userId));
+      if (data.org) onOrgUpdated(data.org);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove member");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={toggleOpen}
+        className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/70 text-foreground text-xs font-semibold transition-colors border border-border"
+        data-testid={`button-view-members-${org.id}`}
+      >
+        {open ? "Hide members" : `View members (${org.totalMembershipCount})`}
+      </button>
+      {open && (
+        <div className="mt-3 border border-border rounded-lg overflow-hidden" data-testid={`panel-members-${org.id}`}>
+          {loading ? (
+            <p className="text-xs text-muted-foreground p-3">Loading members…</p>
+          ) : (members ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground p-3">No members.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-secondary/50 text-left text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">Role</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(members ?? []).map(m => (
+                  <tr key={m.userId} className="border-t border-border" data-testid={`row-admin-member-${m.userId}`}>
+                    <td className="px-3 py-2 text-foreground font-medium">{m.name}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.email || "—"}</td>
+                    <td className="px-3 py-2">
+                      <span className={`px-1.5 py-0.5 rounded font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>{m.role}</span>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.status}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        disabled={busyId === m.userId}
+                        onClick={() => removeMember(m)}
+                        className="text-destructive hover:underline font-semibold disabled:opacity-50"
+                        data-testid={`button-remove-member-${m.userId}`}
+                      >
+                        {busyId === m.userId ? "Removing…" : "Remove"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {error && <p className="text-xs text-destructive p-3 border-t border-border">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOrganisations() {
   const [orgs, setOrgs] = useState<AdminOrg[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -491,6 +615,11 @@ export default function AdminOrganisations() {
                       </p>
                     </div>
                   </div>
+
+                  <OrgMembersPanel
+                    org={org}
+                    onOrgUpdated={updated => setOrgs(prev => prev.map(o => (o.id === updated.id ? updated : o)))}
+                  />
 
                   <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Dashboard sections</span>
                   <div className="flex flex-wrap gap-2 mt-2 mb-4">

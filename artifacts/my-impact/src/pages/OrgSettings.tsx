@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck } from "lucide-react";
@@ -1621,6 +1621,94 @@ function SroiAssumptionsSection({
   );
 }
 
+// Danger zone: self-service "leave organisation" with confirmation. A sole
+// active manager gets an extra warning — the org's contact-email auto-manager
+// rule means a future joiner matching the contact email can reclaim the seat.
+function LeaveOrganisationCard({ orgName, isSoleManager }: { orgName: string; isSoleManager: boolean }) {
+  const [confirming, setConfirming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const [, navigate] = useLocation();
+
+  async function handleLeave() {
+    if (leaving) return;
+    setLeaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/org/leave`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to leave the organisation.");
+      }
+      // Refresh org-related state so the app shows the no-org experience.
+      qc.invalidateQueries({ queryKey: ["my-org"] });
+      qc.invalidateQueries({ queryKey: ["org"] });
+      navigate("/org");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to leave the organisation.");
+      setLeaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-10 border border-red-200 rounded-xl bg-red-50/50 p-5" data-testid="section-leave-org">
+      <h3 className="text-sm font-semibold text-red-800 mb-1">Leave organisation</h3>
+      <p className="text-[13px] text-red-700/80 mb-3">
+        Remove yourself from {orgName}. Your personal activity history stays with you, and you can
+        join another organisation later with an invite code.
+      </p>
+      {!confirming ? (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-300 text-red-700 text-[13px] font-semibold hover:bg-red-100 transition-colors"
+          data-testid="button-leave-org"
+        >
+          Leave organisation
+        </button>
+      ) : (
+        <div className="rounded-lg border border-red-200 bg-white p-4 space-y-3" data-testid="panel-leave-org-confirm">
+          <p className="text-sm font-semibold text-red-800">Leave {orgName}?</p>
+          <p className="text-xs text-red-700">
+            You'll lose access to this organisation's settings and dashboards, and your membership
+            will be removed. Your personal activity history is not deleted.
+          </p>
+          {isSoleManager && (
+            <p className="text-xs text-red-800 font-semibold" data-testid="text-sole-manager-warning">
+              You are the only manager. If you leave, the organisation will be left without a
+              manager — a future joiner matching the organisation's contact email can become manager
+              again, and superadmins can still administer it.
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleLeave}
+              disabled={leaving}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+              data-testid="button-confirm-leave-org"
+            >
+              {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              {leaving ? "Leaving…" : "Yes, leave organisation"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={leaving}
+              className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-colors"
+              data-testid="button-cancel-leave-org"
+            >
+              Cancel
+            </button>
+          </div>
+          {error && <p className="text-[12px] text-red-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function parseLine(raw: string): number | null | "invalid" {
   const trimmed = raw.trim();
   if (trimmed === "") return null;
@@ -1738,6 +1826,13 @@ export default function OrgSettings() {
         {active === "share"     && <ShareLinkManager isDemoOrg={isDemoOrg} />}
         {active === "profile"   && <ProfileTab org={{ ...orgData.org, sroiCostPerVolunteer: orgData.org.sroiCostPerVolunteer ?? null, sroiCostBreakdown: orgData.org.sroiCostBreakdown }} isDemoOrg={isDemoOrg} />}
       </motion.div>
+
+      {!isDemoOrg && (
+        <LeaveOrganisationCard
+          orgName={orgData.org.name}
+          isSoleManager={orgData.org.role === "manager" && ((orgData.org as { activeManagerCount?: number }).activeManagerCount ?? 0) <= 1}
+        />
+      )}
     </div>
     </>
   );

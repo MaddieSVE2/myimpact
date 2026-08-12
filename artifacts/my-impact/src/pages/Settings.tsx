@@ -366,6 +366,7 @@ export default function Settings() {
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </Link>
           <PulseOptOutRow />
+          <LeaveOrganisationRow />
         </div>
       </section>
 
@@ -449,6 +450,133 @@ export default function Settings() {
         <LogOut className="w-4 h-4" aria-hidden="true" />
         {t("settings.signOut")}
       </button>
+    </div>
+  );
+}
+
+interface LeaveOrgInfo {
+  org: {
+    id: string;
+    name: string;
+    role: string;
+    membershipStatus?: string;
+    activeManagerCount?: number;
+    revoked?: boolean;
+  } | null;
+}
+
+function LeaveOrganisationRow() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [info, setInfo] = useState<LeaveOrgInfo["org"]>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/org/my`, { credentials: "include" });
+        if (!res.ok) return;
+        const data: LeaveOrgInfo = await res.json();
+        if (!cancelled) setInfo(data.org);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!info) return null;
+
+  const isSoleManager = info.role === "manager" && (info.activeManagerCount ?? 0) <= 1;
+
+  const handleLeave = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/leave`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to leave the organisation.");
+      }
+      setInfo(null);
+      setConfirming(false);
+      // Refresh all org-related state so the app shows the no-org experience.
+      queryClient.invalidateQueries({ queryKey: ["my-org"] });
+      queryClient.invalidateQueries({ queryKey: ["org"] });
+      toast({
+        title: "You've left the organisation",
+        description: "You're no longer a member. You can join another organisation at any time with an invite code.",
+      });
+    } catch (err) {
+      toast({
+        title: "Couldn't leave the organisation",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLeaving(false);
+    }
+  };
+
+  return (
+    <div className="px-5 py-4">
+      {!confirming ? (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="w-full flex items-center justify-between text-left"
+          data-testid="button-leave-org"
+        >
+          <div>
+            <p className="text-sm font-medium text-red-600">Leave organisation</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Remove yourself from {info.name}. Your personal activity history stays with you.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        </button>
+      ) : (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3" data-testid="panel-leave-org-confirm">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Leave {info.name}?</p>
+              <p className="text-xs text-red-700 mt-1">
+                You'll lose access to this organisation's pages and your membership will be removed.
+                Your personal activity history is not deleted.
+              </p>
+              {isSoleManager && (
+                <p className="text-xs text-red-800 font-semibold mt-2" data-testid="text-sole-manager-warning">
+                  You are the only manager. If you leave, the organisation will be left without a
+                  manager — a future joiner matching the organisation's contact email can become
+                  manager again, and superadmins can still administer it.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleLeave}
+              disabled={leaving}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+              data-testid="button-confirm-leave-org"
+            >
+              {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <LogOut className="w-3.5 h-3.5" aria-hidden="true" />}
+              {leaving ? "Leaving…" : "Leave organisation"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={leaving}
+              className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-white transition-colors"
+              data-testid="button-cancel-leave-org"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

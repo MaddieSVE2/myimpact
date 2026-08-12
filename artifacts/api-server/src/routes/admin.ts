@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable, localCharitySubmissionsTable, localCharityOverridesTable, type StoredCharityPlace } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, orgMemberConsentsTable, orgAuditLogTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable, localCharitySubmissionsTable, localCharityOverridesTable, type StoredCharityPlace } from "@workspace/db";
 import { eq, desc, and, inArray, sql, asc, ilike, count } from "drizzle-orm";
 import { invalidateProxyCache } from "../lib/proxyStore.js";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
@@ -600,6 +600,94 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
     return;
   }
   res.json({ ok: true, org: await serializeAdminOrgWithStats(updated) });
+});
+
+// Superadmin: list an organisation's members (all statuses) with user details.
+router.get("/orgs/:id/members", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const orgId = String(req.params.id);
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId) });
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+
+  const rows = await db
+    .select({
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      status: orgMembersTable.status,
+      joinedAt: orgMembersTable.joinedAt,
+      email: usersTable.email,
+      displayName: usersTable.displayName,
+    })
+    .from(orgMembersTable)
+    .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(eq(orgMembersTable.orgId, orgId))
+    .orderBy(asc(orgMembersTable.joinedAt));
+
+  res.json({
+    members: rows.map(r => ({
+      userId: r.userId,
+      name: r.displayName ?? r.email ?? r.userId,
+      email: r.email ?? "",
+      role: r.role,
+      status: r.status,
+      joinedAt: r.joinedAt.toISOString(),
+    })),
+  });
+});
+
+// Superadmin: remove a member (any role) from an organisation. Org data is
+// left intact; any active data-sharing consent is marked withdrawn.
+router.delete("/orgs/:id/members/:userId", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const orgId = String(req.params.id);
+  const userId = String(req.params.userId);
+
+  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId) });
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  const membership = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)),
+  });
+  if (!membership) {
+    res.status(404).json({ error: "Member not found in this organisation" });
+    return;
+  }
+
+  await db.delete(orgMembersTable).where(
+    and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)),
+  );
+
+  const consent = await db.query.orgMemberConsentsTable.findFirst({
+    where: and(eq(orgMemberConsentsTable.orgId, orgId), eq(orgMemberConsentsTable.userId, userId)),
+  });
+  if (consent && consent.status === "active") {
+    await db.update(orgMemberConsentsTable)
+      .set({ status: "withdrawn", withdrawnAt: new Date() })
+      .where(eq(orgMemberConsentsTable.id, consent.id));
+  }
+
+  await db.insert(orgAuditLogTable).values({
+    orgId,
+    actorUserId: req.user!.id,
+    action: "member.removed_by_admin",
+    targetType: "member",
+    targetId: userId,
+    metadata: { role: membership.role, status: membership.status },
+  }).catch(err => console.error("[admin.orgs] failed to write audit log:", err));
+
+  const updated = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId) });
+  res.json({ ok: true, org: updated ? await serializeAdminOrgWithStats(updated) : null });
 });
 
 router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, res) => {
