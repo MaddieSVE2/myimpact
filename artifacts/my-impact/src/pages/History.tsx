@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
   HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX, Info,
+  MapPin,
 } from "lucide-react";
 import { calcResultBreakdown, detectInflatedDonations, repairLocalInflatedDonations } from "@/lib/formula";
 import { Link, useLocation } from "wouter";
@@ -1200,6 +1201,35 @@ export default function History() {
                                 <p className="text-sm font-semibold text-foreground">{record.name}</p>
                               )}
                               {(() => {
+                                // Plain-language distinction between an actually-logged
+                                // occurrence and an annualised estimate. Older records
+                                // (legacy/habit) don't get a badge to avoid mislabelling.
+                                const kind = (record as { kind?: string | null }).kind;
+                                if (kind === "quick_log") {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                      title="A single activity you logged on the day it happened"
+                                      data-testid={`badge-logged-${record.id}`}
+                                    >
+                                      Logged activity
+                                    </span>
+                                  );
+                                }
+                                if (kind === "annual_estimate") {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200"
+                                      title="An estimate of your activity over the year, from the Full Impact Report"
+                                      data-testid={`badge-estimate-${record.id}`}
+                                    >
+                                      Yearly estimate
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              {(() => {
                                 const v = (record as unknown as { verification?: { status: string; orgName: string; reason: string | null } }).verification;
                                 if (!v) return null;
                                 if (v.status === "approved") {
@@ -1230,9 +1260,30 @@ export default function History() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(record.createdAt).toLocaleDateString("en-GB", {
-                            weekday: "short", year: "numeric", month: "long", day: "numeric",
-                          })}
+                          {(() => {
+                            // Prefer the activity date (when it happened) over the
+                            // save timestamp for occurrence entries.
+                            const ed = (record as { entryDate?: string | null }).entryDate;
+                            const d = ed ? new Date(ed) : new Date(record.createdAt);
+                            return d.toLocaleDateString("en-GB", {
+                              weekday: "short", year: "numeric", month: "long", day: "numeric",
+                            });
+                          })()}
+                          {(() => {
+                            const loc = (record as { location?: { mode?: string; label?: string | null; townCity?: string | null; postcode?: string | null; region?: string | null } | null }).location;
+                            if (!loc) return null;
+                            const label = loc.mode === "online"
+                              ? "Online"
+                              : loc.mode === "multiple"
+                                ? "Multiple locations"
+                                : loc.label || loc.townCity || loc.postcode || loc.region;
+                            if (!label) return null;
+                            return (
+                              <span className="ml-2 text-muted-foreground/80" data-testid={`record-location-${record.id}`}>
+                                · <MapPin className="w-3 h-3 inline -mt-0.5" aria-hidden="true" /> {label}
+                              </span>
+                            );
+                          })()}
                           {activityCount > 0 && (
                             <span className="ml-2 text-muted-foreground/60">· {activityCount} {activityCount === 1 ? "activity" : "activities"}</span>
                           )}

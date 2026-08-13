@@ -906,7 +906,7 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, editRecordId, editPeriod, setEditRecordId } = useWizard();
+  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
   const situation = situations[0] ?? null;
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
@@ -1018,6 +1018,10 @@ export default function Results() {
             lat: locationMeta.lat,
             lng: locationMeta.lng,
           } : {}),
+          // Optional loose activity location the user set on the
+          // Contributions step (town / area / online / multiple). Never
+          // mandatory, never derived from the profile postcode.
+          ...(activityLocation ? { location: activityLocation } : {}),
         },
       });
 

@@ -40,10 +40,6 @@ args = "e2e-edit-record"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "subnav-alignment"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "lighthouse"
 
 [[workflows.workflow.tasks]]
@@ -61,6 +57,10 @@ args = "typecheck-api"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "copy-fields"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "quick-log-occurrence"
 
 [[workflows.workflow]]
 name = "e2e"
@@ -102,17 +102,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5003 E2E_WEB_PORT=3003 pnpm --filter @workspace/e2e test tests/13-edit-record.spec.ts tests/09-habit-conflict.spec.ts"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow]]
-name = "subnav-alignment"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5001 E2E_WEB_PORT=3001 pnpm --filter @workspace/e2e exec playwright test tests/12-org-subnav-alignment.spec.ts"
 
 [workflows.workflow.metadata]
 isValidation = true
@@ -168,6 +157,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5004 E2E_WEB_PORT=3004 pnpm --filter @workspace/e2e exec playwright test tests/17-copy-fields.spec.ts"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "quick-log-occurrence"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5005 E2E_WEB_PORT=3005 pnpm --filter @workspace/e2e exec playwright test tests/19-quick-log-occurrence.spec.ts"
 
 [workflows.workflow.metadata]
 isValidation = true

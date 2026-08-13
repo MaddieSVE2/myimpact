@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
+import type { ActivityLocationValue } from '@/components/quicklog/LocationPicker';
 
 /**
  * sessionStorage key used by the Inspire page's "Log activity with this
@@ -84,6 +85,10 @@ interface WizardState {
   // original period label so an edit doesn't silently relabel it.
   editRecordId: string | null;
   editPeriod: string | null;
+  // Optional loose activity location (town / postcode area / online /
+  // multiple) attached to the whole report. Never mandatory and never
+  // inferred from the user's home postcode.
+  activityLocation: ActivityLocationValue | null;
 }
 
 export interface HistoryRecord {
@@ -126,6 +131,7 @@ interface WizardContextType extends WizardState {
   loadFromRecord: (record: HistoryRecord) => void;
   loadRecordForEdit: (record: HistoryRecord, recordId: string, period?: string | null) => void;
   setEditRecordId: (id: string | null) => void;
+  setActivityLocation: (loc: ActivityLocationValue | null) => void;
   loadFromTemplate: (activities: SelectedActivity[], donationsGBP: number) => void;
   reset: () => void;
   clearDraft: () => void;
@@ -208,6 +214,7 @@ const defaultState: WizardState = {
   entryDate: todayIso(),
   editRecordId: null,
   editPeriod: null,
+  activityLocation: null,
 };
 
 const DRAFT_KEY = 'wizard_draft_v1';
@@ -272,6 +279,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         entryDate: typeof draft.entryDate === 'string' && draft.entryDate ? draft.entryDate : todayIso(),
         editRecordId: typeof draft.editRecordId === 'string' ? draft.editRecordId : null,
         editPeriod: typeof draft.editPeriod === 'string' ? draft.editPeriod : null,
+        activityLocation: (draft.activityLocation && typeof draft.activityLocation === 'object') ? draft.activityLocation : null,
       },
       hasDraft: true,
     };
@@ -299,6 +307,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const setEntryDate = useCallback((iso: string) => setEntryDateState(iso || todayIso()), []);
   const [editRecordId, setEditRecordIdState] = useState<string | null>(initialState.editRecordId);
   const [editPeriod, setEditPeriodState] = useState<string | null>(initialState.editPeriod);
+  const [activityLocation, setActivityLocationState] = useState<ActivityLocationValue | null>(initialState.activityLocation);
+  const setActivityLocation = useCallback((loc: ActivityLocationValue | null) => setActivityLocationState(loc), []);
   const setEditRecordId = useCallback((id: string | null) => {
     setEditRecordIdState(id);
     if (id === null) setEditPeriodState(null);
@@ -315,12 +325,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod }, user?.id);
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation }, user?.id);
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, user?.id]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation, user?.id]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -523,6 +533,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setEntryDateState(todayIso());
     setEditRecordIdState(null);
     setEditPeriodState(null);
+    setActivityLocationState(null);
     removeDraft();
     setHasDraft(false);
   };
@@ -561,10 +572,10 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod,
+      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadRecordForEdit, setEditRecordId, loadFromTemplate, reset,
-      clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate,
+      clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate, setActivityLocation,
     }}>
       {children}
     </WizardContext.Provider>

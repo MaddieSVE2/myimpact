@@ -5,9 +5,8 @@ import {
   useGetActivities,
   useCalculateImpact,
   useSaveImpact,
-  useCreateRecurringTemplate,
+  useGetImpactHistory,
   getGetImpactHistoryQueryKey,
-  getListRecurringTemplatesQueryKey,
   type ActivityItem,
   type SelectedActivity,
   type CustomActivityInput,
@@ -20,16 +19,15 @@ import {
   Search,
   Sparkles,
   PenLine,
-  ListChecks,
   Trophy,
+  History,
+  AlertTriangle,
+  CalendarDays,
+  PartyPopper,
 } from "lucide-react";
-import { TimescalePresetPicker } from "@/components/TimescalePresetPicker";
-import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateDialog";
-import { type TimescalePresetId } from "@/lib/timescale-presets";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { useT } from "@/i18n";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import {
   setChallengeContext,
@@ -38,6 +36,8 @@ import {
 } from "@/lib/challenge-context";
 import { NumberInput } from "@/components/ui/number-input";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
+import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
@@ -81,38 +81,14 @@ interface ProfileResponse {
   profile: { situation?: string[]; interests?: string[]; postcode?: string | null } | null;
 }
 
-interface LocationMeta {
-  region: string;
-  outwardCode: string;
-  lat: number;
-  lng: number;
-}
-
-async function lookupPostcode(raw: string): Promise<LocationMeta | null> {
-  const postcode = raw.replace(/\s+/g, "").toUpperCase();
-  try {
-    const res = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json.status !== 200 || !json.result) return null;
-    const r = json.result;
-    return {
-      region: (r.region ?? r.nuts ?? r.admin_county ?? r.parliamentary_constituency ?? "") as string,
-      outwardCode: (r.outcode ?? postcode.slice(0, postcode.length - 3)) as string,
-      lat: r.latitude as number,
-      lng: r.longitude as number,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function todayIso(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/** One "log again" candidate derived from the user's saved history. */
+interface RecentActivityEntry {
+  activity: ActivityItem;
+  /** The visible quantity to pre-fill (hours for hour-unit activities). */
+  usualQuantity: number;
+  /** The location saved with the most recent occurrence, if any. */
+  location: ActivityLocationValue | null;
+  lastDate: string | null;
 }
 
 function useChallengeIdFromQuery(): string | null {
@@ -126,11 +102,15 @@ function useChallengeIdFromQuery(): string | null {
 
 type Mode = "pick" | "describe";
 
+type DuplicateInfo = {
+  kind: "possible_duplicate" | "habit_entry_conflict";
+  existingRecordId: string | null;
+};
+
 export default function QuickLogActivity() {
   const [, setLocation] = useLocation();
   const { isLoggedIn, isLoading: authLoading, user } = useAuth();
   const { toast } = useToast();
-  const t = useT();
   const queryClient = useQueryClient();
   const challengeId = useChallengeIdFromQuery();
 
@@ -167,9 +147,7 @@ export default function QuickLogActivity() {
 
   // Persist challenge context for this flow so post-save navigation can refresh
   // org prompts/challenge progress. When no challenge param is present we
-  // defensively clear any stale context from an abandoned earlier flow so an
-  // unrelated quick-log save does not trigger challenge-mode behaviour
-  // (mirrors ActionsStep).
+  // defensively clear any stale context from an abandoned earlier flow.
   useEffect(() => {
     if (challengeId) {
       setChallengeContext(challengeId);
@@ -189,8 +167,9 @@ export default function QuickLogActivity() {
     retry: false,
   });
 
-  // Profile gate, fetch once and decide whether the user can use the
-  // quick logger or needs the full wizard.
+  // Profile is only used to rank the activity catalogue by the user's
+  // interests. NOTE: the user's home postcode is deliberately NOT used for
+  // the activity location — location is asked explicitly, never inferred.
   const profileQuery = useQuery<ProfileResponse>({
     queryKey: ["profile", "quick-log"],
     queryFn: async () => {
@@ -202,8 +181,8 @@ export default function QuickLogActivity() {
     retry: false,
   });
 
-  // Auth gate, signed-out users go to the full wizard (per task spec),
-  // not the login page, so guests can still log via the calculator flow.
+  // Auth gate, signed-out users go to the full wizard, not the login page,
+  // so guests can still log via the calculator flow.
   useEffect(() => {
     if (authLoading) return;
     if (!isLoggedIn) {
@@ -213,23 +192,6 @@ export default function QuickLogActivity() {
   }, [authLoading, isLoggedIn, challengeId, setLocation]);
 
   const profile = profileQuery.data?.profile;
-
-  // Resolve postcode → region/lat/lng if the profile already has one. The
-  // quick-log flow does NOT require a postcode — we just attach location
-  // metadata when it's available so dashboards can map the entry. Missing
-  // postcode/interests no longer redirect the user to the full wizard.
-  const [locationMeta, setLocationMetaLocal] = useState<LocationMeta | null>(null);
-  useEffect(() => {
-    if (!profile?.postcode) return;
-    const raw = profile.postcode.trim();
-    if (!raw || !UK_POSTCODE_RE.test(raw)) return;
-    let cancelled = false;
-    lookupPostcode(raw).then((meta) => {
-      if (!cancelled && meta) setLocationMetaLocal(meta);
-    });
-    return () => { cancelled = true; };
-  }, [profile?.postcode]);
-
   const interests = useMemo(() => profile?.interests ?? [], [profile?.interests]);
 
   // Activities list + sort by interests
@@ -249,82 +211,100 @@ export default function QuickLogActivity() {
     });
   }, [activitiesQuery.data, preferredCategories]);
 
-  // ── State ──
+  // History feeds "recent activities / log again" and the usual-location chip.
+  const historyQuery = useGetImpactHistory(
+    { userId: user?.id ?? "" },
+    {
+      query: {
+        enabled: isLoggedIn && !!user?.id,
+        queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }),
+      },
+    },
+  );
+
+  const activityById = useMemo(() => {
+    const map = new Map<string, ActivityItem>();
+    for (const a of activitiesQuery.data?.activities ?? []) map.set(a.id, a);
+    return map;
+  }, [activitiesQuery.data]);
+
+  type HistRecord = {
+    entryDate?: string | null;
+    kind?: string | null;
+    location?: ActivityLocationValue | null;
+    activities?: SelectedActivity[];
+  };
+
+  const { recentActivities, usualLocation } = useMemo(() => {
+    const records = (historyQuery.data?.records ?? []) as unknown as HistRecord[];
+    // Records arrive newest-first. Quick-log occurrences are the strongest
+    // "you did this recently" signal, so scan them before estimate records.
+    const ordered = [
+      ...records.filter(r => r.kind === "quick_log"),
+      ...records.filter(r => r.kind !== "quick_log"),
+    ];
+    const seen = new Set<string>();
+    const recents: RecentActivityEntry[] = [];
+    let usual: ActivityLocationValue | null = null;
+    for (const r of records) {
+      if (!usual && r.location && (r.location.mode === "in_person" ? describeLocation(r.location) : true)) {
+        usual = r.location;
+      }
+    }
+    for (const r of ordered) {
+      for (const a of r.activities ?? []) {
+        if (seen.has(a.activityId)) continue;
+        const item = activityById.get(a.activityId);
+        if (!item) continue;
+        seen.add(a.activityId);
+        recents.push({
+          activity: item,
+          usualQuantity: item.unit === "hour"
+            ? Math.max(1, Math.round(a.hoursPerYear || a.quantity || 1))
+            : Math.max(1, Math.round(a.quantity || 1)),
+          location: r.location ?? null,
+          lastDate: r.entryDate ?? null,
+        });
+        if (recents.length >= 4) break;
+      }
+      if (recents.length >= 4) break;
+    }
+    return { recentActivities: recents, usualLocation: usual };
+  }, [historyQuery.data, activityById]);
+
+  // ── State: the four questions ──
   const [mode, setMode] = useState<Mode>("pick");
   const [pickSearch, setPickSearch] = useState("");
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [entryDate, setEntryDate] = useState<string>(todayIso());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [activityLocation, setActivityLocation] = useState<ActivityLocationValue | null>(null);
+  const quantityTouchedRef = useRef(false);
 
-  const createTemplateMutation = useCreateRecurringTemplate();
-  const [activePreset, setActivePreset] = useState<TimescalePresetId>("today");
-  const [showRecurring, setShowRecurring] = useState(false);
-  const [tplLabel, setTplLabel] = useState("");
-  const [tplCadence, setTplCadence] = useState<"weekly" | "fortnightly" | "monthly">("weekly");
-  const [tplDay, setTplDay] = useState<number>(new Date().getDay());
-
-  const handleOngoing = () => {
-    const label = mode === "pick" && selectedActivity
-      ? selectedActivity.shortName
-      : mode === "describe" && analysed
-      ? analysed.name
-      : "";
-    setTplLabel(label);
-    setShowRecurring(true);
-  };
-
-  const handleCloseRecurring = () => {
-    setShowRecurring(false);
-    setActivePreset("today");
-    setEntryDate(todayIso());
-  };
-
-  const handleSaveRecurring = async () => {
-    if (!tplLabel.trim()) return;
-    let activities: SelectedActivity[] = [];
-    if (mode === "pick" && selectedActivity) {
-      activities = [{ activityId: selectedActivity.id, quantity: 1, hoursPerYear: 1 }];
-    }
-    try {
-      await createTemplateMutation.mutateAsync({
-        data: {
-          label: tplLabel.trim(),
-          cadence: tplCadence,
-          dayOfPeriod: tplDay,
-          defaultActivities: activities,
-          defaultDonationsGBP: 0,
-        },
-      });
-      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
-      setShowRecurring(false);
-      toast({
-        title: "Saved as a regular activity",
-        description: "You'll see a quick-log card on your home page when it's next due.",
-      });
-      setLocation(returnPathRef.current || "/");
-    } catch {
-      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
-    }
-  };
-
-  // Describe mode
+  // Describe mode ("Something else")
   const [describeText, setDescribeText] = useState("");
   const [describeLoading, setDescribeLoading] = useState(false);
   const [describeError, setDescribeError] = useState("");
   const [analysed, setAnalysed] = useState<{ name: string; analysed: AnalysedActivity } | null>(null);
 
-  // Reset quantity when picking a different activity. Hours are derived
-  // from quantity at submit-time so there's no separate hours state to
-  // keep in sync with the user's edits.
+  // Post-save confirmation + duplicate prompt
+  const [savedYear, setSavedYear] = useState<number | null>(null);
+  const [showSaved, setShowSaved] = useState(false);
+  const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null);
+
+  // Reset quantity when picking a different activity, unless a "Log again"
+  // pre-fill just set the usual amount.
   useEffect(() => {
-    if (selectedActivity) {
+    if (selectedActivity && !quantityTouchedRef.current) {
       setQuantity(1);
     }
+    quantityTouchedRef.current = false;
   }, [selectedActivity]);
 
   useEffect(() => {
     if (analysed) {
-      setQuantity(1);
+      setQuantity(Math.max(1, analysed.analysed.defaultQuantity || 1));
     }
   }, [analysed]);
 
@@ -337,6 +317,25 @@ export default function QuickLogActivity() {
       a.category.toLowerCase().includes(q)
     ).slice(0, 20);
   }, [sortedActivities, pickSearch]);
+
+  /**
+   * "Log again": pre-fill activity, usual amount, usual location and today's
+   * date so the user only has to confirm. (The previous org-sharing
+   * preference hook lives here too once per-record sharing prompts exist —
+   * sharing is currently governed by org consent, so there is nothing to
+   * carry over yet.)
+   */
+  const handleLogAgain = (entry: RecentActivityEntry) => {
+    setMode("pick");
+    setAnalysed(null);
+    quantityTouchedRef.current = true;
+    setSelectedActivity(entry.activity);
+    setQuantity(entry.usualQuantity);
+    setEntryDate(todayIso());
+    setShowDatePicker(false);
+    setActivityLocation(entry.location ?? usualLocation ?? null);
+    setDuplicate(null);
+  };
 
   const analyseActivity = async () => {
     if (!describeText.trim()) return;
@@ -371,19 +370,18 @@ export default function QuickLogActivity() {
   const saveMutation = useSaveImpact();
   // Synchronous in-flight guard: React state/`isPending` flips on the next
   // render, leaving a small window where a fast double-tap can fire two
-  // saves before the disabled-button state is committed. A ref flips
-  // immediately and blocks the second invocation.
+  // saves before the disabled-button state is committed.
   const submittingRef = useRef(false);
   const submitting = calcMutation.isPending || saveMutation.isPending;
 
   const canSubmit =
-    activePreset !== "ongoing" &&
     !!entryDate &&
     ((mode === "pick" && !!selectedActivity) || (mode === "describe" && !!analysed));
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (opts?: { force?: boolean }) => {
     if (!canSubmit || submitting || submittingRef.current) return;
     submittingRef.current = true;
+    setDuplicate(null);
 
     let activities: SelectedActivity[] = [];
     let customActivities: CustomActivityInput[] = [];
@@ -397,10 +395,6 @@ export default function QuickLogActivity() {
       // valuation matches the wizard exactly.
       const enteredQty = isHousehold ? 1 : Math.max(1, Number(quantity) || 1);
       const qty = isHourUnit ? 1 : enteredQty;
-      // Quick log only exposes ONE quantity field. Derive hoursPerYear
-      // deterministically from the visible quantity so the saved value
-      // always reflects what the user actually entered (mirrors the
-      // describe-mode formula). Households default to 1 hour.
       const hrs = isHourUnit
         ? enteredQty
         : isHousehold
@@ -435,6 +429,23 @@ export default function QuickLogActivity() {
       description = `Quick log: ${analysed.name}`;
     }
 
+    // Flat location columns power the dashboard maps. Share only the general
+    // area (outward code / region) at this level; the precise venue label
+    // stays inside the structured location.
+    const flatLocation = (() => {
+      if (!activityLocation || activityLocation.mode !== "in_person") return {};
+      const postcode = activityLocation.postcode ?? "";
+      const outward = UK_POSTCODE_RE.test(postcode)
+        ? postcode.replace(/\s+/g, "").toUpperCase().slice(0, -3)
+        : postcode.replace(/\s+/g, "").toUpperCase() || undefined;
+      return {
+        ...(activityLocation.region ? { region: activityLocation.region } : {}),
+        ...(outward ? { outwardCode: outward } : {}),
+        ...(activityLocation.lat != null ? { lat: activityLocation.lat } : {}),
+        ...(activityLocation.lng != null ? { lng: activityLocation.lng } : {}),
+      };
+    })();
+
     try {
       const calcResult = await calcMutation.mutateAsync({
         data: {
@@ -446,7 +457,7 @@ export default function QuickLogActivity() {
         },
       });
 
-      await saveMutation.mutateAsync({
+      const saved = (await saveMutation.mutateAsync({
         data: {
           userId: user?.id ?? "",
           name: "My Impact Record",
@@ -460,47 +471,41 @@ export default function QuickLogActivity() {
           customActivities: customActivities.length > 0 ? customActivities : undefined,
           donationsGBP: 0,
           additionalVolunteerHours: 0,
-          ...(locationMeta ? {
-            region: locationMeta.region,
-            outwardCode: locationMeta.outwardCode,
-            lat: locationMeta.lat,
-            lng: locationMeta.lng,
-          } : {}),
+          ...(activityLocation ? { location: activityLocation } : {}),
+          ...flatLocation,
+          ...(opts?.force ? { force: true } : {}),
         },
-      });
-
-      toast({
-        title: "Activity logged",
-        description: "Your activity has been added to your impact record.",
-      });
+      })) as { reportingYear?: number | null };
 
       // Refresh dashboard/history caches so totals reflect the new entry
-      // immediately when the user lands back on their origin page. We use
-      // the generated history query key plus the project's bespoke keys
-      // for the journal sidebar and the History page year/YoY widgets.
+      // immediately when the user lands back on their origin page.
       queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey() });
       queryClient.invalidateQueries({ queryKey: ["journal-recent"] });
       queryClient.invalidateQueries({ queryKey: ["impact-years", user?.id ?? ""] });
       queryClient.invalidateQueries({ queryKey: ["impact-yoy", user?.id ?? ""] });
 
-      // Honour challenge attribution: clear context, refresh org/challenge
-      // caches, and route home so updated progress is visible (mirrors
-      // Results.handleSave). For non-challenge flows, return the user to
-      // their originating page.
+      // Honour challenge attribution: clear context and refresh org/challenge
+      // caches so updated progress is visible.
       const challengeContext = consumeChallengeContextForSave();
       if (challengeContext) {
         queryClient.invalidateQueries({ queryKey: ["org-prompts"] });
         queryClient.invalidateQueries({ queryKey: ["challenges-mine"] });
         queryClient.invalidateQueries({ queryKey: ["challenge", challengeContext] });
       }
-      setLocation(returnPathRef.current || "/");
+
+      // Post-save confirmation: the entry auto-associates with the calendar
+      // year of its date. A date the server can't associate still saves —
+      // reportingYear is simply null and we confirm the save plainly.
+      const year = saved?.reportingYear
+        ?? (Number.isFinite(parseInt(entryDate.slice(0, 4), 10)) ? parseInt(entryDate.slice(0, 4), 10) : null);
+      setSavedYear(year);
+      setShowSaved(true);
     } catch (err) {
-      const apiErr = err as { status?: number; data?: { error?: string } };
-      if (apiErr?.status === 409 && apiErr?.data?.error === "habit_entry_conflict") {
-        toast({
-          title: "Already logged this month",
-          description: "You already have a habit entry for this month. Open your history to edit it.",
-          variant: "destructive",
+      const apiErr = err as { status?: number; data?: { error?: string; existingRecordId?: string } };
+      if (apiErr?.status === 409 && (apiErr?.data?.error === "possible_duplicate" || apiErr?.data?.error === "habit_entry_conflict")) {
+        setDuplicate({
+          kind: apiErr.data.error as DuplicateInfo["kind"],
+          existingRecordId: apiErr.data.existingRecordId ?? null,
         });
         return;
       }
@@ -514,6 +519,21 @@ export default function QuickLogActivity() {
     }
   };
 
+  const resetForAnother = () => {
+    setShowSaved(false);
+    setSavedYear(null);
+    setSelectedActivity(null);
+    setAnalysed(null);
+    setDescribeText("");
+    setMode("pick");
+    setPickSearch("");
+    setQuantity(1);
+    setEntryDate(todayIso());
+    setShowDatePicker(false);
+    setActivityLocation(null);
+    setDuplicate(null);
+  };
+
   // ── Render ──
   if (authLoading || (isLoggedIn && profileQuery.isLoading)) {
     return (
@@ -524,6 +544,60 @@ export default function QuickLogActivity() {
   }
 
   const challenge = challengeQuery.data?.challenge;
+  const isToday = entryDate === todayIso();
+
+  if (showSaved) {
+    return (
+      <div className={`${CONTENT_CONTAINER} py-16`} data-testid="quick-log-activity-page">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border border-border rounded-xl p-8 text-center max-w-lg mx-auto"
+          data-testid="quick-log-saved-confirmation"
+        >
+          <div
+            className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center"
+            style={{ background: "var(--brand-orange-bright)" }}
+          >
+            <PartyPopper className="w-6 h-6 text-white" aria-hidden="true" />
+          </div>
+          <h1 className="text-xl font-display font-bold text-foreground mb-1">
+            {savedYear != null ? `Added to My Impact ${savedYear}` : "Activity saved"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {savedYear != null
+              ? `Your entry for ${formatDisplayDate(entryDate)} now counts towards your ${savedYear} record.`
+              : "Your entry has been saved to your history."}
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setLocation(returnPathRef.current || "/")}
+              className="px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+              data-testid="quick-log-saved-done"
+            >
+              Done
+            </button>
+            <button
+              type="button"
+              onClick={resetForAnother}
+              className="px-5 py-3 min-h-[44px] rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
+              data-testid="quick-log-saved-log-another"
+            >
+              Log something else
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocation("/history")}
+              className="px-5 py-3 min-h-[44px] rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View history
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${CONTENT_CONTAINER} py-10`} data-testid="quick-log-activity-page">
@@ -536,10 +610,10 @@ export default function QuickLogActivity() {
       </button>
 
       <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">
-        Quick log
+        Log an activity
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Add one activity to your record — pick what you did, how much, and when.
+        Just did something? Record what you did, how much, when and where.
       </p>
 
       {challenge && (
@@ -554,146 +628,259 @@ export default function QuickLogActivity() {
         </div>
       )}
 
-      {/* Mode toggle */}
-      <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted mb-5">
-        <button
-          type="button"
-          onClick={() => { setMode("pick"); setAnalysed(null); }}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-            mode === "pick" ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          )}
-          data-testid="quick-log-mode-pick"
-        >
-          <ListChecks className="w-3.5 h-3.5" /> Pick
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMode("describe"); setSelectedActivity(null); }}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-            mode === "describe" ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          )}
-          data-testid="quick-log-mode-describe"
-        >
-          <PenLine className="w-3.5 h-3.5" /> Describe
-        </button>
-      </div>
+      {/* 1 — What did you do? */}
+      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Step 1</p>
+        <h2 className="text-base font-display font-semibold text-foreground mb-4">What did you do?</h2>
 
-      {/* Pick mode */}
-      {mode === "pick" && (
-        <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5">
-          {!selectedActivity ? (
-            <>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={pickSearch}
-                  onChange={e => setPickSearch(e.target.value)}
-                  placeholder="Search activities…"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
-                  data-testid="quick-log-pick-search"
-                />
-              </div>
-              {activitiesQuery.isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
-                  {filteredActivities.map(act => (
+        {mode === "pick" && !selectedActivity && (
+          <>
+            {recentActivities.length > 0 && (
+              <div className="mb-4" data-testid="quick-log-recent">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent activities</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {recentActivities.map(entry => (
                     <button
-                      key={act.id}
+                      key={entry.activity.id}
                       type="button"
-                      onClick={() => setSelectedActivity(act)}
-                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted/50 transition-colors"
-                      data-testid={`quick-log-activity-option-${act.id}`}
+                      onClick={() => handleLogAgain(entry)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:border-foreground/40 bg-white text-left transition-colors"
+                      data-testid={`quick-log-recent-${entry.activity.id}`}
                     >
-                      <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: act.sdgColor }} />
+                      <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: entry.activity.sdgColor }} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">{act.shortName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{act.category}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{entry.activity.shortName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Usually {entry.usualQuantity} {entry.activity.unit === "hour" ? (entry.usualQuantity === 1 ? "hour" : "hours") : entry.activity.unitLabel}
+                        </p>
                       </div>
+                      <span
+                        className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full text-white"
+                        style={{ background: "var(--brand-orange-bright)" }}
+                      >
+                        <History className="w-3 h-3" aria-hidden="true" /> Log again
+                      </span>
                     </button>
                   ))}
-                  {filteredActivities.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-6">
-                      No activities match "{pickSearch}". Try Describe mode instead.
-                    </p>
-                  )}
                 </div>
-              )}
-            </>
-          ) : (
-            <ActivityQuantityPanel
-              activity={selectedActivity}
-              quantity={quantity}
-              setQuantity={setQuantity}
-              onChange={() => setSelectedActivity(null)}
-            />
-          )}
-        </div>
-      )}
+                <div className="h-px bg-border my-4" />
+              </div>
+            )}
 
-      {/* Describe mode */}
-      {mode === "describe" && (
-        <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5">
-          {!analysed ? (
-            <>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Describe what you did
-              </label>
-              <textarea
-                value={describeText}
-                onChange={e => setDescribeText(e.target.value)}
-                placeholder="e.g. Helped at the local food bank for 3 hours"
-                rows={3}
-                className="w-full p-3 rounded-md bg-white border border-border text-sm focus:border-primary outline-none resize-none"
-                data-testid="quick-log-describe-text"
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={pickSearch}
+                onChange={e => setPickSearch(e.target.value)}
+                placeholder="Search activities…"
+                className="w-full pl-9 pr-3 py-2.5 rounded-md bg-white border border-border text-sm focus:border-primary outline-none"
+                data-testid="quick-log-pick-search"
               />
-              {describeError && (
-                <p className="text-xs text-destructive mt-2">{describeError}</p>
-              )}
-              <button
-                type="button"
-                onClick={analyseActivity}
-                disabled={!describeText.trim() || describeLoading}
-                className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                data-testid="quick-log-describe-analyse"
-              >
-                {describeLoading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</>
-                ) : (
-                  <><Sparkles className="w-4 h-4" /> Analyse</>
+            </div>
+            {activitiesQuery.isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-[340px] overflow-y-auto">
+                {filteredActivities.map(act => (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => setSelectedActivity(act)}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted/50 transition-colors"
+                    data-testid={`quick-log-activity-option-${act.id}`}
+                  >
+                    <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: act.sdgColor }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{act.shortName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{act.category}</p>
+                    </div>
+                  </button>
+                ))}
+                {filteredActivities.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No activities match "{pickSearch}". Try "Something else" below.
+                  </p>
                 )}
-              </button>
-            </>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { setMode("describe"); setSelectedActivity(null); }}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              data-testid="quick-log-mode-describe"
+            >
+              <PenLine className="w-3.5 h-3.5" /> Something else — describe what you did
+            </button>
+          </>
+        )}
+
+        {mode === "pick" && selectedActivity && (
+          <ActivityQuantityPanel
+            activity={selectedActivity}
+            quantity={quantity}
+            setQuantity={setQuantity}
+            onChange={() => setSelectedActivity(null)}
+          />
+        )}
+
+        {mode === "describe" && (
+          <>
+            {!analysed ? (
+              <>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Describe what you did
+                </label>
+                <textarea
+                  value={describeText}
+                  onChange={e => setDescribeText(e.target.value)}
+                  placeholder="e.g. Helped at the local food bank for 3 hours"
+                  rows={3}
+                  className="w-full p-3 rounded-md bg-white border border-border text-sm focus:border-primary outline-none resize-none"
+                  data-testid="quick-log-describe-text"
+                />
+                {describeError && (
+                  <p className="text-xs text-destructive mt-2">{describeError}</p>
+                )}
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={analyseActivity}
+                    disabled={!describeText.trim() || describeLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid="quick-log-describe-analyse"
+                  >
+                    {describeLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4" /> Analyse</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode("pick"); setAnalysed(null); setDescribeError(""); }}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="quick-log-mode-pick"
+                  >
+                    Back to the activity list
+                  </button>
+                </div>
+              </>
+            ) : (
+              <CustomQuantityPanel
+                name={analysed.name}
+                analysed={analysed.analysed}
+                quantity={quantity}
+                setQuantity={setQuantity}
+                onChange={() => { setAnalysed(null); setDescribeText(""); }}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 2 — When did it happen? */}
+      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5" data-testid="quick-log-entry-date">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Step 2</p>
+        <h2 className="text-base font-display font-semibold text-foreground mb-3">When did it happen?</h2>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 text-sm font-medium text-foreground" data-testid="quick-log-date-display">
+            <CalendarDays className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            {isToday ? `Today, ${formatDisplayDate(entryDate)}` : formatDisplayDate(entryDate)}
+          </span>
+          {!showDatePicker ? (
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(true)}
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              data-testid="quick-log-change-date"
+            >
+              Change date
+            </button>
           ) : (
-            <CustomQuantityPanel
-              name={analysed.name}
-              analysed={analysed.analysed}
-              quantity={quantity}
-              setQuantity={setQuantity}
-              onChange={() => { setAnalysed(null); setDescribeText(""); }}
+            <input
+              type="date"
+              value={entryDate}
+              max={todayIso()}
+              onChange={e => { if (e.target.value) setEntryDate(e.target.value); }}
+              className="px-3 py-2 rounded-md border border-border bg-white text-sm focus:border-primary outline-none"
+              data-testid="quick-log-date-input"
             />
           )}
+          {!isToday && (
+            <button
+              type="button"
+              onClick={() => { setEntryDate(todayIso()); setShowDatePicker(false); }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Reset to today
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Date */}
-      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5" data-testid="quick-log-entry-date">
-        <label className="block text-sm font-medium text-foreground mb-2">
-          What date does this entry count toward?
-        </label>
-        <TimescalePresetPicker
-          entryDate={entryDate}
-          onChange={setEntryDate}
-          onOngoing={handleOngoing}
-          activePreset={activePreset}
-          onActivePresetChange={setActivePreset}
+      {/* 3 — Where did it happen? */}
+      <div className="bg-white border border-border rounded-xl p-5 md:p-6 mb-5">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Step 3</p>
+        <h2 className="text-base font-display font-semibold text-foreground mb-3">Where did it happen?</h2>
+        <LocationPicker
+          value={activityLocation}
+          onChange={setActivityLocation}
+          previous={usualLocation}
         />
       </div>
+
+      {/* Duplicate prompt — never a silent merge */}
+      {duplicate && (
+        <div
+          className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4"
+          data-testid="quick-log-duplicate-prompt"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" aria-hidden="true" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">This activity may already have been logged</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {duplicate.kind === "habit_entry_conflict"
+                  ? "One of your regular activities already covers this — it looks like the same occurrence."
+                  : `You already have an entry with this activity on ${formatDisplayDate(entryDate)}.`}
+              </p>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {duplicate.existingRecordId && (
+                  <button
+                    type="button"
+                    onClick={() => setLocation(`/history?edit=${duplicate.existingRecordId}`)}
+                    className="px-3.5 py-2 rounded-md border border-border bg-white text-xs font-semibold hover:bg-muted transition-colors"
+                    data-testid="quick-log-duplicate-view"
+                  >
+                    View or edit the existing entry
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleSubmit({ force: true })}
+                  disabled={submitting}
+                  className="px-3.5 py-2 rounded-md text-xs font-semibold text-white transition-opacity disabled:opacity-60"
+                  style={{ background: "var(--brand-orange-bright)" }}
+                  data-testid="quick-log-duplicate-log-anyway"
+                >
+                  Log anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDuplicate(null)}
+                  className="px-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Submit */}
       <div className="flex items-center justify-end gap-3">
@@ -706,7 +893,7 @@ export default function QuickLogActivity() {
         </button>
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={() => void handleSubmit()}
           disabled={!canSubmit || submitting}
           className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="quick-log-submit"
@@ -718,20 +905,6 @@ export default function QuickLogActivity() {
           )}
         </button>
       </div>
-
-      {showRecurring && (
-        <RecurringTemplateDialog
-          tplLabel={tplLabel}
-          tplCadence={tplCadence}
-          tplDay={tplDay}
-          setTplLabel={setTplLabel}
-          setTplCadence={setTplCadence}
-          setTplDay={setTplDay}
-          onClose={handleCloseRecurring}
-          onSave={handleSaveRecurring}
-          isSaving={createTemplateMutation.isPending}
-        />
-      )}
     </div>
   );
 }
@@ -745,20 +918,20 @@ interface ActivityQuantityPanelProps {
 
 function quantityFieldLabel(activity: ActivityItem): string {
   switch (activity.unit) {
-    case "hour": return "Hours spent";
-    case "session": return "Sessions";
+    case "hour": return "How many hours did you do?";
+    case "session": return "How many sessions?";
     case "person":
     case "young_person":
-    case "participant": return "People helped";
-    case "child": return "Children";
-    case "tree": return "Trees";
-    case "bin": return "Bins";
-    case "bag": return "Bags";
-    case "event": return "Events";
-    case "donation": return "Donations";
-    case "mile_per_year": return "Miles";
-    case "week": return "Weeks";
-    default: return activity.unitLabel || "Quantity";
+    case "participant": return "How many people did you help?";
+    case "child": return "How many children?";
+    case "tree": return "How many trees?";
+    case "bin": return "How many bins?";
+    case "bag": return "How many bags?";
+    case "event": return "How many events?";
+    case "donation": return "How many donations?";
+    case "mile_per_year": return "How many miles?";
+    case "week": return "How many weeks?";
+    default: return activity.unitLabel ? `How many ${activity.unitLabel}?` : "How many?";
   }
 }
 

@@ -457,6 +457,53 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
         });
         return;
       }
+
+      // Quick Log likely-duplicate check: a per-occurrence save on the SAME
+      // calendar day with any overlapping activity (predefined id, or custom
+      // activity with the same name) is probably the same occurrence logged
+      // twice. Never silently merge — return 409 so the client can offer
+      // "view/edit existing" or "log anyway" (force=true).
+      if (kind === "quick_log") {
+        const dayStart = new Date(Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate()));
+        const dayEnd = new Date(Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate() + 1));
+        const sameDayRows = await db
+          .select({
+            id: impactRecordsTable.id,
+            activitiesJson: impactRecordsTable.activitiesJson,
+            resultJson: impactRecordsTable.resultJson,
+            periodLabel: impactRecordsTable.periodLabel,
+          })
+          .from(impactRecordsTable)
+          .where(
+            and(
+              eq(impactRecordsTable.userId, userId),
+              gte(impactRecordsTable.entryDate, dayStart),
+              lt(impactRecordsTable.entryDate, dayEnd),
+            ),
+          );
+        const newActivityIds = new Set(extractActivityIds(body.activities as unknown));
+        const newCustomNames = new Set(
+          (body.customActivities ?? []).map((c) => c.name.trim().toLowerCase()).filter(Boolean),
+        );
+        const dup = sameDayRows.find((r) => {
+          if (extractActivityIds(r.activitiesJson).some((id) => newActivityIds.has(id))) return true;
+          if (newCustomNames.size === 0) return false;
+          const breakdowns = (r.resultJson as { activityBreakdowns?: Array<{ category?: string; activityName?: string }> } | null)?.activityBreakdowns ?? [];
+          return breakdowns.some(
+            (b) => b?.category === "Custom" && typeof b.activityName === "string" && newCustomNames.has(b.activityName.trim().toLowerCase()),
+          );
+        });
+        if (dup) {
+          res.status(409).json({
+            error: "possible_duplicate",
+            message:
+              "This activity may already have been logged for this date. View or edit the existing entry, or resend with force=true to log it anyway.",
+            existingRecordId: String(dup.id),
+            period: dup.periodLabel ?? periodLabel,
+          });
+          return;
+        }
+      }
     }
 
     const [inserted] = await db

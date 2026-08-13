@@ -14,11 +14,12 @@ import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateD
 import { type TimescalePresetId } from "@/lib/timescale-presets";
 import { todayIso } from "@/components/quicklog/activity-shared";
 import { NumberInput } from "@/components/ui/number-input";
+import { LocationPicker } from "@/components/quicklog/LocationPicker";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
-  const { input, updateInput, setResult, customActivities, entryDate, setEntryDate } = useWizard();
+  const { input, updateInput, setResult, customActivities, entryDate, setEntryDate, activityLocation, setActivityLocation } = useWizard();
   const t = useT();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -122,6 +123,21 @@ export default function ContributionsStep() {
           activePreset={activePreset}
           onActivePresetChange={setActivePreset}
         />
+      </motion.div>
+
+      <motion.div
+        className="bg-white border border-border shadow-sm rounded-xl p-6 md:p-8 mb-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        data-testid="wizard-loose-location"
+      >
+        <label className="block text-sm font-medium text-foreground mb-1">
+          Where did this mostly happen? <span className="text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <p className="text-xs text-muted-foreground mb-3">
+          A town, postcode area, "online" or "multiple locations" is plenty — you can skip this entirely.
+        </p>
+        <LocationPicker value={activityLocation} onChange={setActivityLocation} />
       </motion.div>
 
       <motion.div 
