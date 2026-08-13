@@ -96,6 +96,54 @@ export interface ImpactResult {
   explanations: ImpactResultExplanations;
 }
 
+/**
+ * First-class contribution kind. 'annual_estimate' for the Full
+Impact Report wizard's annualised figures, 'quick_log' for a
+single real occurrence (quantities are stored as-is, no
+annualisation). Omitted/unknown values are stored as 'legacy',
+which always aggregates exactly as before.
+
+ */
+export type SaveImpactInputKind =
+  | (typeof SaveImpactInputKind)[keyof typeof SaveImpactInputKind]
+  | null;
+
+export const SaveImpactInputKind = {
+  legacy: "legacy",
+  annual_estimate: "annual_estimate",
+  quick_log: "quick_log",
+  recurring_confirmation: "recurring_confirmation",
+  bulk_retrospective: "bulk_retrospective",
+  org_api: "org_api",
+} as const;
+
+export type ActivityLocationMode =
+  (typeof ActivityLocationMode)[keyof typeof ActivityLocationMode];
+
+export const ActivityLocationMode = {
+  in_person: "in_person",
+  online: "online",
+  multiple: "multiple",
+} as const;
+
+/**
+ * Structured activity location. mode 'online' = Online / remote,
+'multiple' = Multiple locations (other fields typically null).
+A future beneficiary-location field will be a sibling structure.
+
+ */
+export interface ActivityLocation {
+  mode?: ActivityLocationMode;
+  label?: string | null;
+  postcode?: string | null;
+  townCity?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  localAuthority?: string | null;
+  region?: string | null;
+  country?: string | null;
+}
+
 export interface SaveImpactInput {
   userId: string;
   name: string;
@@ -121,6 +169,18 @@ the caller) instead of creating a new one. Used by the History
 calendar year without leaving an orphan.
  */
   targetRecordId?: string | null;
+  /** First-class contribution kind. 'annual_estimate' for the Full
+Impact Report wizard's annualised figures, 'quick_log' for a
+single real occurrence (quantities are stored as-is, no
+annualisation). Omitted/unknown values are stored as 'legacy',
+which always aggregates exactly as before.
+ */
+  kind?: SaveImpactInputKind;
+  /** Alias for entryDate used by Quick Log: the ISO date (YYYY-MM-DD)
+the activity actually happened. Ignored when entryDate is set.
+ */
+  activityDate?: string | null;
+  location?: ActivityLocation;
   /** Bypass the habit-overlap check. By default, /save returns 409
 when the entryDate's month already has a habit-generated entry
 with any overlapping activity, so the UI can prompt the user to
@@ -143,6 +203,11 @@ how the entry was created so the UI can label it (e.g. show a
 "from your habit" badge on bulk-created monthly entries).
  */
   source: string;
+  /** Contribution kind ('legacy' for pre-model records). */
+  kind?: string;
+  location?: ActivityLocation;
+  /** Reporting period derived from the entry date (calendar year); null when no period fits. */
+  reportingYear?: number | null;
   /** ID of the recurring template that generated this entry, if any.
 Lets the client cross-reference bulk-created monthly entries with
 their parent habit.

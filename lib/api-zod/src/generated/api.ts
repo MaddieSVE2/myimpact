@@ -220,6 +220,41 @@ export const SaveImpactBody = zod.object({
     .describe(
       'When set, \/save updates this specific record (must be owned by\nthe caller) instead of creating a new one. Used by the History\n\"edit\" flow so backdated edits move records to the correct\ncalendar year without leaving an orphan.\n',
     ),
+  kind: zod
+    .enum([
+      "legacy",
+      "annual_estimate",
+      "quick_log",
+      "recurring_confirmation",
+      "bulk_retrospective",
+      "org_api",
+    ])
+    .nullish()
+    .describe(
+      "First-class contribution kind. 'annual_estimate' for the Full\nImpact Report wizard's annualised figures, 'quick_log' for a\nsingle real occurrence (quantities are stored as-is, no\nannualisation). Omitted\/unknown values are stored as 'legacy',\nwhich always aggregates exactly as before.\n",
+    ),
+  activityDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "Alias for entryDate used by Quick Log: the ISO date (YYYY-MM-DD)\nthe activity actually happened. Ignored when entryDate is set.\n",
+    ),
+  location: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    ),
   force: zod
     .boolean()
     .nullish()
@@ -241,6 +276,32 @@ export const SaveImpactResponse = zod.object({
     .string()
     .describe(
       '\"user\" | \"habit\" | \"retrospective\" | \"member-submitted\" — describes\nhow the entry was created so the UI can label it (e.g. show a\n\"from your habit\" badge on bulk-created monthly entries).\n',
+    ),
+  kind: zod
+    .string()
+    .optional()
+    .describe("Contribution kind ('legacy' for pre-model records)."),
+  location: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    ),
+  reportingYear: zod
+    .number()
+    .nullish()
+    .describe(
+      "Reporting period derived from the entry date (calendar year); null when no period fits.",
     ),
   habitTemplateId: zod
     .number()
@@ -320,6 +381,32 @@ export const GetImpactHistoryResponse = zod.object({
         .string()
         .describe(
           '\"user\" | \"habit\" | \"retrospective\" | \"member-submitted\" — describes\nhow the entry was created so the UI can label it (e.g. show a\n\"from your habit\" badge on bulk-created monthly entries).\n',
+        ),
+      kind: zod
+        .string()
+        .optional()
+        .describe("Contribution kind ('legacy' for pre-model records)."),
+      location: zod
+        .object({
+          mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+          label: zod.string().nullish(),
+          postcode: zod.string().nullish(),
+          townCity: zod.string().nullish(),
+          lat: zod.number().nullish(),
+          lng: zod.number().nullish(),
+          localAuthority: zod.string().nullish(),
+          region: zod.string().nullish(),
+          country: zod.string().nullish(),
+        })
+        .optional()
+        .describe(
+          "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+        ),
+      reportingYear: zod
+        .number()
+        .nullish()
+        .describe(
+          "Reporting period derived from the entry date (calendar year); null when no period fits.",
         ),
       habitTemplateId: zod
         .number()

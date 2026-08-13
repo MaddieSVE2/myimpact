@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgShareLinksTable } from "@workspace/db";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 
 const router: IRouter = Router();
 
@@ -100,6 +101,17 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
       categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
     }
   }
+  // Estimate-vs-actual reconciliation: never double-count a member's annual
+  // estimate plus quick logs of the same activity/year in headline totals.
+  // (The cumulative monthly timeline below intentionally stays raw — it is a
+  // cadence view, per docs/contribution-data-model.md.)
+  const shareRecon = computeEstimateActualReconciliation(records);
+  totalSocialValue -= shareRecon.valueExcess;
+  totalHours -= shareRecon.hoursExcess;
+  for (const a of shareRecon.activities) {
+    if (categoryValueMap[a.category] !== undefined) categoryValueMap[a.category] -= a.excessValue;
+  }
+
   const totalUsers = new Set(records.map(r => r.userId)).size;
   const valueByCategory = Object.entries(categoryValueMap)
     .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
@@ -155,6 +167,21 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
     const result = parseResultJson(r.resultJson);
     regionMap[regionName].hours += result.totalHours;
     regionMap[regionName].value += result.totalValue;
+  }
+  // Reconcile each region's totals too (regions group whole records, so the
+  // per-user/year/activity rule applies within each region's subset).
+  const recordsByRegion: Record<string, typeof records> = {};
+  for (const r of records) {
+    const regionName = r.region ?? "Other";
+    (recordsByRegion[regionName] ??= []).push(r);
+  }
+  for (const [regionName, regionRecords] of Object.entries(recordsByRegion)) {
+    const regionRecon = computeEstimateActualReconciliation(regionRecords);
+    const entry = regionMap[regionName];
+    if (entry) {
+      entry.hours -= regionRecon.hoursExcess;
+      entry.value -= regionRecon.valueExcess;
+    }
   }
   const totalRegionMembers = Object.values(regionMap).reduce((sum, r) => sum + r.userIds.size, 0) || 1;
   const regions = Object.entries(regionMap)

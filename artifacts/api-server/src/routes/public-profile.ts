@@ -4,8 +4,37 @@ import { eq, desc, sum as drizzleSum, max as drizzleMax, sql } from "drizzle-orm
 import { randomBytes, createHash } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { trackServerEvent } from "../lib/analytics.js";
+import {
+  computeEstimateActualReconciliation,
+  type ReconciliationResult,
+} from "../lib/contributionModel.js";
 
 const router: IRouter = Router();
+
+const EMPTY_RECON: ReconciliationResult = {
+  valueExcess: 0,
+  hoursExcess: 0,
+  donationExcess: 0,
+  activities: [],
+};
+
+/**
+ * Estimate-vs-actual double-count adjustment for everything a user has ever
+ * logged (public profiles show lifetime totals). Zero for all-legacy data.
+ */
+async function computeUserReconciliation(userId: string): Promise<ReconciliationResult> {
+  const rows = await db
+    .select({
+      userId: impactRecordsTable.userId,
+      kind: impactRecordsTable.kind,
+      entryDate: impactRecordsTable.entryDate,
+      reportingYear: impactRecordsTable.reportingYear,
+      resultJson: impactRecordsTable.resultJson,
+    })
+    .from(impactRecordsTable)
+    .where(eq(impactRecordsTable.userId, userId));
+  return computeEstimateActualReconciliation(rows);
+}
 
 const SDG_NAMES: Record<string, string> = {
   "1": "No Poverty",
@@ -296,6 +325,10 @@ async function buildWidgetPayload(slug: string) {
   // version hash. (impact_records has no updatedAt, so summing total_value
   // gives us edit-detection without an extra column.)
   let impactSumTotalRaw = "0";
+  const recon =
+    profile.showHours || profile.showSroi || profile.showCategories
+      ? await computeUserReconciliation(profile.userId)
+      : EMPTY_RECON;
   {
     const [agg] = await db
       .select({
@@ -306,8 +339,12 @@ async function buildWidgetPayload(slug: string) {
       .from(impactRecordsTable)
       .where(eq(impactRecordsTable.userId, profile.userId));
 
-    if (profile.showHours) totalHours = parseInt(agg?.sumHours ?? "0", 10) || 0;
-    if (profile.showSroi) totalSroi = parseFloat((agg?.sumSroi as string) ?? "0") || 0;
+    if (profile.showHours) {
+      totalHours = Math.max(0, Math.round((parseFloat(agg?.sumHours ?? "0") || 0) - recon.hoursExcess));
+    }
+    if (profile.showSroi) {
+      totalSroi = Math.max(0, (parseFloat((agg?.sumSroi as string) ?? "0") || 0) - recon.valueExcess);
+    }
     impactMaxCreatedAt = (agg?.maxCreatedAt as Date | null) ?? null;
     impactSumTotalRaw = (agg?.sumSroi as string | null) ?? "0";
   }
@@ -355,6 +392,22 @@ async function buildWidgetPayload(slug: string) {
         if (b.category && typeof b.hours === "number") {
           categoryHoursMap.set(b.category, (categoryHoursMap.get(b.category) ?? 0) + b.hours);
         }
+      }
+    }
+
+    // Remove estimate-vs-actual overlap so a mixed activity counts once.
+    for (const a of recon.activities) {
+      if (a.sdg) {
+        const resolved = resolveSdg(String(a.sdg));
+        const key = resolved.id || String(a.sdg);
+        const cur = sdgMap.get(key);
+        if (cur) cur.value = Math.max(0, cur.value - a.excessValue);
+      }
+      if (a.category && categoryHoursMap.has(a.category)) {
+        categoryHoursMap.set(
+          a.category,
+          Math.max(0, (categoryHoursMap.get(a.category) ?? 0) - a.excessHours),
+        );
       }
     }
 
@@ -866,6 +919,10 @@ router.get("/:slug", publicRateLimit, async (req: Request<Record<string, string>
   let totalHours: number | null = null;
   let totalSroi: number | null = null;
   let verifiedHours: number | null = null;
+  const pageRecon =
+    profile.showHours || profile.showSroi || profile.showCategories
+      ? await computeUserReconciliation(profile.userId)
+      : EMPTY_RECON;
   if (profile.showHours || profile.showSroi || profile.showCategories) {
     const [agg] = await db
       .select({
@@ -875,16 +932,30 @@ router.get("/:slug", publicRateLimit, async (req: Request<Record<string, string>
       .from(impactRecordsTable)
       .where(eq(impactRecordsTable.userId, profile.userId));
 
-    if (profile.showHours) totalHours = parseInt(agg?.sumHours ?? "0", 10) || 0;
-    if (profile.showSroi) totalSroi = parseFloat(agg?.sumSroi as string ?? "0") || 0;
+    if (profile.showHours) {
+      totalHours = Math.max(0, Math.round((parseFloat(agg?.sumHours ?? "0") || 0) - pageRecon.hoursExcess));
+    }
+    if (profile.showSroi) {
+      totalSroi = Math.max(0, (parseFloat(agg?.sumSroi as string ?? "0") || 0) - pageRecon.valueExcess);
+    }
 
     if (profile.showHours) {
-      const [vAgg] = await db
-        .select({ sumHours: drizzleSum(impactRecordsTable.totalHours) })
+      // Reconcile the approved subset the same way as the headline hours.
+      const approvedRows = await db
+        .select({
+          userId: impactRecordsTable.userId,
+          kind: impactRecordsTable.kind,
+          entryDate: impactRecordsTable.entryDate,
+          reportingYear: impactRecordsTable.reportingYear,
+          resultJson: impactRecordsTable.resultJson,
+          totalHours: impactRecordsTable.totalHours,
+        })
         .from(recordVerificationsTable)
         .innerJoin(impactRecordsTable, eq(impactRecordsTable.id, recordVerificationsTable.recordId))
         .where(sql`${recordVerificationsTable.status} = 'approved' AND ${impactRecordsTable.userId} = ${profile.userId}`);
-      verifiedHours = parseInt(vAgg?.sumHours ?? "0", 10) || 0;
+      const approvedRecon = computeEstimateActualReconciliation(approvedRows);
+      const approvedRawHours = approvedRows.reduce((s, r) => s + (Number(r.totalHours) || 0), 0);
+      verifiedHours = Math.max(0, Math.round(approvedRawHours - approvedRecon.hoursExcess));
     }
   }
 
@@ -904,6 +975,13 @@ router.get("/:slug", publicRateLimit, async (req: Request<Record<string, string>
             categoryHours[act.category] = (categoryHours[act.category] ?? 0) + act.hours;
           }
         }
+      }
+    }
+
+    // Remove estimate-vs-actual overlap so a mixed activity counts once.
+    for (const a of pageRecon.activities) {
+      if (a.category && categoryHours[a.category] !== undefined) {
+        categoryHours[a.category] = Math.max(0, categoryHours[a.category] - a.excessHours);
       }
     }
   }

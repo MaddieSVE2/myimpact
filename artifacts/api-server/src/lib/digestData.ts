@@ -1,4 +1,5 @@
 import { db, impactRecordsTable, journalEntriesTable, orgMembersTable } from "@workspace/db";
+import { computeEstimateActualReconciliation } from "./contributionModel.js";
 import { and, eq, gte, lt, desc } from "drizzle-orm";
 import { ACTIVITIES } from "./impactData.js";
 import { computeBadges } from "./badges.js";
@@ -150,6 +151,10 @@ export async function buildMonthlyDigest(
   const sdgValueMap = new Map<string, number>();
   const sdgColorMap = new Map<string, string>();
 
+  // Estimate-vs-actual double-count adjustments (zero for all-legacy data).
+  const monthRecon = computeEstimateActualReconciliation(monthRecords);
+  const allRecon = computeEstimateActualReconciliation(allRecords);
+
   for (const r of monthRecords) {
     totals.totalValue += num(r.totalValue);
     totals.impactValue += num(r.impactValue);
@@ -175,6 +180,29 @@ export async function buildMonthlyDigest(
         const sdgKey = String(b.sdg);
         sdgValueMap.set(sdgKey, (sdgValueMap.get(sdgKey) ?? 0) + value);
         if (b.sdgColor) sdgColorMap.set(sdgKey, b.sdgColor);
+      }
+    }
+  }
+
+  // Subtract the overlap so a mixed estimate + quick-log activity counts once.
+  totals.totalValue -= monthRecon.valueExcess;
+  totals.totalHours -= monthRecon.hoursExcess;
+  totals.donationsValue -= monthRecon.donationExcess;
+  totals.contributionValue -= monthRecon.hoursExcess * 12.21;
+  totals.personalDevelopmentValue -= monthRecon.hoursExcess * 15;
+  totals.impactValue -=
+    monthRecon.valueExcess - monthRecon.donationExcess - monthRecon.hoursExcess * (12.21 + 15);
+  for (const a of monthRecon.activities) {
+    if (a.activityName && activityValueMap.has(a.activityName)) {
+      activityValueMap.set(
+        a.activityName,
+        Math.max(0, (activityValueMap.get(a.activityName) ?? 0) - a.excessValue),
+      );
+    }
+    if (a.sdg) {
+      const sdgKey = String(a.sdg);
+      if (sdgValueMap.has(sdgKey)) {
+        sdgValueMap.set(sdgKey, Math.max(0, (sdgValueMap.get(sdgKey) ?? 0) - a.excessValue));
       }
     }
   }
@@ -241,8 +269,10 @@ export async function buildMonthlyDigest(
   }
 
   const cumulative = {
-    totalValue: Math.round(allRecords.reduce((s, r) => s + num(r.totalValue), 0) * 100) / 100,
-    totalHours: Math.round(allRecords.reduce((s, r) => s + num(r.totalHours), 0) * 100) / 100,
+    totalValue:
+      Math.round((allRecords.reduce((s, r) => s + num(r.totalValue), 0) - allRecon.valueExcess) * 100) / 100,
+    totalHours:
+      Math.round((allRecords.reduce((s, r) => s + num(r.totalHours), 0) - allRecon.hoursExcess) * 100) / 100,
     recordCount: allRecords.length,
   };
 

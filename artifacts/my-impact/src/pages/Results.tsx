@@ -1007,6 +1007,11 @@ export default function Results() {
           additionalVolunteerHours: input.additionalVolunteerHours,
           ...(targetRecordId ? { targetRecordId } : {}),
           ...(opts?.force ? { force: true } : {}),
+          // The Full Impact Report wizard produces annualised figures, so new
+          // saves are classified as annual estimates for the estimate-vs-
+          // actual reconciliation. Edits (targetRecordId) omit kind so the
+          // server preserves the record's original classification.
+          ...(targetRecordId ? {} : { kind: "annual_estimate" as const }),
           ...(locationMeta ? {
             region: locationMeta.region,
             outwardCode: locationMeta.outwardCode,

@@ -101,7 +101,7 @@ vi.mock("@workspace/db", () => {
     "totalHours", "activitiesJson", "resultJson", "region", "outwardCode",
     "lat", "lng", "attestedByApiKeyId", "attestedAt", "submittedToOrgId",
     "submittedToOrgAt", "source", "tags", "entryDate", "habitTemplateId",
-    "createdAt",
+    "createdAt", "kind", "locationJson", "reportingYear",
   ]);
   const recurringTemplatesTable = tableTag("recurring_templates", [
     "id", "userId", "label", "cadence", "dayOfPeriod", "anchorDate",

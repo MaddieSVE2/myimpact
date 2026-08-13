@@ -37,6 +37,7 @@ import {
   sendOnboardingEmail,
 } from "../lib/onboardingEmails.js";
 import { ACTIVITIES } from "../lib/impactData.js";
+import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 import {
   buildUnsubscribeUrl,
   buildOneClickUnsubscribeUrl,
@@ -144,8 +145,11 @@ async function loadActivitySummary(userId: string): Promise<OnboardingActivity> 
     .from(impactRecordsTable)
     .where(eq(impactRecordsTable.userId, userId));
 
-  let totalHours = 0;
-  let totalValue = 0;
+  // Estimate-vs-actual double-count adjustment (zero for all-legacy data).
+  const recon = computeEstimateActualReconciliation(records);
+
+  let totalHours = -recon.hoursExcess;
+  let totalValue = -recon.valueExcess;
   const categoryHours = new Map<string, number>();
 
   for (const r of records) {

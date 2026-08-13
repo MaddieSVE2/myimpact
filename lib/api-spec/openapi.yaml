@@ -767,6 +767,24 @@ components:
             the caller) instead of creating a new one. Used by the History
             "edit" flow so backdated edits move records to the correct
             calendar year without leaving an orphan.
+        kind:
+          type: string
+          enum: [legacy, annual_estimate, quick_log, recurring_confirmation, bulk_retrospective, org_api]
+          nullable: true
+          description: |
+            First-class contribution kind. 'annual_estimate' for the Full
+            Impact Report wizard's annualised figures, 'quick_log' for a
+            single real occurrence (quantities are stored as-is, no
+            annualisation). Omitted/unknown values are stored as 'legacy',
+            which always aggregates exactly as before.
+        activityDate:
+          type: string
+          nullable: true
+          description: |
+            Alias for entryDate used by Quick Log: the ISO date (YYYY-MM-DD)
+            the activity actually happened. Ignored when entryDate is set.
+        location:
+          $ref: "#/components/schemas/ActivityLocation"
         force:
           type: boolean
           nullable: true
@@ -782,6 +800,40 @@ components:
         - activities
         - donationsGBP
         - additionalVolunteerHours
+    ActivityLocation:
+      type: object
+      description: |
+        Structured activity location. mode 'online' = Online / remote,
+        'multiple' = Multiple locations (other fields typically null).
+        A future beneficiary-location field will be a sibling structure.
+      properties:
+        mode:
+          type: string
+          enum: [in_person, online, multiple]
+        label:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        townCity:
+          type: string
+          nullable: true
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        localAuthority:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
     SavedImpact:
       type: object
       properties:
@@ -805,6 +857,15 @@ components:
             "user" | "habit" | "retrospective" | "member-submitted" — describes
             how the entry was created so the UI can label it (e.g. show a
             "from your habit" badge on bulk-created monthly entries).
+        kind:
+          type: string
+          description: Contribution kind ('legacy' for pre-model records).
+        location:
+          $ref: "#/components/schemas/ActivityLocation"
+        reportingYear:
+          type: integer
+          nullable: true
+          description: Reporting period derived from the entry date (calendar year); null when no period fits.
         habitTemplateId:
           type: integer
           nullable: true

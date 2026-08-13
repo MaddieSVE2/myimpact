@@ -451,6 +451,10 @@ export default function QuickLogActivity() {
           userId: user?.id ?? "",
           name: "My Impact Record",
           entryDate,
+          // Quick Log saves are per-occurrence actuals: quantities are stored
+          // as-is (never annualised) and reconciled against any annual
+          // estimate of the same activity/year in yearly totals.
+          kind: "quick_log" as const,
           impactResult: calcResult,
           activities,
           customActivities: customActivities.length > 0 ? customActivities : undefined,

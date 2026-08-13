@@ -9,6 +9,7 @@ import {
 import { and, eq, inArray, gte, lte } from "drizzle-orm";
 import { authenticateApiKey, requireScope, createApiKeyRateLimiter, type ApiKeyRequest } from "../middleware/apiKeyAuth.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
+import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 
 const router: IRouter = Router();
 
@@ -140,6 +141,17 @@ router.get("/stats", requireScope("stats.read"), async (req: ApiKeyRequest, res)
     for (const b of result.activityBreakdowns) {
       categoryMap[b.category] = (categoryMap[b.category] ?? 0) + b.impactValue;
     }
+  }
+
+  // Estimate-vs-actual reconciliation (per member, per reporting year): a
+  // member's annual estimate and quick logs of the same activity count once
+  // (the greater side). Zero adjustment for legacy-only data.
+  const recon = computeEstimateActualReconciliation(records);
+  totalValue -= recon.valueExcess;
+  totalHours -= recon.hoursExcess;
+  totalDonations -= recon.donationExcess;
+  for (const a of recon.activities) {
+    if (categoryMap[a.category] !== undefined) categoryMap[a.category] -= a.excessValue;
   }
 
   const totalUsersWithRecords = new Set(records.map(r => r.userId)).size;
@@ -298,6 +310,8 @@ router.post("/hours", requireScope("hours.write"), async (req: ApiKeyRequest, re
     attestedByApiKeyId: req.apiKey!.id,
     attestedAt: now,
     source: "org-attested",
+    kind: "org_api",
+    reportingYear: occurredAtRaw.getUTCFullYear(),
   }).returning();
 
   // Fire two events: hours.logged (general) and hours.attested (specific to

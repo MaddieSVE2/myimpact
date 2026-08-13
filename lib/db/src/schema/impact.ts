@@ -72,6 +72,31 @@ export const impactRecordsTable = pgTable("impact_records", {
   // trace habit-spawned entries back to their template for overlap warnings
   // and the year-rollover prompt. NULL for one-off / manual entries.
   habitTemplateId: integer("habit_template_id"),
+  // First-class contribution kind — distinguishes annualised estimates from
+  // actual, per-occurrence contributions so yearly aggregation can reconcile
+  // the two instead of double-counting. Values:
+  //   'legacy'                — rows created before the kind column existed,
+  //                             plus saves from clients that don't send a kind.
+  //                             Always summed as-is (historical totals unchanged).
+  //   'annual_estimate'       — Full Impact Report wizard annualised estimate.
+  //   'quick_log'             — Quick Log actual (per-occurrence quantities,
+  //                             stored as-is, no annualisation).
+  //   'recurring_confirmation'— entry spawned by confirming a recurring template.
+  //   'bulk_retrospective'    — bulk backfill for a past year (habit backfill /
+  //                             year-rollover bulk create).
+  //   'org_api'               — pushed via the org REST API (attested).
+  kind: text("kind").notNull().default("legacy"),
+  // Structured activity location (where the activity happened). Shape:
+  // { label, postcode, townCity, lat, lng, localAuthority, region, country,
+  //   mode: 'in_person' | 'online' | 'multiple' }. All fields optional except
+  // mode. NULL = no structured location captured (legacy rows keep using the
+  // flat region/outwardCode/lat/lng columns for display). A future
+  // beneficiary-location field will be a sibling jsonb column.
+  locationJson: jsonb("location_json"),
+  // Reporting period the contribution counts toward, derived from entryDate
+  // at save time (calendar year today). Nullable so a record whose date fits
+  // no period — or several — still saves and can be associated later.
+  reportingYear: integer("reporting_year"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),

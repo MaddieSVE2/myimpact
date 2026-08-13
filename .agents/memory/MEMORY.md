@@ -26,4 +26,6 @@
 - [Org manager review surfaces](org-manager-review-surfaces.md) — manager per-record features need both OrgPortal (lite) and OrgActivities (full tier); demo org's Activities page is mock data, test with the university org.
 - [Proxy deflation system](proxy-deflation.md) — DB-backed proxy bank with insert-only seed + 60s cache; jsonb::text LIKE filters need `"key": "val"` spacing; JWT session payload uses `id`, not `userId`.
 - [Express 5 param types](express5-param-types.md) — @types/express v5 types req.params as string|string[]; AuthenticatedRequest pins Request<Record<string,string>>; plain Request handlers need same generic.
+- [Zod error console crash](zod-error-console-crash.md) — api-server 500 logging only a util.inspect TypeError means the real error (usually a Zod validation failure) is masked; check payload vs generated schemas.
+- [Estimate vs actual double-count rule](contribution-kinds.md) — yearly aggregations keep raw sums and subtract the shared reconciliation excess; never re-sum or bare SQL SUM on new surfaces.
 - [Admin endpoint testing](admin-endpoint-testing.md) — no admin persona exists; test admin routes by seeding an allowlisted user and signing an mi_session JWT with SESSION_SECRET; clean up test rows after.

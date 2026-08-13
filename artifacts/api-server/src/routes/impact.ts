@@ -25,6 +25,12 @@ import {
   deleteAllAttachmentsForUser,
 } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
+import {
+  parseRecordKind,
+  normalizeActivityLocation,
+  deriveReportingYear,
+  computeEstimateActualReconciliation,
+} from "../lib/contributionModel.js";
 import { repairInflatedDonations } from "../lib/donationRepair.js";
 
 const router: IRouter = Router();
@@ -297,7 +303,19 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   const body = SaveImpactBody.parse(req.body);
   const userId = req.user!.id;
   const rawBody = req.body as Record<string, unknown>;
-  const entryDate = parseEntryDate(rawBody.entryDate);
+  // `activityDate` is the Quick Log alias for entryDate — the date the
+  // occurrence actually happened.
+  const entryDate = parseEntryDate(rawBody.entryDate ?? rawBody.activityDate);
+  // First-class contribution kind. Clients that know what they're saving send
+  // it explicitly ('annual_estimate' for the Full Impact Report wizard,
+  // 'quick_log' for per-occurrence actuals — Quick Log payloads are stored
+  // as-is, no annualisation happens anywhere server-side). Absent/unknown
+  // values stay 'legacy' so existing clients keep producing rows that
+  // aggregate exactly as before.
+  const kind = parseRecordKind(rawBody.kind) ?? "legacy";
+  // Structured activity location (label/postcode/town/lat/lng/local
+  // authority/region/country + mode incl. 'online' and 'multiple').
+  const activityLocation = normalizeActivityLocation(rawBody.location);
   const todayUTC = new Date();
   // If the entry is dated to a prior calendar year, mark its source so the
   // UI can label it "added later". Habit-spawned entries are never created
@@ -357,6 +375,11 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     lng: body.lng != null ? String(body.lng) : null,
     entryDate,
     source,
+    kind,
+    locationJson: activityLocation,
+    // Reporting period derived from the activity date (calendar year today).
+    // Nullable by design: an unassociable date still saves.
+    reportingYear: deriveReportingYear(entryDate),
   };
 
   let record;
@@ -369,6 +392,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
         id: impactRecordsTable.id,
         source: impactRecordsTable.source,
         habitTemplateId: impactRecordsTable.habitTemplateId,
+        kind: impactRecordsTable.kind,
       })
       .from(impactRecordsTable)
       .where(and(eq(impactRecordsTable.id, targetRecordId), eq(impactRecordsTable.userId, userId)))
@@ -382,9 +406,15 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     // intact. Otherwise the row would lose its habit identity and a
     // subsequent overlapping save in the same month would slip past the
     // 409 conflict check and silently double-count.
-    const updateValues = owned.habitTemplateId != null || owned.source === "habit"
+    let updateValues = owned.habitTemplateId != null || owned.source === "habit"
       ? { ...newValues, source: owned.source, habitTemplateId: owned.habitTemplateId }
       : newValues;
+    // Preserve the record's original kind on edits unless the client
+    // explicitly re-classifies it — otherwise a History edit would silently
+    // demote e.g. a quick_log row back to 'legacy'.
+    if (parseRecordKind(rawBody.kind) === null) {
+      updateValues = { ...updateValues, kind: parseRecordKind(owned.kind) ?? "legacy" };
+    }
     const [updated] = await db
       .update(impactRecordsTable)
       .set(updateValues)
@@ -488,6 +518,9 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     createdAt: record.createdAt.toISOString(),
     entryDate: record.entryDate.toISOString().slice(0, 10),
     source: record.source,
+    kind: record.kind,
+    location: record.locationJson ?? null,
+    reportingYear: record.reportingYear ?? null,
     habitTemplateId: record.habitTemplateId ?? null,
     impactResult: serverImpactResult,
     tags: record.tags ?? [],
@@ -774,6 +807,9 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     createdAt: r.createdAt.toISOString(),
     entryDate: r.entryDate.toISOString().slice(0, 10),
     source: r.source,
+    kind: r.kind,
+    location: r.locationJson ?? null,
+    reportingYear: r.reportingYear ?? null,
     habitTemplateId: r.habitTemplateId ?? null,
     impactResult: r.resultJson,
     activities: r.activitiesJson,
@@ -845,6 +881,19 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
     totalHours += result.totalHours;
     for (const breakdown of result.activityBreakdowns) {
       categoryValueMap[breakdown.category] = (categoryValueMap[breakdown.category] ?? 0) + breakdown.impactValue;
+    }
+  }
+
+  // Estimate-vs-actual reconciliation (per member, per reporting year):
+  // where an annual estimate AND quick-logged actuals cover the same
+  // activity, count it once (the greater of the two). Zero adjustment for
+  // legacy-only data, so historical org stats are unchanged.
+  const recon = computeEstimateActualReconciliation(records);
+  totalSocialValue -= recon.valueExcess;
+  totalHours -= recon.hoursExcess;
+  for (const a of recon.activities) {
+    if (categoryValueMap[a.category] !== undefined) {
+      categoryValueMap[a.category] -= a.excessValue;
     }
   }
 
@@ -1051,6 +1100,38 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       }
     }
 
+    // Estimate-vs-actual reconciliation: when this year mixes an annual
+    // estimate and quick-logged actuals for the same activity, the headline
+    // counts each such activity once (the greater of the two) and the
+    // response carries per-activity "Estimated: X / Logged so far: Y" detail.
+    // All-legacy years get a zero adjustment — historical recaps unchanged.
+    const recon = computeEstimateActualReconciliation(yearRecords);
+    totalValue -= recon.valueExcess;
+    totalHours -= recon.hoursExcess;
+    totalDonations -= recon.donationExcess;
+    for (const a of recon.activities) {
+      const entry = activityMap.get(a.activityId);
+      if (entry) {
+        entry.impactValue -= a.excessValue;
+        entry.hours -= a.excessHours;
+      }
+      if (a.sdg) {
+        const sdgEntry = sdgMap.get(a.sdg);
+        if (sdgEntry) sdgEntry.value -= a.excessValue;
+      }
+    }
+    const estimateVsLogged = recon.activities.map((a) => ({
+      activityId: a.activityId,
+      activityName: a.activityName,
+      category: a.category,
+      estimatedValue: a.estimatedValue,
+      loggedValue: a.loggedValue,
+      countedValue: a.countedValue,
+      estimatedHours: a.estimatedHours,
+      loggedHours: a.loggedHours,
+      countedHours: a.countedHours,
+    }));
+
     const topActivityRaw = Array.from(activityMap.values()).sort((a, b) => b.impactValue - a.impactValue)[0] ?? null;
     const topActivity = topActivityRaw
       ? {
@@ -1118,6 +1199,7 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       sdgsCount: sdgMap.size,
       topActivity,
       topSdg,
+      estimateVsLogged,
       biggestSession,
       journalHighlight,
       milestonesEarnedCount,
@@ -1531,6 +1613,8 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
       // Past-year habit logging is retrospective, matching manual backdated
       // entries; habitTemplateId still ties the rows back to the template.
       source: isPastYear ? "retrospective" : "habit",
+      kind: isPastYear ? "bulk_retrospective" : "recurring_confirmation",
+      reportingYear: year,
       habitTemplateId: id,
     });
   }
@@ -1620,10 +1704,17 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
   })();
 
   async function sumBetween(start: Date, end: Date): Promise<{ total: number; count: number }> {
-    const [row] = await db
+    // Row-level select (rather than SQL SUM) so the estimate-vs-actual
+    // reconciliation can drop the double-counted overlap. The raw column sum
+    // equals the old SQL SUM; the adjustment is zero unless estimates and
+    // quick logs cover the same activity in the same year.
+    const rows = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${impactRecordsTable.totalValue}), 0)`,
-        count: sql<number>`count(*)::int`,
+        totalValue: impactRecordsTable.totalValue,
+        kind: impactRecordsTable.kind,
+        entryDate: impactRecordsTable.entryDate,
+        reportingYear: impactRecordsTable.reportingYear,
+        resultJson: impactRecordsTable.resultJson,
       })
       .from(impactRecordsTable)
       .where(
@@ -1633,7 +1724,10 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
           lt(impactRecordsTable.entryDate, end),
         ),
       );
-    return { total: Number(row?.total ?? 0), count: Number(row?.count ?? 0) };
+    let total = 0;
+    for (const r of rows) total += Number(r.totalValue ?? 0);
+    total -= computeEstimateActualReconciliation(rows).valueExcess;
+    return { total, count: rows.length };
   }
 
   const [selected, priorPeriod, priorFull] = await Promise.all([
@@ -1699,6 +1793,11 @@ router.get("/year-rollover", authenticate, async (req: AuthenticatedRequest, res
     if (raw && typeof raw.totalValue === "number") priorTotal += raw.totalValue;
     if (raw && typeof raw.totalHours === "number") priorHours += raw.totalHours;
   }
+  // Count each activity once where the prior year mixed an annual estimate
+  // with quick-logged actuals (zero adjustment for legacy-only years).
+  const priorRecon = computeEstimateActualReconciliation(priorYearRecords);
+  priorTotal -= priorRecon.valueExcess;
+  priorHours -= priorRecon.hoursExcess;
 
   const habits = await db
     .select()
@@ -1788,6 +1887,10 @@ router.post("/year-rollover", authenticate, async (req: AuthenticatedRequest, re
         resultJson: result,
         entryDate: startOfMonthUTC(year, m),
         source: "habit",
+        // Year-rollover bulk create confirms a recurring template for the
+        // new year — same classification as a template confirmation.
+        kind: "recurring_confirmation",
+        reportingYear: year,
         habitTemplateId: h.id,
       });
     }

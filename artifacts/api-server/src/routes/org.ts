@@ -18,6 +18,7 @@ import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, get
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
+import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
@@ -1276,6 +1277,17 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
         }
         sdgValueMap[s.sdg].value += s.value;
       }
+    }
+
+    // Estimate-vs-actual reconciliation (per member, per reporting year):
+    // never count an annual estimate AND quick-logged actuals of the same
+    // activity twice. Zero adjustment for legacy-only data.
+    const pdfRecon = computeEstimateActualReconciliation(records);
+    totalSocialValue -= pdfRecon.valueExcess;
+    totalHours -= pdfRecon.hoursExcess;
+    for (const a of pdfRecon.activities) {
+      if (categoryValueMap[a.category] !== undefined) categoryValueMap[a.category] -= a.excessValue;
+      if (a.sdg && sdgValueMap[a.sdg]) sdgValueMap[a.sdg].value -= a.excessValue;
     }
 
     const totalUsers = new Set(records.map(r => r.userId)).size;
@@ -2985,6 +2997,11 @@ export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: D
     .select({
       totalHours: impactRecordsTable.totalHours,
       totalValue: impactRecordsTable.totalValue,
+      userId: impactRecordsTable.userId,
+      kind: impactRecordsTable.kind,
+      entryDate: impactRecordsTable.entryDate,
+      reportingYear: impactRecordsTable.reportingYear,
+      resultJson: impactRecordsTable.resultJson,
     })
     .from(recordVerificationsTable)
     .innerJoin(impactRecordsTable, eq(impactRecordsTable.id, recordVerificationsTable.recordId))
@@ -2996,6 +3013,11 @@ export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: D
     verifiedHours += r.totalHours ?? 0;
     verifiedSocialValue += Number(r.totalValue ?? 0);
   }
+  // Count each activity once where a member's verified records mix an annual
+  // estimate with quick-logged actuals in the same reporting year.
+  const verifiedRecon = computeEstimateActualReconciliation(rows);
+  verifiedSocialValue -= verifiedRecon.valueExcess;
+  verifiedHours -= verifiedRecon.hoursExcess;
   return {
     verifiedHours: Math.round(verifiedHours * 100) / 100,
     verifiedSocialValue: Math.round(verifiedSocialValue * 100) / 100,

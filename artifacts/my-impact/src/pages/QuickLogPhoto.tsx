@@ -50,6 +50,8 @@ async function saveImpact(opts: {
       name: opts.name,
       activities: opts.activities,
       impactResult: opts.impactResult,
+      // Photo quick logs are per-occurrence actuals (see contribution model).
+      kind: "quick_log",
     }),
   });
   if (!res.ok) {
