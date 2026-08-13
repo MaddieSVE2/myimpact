@@ -18,7 +18,6 @@ import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { computeSdgBreakdown, type DemoActivity } from "@/lib/org-demo-mock";
 import { SkillsBreakdownCard } from "@/components/SkillsBreakdownCard";
 import { BASE } from "@/lib/org-export";
-import { VerificationQueue } from "@/components/VerificationQueue";
 
 export interface UniversityStats {
   totalRecords: number;
@@ -168,9 +167,6 @@ export default function OrgUniversityDashboard({
             isCurrentPeriod={isCurrentPeriod}
           />
         </div>
-
-        {/* Pending member submissions awaiting manager approval */}
-        <VerificationQueue orgName={orgName} />
 
         {/* Headline stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

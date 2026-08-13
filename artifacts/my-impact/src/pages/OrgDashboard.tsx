@@ -29,7 +29,6 @@ import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import OrgUniversityDashboard from "@/pages/OrgUniversityDashboard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { VerificationQueue } from "@/components/VerificationQueue";
 import { SkillsBreakdownCard } from "@/components/SkillsBreakdownCard";
 
 function StatCard({ icon: Icon, label, value, sub, highlight, tone, prefix, decimals }: {
@@ -527,9 +526,6 @@ export default function OrgDashboard() {
           You're viewing the demo organisation with mock data. Invite code <span className="font-mono font-semibold">{inviteCode}</span>.
         </div>
       )}
-
-      {/* Pending member submissions awaiting manager approval */}
-      <VerificationQueue orgName={orgData.org.name} />
 
       {/* Aggregated stats */}
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
