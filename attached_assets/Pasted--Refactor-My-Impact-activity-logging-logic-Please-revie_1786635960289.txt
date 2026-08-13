@@ -1,0 +1,749 @@
+# Refactor My Impact activity logging logic
+
+Please review the existing My Impact activity logging architecture and refactor the logic described below.
+
+## Overall objective
+
+My Impact currently has two valid ways for a person to build their impact:
+
+1. **Full Impact Report**
+
+   * The person calculates their impact across a defined reporting period.
+   * This will normally be a calendar year, such as 2026, or an academic year, such as 2026/27.
+   * The full calculation wizard can use annualised estimates such as hours per year, sessions per year, bins per year, people supported, etc.
+   * The result is the person's full Impact Report, including social value, hours, activity breakdowns, SDGs and other existing outputs.
+
+2. **Quick Log**
+
+   * The person records activities as they happen.
+   * Quick Log adds those individual contributions to the relevant existing Impact Report.
+   * Quick Log should be fast and should ask about the actual contribution that has just happened, rather than asking the person to estimate a whole year again.
+
+**Do not remove or replace the existing Full Impact Report model.**
+
+The aim of this work is to improve the relationship between the Full Impact Report and Quick Log, make recurring activity logging more intuitive, add activity location, and reduce unnecessary decisions for the user.
+
+Preserve the existing SROI methodology, proxy library, server-side calculation, organisation reporting, organisation visibility settings, verification processes, analytics and webhooks wherever possible.
+
+---
+
+# 1. Keep the Impact Report as the core personal reporting object
+
+An Impact Report remains a real object with a defined reporting period.
+
+Examples:
+
+* My Impact 2026
+* Academic Year 2026/27
+* another custom reporting period if already supported
+
+The Full Impact Report calculation wizard should continue to allow the person to estimate activity across the whole reporting period.
+
+For example:
+
+> Community gardening
+> 50 hours per year
+
+or:
+
+> Litter picking
+> 12 sessions per year
+
+The full wizard can continue to ask annualised questions where appropriate.
+
+The user should still be able to view their complete Impact Report and all existing outputs.
+
+---
+
+# 2. Quick Log adds contributions to the Impact Report
+
+Quick Log should record an individual contribution that has actually taken place.
+
+Example:
+
+> Community gardening
+> 2 hours
+> 13 August 2026
+> Meanwood Community Garden, Leeds
+
+When the Quick Log contribution is saved, the system should associate it with the appropriate Impact Report.
+
+Where there is an obvious match:
+
+* activity dated in 2026 can be added to the user's 2026 calendar-year Impact Report
+* activity dated within academic year 2026/27 can be added to that academic-year Impact Report
+
+Do not normally ask the user:
+
+> Add this to my 2026 record?
+
+if the system can determine the correct report automatically.
+
+Instead, confirm after saving:
+
+> Added to My Impact 2026
+
+If more than one Impact Report could legitimately contain the activity, allow the user to choose.
+
+If no suitable Impact Report exists, allow the contribution to be saved and offer to associate it with a report later.
+
+---
+
+# 3. Avoid double-counting between the full report and Quick Log
+
+This is critical.
+
+A Full Impact Report may already contain an estimated annual quantity.
+
+For example:
+
+> Gardening
+> Estimated: 50 hours during 2026
+
+Later, the person may Quick Log:
+
+> Gardening
+> 2 hours on 13 August
+
+Do not automatically turn this into 52 hours if the original 50-hour estimate was intended to represent the person's whole-year gardening activity.
+
+The system needs to distinguish clearly between:
+
+* estimated or calculated activity for the reporting period
+* actual Quick Logged contributions
+
+Review the current schema and reporting calculations and implement a safe way to prevent estimated and actual activity from being counted twice.
+
+A suitable model may include:
+
+* `estimatedQuantity`
+* `actualLoggedQuantity`
+* `estimatedHours`
+* `actualLoggedHours`
+
+or an equivalent structure appropriate to the existing codebase.
+
+The full report could then show, where relevant:
+
+> Estimated gardening: 50 hours
+> Logged so far: 31 hours
+
+Do not silently add logged actuals on top of annual estimates where this creates duplicate impact.
+
+Before implementing this part, inspect how the existing annual calculations work and propose the safest model.
+
+Existing historical reports must retain their current totals.
+
+---
+
+# 4. Quick Log should optimise for actual activity
+
+Quick Log should be designed around:
+
+> I have just done something and want to record it quickly.
+
+The normal Quick Log journey should ask:
+
+1. What did you do?
+2. How much did you do?
+3. When did it happen?
+4. Where did it happen?
+
+Organisation sharing should only be an additional question when relevant.
+
+Avoid asking annualised questions in Quick Log.
+
+---
+
+# 5. Recent activities and Log Again
+
+For users with previous contributions, prioritise recent activity.
+
+Example:
+
+> Food bank volunteering
+> Last logged: 6 August
+> **Log again**
+
+Selecting **Log again** should pre-fill:
+
+* activity
+* usual amount or hours
+* usual activity location
+* previous organisation sharing preference where relevant
+* today's date
+
+The user can confirm or edit.
+
+Avoid forcing users to browse the full activity catalogue each time they repeat something they have done before.
+
+---
+
+# 6. Quick Log quantity
+
+For hour-based activities, ask:
+
+> How many hours did you do?
+
+This should relate to this individual contribution.
+
+For unit-based activities, use the natural activity unit.
+
+Examples:
+
+* How many sessions?
+* How many people did you support?
+* How many bags or bins?
+* How many miles?
+* How many trees?
+
+If approximate hours are required for social value or personal development calculations, ask for the time associated with this occurrence.
+
+Do not convert a Quick Log entry into an annual quantity before saving.
+
+---
+
+# 7. Quick Log date
+
+Default to:
+
+> Today
+
+Provide:
+
+> Change date
+
+for retrospective entries.
+
+The activity date should help determine which Impact Report the contribution belongs to.
+
+The existing options such as:
+
+* This month
+* Last month
+* This term
+* Last term
+* This year
+
+should not be used as substitutes for an actual activity date when logging a single contribution.
+
+If retrospective bulk logging is needed, keep that as a separate flow.
+
+---
+
+# 8. Add activity location
+
+Add an activity location field to logged activities.
+
+This should answer:
+
+> **Where did this activity take place?**
+
+This is different from the person's home location.
+
+Do not infer activity location from where the user lives.
+
+Activity location is important to organisations for SROI reporting, geographic analysis and understanding where social value is being generated.
+
+Support the following:
+
+## Usual or previous location
+
+For repeat activities:
+
+> Meanwood Community Garden, Leeds
+> **Use this location**
+
+## Search or enter location
+
+Allow the user to enter:
+
+* venue or place name
+* postcode
+* town or city
+
+Where practical, geocode this into structured location data.
+
+Suggested data structure:
+
+* `locationLabel`
+* `postcode`
+* `townCity`
+* `latitude`
+* `longitude`
+* `localAuthority`
+* `region`
+* `country`
+
+Do not require a full street address.
+
+## Online or remote
+
+Allow:
+
+> Online / remote
+
+as a valid location.
+
+## Multiple locations
+
+Allow:
+
+> Multiple locations
+
+where appropriate.
+
+Do not expose unnecessarily precise personal location information to organisation managers.
+
+Design the schema so that a future separate field could support:
+
+> Area of benefit / beneficiary location
+
+because the place where an activity happens and the place receiving the benefit may differ.
+
+Do not add beneficiary location to the current user flow unless it already exists.
+
+---
+
+# 9. Full Impact Report location
+
+Do not make location mandatory for existing annualised Full Impact Reports unless there is a strong reason to do so.
+
+Where practical, allow a user to optionally associate an activity in the Full Impact Report with:
+
+* a usual location
+* a town/city
+* a postcode area
+* online/remote
+* multiple locations
+
+This should complement Quick Log location data rather than forcing retrospective precision that the person may not know.
+
+---
+
+# 10. Recurring activities
+
+Retain the existing:
+
+> Make this repeat
+
+function.
+
+However, treat recurrence as a reminder and reusable activity template.
+
+A recurring activity template should store:
+
+* activity
+* normal quantity
+* normal hours
+* usual location
+* cadence
+* next due date
+* previous organisation sharing preference where appropriate
+
+Supported cadence:
+
+* weekly
+* fortnightly
+* monthly
+
+Example:
+
+> Food bank volunteering
+> Usually 2 hours
+> Weekly
+> Leeds Food Bank
+
+When due, prompt the user:
+
+> **Did you do your food bank volunteering this week?**
+>
+> 2 hours
+> Leeds Food Bank
+>
+> **Yes, log it**
+> Edit
+> Skip
+
+Confirming should create an actual Quick Log contribution.
+
+Skipping should create no contribution.
+
+Allow the user to change:
+
+* amount
+* hours
+* date
+* location
+
+before confirming.
+
+Do not bulk-create monthly actual records solely from an annual quantity.
+
+---
+
+# 11. Annual estimates and recurring activities
+
+Annual estimates can still be useful.
+
+When creating a recurring activity, it is acceptable to show something like:
+
+> Weekly
+> Usually 2 hours
+> Approximately 104 hours over a full year
+
+Treat this as an estimate or forecast.
+
+It should not automatically become confirmed actual impact.
+
+Actual logged contributions should remain distinguishable from estimated annual activity.
+
+---
+
+# 12. Custom activities
+
+Retain the existing **Something else** flow.
+
+The user can enter:
+
+* activity description
+* quantity or hours
+* activity date
+* activity location
+* supporting detail
+
+Continue to use AI matching to identify an appropriate:
+
+* social-value proxy
+* unit
+* value per unit
+* proxy year
+* SDG
+* stored deflation factor where required
+
+Do not unnecessarily change the existing proxy methodology.
+
+---
+
+# 13. Social value calculation
+
+Retain the existing methodology unless a change is required to support individual Quick Log entries.
+
+For Quick Log:
+
+### Hour-based activity
+
+`hours logged × proxy value`
+
+### Unit-based activity
+
+`quantity logged × value per unit`
+
+### Donations
+
+Retain pound-for-pound if this remains current methodology.
+
+### General volunteering hours
+
+Retain the existing configured value.
+
+### Personal development premium
+
+Retain the current £15/hour logic if this remains part of the approved My Impact methodology.
+
+The server must remain authoritative.
+
+Client-side totals must not be trusted.
+
+The Full Impact Report should aggregate the appropriate mixture of:
+
+* annualised calculated activity
+* Quick Logged actual activity
+
+while preventing double counting.
+
+---
+
+# 14. Organisation visibility rules
+
+Each organisation currently uses one of two visibility modes.
+
+Preserve this exact behaviour.
+
+## A. Automatic visibility
+
+The organisation automatically sees all relevant activity submissions logged by its members.
+
+The member does not have to actively submit each activity.
+
+Do not show a redundant:
+
+> Share with organisation?
+
+question in this mode.
+
+Where helpful, the interface can explain:
+
+> This activity will be visible to [Organisation].
+
+## B. Explicit submission
+
+The organisation only sees activities that the member deliberately submits to it.
+
+In this mode, ask:
+
+> **Share this activity with [Organisation]?**
+
+The person's own Impact Report should retain the activity regardless of whether they share it.
+
+Organisation visibility and verification must remain separate concepts.
+
+Visibility does not automatically mean verified.
+
+If the existing codebase uses internal names such as `consented_logging` or `explicit_submission`, retain those internally where needed for backwards compatibility.
+
+Do not change the organisation's current visibility behaviour.
+
+---
+
+# 15. Organisation reporting
+
+Organisations should continue to be able to report on member activities according to their own reporting needs.
+
+Activity date and activity location should make it possible to aggregate data by:
+
+* reporting period
+* town/city
+* postcode area
+* local authority
+* region
+* activity category
+* proxy/outcome
+* SDG
+* member group where already supported
+
+A single Quick Logged contribution should not need to be duplicated purely because it appears in:
+
+* the person's Impact Report
+* an organisation dashboard
+
+Where the existing architecture currently creates an organisation twin, inspect whether this can safely be replaced with a reference to the canonical contribution.
+
+Do not risk breaking existing reporting solely to remove twins.
+
+If twins must remain during migration, ensure they cannot cause double counting.
+
+---
+
+# 16. Verification
+
+Preserve the existing manager verification process.
+
+Keep:
+
+* verification queue
+* single approval/rejection
+* bulk approval/rejection
+* audit trail
+* organisation auto-verification where configured
+* API logging of pre-attested hours
+
+Organisation visibility should remain separate from verification.
+
+Review whether the word **verified** is currently being used for records that are merely member-submitted.
+
+Where practical, distinguish between states such as:
+
+* submitted/self-reported
+* organisation approved
+* verified/pre-attested
+
+Do not change existing customer behaviour without first identifying any compatibility issues.
+
+---
+
+# 17. Duplicate and conflict handling
+
+Retain protection against duplicate activity logging.
+
+For Quick Log and recurring activities, detect likely duplicate occurrences based on factors such as:
+
+* user
+* activity
+* recurrence/template
+* date
+* organisation where relevant
+
+If a likely duplicate exists, show:
+
+> This activity may already have been logged.
+
+Offer:
+
+* View/edit existing
+* Log anyway
+
+Do not silently merge entries.
+
+---
+
+# 18. Personal history
+
+The user should continue to see their complete Impact Report.
+
+Also make Quick Logged contributions easy to understand in their history.
+
+Example:
+
+> **13 August**
+> Food bank volunteering
+> 2 hours
+> Leeds
+> £XX estimated social value
+> Visible to College
+> Approved
+
+The full report should continue to show:
+
+* total social value
+* total hours
+* activity breakdown
+* categories/outcomes
+* SDGs
+* other existing report outputs
+
+Where appropriate, allow users to understand the distinction between:
+
+* estimated/calculated activity
+* activity they have actually Quick Logged
+
+without making the interface overly technical.
+
+---
+
+# 19. Webhooks and analytics
+
+Preserve existing analytics and webhook functionality where appropriate.
+
+The existing `hours.logged` webhook should continue to fire for actual logged hours.
+
+Do not send an annual forecast quantity through an actual-hours webhook as though it has occurred.
+
+Document any payload changes caused by adding:
+
+* activity date
+* activity location
+* report association
+* recurrence source
+
+---
+
+# 20. Backwards compatibility
+
+This is an existing live application.
+
+Do not remove or rewrite historical user data.
+
+Before making changes, inspect:
+
+* database schema
+* Impact Report model
+* activity tables/models
+* Quick Log implementation
+* recurring activity implementation
+* organisation sharing/visibility
+* org twin logic
+* verification
+* SROI calculation
+* dashboard aggregation
+* analytics
+* webhooks
+
+Existing Full Impact Reports must continue to display their existing calculated totals.
+
+Do not retroactively convert annual estimates into claimed individual activity occurrences.
+
+New Quick Log contributions can use the improved model.
+
+If needed, distinguish data sources such as:
+
+* `full_report_estimate`
+* `quick_log`
+* `recurring_confirmation`
+* `legacy_record`
+* `bulk_retrospective`
+* `organisation_api`
+
+---
+
+# 21. UX principle
+
+Preserve this distinction:
+
+### Full Impact Report
+
+> **Help me understand my overall impact over a year or academic year.**
+
+### Quick Log
+
+> **I just did something. Add it to My Impact.**
+
+Ordinary users should not need to understand the database architecture, reporting-period logic or SROI calculation model.
+
+For Quick Log, optimise the normal journey around:
+
+1. What did you do?
+2. How much?
+3. When?
+4. Where?
+
+Then handle Impact Report association and organisation visibility automatically wherever possible.
+
+---
+
+# 22. Do not redesign unrelated functionality
+
+This is primarily a logic, data-model and Quick Log UX improvement.
+
+Do not:
+
+* redesign the My Impact brand or general visual identity
+* remove the Full Impact Report
+* remove annual or academic-year reporting
+* replace the proxy library
+* alter the approved SROI methodology unnecessarily
+* remove organisation visibility controls
+* remove verification
+* remove server-side calculation
+* change historical Impact Report totals
+* treat estimated annual activity as confirmed actual activity
+
+Reuse existing UI components and visual styles wherever sensible.
+
+---
+
+# 23. Before implementation
+
+Before changing code, inspect the existing implementation and provide a concise technical plan covering:
+
+1. current Impact Report data model
+2. current Quick Log data model
+3. how annualised activities and Quick Logged activities currently interact
+4. how recurring activity currently works
+5. current organisation visibility logic
+6. current org twin logic
+7. current verification flow
+8. proposed activity-location schema
+9. proposed changes to Quick Log
+10. approach to preventing double counting
+11. database changes
+12. API changes
+13. calculation changes
+14. backwards-compatibility approach
+15. risks
+
+In particular, explicitly explain how you propose to ensure that:
+
+> an activity estimated as part of a Full Impact Report is not accidentally counted again when the user Quick Logs the same underlying activity.
+
+Do not implement the refactor until this interaction and migration approach has been assessed against the existing codebase.
