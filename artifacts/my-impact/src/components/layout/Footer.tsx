@@ -34,7 +34,7 @@ export function Footer() {
         <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
       </div>
       <div style={{ marginBottom: 20 }}>
-        <p className="mi-footer-tagline" style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 10 }}>Part of the SVE family</p>
+        <p className="mi-footer-tagline" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--brand-orange-bright, #F06127)", marginBottom: 10 }}>Part of the SVE family</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const }}>
           {SVE_FAMILY_LINKS.map((l) => (
             <a
@@ -52,7 +52,7 @@ export function Footer() {
         </div>
       </div>
       <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
-        Powered by Social Value Engine methodology · Secure cloud hosting
+        Powered by Social Value Engine methodology
       </p>
     </footer>
   );
