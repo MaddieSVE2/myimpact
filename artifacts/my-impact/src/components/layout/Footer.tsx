@@ -33,17 +33,24 @@ export function Footer() {
         <Link href="/org/register" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Register your organisation</Link>
         <Link href="/login?next=%2Forg" className="mi-footer-link" style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>Organisation dashboard</Link>
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <p className="mi-footer-tagline" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--brand-orange-bright, #F06127)", marginBottom: 10 }}>Part of the SVE family</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" as const }}>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 20, marginBottom: 20, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "var(--brand-orange-bright, #F06127)", marginBottom: 12 }}>Part of the SVE family</p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" as const }}>
           {SVE_FAMILY_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mi-footer-link"
-              style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}
+              style={{
+                fontSize: 12,
+                color: "rgba(255,255,255,0.75)",
+                textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.18)",
+                borderRadius: 999,
+                padding: "4px 12px",
+                background: "rgba(255,255,255,0.04)",
+              }}
               data-testid={`link-sve-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               {l.label}
