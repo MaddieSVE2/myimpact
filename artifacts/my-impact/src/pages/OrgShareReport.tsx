@@ -157,7 +157,7 @@ export default function OrgShareReport() {
       <div className="max-w-2xl mx-auto px-4 py-16 text-center" data-testid="share-report-not-found">
         <p className="text-base font-semibold mb-2">We couldn't find that report.</p>
         <p className="text-sm text-muted-foreground mb-4">It may have been deleted, or the link is out of date.</p>
-        <Link href="/dashboard" className="text-primary underline">Back to your dashboard</Link>
+        <Link href="/history" className="text-primary underline">Back to your impact</Link>
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function OrgShareReport() {
         </p>
         <div className="flex items-center justify-center gap-4 text-sm">
           <Link href="/org/submit/history" className="text-primary underline" data-testid="share-report-view-submissions">View my submissions</Link>
-          <Link href="/dashboard" className="text-primary underline">Back to dashboard</Link>
+          <Link href="/history" className="text-primary underline">Back to your impact</Link>
         </div>
       </div>
     );
@@ -275,7 +275,7 @@ export default function OrgShareReport() {
     <div className="max-w-3xl mx-auto px-4 py-8" data-testid="share-report-root">
       <button
         type="button"
-        onClick={() => window.history.length > 1 ? window.history.back() : navigate("/dashboard")}
+        onClick={() => window.history.length > 1 ? window.history.back() : navigate("/history")}
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground mb-4"
         data-testid="share-report-back"
       >
@@ -321,7 +321,7 @@ export default function OrgShareReport() {
           <p className="text-xs text-muted-foreground mb-4">
             Only standard activities can be shared with your organisation. Custom activities and donations stay in your personal report.
           </p>
-          <Link href="/dashboard" className="text-primary underline text-sm">Back to dashboard</Link>
+          <Link href="/history" className="text-primary underline text-sm">Back to your impact</Link>
         </div>
       ) : (
         <>
@@ -444,7 +444,7 @@ export default function OrgShareReport() {
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/history")}
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
               data-testid="share-report-cancel"
             >
