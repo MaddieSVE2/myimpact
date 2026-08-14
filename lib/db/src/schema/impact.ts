@@ -18,6 +18,20 @@ export const recurringTemplatesTable = pgTable("recurring_templates", {
   defaultDonationsGBP: numeric("default_donations_gbp", { precision: 12, scale: 2 }).notNull().default("0"),
   // null until the user confirms a scheduled occurrence at least once.
   lastConfirmedAt: timestamp("last_confirmed_at"),
+  // Per-occurrence defaults for the reminder prompt: what ONE occurrence
+  // normally looks like (SelectedActivity[] with per-occurrence quantities
+  // and hours, NOT annualised). NULL for legacy templates — the server then
+  // derives defaults from defaultActivities divided by occurrences per year.
+  occurrenceActivities: jsonb("occurrence_activities"),
+  occurrenceDonationsGBP: numeric("occurrence_donations_gbp", { precision: 12, scale: 2 }),
+  // Usual activity location, same shape as impact_records.location_json.
+  usualLocationJson: jsonb("usual_location_json"),
+  // Prior org-sharing preference: id of the org the user last chose to share
+  // occurrences from this template with. NULL = no stored preference.
+  sharingOrgId: text("sharing_org_id"),
+  // Set when the user skips the current scheduled occurrence — silences the
+  // due prompt until the next occurrence without creating any records.
+  lastSkippedAt: timestamp("last_skipped_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userIdx: index("recurring_templates_user_idx").on(t.userId),
@@ -28,6 +42,7 @@ export const insertRecurringTemplateSchema = createInsertSchema(recurringTemplat
   createdAt: true,
   anchorDate: true,
   lastConfirmedAt: true,
+  lastSkippedAt: true,
 });
 export type InsertRecurringTemplate = z.infer<typeof insertRecurringTemplateSchema>;
 export type RecurringTemplate = typeof recurringTemplatesTable.$inferSelect;

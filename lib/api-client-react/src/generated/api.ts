@@ -31,6 +31,8 @@ import type {
   ImpactInput,
   ImpactResult,
   ImpactYearsResponse,
+  LogRecurringOccurrenceBody,
+  LogRecurringOccurrenceResponse,
   ProfileInput,
   ProfileResponse,
   RecurringTemplate,
@@ -38,6 +40,7 @@ import type {
   RecurringTemplatesResponse,
   SaveImpactInput,
   SavedImpact,
+  SkipRecurringOccurrence200,
   StreakInfo,
   SuggestionsInput,
   SuggestionsResponse,
@@ -1514,7 +1517,192 @@ export const useDeleteRecurringTemplate = <
 };
 
 /**
- * @summary Mark a template's current scheduled occurrence as confirmed
+ * The "Yes, log it" / "Edit then log" path of the due-reminder prompt.
+Creates a single per-occurrence Quick Log-style contribution dated to
+the occurrence, marks the template confirmed, and fires the
+hours.logged webhook. Returns 409 when the same template occurrence
+(user + template + occurrence date) is already logged, unless
+force=true is sent.
+
+ * @summary Log one actual contribution for a template occurrence
+ */
+export const getLogRecurringOccurrenceUrl = (id: string) => {
+  return `/api/impact/templates/${id}/log-occurrence`;
+};
+
+export const logRecurringOccurrence = async (
+  id: string,
+  logRecurringOccurrenceBody?: LogRecurringOccurrenceBody,
+  options?: RequestInit,
+): Promise<LogRecurringOccurrenceResponse> => {
+  return customFetch<LogRecurringOccurrenceResponse>(
+    getLogRecurringOccurrenceUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(logRecurringOccurrenceBody),
+    },
+  );
+};
+
+export const getLogRecurringOccurrenceMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logRecurringOccurrence>>,
+    TError,
+    { id: string; data: BodyType<LogRecurringOccurrenceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logRecurringOccurrence>>,
+  TError,
+  { id: string; data: BodyType<LogRecurringOccurrenceBody> },
+  TContext
+> => {
+  const mutationKey = ["logRecurringOccurrence"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logRecurringOccurrence>>,
+    { id: string; data: BodyType<LogRecurringOccurrenceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return logRecurringOccurrence(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogRecurringOccurrenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logRecurringOccurrence>>
+>;
+export type LogRecurringOccurrenceMutationBody =
+  BodyType<LogRecurringOccurrenceBody>;
+export type LogRecurringOccurrenceMutationError = ErrorType<void>;
+
+/**
+ * @summary Log one actual contribution for a template occurrence
+ */
+export const useLogRecurringOccurrence = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logRecurringOccurrence>>,
+    TError,
+    { id: string; data: BodyType<LogRecurringOccurrenceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logRecurringOccurrence>>,
+  TError,
+  { id: string; data: BodyType<LogRecurringOccurrenceBody> },
+  TContext
+> => {
+  return useMutation(getLogRecurringOccurrenceMutationOptions(options));
+};
+
+/**
+ * @summary Skip the current scheduled occurrence without logging anything
+ */
+export const getSkipRecurringOccurrenceUrl = (id: string) => {
+  return `/api/impact/templates/${id}/skip`;
+};
+
+export const skipRecurringOccurrence = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SkipRecurringOccurrence200> => {
+  return customFetch<SkipRecurringOccurrence200>(
+    getSkipRecurringOccurrenceUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSkipRecurringOccurrenceMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof skipRecurringOccurrence>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof skipRecurringOccurrence>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["skipRecurringOccurrence"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof skipRecurringOccurrence>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return skipRecurringOccurrence(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SkipRecurringOccurrenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof skipRecurringOccurrence>>
+>;
+
+export type SkipRecurringOccurrenceMutationError = ErrorType<void>;
+
+/**
+ * @summary Skip the current scheduled occurrence without logging anything
+ */
+export const useSkipRecurringOccurrence = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof skipRecurringOccurrence>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof skipRecurringOccurrence>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getSkipRecurringOccurrenceMutationOptions(options));
+};
+
+/**
+ * @summary Retrospectively backfill a past calendar year for a template
  */
 export const getConfirmRecurringTemplateUrl = (id: string) => {
   return `/api/impact/templates/${id}/confirm`;
@@ -1579,7 +1767,7 @@ export type ConfirmRecurringTemplateMutationBody =
 export type ConfirmRecurringTemplateMutationError = ErrorType<void>;
 
 /**
- * @summary Mark a template's current scheduled occurrence as confirmed
+ * @summary Retrospectively backfill a past calendar year for a template
  */
 export const useConfirmRecurringTemplate = <
   TError = ErrorType<void>,

@@ -36,10 +36,19 @@ export default function ContributionsStep() {
   const [tplLabel, setTplLabel] = useState("");
   const [tplCadence, setTplCadence] = useState<"weekly" | "fortnightly" | "monthly">("weekly");
   const [tplDay, setTplDay] = useState<number>(new Date().getDay());
+  const [tplHours, setTplHours] = useState<number>(1);
+
+  const OCCURRENCES_PER_YEAR = { weekly: 52, fortnightly: 26, monthly: 12 } as const;
 
   const handleOngoing = () => {
     const firstActivity = input.activities?.[0];
     setTplLabel(firstActivity ? (firstActivity as { activityName?: string }).activityName ?? "" : "");
+    // Suggest per-occurrence hours from the annual amounts entered so far.
+    const annualHours = (input.activities ?? []).reduce(
+      (sum, a) => sum + (Number((a as { hoursPerYear?: number }).hoursPerYear) || 0),
+      0,
+    );
+    setTplHours(Math.max(1, Math.round(annualHours / OCCURRENCES_PER_YEAR[tplCadence])));
     setShowRecurring(true);
   };
 
@@ -51,6 +60,18 @@ export default function ContributionsStep() {
 
   const handleSaveRecurring = async () => {
     if (!tplLabel.trim()) return;
+    // Per-occurrence defaults: what ONE occurrence looks like. Quantities are
+    // scaled down from the annual inputs; the user-entered "usual hours" is
+    // spread across the first activity (templates are typically one activity).
+    const n = OCCURRENCES_PER_YEAR[tplCadence];
+    const occurrenceActivities = (input.activities ?? []).map((a, i) => {
+      const act = a as { activityId: string; quantity: number; hoursPerYear: number };
+      return {
+        ...act,
+        quantity: Math.max(1, Math.round((Number(act.quantity) || 0) / n)),
+        hoursPerYear: i === 0 ? Math.max(0, tplHours) : Math.max(0, Math.round((Number(act.hoursPerYear) || 0) / n)),
+      };
+    });
     try {
       await createTemplateMutation.mutateAsync({
         data: {
@@ -59,6 +80,9 @@ export default function ContributionsStep() {
           dayOfPeriod: tplDay,
           defaultActivities: input.activities,
           defaultDonationsGBP: input.donationsGBP ?? 0,
+          occurrenceActivities,
+          occurrenceDonationsGBP: (input.donationsGBP ?? 0) / n,
+          ...(activityLocation ? { usualLocation: activityLocation } : {}),
         },
       });
       queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
@@ -221,9 +245,11 @@ export default function ContributionsStep() {
           tplLabel={tplLabel}
           tplCadence={tplCadence}
           tplDay={tplDay}
+          tplHours={tplHours}
           setTplLabel={setTplLabel}
           setTplCadence={setTplCadence}
           setTplDay={setTplDay}
+          setTplHours={setTplHours}
           onClose={handleCloseRecurring}
           onSave={handleSaveRecurring}
           isSaving={createTemplateMutation.isPending}

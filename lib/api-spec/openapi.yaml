@@ -383,11 +383,97 @@ paths:
           description: Not authenticated
         "404":
           description: Not found
+  /impact/templates/{id}/log-occurrence:
+    post:
+      operationId: logRecurringOccurrence
+      tags: [impact]
+      summary: Log one actual contribution for a template occurrence
+      description: |
+        The "Yes, log it" / "Edit then log" path of the due-reminder prompt.
+        Creates a single per-occurrence Quick Log-style contribution dated to
+        the occurrence, marks the template confirmed, and fires the
+        hours.logged webhook. Returns 409 when the same template occurrence
+        (user + template + occurrence date) is already logged, unless
+        force=true is sent.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                occurrenceDate:
+                  type: string
+                  description: ISO date of the occurrence. Defaults to the current scheduled occurrence.
+                activities:
+                  type: array
+                  description: Override the template's per-occurrence activities (amount/hours edits).
+                  items:
+                    $ref: "#/components/schemas/SelectedActivity"
+                donationsGBP:
+                  type: number
+                location:
+                  $ref: "#/components/schemas/ActivityLocation"
+                force:
+                  type: boolean
+                  description: Log anyway even if this occurrence appears already logged.
+      responses:
+        "200":
+          description: Contribution logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogRecurringOccurrenceResponse"
+        "400":
+          description: Invalid input
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+        "409":
+          description: This template occurrence is already logged for that date
+  /impact/templates/{id}/skip:
+    post:
+      operationId: skipRecurringOccurrence
+      tags: [impact]
+      summary: Skip the current scheduled occurrence without logging anything
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Occurrence skipped (no records created)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template:
+                    $ref: "#/components/schemas/RecurringTemplate"
+                required:
+                  - template
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
   /impact/templates/{id}/confirm:
     post:
       operationId: confirmRecurringTemplate
       tags: [impact]
-      summary: Mark a template's current scheduled occurrence as confirmed
+      summary: Retrospectively backfill a past calendar year for a template
       security:
         - cookieAuth: []
       parameters:
@@ -406,11 +492,12 @@ paths:
                 year:
                   type: integer
                   description: |
-                    Calendar year the bulk-created entries should count toward.
-                    Defaults to the current year. For the current year, entries
-                    are created for the remaining months; for a past year, one
-                    entry per month of the full year is created and marked as
-                    retrospective. Future years are rejected.
+                    Past calendar year the bulk-created entries should count
+                    toward: one entry per month is created and marked
+                    retrospective. This is a clearly separate retrospective
+                    backfill flow — the current year is rejected (use
+                    /log-occurrence for the current occurrence) and future
+                    years are rejected.
       responses:
         "200":
           description: Confirmed template
@@ -1310,6 +1397,22 @@ components:
             $ref: "#/components/schemas/SelectedActivity"
         defaultDonationsGBP:
           type: number
+        occurrenceActivities:
+          type: array
+          description: |
+            Per-occurrence defaults for ONE occurrence (quantities/hours as
+            done each time, never annualised). Optional; when omitted the
+            server derives defaults from defaultActivities.
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        occurrenceDonationsGBP:
+          type: number
+        usualLocation:
+          $ref: "#/components/schemas/ActivityLocation"
+        sharingOrgId:
+          type: string
+          nullable: true
+          description: Prior org-sharing preference carried onto confirmed occurrences.
       required:
         - label
         - cadence
@@ -1337,15 +1440,43 @@ components:
             $ref: "#/components/schemas/SelectedActivity"
         defaultDonationsGBP:
           type: number
+        occurrenceActivities:
+          type: array
+          description: Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).
+          items:
+            $ref: "#/components/schemas/SelectedActivity"
+        occurrenceDonationsGBP:
+          type: number
+        usualLocation:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ActivityLocation"
+        sharingOrgId:
+          type: string
+          nullable: true
+        occurrencesPerYear:
+          type: integer
+          description: 52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.
         anchorDate:
           type: string
         lastConfirmedAt:
+          type: string
+          nullable: true
+        lastSkippedAt:
           type: string
           nullable: true
         createdAt:
           type: string
         nextDueDate:
           type: string
+        dueOccurrenceDate:
+          type: string
+          nullable: true
+          description: |
+            The scheduled occurrence the due prompt refers to (most recent on
+            or before today). Null while the template's first scheduled
+            occurrence is still in the future — the template is never due and
+            cannot be logged until then.
         isDue:
           type: boolean
       required:
@@ -1355,9 +1486,13 @@ components:
         - dayOfPeriod
         - defaultActivities
         - defaultDonationsGBP
+        - occurrenceActivities
+        - occurrenceDonationsGBP
+        - occurrencesPerYear
         - anchorDate
         - createdAt
         - nextDueDate
+        - dueOccurrenceDate
         - isDue
     RecurringTemplatesResponse:
       type: object
@@ -1368,6 +1503,39 @@ components:
             $ref: "#/components/schemas/RecurringTemplate"
       required:
         - templates
+    LogRecurringOccurrenceResponse:
+      type: object
+      properties:
+        record:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            entryDate:
+              type: string
+            kind:
+              type: string
+            reportingYear:
+              type: integer
+              nullable: true
+            totalHours:
+              type: number
+            totalValue:
+              type: number
+          required:
+            - id
+            - name
+            - entryDate
+            - kind
+            - totalHours
+            - totalValue
+        template:
+          $ref: "#/components/schemas/RecurringTemplate"
+      required:
+        - record
+        - template
     DeleteRecurringTemplateResponse:
       type: object
       properties:

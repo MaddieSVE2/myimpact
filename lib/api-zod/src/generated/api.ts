@@ -661,10 +661,52 @@ export const ListRecurringTemplatesResponse = zod.object({
         }),
       ),
       defaultDonationsGBP: zod.number(),
+      occurrenceActivities: zod
+        .array(
+          zod.object({
+            activityId: zod.string(),
+            quantity: zod.number(),
+            hoursPerYear: zod.number(),
+            description: zod.string().optional(),
+          }),
+        )
+        .describe(
+          "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+        ),
+      occurrenceDonationsGBP: zod.number(),
+      usualLocation: zod
+        .object({
+          mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+          label: zod.string().nullish(),
+          postcode: zod.string().nullish(),
+          townCity: zod.string().nullish(),
+          lat: zod.number().nullish(),
+          lng: zod.number().nullish(),
+          localAuthority: zod.string().nullish(),
+          region: zod.string().nullish(),
+          country: zod.string().nullish(),
+        })
+        .describe(
+          "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+        )
+        .nullish(),
+      sharingOrgId: zod.string().nullish(),
+      occurrencesPerYear: zod
+        .number()
+        .describe(
+          "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+        ),
       anchorDate: zod.string(),
       lastConfirmedAt: zod.string().nullish(),
+      lastSkippedAt: zod.string().nullish(),
       createdAt: zod.string(),
       nextDueDate: zod.string(),
+      dueOccurrenceDate: zod
+        .string()
+        .nullable()
+        .describe(
+          "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+        ),
       isDue: zod.boolean(),
     }),
   ),
@@ -686,6 +728,42 @@ export const CreateRecurringTemplateBody = zod.object({
     }),
   ),
   defaultDonationsGBP: zod.number(),
+  occurrenceActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Per-occurrence defaults for ONE occurrence (quantities\/hours as\ndone each time, never annualised). Optional; when omitted the\nserver derives defaults from defaultActivities.\n",
+    ),
+  occurrenceDonationsGBP: zod.number().optional(),
+  usualLocation: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    ),
+  sharingOrgId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Prior org-sharing preference carried onto confirmed occurrences.",
+    ),
 });
 
 export const CreateRecurringTemplateResponse = zod.object({
@@ -702,10 +780,52 @@ export const CreateRecurringTemplateResponse = zod.object({
     }),
   ),
   defaultDonationsGBP: zod.number(),
+  occurrenceActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe(
+      "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+    ),
+  occurrenceDonationsGBP: zod.number(),
+  usualLocation: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    )
+    .nullish(),
+  sharingOrgId: zod.string().nullish(),
+  occurrencesPerYear: zod
+    .number()
+    .describe(
+      "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+    ),
   anchorDate: zod.string(),
   lastConfirmedAt: zod.string().nullish(),
+  lastSkippedAt: zod.string().nullish(),
   createdAt: zod.string(),
   nextDueDate: zod.string(),
+  dueOccurrenceDate: zod
+    .string()
+    .nullable()
+    .describe(
+      "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+    ),
   isDue: zod.boolean(),
 });
 
@@ -729,6 +849,42 @@ export const UpdateRecurringTemplateBody = zod.object({
     }),
   ),
   defaultDonationsGBP: zod.number(),
+  occurrenceActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Per-occurrence defaults for ONE occurrence (quantities\/hours as\ndone each time, never annualised). Optional; when omitted the\nserver derives defaults from defaultActivities.\n",
+    ),
+  occurrenceDonationsGBP: zod.number().optional(),
+  usualLocation: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    ),
+  sharingOrgId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Prior org-sharing preference carried onto confirmed occurrences.",
+    ),
 });
 
 export const UpdateRecurringTemplateResponse = zod.object({
@@ -745,10 +901,52 @@ export const UpdateRecurringTemplateResponse = zod.object({
     }),
   ),
   defaultDonationsGBP: zod.number(),
+  occurrenceActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe(
+      "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+    ),
+  occurrenceDonationsGBP: zod.number(),
+  usualLocation: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    )
+    .nullish(),
+  sharingOrgId: zod.string().nullish(),
+  occurrencesPerYear: zod
+    .number()
+    .describe(
+      "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+    ),
   anchorDate: zod.string(),
   lastConfirmedAt: zod.string().nullish(),
+  lastSkippedAt: zod.string().nullish(),
   createdAt: zod.string(),
   nextDueDate: zod.string(),
+  dueOccurrenceDate: zod
+    .string()
+    .nullable()
+    .describe(
+      "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+    ),
   isDue: zod.boolean(),
 });
 
@@ -779,7 +977,210 @@ export const DeleteRecurringTemplateResponse = zod.object({
 });
 
 /**
- * @summary Mark a template's current scheduled occurrence as confirmed
+ * The "Yes, log it" / "Edit then log" path of the due-reminder prompt.
+Creates a single per-occurrence Quick Log-style contribution dated to
+the occurrence, marks the template confirmed, and fires the
+hours.logged webhook. Returns 409 when the same template occurrence
+(user + template + occurrence date) is already logged, unless
+force=true is sent.
+
+ * @summary Log one actual contribution for a template occurrence
+ */
+export const LogRecurringOccurrenceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const LogRecurringOccurrenceBody = zod.object({
+  occurrenceDate: zod
+    .string()
+    .optional()
+    .describe(
+      "ISO date of the occurrence. Defaults to the current scheduled occurrence.",
+    ),
+  activities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Override the template's per-occurrence activities (amount\/hours edits).",
+    ),
+  donationsGBP: zod.number().optional(),
+  location: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    ),
+  force: zod
+    .boolean()
+    .optional()
+    .describe("Log anyway even if this occurrence appears already logged."),
+});
+
+export const LogRecurringOccurrenceResponse = zod.object({
+  record: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    entryDate: zod.string(),
+    kind: zod.string(),
+    reportingYear: zod.number().nullish(),
+    totalHours: zod.number(),
+    totalValue: zod.number(),
+  }),
+  template: zod.object({
+    id: zod.string(),
+    label: zod.string(),
+    cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+    dayOfPeriod: zod.number(),
+    defaultActivities: zod.array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    ),
+    defaultDonationsGBP: zod.number(),
+    occurrenceActivities: zod
+      .array(
+        zod.object({
+          activityId: zod.string(),
+          quantity: zod.number(),
+          hoursPerYear: zod.number(),
+          description: zod.string().optional(),
+        }),
+      )
+      .describe(
+        "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+      ),
+    occurrenceDonationsGBP: zod.number(),
+    usualLocation: zod
+      .object({
+        mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+        label: zod.string().nullish(),
+        postcode: zod.string().nullish(),
+        townCity: zod.string().nullish(),
+        lat: zod.number().nullish(),
+        lng: zod.number().nullish(),
+        localAuthority: zod.string().nullish(),
+        region: zod.string().nullish(),
+        country: zod.string().nullish(),
+      })
+      .describe(
+        "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+      )
+      .nullish(),
+    sharingOrgId: zod.string().nullish(),
+    occurrencesPerYear: zod
+      .number()
+      .describe(
+        "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+      ),
+    anchorDate: zod.string(),
+    lastConfirmedAt: zod.string().nullish(),
+    lastSkippedAt: zod.string().nullish(),
+    createdAt: zod.string(),
+    nextDueDate: zod.string(),
+    dueOccurrenceDate: zod
+      .string()
+      .nullable()
+      .describe(
+        "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+      ),
+    isDue: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Skip the current scheduled occurrence without logging anything
+ */
+export const SkipRecurringOccurrenceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SkipRecurringOccurrenceResponse = zod.object({
+  template: zod.object({
+    id: zod.string(),
+    label: zod.string(),
+    cadence: zod.enum(["weekly", "fortnightly", "monthly"]),
+    dayOfPeriod: zod.number(),
+    defaultActivities: zod.array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    ),
+    defaultDonationsGBP: zod.number(),
+    occurrenceActivities: zod
+      .array(
+        zod.object({
+          activityId: zod.string(),
+          quantity: zod.number(),
+          hoursPerYear: zod.number(),
+          description: zod.string().optional(),
+        }),
+      )
+      .describe(
+        "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+      ),
+    occurrenceDonationsGBP: zod.number(),
+    usualLocation: zod
+      .object({
+        mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+        label: zod.string().nullish(),
+        postcode: zod.string().nullish(),
+        townCity: zod.string().nullish(),
+        lat: zod.number().nullish(),
+        lng: zod.number().nullish(),
+        localAuthority: zod.string().nullish(),
+        region: zod.string().nullish(),
+        country: zod.string().nullish(),
+      })
+      .describe(
+        "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+      )
+      .nullish(),
+    sharingOrgId: zod.string().nullish(),
+    occurrencesPerYear: zod
+      .number()
+      .describe(
+        "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+      ),
+    anchorDate: zod.string(),
+    lastConfirmedAt: zod.string().nullish(),
+    lastSkippedAt: zod.string().nullish(),
+    createdAt: zod.string(),
+    nextDueDate: zod.string(),
+    dueOccurrenceDate: zod
+      .string()
+      .nullable()
+      .describe(
+        "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+      ),
+    isDue: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Retrospectively backfill a past calendar year for a template
  */
 export const ConfirmRecurringTemplateParams = zod.object({
   id: zod.coerce.string(),
@@ -790,7 +1191,7 @@ export const ConfirmRecurringTemplateBody = zod.object({
     .number()
     .optional()
     .describe(
-      "Calendar year the bulk-created entries should count toward.\nDefaults to the current year. For the current year, entries\nare created for the remaining months; for a past year, one\nentry per month of the full year is created and marked as\nretrospective. Future years are rejected.\n",
+      "Past calendar year the bulk-created entries should count\ntoward: one entry per month is created and marked\nretrospective. This is a clearly separate retrospective\nbackfill flow — the current year is rejected (use\n\/log-occurrence for the current occurrence) and future\nyears are rejected.\n",
     ),
 });
 
@@ -808,10 +1209,52 @@ export const ConfirmRecurringTemplateResponse = zod.object({
     }),
   ),
   defaultDonationsGBP: zod.number(),
+  occurrenceActivities: zod
+    .array(
+      zod.object({
+        activityId: zod.string(),
+        quantity: zod.number(),
+        hoursPerYear: zod.number(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe(
+      "Per-occurrence defaults (stored, or derived from annual defaults for legacy templates).",
+    ),
+  occurrenceDonationsGBP: zod.number(),
+  usualLocation: zod
+    .object({
+      mode: zod.enum(["in_person", "online", "multiple"]).optional(),
+      label: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      townCity: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      localAuthority: zod.string().nullish(),
+      region: zod.string().nullish(),
+      country: zod.string().nullish(),
+    })
+    .describe(
+      "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
+    )
+    .nullish(),
+  sharingOrgId: zod.string().nullish(),
+  occurrencesPerYear: zod
+    .number()
+    .describe(
+      "52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only.",
+    ),
   anchorDate: zod.string(),
   lastConfirmedAt: zod.string().nullish(),
+  lastSkippedAt: zod.string().nullish(),
   createdAt: zod.string(),
   nextDueDate: zod.string(),
+  dueOccurrenceDate: zod
+    .string()
+    .nullable()
+    .describe(
+      "The scheduled occurrence the due prompt refers to (most recent on\nor before today). Null while the template's first scheduled\noccurrence is still in the future — the template is never due and\ncannot be logged until then.\n",
+    ),
   isDue: zod.boolean(),
 });
 

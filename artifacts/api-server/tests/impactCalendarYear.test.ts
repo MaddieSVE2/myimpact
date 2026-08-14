@@ -41,6 +41,7 @@ const state = vi.hoisted(() => {
     ids,
     authUser: null as { id: string; email: string } | null,
     nowOverride: null as Date | null,
+    txQueue: Promise.resolve() as Promise<unknown>,
   };
 });
 
@@ -105,7 +106,9 @@ vi.mock("@workspace/db", () => {
   ]);
   const recurringTemplatesTable = tableTag("recurring_templates", [
     "id", "userId", "label", "cadence", "dayOfPeriod", "anchorDate",
-    "defaultActivities", "defaultDonationsGBP", "lastConfirmedAt", "createdAt",
+    "defaultActivities", "defaultDonationsGBP", "lastConfirmedAt",
+    "occurrenceActivities", "occurrenceDonationsGBP", "usualLocationJson",
+    "sharingOrgId", "lastSkippedAt", "createdAt",
   ]);
   const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role"]);
   const organisationsTable = tableTag("organisations", ["id", "name"]);
@@ -308,7 +311,26 @@ vi.mock("@workspace/db", () => {
     insert: (table: { __tableName: string }) => insertBuilder(table),
     update: (table: { __tableName: string }) => updateBuilder(table),
     delete: (table: { __tableName: string }) => deleteBuilder(table),
-    transaction: async (cb: (tx: unknown) => unknown) => cb({}),
+    // Transactions run against the same in-memory stores; execute is a no-op
+    // (used for advisory locks in the real DB). Transactions are serialized
+    // through a queue, mirroring the advisory lock's behaviour so concurrency
+    // tests exercise the lock-then-recheck path.
+    transaction: (cb: (tx: unknown) => unknown) => {
+      const tx = {
+        select: (cols?: Record<string, unknown>) => makeBuilder(cols),
+        insert: (table: { __tableName: string }) => insertBuilder(table),
+        update: (table: { __tableName: string }) => updateBuilder(table),
+        delete: (table: { __tableName: string }) => deleteBuilder(table),
+        execute: async () => [],
+      };
+      const run = state.txQueue.then(() => cb(tx));
+      state.txQueue = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
+    },
+    execute: async () => [],
     query: {
       orgMembersTable: {
         findFirst: vi.fn(async (opts?: { where?: Pred }) => {
@@ -608,7 +630,7 @@ describe("impact route — calendar-year invariants", () => {
     expect(res.body.shouldShow).toBe(false);
   });
 
-  it("ticking the same habit twice in the same calendar month does not create duplicate entries", async () => {
+  it("log-occurrence creates ONE actual entry; the same occurrence twice returns 409 unless forced", async () => {
     const app = makeApp();
     const currentYear = new Date().getUTCFullYear();
 
@@ -617,40 +639,271 @@ describe("impact route — calendar-year invariants", () => {
       userId: USER.id,
       label: "Weekly recycling",
       cadence: "weekly",
-      dayOfPeriod: 1,
-      anchorDate: new Date(),
-      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 0 }],
+      dayOfPeriod: new Date().getUTCDay(), // due today
+      anchorDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 52 }],
       defaultDonationsGBP: "0",
       lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
       createdAt: new Date(),
     });
 
-    // First confirm: bulk-creates one entry per remaining month of the
-    // current calendar year (this month through December).
-    const first = await request(app).post("/api/impact/templates/1/confirm").expect(200);
-    const firstCount = first.body.entriesCreated as number;
-    const remainingMonths = 12 - new Date().getUTCMonth();
-    expect(firstCount).toBe(remainingMonths);
-    expect(state.impactRecords).toHaveLength(remainingMonths);
+    // Confirming the due occurrence creates exactly ONE per-occurrence
+    // entry (no bulk month creation), dated to the scheduled occurrence.
+    const first = await request(app).post("/api/impact/templates/1/log-occurrence").expect(200);
+    expect(state.impactRecords).toHaveLength(1);
+    const r = state.impactRecords[0];
+    expect(r.source).toBe("habit");
+    expect(r.kind).toBe("recurring_confirmation");
+    expect(r.habitTemplateId).toBe(1);
+    expect((r.entryDate as Date).getUTCFullYear()).toBe(currentYear);
+    expect(first.body.record.id).toBeDefined();
+    // Occurrence-level defaults derived from annual quantities: 52/wk → 1.
+    expect((r.activitiesJson as Array<{ quantity: number }>)[0].quantity).toBe(1);
+    // Confirming ticks the schedule.
+    expect(state.recurringTemplates[0].lastConfirmedAt).not.toBeNull();
 
-    // Every entry must be habit-sourced, in the current year, and on the
-    // 1st of its month — that's how the conflict check spots overlaps.
-    for (const r of state.impactRecords) {
-      expect(r.source).toBe("habit");
-      expect(r.habitTemplateId).toBe(1);
-      const d = r.entryDate as Date;
-      expect(d.getUTCFullYear()).toBe(currentYear);
-      expect(d.getUTCDate()).toBe(1);
-    }
+    // Once confirmed, the occurrence is no longer due: plain retries are
+    // rejected outright — even with a different in-window date override.
+    const retry = await request(app).post("/api/impact/templates/1/log-occurrence").expect(400);
+    expect(retry.body.error).toBe("occurrence_not_due");
+    const otherDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const retryEdited = await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ occurrenceDate: otherDate })
+      .expect(400);
+    expect(retryEdited.body.error).toBe("occurrence_not_due");
+    expect(state.impactRecords).toHaveLength(1);
 
-    // Each (template, month) pair should appear at most once.
-    const monthsCovered = state.impactRecords.map((r) => (r.entryDate as Date).getUTCMonth());
-    expect(new Set(monthsCovered).size).toBe(monthsCovered.length);
+    // force=true is the explicit user-confirmed "log anyway" override.
+    await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ force: true })
+      .expect(200);
+    expect(state.impactRecords).toHaveLength(2);
+  });
 
-    // Second confirm in the same month: nothing new should be inserted.
-    const second = await request(app).post("/api/impact/templates/1/confirm").expect(200);
-    expect(second.body.entriesCreated).toBe(0);
-    expect(state.impactRecords).toHaveLength(remainingMonths);
+  it("concurrent requests with different in-window dates create exactly one record", async () => {
+    const app = makeApp();
+    const now = new Date();
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Weekly food bank",
+      cadence: "weekly",
+      dayOfPeriod: now.getUTCDay(), // due today
+      anchorDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      defaultActivities: [{ activityId: "foodbank", quantity: 104, hoursPerYear: 104 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
+      createdAt: now,
+    });
+
+    // Two simultaneous non-force confirmations for the same occurrence,
+    // using DIFFERENT permitted dates so date-based dedupe alone would not
+    // collide. The transactional handled-state re-check must let exactly
+    // one through.
+    const dateA = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const dateB = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const [resA, resB] = await Promise.all([
+      request(app).post("/api/impact/templates/1/log-occurrence").send({ occurrenceDate: dateA }),
+      request(app).post("/api/impact/templates/1/log-occurrence").send({ occurrenceDate: dateB }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 400]);
+    const loser = resA.status === 400 ? resA : resB;
+    expect(loser.body.error).toBe("occurrence_not_due");
+    expect(state.impactRecords).toHaveLength(1);
+    expect(state.recurringTemplates[0].lastConfirmedAt).not.toBeNull();
+  });
+
+  it("a pre-existing record for the same occurrence prompts with 409 instead of merging", async () => {
+    const app = makeApp();
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Weekly recycling",
+      cadence: "weekly",
+      dayOfPeriod: now.getUTCDay(), // due today, not yet confirmed/skipped
+      anchorDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 52 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
+      createdAt: now,
+    });
+    // A record for the same (user, template, day) already exists — e.g. a
+    // legacy habit row — so the prompt must surface it rather than stack.
+    state.impactRecords.push({
+      id: state.ids.impact++,
+      userId: USER.id,
+      name: "Weekly recycling",
+      habitTemplateId: 1,
+      entryDate: today,
+      kind: "recurring_confirmation",
+      source: "habit",
+      totalHours: 1,
+      totalValue: "10",
+      createdAt: now,
+    });
+
+    const dup = await request(app).post("/api/impact/templates/1/log-occurrence").expect(409);
+    expect(dup.body.error).toBe("occurrence_already_logged");
+    expect(dup.body.existingRecordId).toBeDefined();
+    expect(state.impactRecords).toHaveLength(1);
+
+    await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ force: true })
+      .expect(200);
+    expect(state.impactRecords).toHaveLength(2);
+  });
+
+  it("a template whose first scheduled occurrence is in the future is not due and cannot be logged", async () => {
+    const app = makeApp();
+    const now = new Date();
+    // Weekly template anchored today, scheduled for 3 days from now: the
+    // "previous" weekday occurrence predates the template — never due.
+    const futureDow = (now.getUTCDay() + 3) % 7;
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Friday food bank",
+      cadence: "weekly",
+      dayOfPeriod: futureDow,
+      anchorDate: now,
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 52 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
+      createdAt: now,
+    });
+
+    const list = await request(app).get("/api/impact/templates").expect(200);
+    const tpl = list.body.templates[0];
+    expect(tpl.isDue).toBe(false);
+    expect(tpl.dueOccurrenceDate).toBeNull();
+
+    // Server enforces the same invariant: no due occurrence → no logging,
+    // even with an explicit past date.
+    const rejected = await request(app).post("/api/impact/templates/1/log-occurrence").expect(400);
+    expect(rejected.body.error).toBe("occurrence_not_due");
+    const backdated = await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ occurrenceDate: "2020-01-01" })
+      .expect(400);
+    expect(backdated.body.error).toBe("occurrence_not_due");
+    expect(state.impactRecords).toHaveLength(0);
+  });
+
+  it("log-occurrence rejects edit dates outside the current occurrence window", async () => {
+    const app = makeApp();
+    const now = new Date();
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Weekly recycling",
+      cadence: "weekly",
+      dayOfPeriod: now.getUTCDay(), // due today
+      anchorDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000),
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 52 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
+      createdAt: now,
+    });
+
+    // Future dates and dates far before the occurrence are both rejected.
+    const future = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const futureRes = await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ occurrenceDate: future })
+      .expect(400);
+    expect(futureRes.body.error).toBe("occurrence_date_out_of_range");
+
+    const tooOld = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const oldRes = await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ occurrenceDate: tooOld })
+      .expect(400);
+    expect(oldRes.body.error).toBe("occurrence_date_out_of_range");
+    expect(state.impactRecords).toHaveLength(0);
+
+    // A date within the current occurrence window (a few days early) is fine.
+    const withinWindow = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await request(app)
+      .post("/api/impact/templates/1/log-occurrence")
+      .send({ occurrenceDate: withinWindow })
+      .expect(200);
+    expect(state.impactRecords).toHaveLength(1);
+  });
+
+  it("skip silences the due prompt without creating any records; current-year bulk confirm is retired", async () => {
+    const app = makeApp();
+
+    state.recurringTemplates.push({
+      id: 1,
+      userId: USER.id,
+      label: "Weekly recycling",
+      cadence: "weekly",
+      dayOfPeriod: new Date().getUTCDay(), // due today
+      anchorDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 0 }],
+      defaultDonationsGBP: "0",
+      lastConfirmedAt: null,
+      occurrenceActivities: null,
+      occurrenceDonationsGBP: null,
+      usualLocationJson: null,
+      sharingOrgId: null,
+      lastSkippedAt: null,
+      createdAt: new Date(),
+    });
+
+    const res = await request(app).post("/api/impact/templates/1/skip").expect(200);
+    expect(res.body.template.isDue).toBe(false);
+    expect(state.impactRecords).toHaveLength(0);
+    expect(state.recurringTemplates[0].lastSkippedAt).not.toBeNull();
+    expect(state.recurringTemplates[0].lastConfirmedAt).toBeNull();
+
+    // A skipped occurrence cannot be logged afterwards through the
+    // reminder path — skip means "nothing happened this period".
+    const afterSkip = await request(app).post("/api/impact/templates/1/log-occurrence").expect(400);
+    expect(afterSkip.body.error).toBe("occurrence_not_due");
+    expect(state.impactRecords).toHaveLength(0);
+
+    // Bulk month-creation from annual defaults is retired for the current
+    // year — /confirm only remains as the past-year retrospective backfill.
+    const confirm = await request(app).post("/api/impact/templates/1/confirm").expect(400);
+    expect(confirm.body.error).toBe("bulk_confirm_retired");
+    expect(state.impactRecords).toHaveLength(0);
   });
 
   it("confirming a habit with a past target year creates 12 retrospective entries in that year", async () => {
@@ -663,8 +916,8 @@ describe("impact route — calendar-year invariants", () => {
       userId: USER.id,
       label: "Weekly recycling",
       cadence: "weekly",
-      dayOfPeriod: 1,
-      anchorDate: new Date(),
+      dayOfPeriod: new Date().getUTCDay(), // due today
+      anchorDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       defaultActivities: [{ activityId: "recycling", quantity: 52, hoursPerYear: 0 }],
       defaultDonationsGBP: "0",
       lastConfirmedAt: null,

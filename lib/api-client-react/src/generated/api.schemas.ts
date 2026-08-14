@@ -405,6 +405,15 @@ export interface RecurringTemplateInput {
   dayOfPeriod: number;
   defaultActivities: SelectedActivity[];
   defaultDonationsGBP: number;
+  /** Per-occurrence defaults for ONE occurrence (quantities/hours as
+done each time, never annualised). Optional; when omitted the
+server derives defaults from defaultActivities.
+ */
+  occurrenceActivities?: SelectedActivity[];
+  occurrenceDonationsGBP?: number;
+  usualLocation?: ActivityLocation;
+  /** Prior org-sharing preference carried onto confirmed occurrences. */
+  sharingOrgId?: string | null;
 }
 
 export type RecurringTemplateCadence =
@@ -423,15 +432,44 @@ export interface RecurringTemplate {
   dayOfPeriod: number;
   defaultActivities: SelectedActivity[];
   defaultDonationsGBP: number;
+  /** Per-occurrence defaults (stored, or derived from annual defaults for legacy templates). */
+  occurrenceActivities: SelectedActivity[];
+  occurrenceDonationsGBP: number;
+  usualLocation?: ActivityLocation | null;
+  sharingOrgId?: string | null;
+  /** 52 for weekly, 26 for fortnightly, 12 for monthly — for forecast display only. */
+  occurrencesPerYear: number;
   anchorDate: string;
   lastConfirmedAt?: string | null;
+  lastSkippedAt?: string | null;
   createdAt: string;
   nextDueDate: string;
+  /** The scheduled occurrence the due prompt refers to (most recent on
+or before today). Null while the template's first scheduled
+occurrence is still in the future — the template is never due and
+cannot be logged until then.
+ */
+  dueOccurrenceDate: string | null;
   isDue: boolean;
 }
 
 export interface RecurringTemplatesResponse {
   templates: RecurringTemplate[];
+}
+
+export type LogRecurringOccurrenceResponseRecord = {
+  id: string;
+  name: string;
+  entryDate: string;
+  kind: string;
+  reportingYear?: number | null;
+  totalHours: number;
+  totalValue: number;
+};
+
+export interface LogRecurringOccurrenceResponse {
+  record: LogRecurringOccurrenceResponseRecord;
+  template: RecurringTemplate;
 }
 
 export interface DeleteRecurringTemplateResponse {
@@ -459,12 +497,28 @@ export type DeleteRecurringTemplateParams = {
   removeFutureEntries?: boolean;
 };
 
+export type LogRecurringOccurrenceBody = {
+  /** ISO date of the occurrence. Defaults to the current scheduled occurrence. */
+  occurrenceDate?: string;
+  /** Override the template's per-occurrence activities (amount/hours edits). */
+  activities?: SelectedActivity[];
+  donationsGBP?: number;
+  location?: ActivityLocation;
+  /** Log anyway even if this occurrence appears already logged. */
+  force?: boolean;
+};
+
+export type SkipRecurringOccurrence200 = {
+  template: RecurringTemplate;
+};
+
 export type ConfirmRecurringTemplateBody = {
-  /** Calendar year the bulk-created entries should count toward.
-Defaults to the current year. For the current year, entries
-are created for the remaining months; for a past year, one
-entry per month of the full year is created and marked as
-retrospective. Future years are rejected.
+  /** Past calendar year the bulk-created entries should count
+toward: one entry per month is created and marked
+retrospective. This is a clearly separate retrospective
+backfill flow — the current year is rejected (use
+/log-occurrence for the current occurrence) and future
+years are rejected.
  */
   year?: number;
 };

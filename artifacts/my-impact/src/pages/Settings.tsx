@@ -1937,6 +1937,20 @@ function TemplatesSettings() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{t.label}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">{describeCadence(t)}</p>
+                        {(() => {
+                          const perOccurrence = (t.occurrenceActivities ?? []).reduce(
+                            (sum, a) => sum + (Number(a.hoursPerYear) || 0),
+                            0,
+                          );
+                          if (perOccurrence <= 0) return null;
+                          const yearly = Math.round(perOccurrence * (t.occurrencesPerYear ?? 0));
+                          return (
+                            <p className="text-[11px] text-muted-foreground mt-0.5" data-testid={`template-forecast-${t.id}`}>
+                              Usually {perOccurrence} {perOccurrence === 1 ? "hour" : "hours"} · roughly {yearly} hours
+                              over a full year (forecast only — impact counts when you confirm)
+                            </p>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button

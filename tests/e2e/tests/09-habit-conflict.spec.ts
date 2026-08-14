@@ -48,7 +48,9 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
       data: {
         label: "Weekly recycling",
         cadence: "weekly",
-        dayOfPeriod: 1,
+        // Due today: scheduling is anchor-aware, so a freshly created
+        // template is only due when its scheduled weekday has arrived.
+        dayOfPeriod: new Date().getUTCDay(),
         defaultActivities: [ACTIVITY],
         defaultDonationsGBP: 0,
       },
@@ -56,10 +58,13 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     expect(tplRes.ok(), `create template failed: ${await tplRes.text()}`).toBe(true);
     const template = (await tplRes.json()) as { id: number | string };
 
-    const confirmRes = await page.request.post(`/api/impact/templates/${template.id}/confirm`);
-    expect(confirmRes.ok(), `confirm template failed: ${await confirmRes.text()}`).toBe(true);
-    const confirmBody = (await confirmRes.json()) as { entriesCreated: number };
-    expect(confirmBody.entriesCreated).toBeGreaterThan(0);
+    // Confirming a due occurrence now creates ONE per-occurrence entry via
+    // log-occurrence (bulk month-creation is retired). One habit-sourced
+    // entry in the current month is all the conflict check needs.
+    const confirmRes = await page.request.post(`/api/impact/templates/${template.id}/log-occurrence`);
+    expect(confirmRes.ok(), `log occurrence failed: ${await confirmRes.text()}`).toBe(true);
+    const confirmBody = (await confirmRes.json()) as { record: { id: string } };
+    expect(confirmBody.record.id).toBeTruthy();
 
     // Snapshot record count BEFORE the conflict flow so we can assert that
     // the "edit existing" path doesn't create a new row.

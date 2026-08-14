@@ -1333,9 +1333,18 @@ function computeNextDueDate(cadence: Cadence, dayOfPeriod: number, anchor: Date,
 
 /**
  * Compute the most recent scheduled occurrence on or before today. Used to
- * determine whether the user has confirmed it yet.
+ * determine whether the user has confirmed it yet. Anchor-aware: returns
+ * null when the template's first scheduled occurrence is still in the
+ * future (e.g. a weekly template created on Monday for Friday has NO
+ * current occurrence until that Friday — the previous Friday predates the
+ * template and must never be presented or logged as due).
  */
-function computeLastScheduledDate(cadence: Cadence, dayOfPeriod: number, anchor: Date, now: Date): Date {
+function computeLastScheduledDateRaw(
+  cadence: Cadence,
+  dayOfPeriod: number,
+  anchor: Date,
+  now: Date,
+): Date {
   const today = startOfDayUTC(now);
 
   if (cadence === "monthly") {
@@ -1364,6 +1373,17 @@ function computeLastScheduledDate(cadence: Cadence, dayOfPeriod: number, anchor:
   return candidate;
 }
 
+/** Anchor-aware wrapper: null when no occurrence has been scheduled yet. */
+function computeCurrentOccurrence(
+  cadence: Cadence,
+  dayOfPeriod: number,
+  anchor: Date,
+  now: Date,
+): Date | null {
+  const candidate = computeLastScheduledDateRaw(cadence, dayOfPeriod, anchor, now);
+  return candidate.getTime() < startOfDayUTC(anchor).getTime() ? null : candidate;
+}
+
 interface TemplateRow {
   id: number;
   userId: string;
@@ -1374,15 +1394,63 @@ interface TemplateRow {
   defaultActivities: unknown;
   defaultDonationsGBP: string;
   lastConfirmedAt: Date | null;
+  occurrenceActivities?: unknown;
+  occurrenceDonationsGBP?: string | null;
+  usualLocationJson?: unknown;
+  sharingOrgId?: string | null;
+  lastSkippedAt?: Date | null;
   createdAt: Date;
+}
+
+const OCCURRENCES_PER_YEAR: Record<Cadence, number> = {
+  weekly: 52,
+  fortnightly: 26,
+  monthly: 12,
+};
+
+interface OccurrenceActivity {
+  activityId: string;
+  quantity: number;
+  hoursPerYear: number;
+  description?: string;
+}
+
+/**
+ * Per-occurrence defaults for one occurrence of the template. Templates
+ * created/updated since the reminder flow store these explicitly in
+ * `occurrenceActivities`; legacy templates fall back to the annual
+ * `defaultActivities` divided by the cadence's occurrences per year, so old
+ * templates keep working without migration.
+ */
+function deriveOccurrenceActivities(row: TemplateRow, cadence: Cadence): OccurrenceActivity[] {
+  const stored = row.occurrenceActivities;
+  if (Array.isArray(stored) && stored.length > 0) {
+    return stored as OccurrenceActivity[];
+  }
+  const annual = Array.isArray(row.defaultActivities) ? (row.defaultActivities as OccurrenceActivity[]) : [];
+  const n = OCCURRENCES_PER_YEAR[cadence];
+  return annual.map((a) => ({
+    ...a,
+    quantity: Math.max(1, Math.round((Number(a.quantity) || 0) / n)),
+    hoursPerYear: Math.max(0, Math.round((Number(a.hoursPerYear) || 0) / n)),
+  }));
 }
 
 function serializeTemplate(row: TemplateRow, now: Date) {
   const cadence = isValidCadence(row.cadence) ? row.cadence : "weekly";
-  const lastScheduled = computeLastScheduledDate(cadence, row.dayOfPeriod, row.anchorDate, now);
+  const lastScheduled = computeCurrentOccurrence(cadence, row.dayOfPeriod, row.anchorDate, now);
   const nextDue = computeNextDueDate(cadence, row.dayOfPeriod, row.anchorDate, now);
-  const confirmed = row.lastConfirmedAt && row.lastConfirmedAt.getTime() >= lastScheduled.getTime();
-  const isDue = !confirmed && lastScheduled.getTime() <= startOfDayUTC(now).getTime();
+  // Confirming OR skipping the current occurrence both silence the due
+  // prompt until the next scheduled occurrence. Skipping creates no records.
+  // A template whose first scheduled occurrence is still in the future has
+  // no current occurrence and is never due.
+  const handledAt = Math.max(
+    row.lastConfirmedAt ? row.lastConfirmedAt.getTime() : 0,
+    row.lastSkippedAt ? row.lastSkippedAt.getTime() : 0,
+  );
+  const handled = lastScheduled !== null && handledAt >= lastScheduled.getTime();
+  const isDue =
+    lastScheduled !== null && !handled && lastScheduled.getTime() <= startOfDayUTC(now).getTime();
 
   return {
     id: String(row.id),
@@ -1391,10 +1459,20 @@ function serializeTemplate(row: TemplateRow, now: Date) {
     dayOfPeriod: row.dayOfPeriod,
     defaultActivities: Array.isArray(row.defaultActivities) ? row.defaultActivities : [],
     defaultDonationsGBP: Number(row.defaultDonationsGBP),
+    occurrenceActivities: deriveOccurrenceActivities(row, cadence),
+    occurrenceDonationsGBP: row.occurrenceDonationsGBP != null ? Number(row.occurrenceDonationsGBP) : 0,
+    usualLocation: row.usualLocationJson ?? null,
+    sharingOrgId: row.sharingOrgId ?? null,
+    occurrencesPerYear: OCCURRENCES_PER_YEAR[cadence],
     anchorDate: row.anchorDate.toISOString(),
     lastConfirmedAt: row.lastConfirmedAt ? row.lastConfirmedAt.toISOString() : null,
+    lastSkippedAt: row.lastSkippedAt ? row.lastSkippedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     nextDueDate: nextDue.toISOString(),
+    // The occurrence the due prompt refers to (most recent scheduled date on
+    // or before today) — confirming logs ONE contribution dated to this day.
+    // Null while the template's first occurrence is still in the future.
+    dueOccurrenceDate: lastScheduled ? lastScheduled.toISOString() : null,
     isDue,
   };
 }
@@ -1405,6 +1483,10 @@ interface TemplateInputBody {
   dayOfPeriod?: unknown;
   defaultActivities?: unknown;
   defaultDonationsGBP?: unknown;
+  occurrenceActivities?: unknown;
+  occurrenceDonationsGBP?: unknown;
+  usualLocation?: unknown;
+  sharingOrgId?: unknown;
 }
 
 function parseTemplateInput(raw: unknown): { ok: true; data: {
@@ -1413,6 +1495,10 @@ function parseTemplateInput(raw: unknown): { ok: true; data: {
   dayOfPeriod: number;
   defaultActivities: unknown[];
   defaultDonationsGBP: number;
+  occurrenceActivities: unknown[] | null;
+  occurrenceDonationsGBP: number | null;
+  usualLocation: ReturnType<typeof normalizeActivityLocation>;
+  sharingOrgId: string | null;
 } } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid body" };
   const body = raw as TemplateInputBody;
@@ -1443,6 +1529,32 @@ function parseTemplateInput(raw: unknown): { ok: true; data: {
     return { ok: false, error: "defaultDonationsGBP must be a non-negative number" };
   }
 
+  // Optional per-occurrence defaults (what ONE occurrence normally looks
+  // like). Absent → NULL, and the serializer derives from annual defaults.
+  let occurrenceActivities: unknown[] | null = null;
+  if (body.occurrenceActivities !== undefined && body.occurrenceActivities !== null) {
+    if (!Array.isArray(body.occurrenceActivities)) {
+      return { ok: false, error: "occurrenceActivities must be an array" };
+    }
+    occurrenceActivities = body.occurrenceActivities;
+  }
+
+  let occurrenceDonationsGBP: number | null = null;
+  if (body.occurrenceDonationsGBP !== undefined && body.occurrenceDonationsGBP !== null) {
+    const n = Number(body.occurrenceDonationsGBP);
+    if (!Number.isFinite(n) || n < 0) {
+      return { ok: false, error: "occurrenceDonationsGBP must be a non-negative number" };
+    }
+    occurrenceDonationsGBP = n;
+  }
+
+  const usualLocation = normalizeActivityLocation(body.usualLocation);
+
+  const sharingOrgId =
+    typeof body.sharingOrgId === "string" && body.sharingOrgId.trim()
+      ? body.sharingOrgId.trim().slice(0, 100)
+      : null;
+
   return {
     ok: true,
     data: {
@@ -1451,6 +1563,10 @@ function parseTemplateInput(raw: unknown): { ok: true; data: {
       dayOfPeriod,
       defaultActivities: body.defaultActivities,
       defaultDonationsGBP: donationsRaw,
+      occurrenceActivities,
+      occurrenceDonationsGBP,
+      usualLocation,
+      sharingOrgId,
     },
   };
 }
@@ -1485,6 +1601,11 @@ router.post("/templates", authenticate, async (req: AuthenticatedRequest, res) =
       dayOfPeriod: parsed.data.dayOfPeriod,
       defaultActivities: parsed.data.defaultActivities,
       defaultDonationsGBP: String(parsed.data.defaultDonationsGBP),
+      occurrenceActivities: parsed.data.occurrenceActivities,
+      occurrenceDonationsGBP:
+        parsed.data.occurrenceDonationsGBP != null ? String(parsed.data.occurrenceDonationsGBP) : null,
+      usualLocationJson: parsed.data.usualLocation,
+      sharingOrgId: parsed.data.sharingOrgId,
     })
     .returning();
 
@@ -1524,6 +1645,16 @@ router.patch("/templates/:id", authenticate, async (req: AuthenticatedRequest, r
       dayOfPeriod: parsed.data.dayOfPeriod,
       defaultActivities: parsed.data.defaultActivities,
       defaultDonationsGBP: String(parsed.data.defaultDonationsGBP),
+      // Only overwrite the per-occurrence fields when the client sends them,
+      // so older clients editing label/cadence don't wipe reminder defaults.
+      ...(parsed.data.occurrenceActivities !== null
+        ? { occurrenceActivities: parsed.data.occurrenceActivities }
+        : {}),
+      ...(parsed.data.occurrenceDonationsGBP !== null
+        ? { occurrenceDonationsGBP: String(parsed.data.occurrenceDonationsGBP) }
+        : {}),
+      ...(parsed.data.usualLocation !== null ? { usualLocationJson: parsed.data.usualLocation } : {}),
+      ...(parsed.data.sharingOrgId !== null ? { sharingOrgId: parsed.data.sharingOrgId } : {}),
     })
     .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
     .returning();
@@ -1621,7 +1752,19 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
   }
   const year = requestedYear;
   const isPastYear = year < currentYear;
-  const startMonth = isPastYear ? 0 : now.getUTCMonth();
+  // Current-year bulk creation is retired: confirming a due occurrence now
+  // logs ONE actual contribution via POST /templates/:id/log-occurrence.
+  // /confirm remains only as the clearly separate retrospective bulk-backfill
+  // flow for past calendar years.
+  if (!isPastYear) {
+    res.status(400).json({
+      error: "bulk_confirm_retired",
+      message:
+        "Confirming a recurring activity now logs one contribution per occurrence. Use POST /api/impact/templates/:id/log-occurrence for the current occurrence; /confirm only backfills past years.",
+    });
+    return;
+  }
+  const startMonth = 0;
 
   const existingHabitEntries = await db
     .select({ entryDate: impactRecordsTable.entryDate })
@@ -1688,6 +1831,289 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
   const serialized = serializeTemplate(updated as TemplateRow, new Date()) as Record<string, unknown>;
   serialized.entriesCreated = inserts.length;
   res.json(serialized);
+});
+
+// Log ONE actual contribution for a template occurrence. This is the primary
+// "Yes, log it" / "Edit then log" path of the due-reminder prompt: it creates
+// a single per-occurrence impact record dated to the occurrence (never a
+// bulk of months), marks the template's current occurrence confirmed, and
+// fires the `hours.logged` webhook exactly like a manual save. Duplicate
+// protection: a second log for the same (user, template, occurrence date)
+// returns 409 unless `force: true` is sent.
+router.post("/templates/:id/log-occurrence", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid template ID" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(recurringTemplatesTable)
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  const row = existing as TemplateRow;
+  const cadence = isValidCadence(row.cadence) ? row.cadence : "weekly";
+  const now = new Date();
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const force = body.force === true;
+
+  // Forecasts never become actuals: logging requires a current scheduled
+  // occurrence. A template whose first occurrence is still in the future
+  // (anchor-aware) cannot be logged at all.
+  const currentOccurrence = computeCurrentOccurrence(cadence, row.dayOfPeriod, row.anchorDate, now);
+  if (!currentOccurrence) {
+    res.status(400).json({
+      error: "occurrence_not_due",
+      message: "This activity's first scheduled occurrence hasn't arrived yet — nothing to log.",
+    });
+    return;
+  }
+
+  // The occurrence must still be due: once confirmed or skipped, it cannot
+  // be logged again through the reminder path (regardless of date/activity
+  // overrides). `force: true` is the explicit, user-confirmed "log anyway"
+  // override surfaced by the duplicate prompt. This early check gives a fast
+  // failure path; the authoritative check re-runs inside the transaction
+  // below, under the advisory lock, against a fresh read of the template.
+  const isOccurrenceHandled = (t: TemplateRow) =>
+    Math.max(
+      t.lastConfirmedAt ? t.lastConfirmedAt.getTime() : 0,
+      t.lastSkippedAt ? t.lastSkippedAt.getTime() : 0,
+    ) >= currentOccurrence.getTime();
+  if (!force && isOccurrenceHandled(row)) {
+    res.status(400).json({
+      error: "occurrence_not_due",
+      message: "This occurrence has already been confirmed or skipped. The next one isn't due yet.",
+    });
+    return;
+  }
+
+  // Occurrence date: client override (the Edit path lets the user re-date
+  // the occurrence), defaulting to the current scheduled occurrence. Edits
+  // are tightly bound to the current occurrence: within one cadence period
+  // before the scheduled date, never in the future, never before the
+  // template existed.
+  const PERIOD_DAYS: Record<Cadence, number> = { weekly: 7, fortnightly: 14, monthly: 31 };
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const windowStart = Math.max(
+    currentOccurrence.getTime() - PERIOD_DAYS[cadence] * msPerDay,
+    startOfDayUTC(row.anchorDate).getTime(),
+  );
+  const windowEnd = startOfDayUTC(now).getTime();
+  let occurrenceDate = currentOccurrence;
+  if (typeof body.occurrenceDate === "string" && body.occurrenceDate) {
+    const parsed = new Date(body.occurrenceDate);
+    if (isNaN(parsed.getTime())) {
+      res.status(400).json({ error: "Invalid occurrenceDate" });
+      return;
+    }
+    const day = startOfDayUTC(parsed);
+    if (day.getTime() > windowEnd || day.getTime() < windowStart) {
+      res.status(400).json({
+        error: "occurrence_date_out_of_range",
+        message: "The date must fall within the current occurrence period and cannot be in the future.",
+      });
+      return;
+    }
+    occurrenceDate = day;
+  }
+
+  // Activities: client override (Edit path) or the template's per-occurrence
+  // defaults. Quantities here are per-occurrence actuals — never annualised.
+  const activities = Array.isArray(body.activities) && body.activities.length > 0
+    ? (body.activities as Parameters<typeof calculateImpact>[0])
+    : (deriveOccurrenceActivities(row, cadence) as Parameters<typeof calculateImpact>[0]);
+  if (!Array.isArray(activities) || activities.length === 0) {
+    res.status(400).json({ error: "Template has no activities to log" });
+    return;
+  }
+
+  const donationsRaw = Number(body.donationsGBP ?? row.occurrenceDonationsGBP ?? 0);
+  const donations = Number.isFinite(donationsRaw) && donationsRaw > 0 ? donationsRaw : 0;
+
+  const location = normalizeActivityLocation(body.location) ?? normalizeActivityLocation(row.usualLocationJson);
+
+  // Server-side valuation, same as /save — client totals are never trusted.
+  const result = calculateImpact(activities, donations, 0, []);
+
+  // The whole confirmation — fresh handled-state check, occurrence dedupe,
+  // record insert, and template lastConfirmedAt update — runs in ONE
+  // transaction under a per-(user, template) advisory lock. Concurrent
+  // requests serialize on the lock; the loser re-reads the template, sees
+  // the occurrence already confirmed (regardless of which in-window date it
+  // chose), and gets the not-due/duplicate response instead of a second
+  // insert. This also means a confirmed record can never exist without the
+  // template having advanced. force=true is the explicit override.
+  type TxOutcome =
+    | { kind: "not_due" }
+    | { kind: "duplicate"; existingId: number }
+    | { kind: "logged"; record: typeof impactRecordsTable.$inferSelect; template: TemplateRow | null };
+  const txOutcome: TxOutcome = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${id})`,
+    );
+
+    // Authoritative handled-state check: re-read the template now that we
+    // hold the lock — a concurrent confirm/skip may have landed since the
+    // pre-check above.
+    const [fresh] = await tx
+      .select()
+      .from(recurringTemplatesTable)
+      .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+      .limit(1);
+    if (!force && (!fresh || isOccurrenceHandled(fresh as TemplateRow))) {
+      return { kind: "not_due" } as const;
+    }
+
+    if (!force) {
+      // Record-date dedupe (same user + template + day) catches pre-existing
+      // rows, e.g. legacy habit records, on the chosen date.
+      const dayStart = occurrenceDate;
+      const dayEnd = new Date(
+        Date.UTC(dayStart.getUTCFullYear(), dayStart.getUTCMonth(), dayStart.getUTCDate() + 1),
+      );
+      const [dup] = await tx
+        .select({ id: impactRecordsTable.id })
+        .from(impactRecordsTable)
+        .where(
+          and(
+            eq(impactRecordsTable.userId, userId),
+            eq(impactRecordsTable.habitTemplateId, id),
+            gte(impactRecordsTable.entryDate, dayStart),
+            lt(impactRecordsTable.entryDate, dayEnd),
+          ),
+        )
+        .limit(1);
+      if (dup) return { kind: "duplicate", existingId: dup.id as number } as const;
+    }
+
+    const [inserted] = await tx
+      .insert(impactRecordsTable)
+      .values({
+        userId,
+        name: row.label,
+        periodLabel: calendarMonthLabel(occurrenceDate),
+        totalValue: String(result.totalValue),
+        impactValue: String(result.impactValue),
+        contributionValue: String(result.contributionValue),
+        donationsValue: String(result.donationsValue),
+        personalDevelopmentValue: String(result.personalDevelopmentValue),
+        totalHours: result.totalHours,
+        activitiesJson: activities,
+        resultJson: result,
+        entryDate: occurrenceDate,
+        source: "habit",
+        kind: "recurring_confirmation",
+        habitTemplateId: id,
+        locationJson: location,
+        reportingYear: deriveReportingYear(occurrenceDate),
+      })
+      .returning();
+
+    // Confirming the occurrence ticks off the schedule until the next one —
+    // atomically with the insert, so the record and the template's advanced
+    // state commit (or roll back) together.
+    const [updatedTemplate] = await tx
+      .update(recurringTemplatesTable)
+      .set({ lastConfirmedAt: new Date() })
+      .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+      .returning();
+
+    return { kind: "logged", record: inserted, template: (updatedTemplate ?? null) as TemplateRow | null } as const;
+  });
+
+  if (txOutcome.kind === "not_due") {
+    res.status(400).json({
+      error: "occurrence_not_due",
+      message: "This occurrence has already been confirmed or skipped. The next one isn't due yet.",
+    });
+    return;
+  }
+  if (txOutcome.kind === "duplicate") {
+    res.status(409).json({
+      error: "occurrence_already_logged",
+      message:
+        "This occurrence has already been logged for this date. View or edit the existing entry, or resend with force=true to log it anyway.",
+      existingRecordId: String(txOutcome.existingId),
+      occurrenceDate: occurrenceDate.toISOString().slice(0, 10),
+    });
+    return;
+  }
+  const record = txOutcome.record;
+  const updatedTemplate = txOutcome.template;
+
+  await autoVerifyRecordsForUser(userId, [record.id]);
+
+  // `hours.logged` fires for confirmed actual contributions only — forecasts
+  // and skipped occurrences never reach this point. Non-blocking, like /save.
+  (async () => {
+    try {
+      const membership = await db.query.orgMembersTable.findFirst({
+        where: eq(orgMembersTable.userId, userId),
+      });
+      if (!membership) return;
+      await enqueueOrgEvent({
+        orgId: membership.orgId,
+        eventType: "hours.logged",
+        payload: {
+          recordId: String(record.id),
+          member: { ref: userId, email: req.user!.email },
+          name: record.name,
+          period: record.periodLabel ?? null,
+          hours: result.totalHours,
+          socialValueGBP: Math.round(result.totalValue * 100) / 100,
+          attested: false,
+          loggedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error("[impact.log-occurrence] failed to enqueue hours.logged:", err);
+    }
+  })();
+
+  res.json({
+    record: {
+      id: String(record.id),
+      name: record.name,
+      entryDate: record.entryDate.toISOString().slice(0, 10),
+      kind: record.kind,
+      reportingYear: record.reportingYear ?? null,
+      totalHours: result.totalHours,
+      totalValue: result.totalValue,
+    },
+    template: serializeTemplate((updatedTemplate ?? existing) as TemplateRow, new Date()),
+  });
+});
+
+// Skip the current scheduled occurrence: silences the due prompt until the
+// next occurrence and creates NO records of any kind.
+router.post("/templates/:id/skip", authenticate, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid template ID" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(recurringTemplatesTable)
+    .set({ lastSkippedAt: new Date() })
+    .where(and(eq(recurringTemplatesTable.id, id), eq(recurringTemplatesTable.userId, userId)))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  res.json({ template: serializeTemplate(updated as TemplateRow, new Date()) });
 });
 
 // List the calendar years the user has logged anything in. Powers the year

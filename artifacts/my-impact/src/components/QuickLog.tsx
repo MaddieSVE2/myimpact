@@ -1,22 +1,22 @@
 import { useMemo, useState } from "react";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Repeat, ArrowRight, X, Calendar } from "lucide-react";
+import { Repeat, ArrowRight, X, Calendar, Pencil, Check } from "lucide-react";
 import {
   useListRecurringTemplates,
-  useConfirmRecurringTemplate,
-  useGetImpactHistory,
-  useListImpactYears,
+  useLogRecurringOccurrence,
+  useSkipRecurringOccurrence,
   getListRecurringTemplatesQueryKey,
   getGetImpactHistoryQueryKey,
-  getListImpactYearsQueryKey,
   type RecurringTemplate,
   type SelectedActivity,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
-import { useWizard } from "@/lib/wizard-context";
 import { useToast } from "@/hooks/use-toast";
+import { NumberInput } from "@/components/ui/number-input";
+import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
+import { todayIso } from "@/components/quicklog/activity-shared";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -39,6 +39,21 @@ export function describeCadence(template: Pick<RecurringTemplate, "cadence" | "d
   return `Every ${day}`;
 }
 
+/** "this week" / "this fortnight" / "this month" for the due question. */
+export function cadencePeriodWord(cadence: RecurringTemplate["cadence"]): string {
+  if (cadence === "monthly") return "this month";
+  if (cadence === "fortnightly") return "this fortnight";
+  return "this week";
+}
+
+/** Per-occurrence hours from the template's occurrence defaults. */
+export function occurrenceHours(template: Pick<RecurringTemplate, "occurrenceActivities">): number {
+  return (template.occurrenceActivities ?? []).reduce(
+    (sum, a) => sum + (Number(a.hoursPerYear) || 0),
+    0,
+  );
+}
+
 function formatDueLabel(template: RecurringTemplate): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -51,28 +66,6 @@ function formatDueLabel(template: RecurringTemplate): string {
   if (diffDays === 1) return "Tomorrow";
   if (diffDays > 1 && diffDays < 7) return `In ${diffDays} days`;
   return next.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
-
-/**
- * Pick an overlay from history: for each template activity, if the user has a
- * more recent matching activity in their saved records, use that quantity/hours.
- */
-function buildOverlaidActivities(
-  templateActivities: SelectedActivity[],
-  history: { createdAt: string; activities?: SelectedActivity[] }[] | undefined,
-): SelectedActivity[] {
-  if (!history || history.length === 0) return templateActivities;
-  // Sort newest first
-  const sorted = [...history].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  return templateActivities.map((tplAct) => {
-    for (const record of sorted) {
-      const match = record.activities?.find((a) => a.activityId === tplAct.activityId);
-      if (match) {
-        return { ...tplAct, quantity: match.quantity, hoursPerYear: match.hoursPerYear };
-      }
-    }
-    return tplAct;
-  });
 }
 
 interface QuickLogProps {
@@ -89,33 +82,22 @@ interface QuickLogProps {
 export function QuickLog({ onlyDue = false, variant = "default", showManageLink = false }: QuickLogProps) {
   const { isLoggedIn, user } = useAuth();
   const queryClient = useQueryClient();
-  const { loadFromTemplate } = useWizard();
-  const [, navigate] = useLocation();
   const { toast } = useToast();
 
   const templatesQuery = useListRecurringTemplates({
     query: { enabled: isLoggedIn, queryKey: getListRecurringTemplatesQueryKey() },
   });
-  const historyQuery = useGetImpactHistory(
-    { userId: user?.id ?? "" },
-    {
-      query: {
-        enabled: isLoggedIn && !!user?.id,
-        queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }),
-      },
-    },
-  );
 
-  const yearsQuery = useListImpactYears({
-    query: { enabled: isLoggedIn, queryKey: getListImpactYearsQueryKey() },
-  });
+  const logMutation = useLogRecurringOccurrence();
+  const skipMutation = useSkipRecurringOccurrence();
 
-  const confirmMutation = useConfirmRecurringTemplate();
-
-  // Confirmation prompt state: which template is awaiting a "which year?"
-  // decision, and which year is currently selected in that prompt.
-  const [pendingTemplate, setPendingTemplate] = useState<RecurringTemplate | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  // Which template's occurrence prompt is open, plus editable overrides.
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editHours, setEditHours] = useState<number>(1);
+  const [editDate, setEditDate] = useState<string>(todayIso());
+  const [editLocation, setEditLocation] = useState<ActivityLocationValue | null>(null);
+  const [duplicateFor, setDuplicateFor] = useState<string | null>(null);
 
   const templates = templatesQuery.data?.templates ?? [];
   const visibleTemplates = useMemo(() => {
@@ -127,78 +109,105 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   if (templatesQuery.isLoading) return null;
   if (visibleTemplates.length === 0) return null;
 
-  const currentYear = new Date().getFullYear();
-  // Years the user already has entries in, newest first, capped at the
-  // current year (habits can't be logged into the future).
-  const recordYears = (yearsQuery.data?.years ?? [])
-    .map((y) => y.year)
-    .filter((y) => y <= currentYear)
-    .sort((a, b) => b - a);
+  const invalidateAfterLog = () => {
+    queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
+    // Refresh everything derived from impact records (dashboard totals,
+    // year picker, stats) so totals reflect the new occurrence.
+    queryClient.invalidateQueries({
+      predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).startsWith("/api/impact"),
+    });
+  };
 
-  const doConfirm = async (template: RecurringTemplate, year: number) => {
-    // Ticking a habit bulk-creates one impact entry per month of the chosen
-    // calendar year (remaining months for the current year, all months for a
-    // past year). The wizard pre-fill flow remains as a fallback path for
-    // users who want to amend before saving, but the primary action here is
-    // the bulk confirm, so we don't navigate away.
-    setPendingTemplate(null);
+  const closePrompt = () => {
+    setOpenTemplateId(null);
+    setEditing(false);
+    setDuplicateFor(null);
+  };
+
+  const openPrompt = (template: RecurringTemplate) => {
+    // The Yes/Edit/Skip prompt only exists for a due occurrence — forecasts
+    // and future occurrences are never loggable from here.
+    if (!template.isDue) return;
+    setOpenTemplateId(template.id);
+    setEditing(false);
+    setDuplicateFor(null);
+    setEditHours(Math.max(1, occurrenceHours(template)));
+    setEditDate((template.dueOccurrenceDate ?? new Date().toISOString()).slice(0, 10));
+    setEditLocation((template.usualLocation as ActivityLocationValue | null) ?? null);
+  };
+
+  /**
+   * Build the per-occurrence activities to log. When the user edited hours,
+   * scale the first activity's hours to match (templates are typically
+   * single-activity); other activities keep their defaults.
+   */
+  const buildActivities = (template: RecurringTemplate, useEdits: boolean): SelectedActivity[] => {
+    const base = (template.occurrenceActivities ?? []) as SelectedActivity[];
+    if (!useEdits || base.length === 0) return base;
+    const defaultTotal = Math.max(1, occurrenceHours(template));
+    return base.map((a, i) =>
+      i === 0
+        ? { ...a, hoursPerYear: Math.max(0, Math.round((a.hoursPerYear / defaultTotal) * editHours)) || editHours }
+        : a,
+    );
+  };
+
+  const doLog = async (template: RecurringTemplate, opts?: { useEdits?: boolean; force?: boolean }) => {
     try {
-      const result = (await confirmMutation.mutateAsync({
+      const result = await logMutation.mutateAsync({
         id: template.id,
-        data: { year },
-      })) as { entriesCreated?: number };
-      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
-      // Refresh everything derived from impact records (dashboard totals,
-      // year picker, stats) so the chosen year reflects the new activity.
-      queryClient.invalidateQueries({
-        predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).startsWith("/api/impact"),
+        data: {
+          ...(opts?.useEdits
+            ? {
+                occurrenceDate: editDate,
+                activities: buildActivities(template, true),
+                ...(editLocation ? { location: editLocation } : {}),
+              }
+            : {}),
+          ...(opts?.force ? { force: true } : {}),
+        },
       });
-      const created = result?.entriesCreated ?? 0;
-      if (created > 0) {
-        toast({
-          title: `Logged "${template.label}"`,
-          description:
-            year === currentYear
-              ? `Added ${created} monthly ${created === 1 ? "entry" : "entries"} for the rest of ${year}.`
-              : `Added ${created} monthly ${created === 1 ? "entry" : "entries"} to your ${year} impact record.`,
-        });
-      } else {
-        // Nothing new created, the user already has habit entries for the
-        // chosen year. Nudge them to the wizard if they want to adjust.
-        const overlaid = buildOverlaidActivities(
-          template.defaultActivities,
-          historyQuery.data?.records,
-        );
-        loadFromTemplate(overlaid, template.defaultDonationsGBP ?? 0);
-        toast({
-          title: `"${template.label}" already logged for ${year}`,
-          description: "Want to adjust an entry? Edit it from your history, or save a new one below.",
-        });
-        navigate("/wizard/contributions");
-      }
-    } catch {
+      invalidateAfterLog();
+      closePrompt();
+      const when = new Date(result.record.entryDate).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+      });
       toast({
-        title: "Couldn't log this habit",
-        description: "Please try again, or open the wizard to log it manually.",
+        title: `Logged "${template.label}"`,
+        description: `Added one entry for ${when} — ${result.record.totalHours} ${result.record.totalHours === 1 ? "hour" : "hours"} of actual impact.`,
+      });
+    } catch (err) {
+      const apiErr = err as { status?: number; data?: { error?: string } };
+      if (apiErr?.status === 409 && apiErr?.data?.error === "occurrence_already_logged") {
+        setDuplicateFor(template.id);
+        return;
+      }
+      toast({
+        title: "Couldn't log this activity",
+        description: "Please try again in a moment.",
         variant: "destructive",
       });
     }
   };
 
-  const handleCardTap = (template: RecurringTemplate) => {
-    if (recordYears.length === 0) {
-      // No impact records yet — nothing to ask about. Start their record for
-      // the current year without a confusing prompt.
-      void doConfirm(template, currentYear);
-      return;
+  const doSkip = async (template: RecurringTemplate) => {
+    try {
+      await skipMutation.mutateAsync({ id: template.id });
+      queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      closePrompt();
+      toast({
+        title: `Skipped ${cadencePeriodWord(template.cadence)}`,
+        description: "Nothing was logged. We'll remind you next time.",
+      });
+    } catch {
+      toast({ title: "Couldn't skip", description: "Please try again.", variant: "destructive" });
     }
-    const defaultYear = recordYears[0] ?? currentYear;
-    setSelectedYear(defaultYear);
-    setPendingTemplate(template);
   };
 
   const isCompact = variant === "compact";
+  const pending = logMutation.isPending || skipMutation.isPending;
 
   return (
     <section className={isCompact ? "mb-4" : "mb-6"} data-testid="quick-log-section">
@@ -219,6 +228,13 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
       <div className={isCompact ? "grid gap-2" : "grid gap-2.5 sm:grid-cols-2"}>
         {visibleTemplates.map((template) => {
           const dueLabel = formatDueLabel(template);
+          const hours = occurrenceHours(template);
+          const locationLabel = describeLocation(template.usualLocation as ActivityLocationValue | null);
+          const summaryParts = [
+            hours > 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null,
+            locationLabel,
+          ].filter(Boolean);
+          const isOpen = openTemplateId === template.id;
           return (
             <motion.div
               key={template.id}
@@ -232,9 +248,12 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
               data-testid={`quick-log-card-${template.id}`}
             >
               <button
-                onClick={() => handleCardTap(template)}
-                disabled={confirmMutation.isPending}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors disabled:opacity-60"
+                onClick={() => (isOpen ? closePrompt() : openPrompt(template))}
+                disabled={pending || !template.isDue}
+                className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                  template.isDue ? "hover:bg-muted/20 disabled:opacity-60" : "cursor-default"
+                }`}
+                aria-disabled={!template.isDue}
               >
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
@@ -256,11 +275,13 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                     {describeCadence(template)}
                   </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                {template.isDue && (
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                )}
               </button>
 
               <AnimatePresence>
-                {pendingTemplate?.id === template.id && (
+                {isOpen && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -271,10 +292,10 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                     <div className="px-4 py-3">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm text-foreground font-medium">
-                          Add this to your {selectedYear ?? currentYear} impact record?
+                          Did you do your {template.label.toLowerCase()} {cadencePeriodWord(template.cadence)}?
                         </p>
                         <button
-                          onClick={() => setPendingTemplate(null)}
+                          onClick={closePrompt}
                           className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
                           aria-label="Cancel"
                           data-testid={`quick-log-confirm-cancel-${template.id}`}
@@ -282,42 +303,102 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-
-                      {recordYears.length > 1 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {recordYears.map((y) => (
-                            <button
-                              key={y}
-                              onClick={() => setSelectedYear(y)}
-                              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                                selectedYear === y
-                                  ? "text-white border-transparent"
-                                  : "bg-white text-foreground border-border hover:border-foreground/40"
-                              }`}
-                              style={selectedYear === y ? { background: "var(--brand-orange-bright)" } : undefined}
-                              data-testid={`quick-log-year-${template.id}-${y}`}
-                            >
-                              {y}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {selectedYear != null && selectedYear < currentYear && (
-                        <p className="text-[11px] text-muted-foreground mt-2">
-                          Entries for {selectedYear} will be added as retrospective (added later).
+                      {summaryParts.length > 0 && !editing && (
+                        <p className="text-xs text-muted-foreground mt-1" data-testid={`quick-log-summary-${template.id}`}>
+                          {summaryParts.join(" · ")}
                         </p>
                       )}
 
-                      <button
-                        onClick={() => doConfirm(template, selectedYear ?? currentYear)}
-                        disabled={confirmMutation.isPending}
-                        className="mt-3 w-full py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-                        style={{ background: "var(--brand-orange-bright)" }}
-                        data-testid={`quick-log-confirm-yes-${template.id}`}
-                      >
-                        Yes, add to {selectedYear ?? currentYear}
-                      </button>
+                      {editing && (
+                        <div className="mt-3 space-y-3" data-testid={`quick-log-edit-${template.id}`}>
+                          <div>
+                            <label className="block text-[11px] font-medium text-foreground mb-1">Hours this time</label>
+                            <NumberInput
+                              min="0"
+                              value={editHours}
+                              onChange={(e) => setEditHours(Number(e.target.value))}
+                              className="bg-white w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                              data-testid={`quick-log-edit-hours-${template.id}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-foreground mb-1">Date</label>
+                            <input
+                              type="date"
+                              value={editDate}
+                              max={todayIso()}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              className="bg-white w-full px-3 py-2 text-sm border border-border rounded-md"
+                              data-testid={`quick-log-edit-date-${template.id}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-foreground mb-1">Where?</label>
+                            <LocationPicker value={editLocation} onChange={setEditLocation} />
+                          </div>
+                        </div>
+                      )}
+
+                      {duplicateFor === template.id ? (
+                        <div className="mt-3" data-testid={`quick-log-duplicate-${template.id}`}>
+                          <p className="text-xs text-foreground">
+                            Looks like this occurrence is already logged for that date. Log it anyway?
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => void doLog(template, { useEdits: editing, force: true })}
+                              disabled={pending}
+                              className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
+                              style={{ background: "var(--brand-orange-bright)" }}
+                              data-testid={`quick-log-force-${template.id}`}
+                            >
+                              Log anyway
+                            </button>
+                            <button
+                              onClick={closePrompt}
+                              className="flex-1 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30"
+                            >
+                              Never mind
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={() => void doLog(template, { useEdits: editing })}
+                            disabled={pending}
+                            className="flex-1 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+                            style={{ background: "var(--brand-orange-bright)" }}
+                            data-testid={`quick-log-confirm-yes-${template.id}`}
+                          >
+                            <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                            {editing ? "Log it" : "Yes, log it"}
+                          </button>
+                          {!editing && (
+                            <button
+                              onClick={() => setEditing(true)}
+                              disabled={pending}
+                              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 inline-flex items-center gap-1.5 disabled:opacity-60"
+                              data-testid={`quick-log-edit-button-${template.id}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() => void doSkip(template)}
+                            disabled={pending}
+                            className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:bg-muted/30 disabled:opacity-60"
+                            data-testid={`quick-log-skip-${template.id}`}
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-muted-foreground mt-2">
+                        Logging adds one entry dated to the occurrence. Skipping logs nothing.
+                      </p>
                     </div>
                   </motion.div>
                 )}

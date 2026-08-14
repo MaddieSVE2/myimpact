@@ -1,13 +1,18 @@
 import { motion } from "framer-motion";
 import { Repeat } from "lucide-react";
+import { NumberInput } from "@/components/ui/number-input";
+
+const OCCURRENCES_PER_YEAR = { weekly: 52, fortnightly: 26, monthly: 12 } as const;
 
 export function RecurringTemplateDialog({
   tplLabel,
   tplCadence,
   tplDay,
+  tplHours,
   setTplLabel,
   setTplCadence,
   setTplDay,
+  setTplHours,
   onClose,
   onSave,
   isSaving,
@@ -15,13 +20,16 @@ export function RecurringTemplateDialog({
   tplLabel: string;
   tplCadence: "weekly" | "fortnightly" | "monthly";
   tplDay: number;
+  tplHours: number;
   setTplLabel: (v: string) => void;
   setTplCadence: (v: "weekly" | "fortnightly" | "monthly") => void;
   setTplDay: (v: number) => void;
+  setTplHours: (v: number) => void;
   onClose: () => void;
   onSave: () => void;
   isSaving: boolean;
 }) {
+  const forecastHours = Math.round(Math.max(0, tplHours) * OCCURRENCES_PER_YEAR[tplCadence]);
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
@@ -44,7 +52,8 @@ export function RecurringTemplateDialog({
           <h2 className="text-base font-semibold text-foreground">Make this a regular activity?</h2>
         </div>
         <p className="text-xs text-muted-foreground mb-5">
-          We'll show a one-tap "quick log" card on your home and history pages when it's next due.
+          We'll remind you on your home and history pages each time it's due — you confirm (or skip)
+          each occurrence, and only confirmed occurrences count toward your impact.
         </p>
 
         <label className="block text-xs font-medium text-foreground mb-1.5">Label</label>
@@ -108,6 +117,30 @@ export function RecurringTemplateDialog({
             ))}
           </div>
         )}
+
+        <label className="block text-xs font-medium text-foreground mb-1.5">
+          How many hours does one session usually take?
+        </label>
+        <NumberInput
+          min="0"
+          value={tplHours}
+          onChange={(e) => setTplHours(Number(e.target.value))}
+          className="bg-white w-full px-3 py-2.5 mb-3 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20"
+          data-testid="recurring-template-hours-input"
+        />
+
+        <div
+          className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 mb-5"
+          data-testid="recurring-template-forecast"
+        >
+          <p className="text-xs text-foreground font-medium capitalize">
+            {tplCadence} · usually {tplHours} {tplHours === 1 ? "hour" : "hours"} · roughly {forecastHours} hours
+            over a full year
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Forecast only — your record grows solely from occurrences you confirm.
+          </p>
+        </div>
 
         <div className="flex gap-2.5">
           <button

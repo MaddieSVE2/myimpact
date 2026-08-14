@@ -17,8 +17,14 @@ const API_PORT = Number(process.env.E2E_API_PORT ?? 8080);
 
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${WEB_PORT}`;
 
+// Validation runs several suites concurrently (one per port pair). Each run
+// gets its own artifacts/report dirs — sharing test-results/ across parallel
+// runs causes ENOENT trace-copy failures and SIGABRT worker crashes.
+const RUN_ID = String(API_PORT);
+
 export default defineConfig({
   testDir: "./tests",
+  outputDir: `./test-results/run-${RUN_ID}`,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // Never silently retry: the project policy is to quarantine flakes.
@@ -26,8 +32,8 @@ export default defineConfig({
   // Single worker so test data isolation (per-email) is easier to reason about.
   workers: 1,
   reporter: process.env.CI
-    ? [["github"], ["html", { open: "never" }], ["list"]]
-    : [["list"], ["html", { open: "never" }]],
+    ? [["github"], ["html", { open: "never", outputFolder: `playwright-report/run-${RUN_ID}` }], ["list"]]
+    : [["list"], ["html", { open: "never", outputFolder: `playwright-report/run-${RUN_ID}` }]],
 
   timeout: 60_000,
   expect: { timeout: 10_000 },
