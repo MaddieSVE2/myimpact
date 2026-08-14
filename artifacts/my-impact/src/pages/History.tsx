@@ -544,6 +544,7 @@ export default function History() {
       lat: (r as { lat?: number | null }).lat ?? null,
       lng: (r as { lng?: number | null }).lng ?? null,
       entryDate: (r as { entryDate?: string | null }).entryDate ?? null,
+      location: (r as { location?: HistoryRecord["location"] }).location ?? null,
       donationsGBP,
       additionalVolunteerHours,
     };
@@ -1492,6 +1493,7 @@ export default function History() {
                                   lat: lr.lat ?? null,
                                   lng: lr.lng ?? null,
                                   entryDate: (record as { entryDate?: string | null }).entryDate ?? null,
+                                  location: (record as { location?: HistoryRecord["location"] }).location ?? null,
                                 };
                                 loadFromRecord(histRecord);
                                 navigate("/results");

@@ -28,11 +28,14 @@ const state = vi.hoisted(() => {
   const recordVerifications: Record<string, unknown>[] = [];
   const userProfiles: Record<string, unknown>[] = [];
   const orgMembers: Record<string, unknown>[] = [];
+  const organisations: Record<string, unknown>[] = [];
+  const orgMemberConsents: Record<string, unknown>[] = [];
   const publicProfiles: Record<string, unknown>[] = [];
   const users: Record<string, unknown>[] = [];
   const ids = { impact: 1, template: 1 };
   return {
     impactRecords, recurringTemplates, recordVerifications, userProfiles, orgMembers,
+    organisations, orgMemberConsents,
     publicProfiles, users,
     ids,
     authUser: null as { id: string; email: string } | null,
@@ -109,8 +112,9 @@ vi.mock("@workspace/db", () => {
     "id", "userId", "label", "cadence", "dayOfPeriod", "anchorDate",
     "defaultActivities", "defaultDonationsGBP", "lastConfirmedAt", "createdAt",
   ]);
-  const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role"]);
-  const organisationsTable = tableTag("organisations", ["id", "name"]);
+  const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role", "status"]);
+  const organisationsTable = tableTag("organisations", ["id", "name", "dataSharingMode", "revokedAt", "dashboardSections", "autoVerifyActivities"]);
+  const orgMemberConsentsTable = tableTag("org_member_consents", ["id", "orgId", "userId", "status", "shareFrom"]);
   const orgMatchRatesTable = tableTag("org_match_rates", ["id", "orgId", "effectiveFrom"]);
   const journalEntriesTable = tableTag("journal_entries", ["id", "userId"]);
   const userProfilesTable = tableTag("user_profiles", ["id", "userId", "lastAckedStreakMilestone"]);
@@ -335,14 +339,25 @@ vi.mock("@workspace/db", () => {
         findFirst: vi.fn(async (opts?: { where?: Pred }) =>
           state.users.filter((r) => (opts?.where ? opts.where(r) : true))[0] ?? null),
       },
-      organisationsTable: { findFirst: vi.fn(async () => null) },
+      organisationsTable: {
+        findFirst: vi.fn(async (opts?: { where?: Pred }) =>
+          state.organisations.filter((r) => (opts?.where ? opts.where(r) : true))[0] ?? null),
+      },
+      orgMemberConsentsTable: {
+        findMany: vi.fn(async (opts?: { where?: Pred }) =>
+          state.orgMemberConsents.filter((r) => (opts?.where ? opts.where(r) : true))),
+      },
+      recordVerificationsTable: {
+        findFirst: vi.fn(async (opts?: { where?: Pred }) =>
+          state.recordVerifications.filter((r) => (opts?.where ? opts.where(r) : true))[0] ?? null),
+      },
       orgMatchRatesTable: { findMany: vi.fn(async () => []) },
     },
   };
 
   return {
     db, impactRecordsTable, recurringTemplatesTable, orgMembersTable,
-    organisationsTable, orgMatchRatesTable, journalEntriesTable,
+    organisationsTable, orgMemberConsentsTable, orgMatchRatesTable, journalEntriesTable,
     userProfilesTable, recordVerificationsTable, publicProfilesTable, usersTable,
   };
 });
@@ -398,6 +413,8 @@ function resetAll() {
   state.recordVerifications.length = 0;
   state.userProfiles.length = 0;
   state.orgMembers.length = 0;
+  state.organisations.length = 0;
+  state.orgMemberConsents.length = 0;
   state.publicProfiles.length = 0;
   state.users.length = 0;
   state.ids.impact = 1;
@@ -715,5 +732,87 @@ describe("/year-rollover — prior-year headline reconciled", () => {
     const res = await request(app).get("/api/impact/year-rollover").expect(200);
     expect(res.body.priorYearTotalValue).toBeCloseTo(Math.round((721.5 + 50 * (NLW + PD)) * 100) / 100, 2);
     expect(res.body.priorYearTotalHours).toBe(50);
+  });
+});
+
+// ── /save → hours.logged webhook gating by org sharing mode ─────────────────
+// The webhook must follow the same visibility predicate as dashboards and
+// breakdowns: consented orgs only receive events for records inside a
+// member's active-consent shareFrom window; revoked orgs never receive
+// events; explicit orgs keep the legacy behaviour.
+describe("/save — hours.logged webhook respects org sharing mode", () => {
+  const flush = () => new Promise((r) => setTimeout(r, 20));
+
+  async function saveAndFlush(payload: Record<string, unknown> = {}) {
+    const { enqueueOrgEvent } = await import("../src/lib/webhookDispatcher.js");
+    vi.mocked(enqueueOrgEvent).mockClear();
+    const app = makeApp();
+    await request(app).post("/api/impact/save").send(savePayload(payload)).expect(200);
+    await flush();
+    return vi.mocked(enqueueOrgEvent);
+  }
+
+  it("explicit-submission org: emits with the contribution-model fields", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const mock = await saveAndFlush({ activityDate: "2026-03-10" });
+    expect(mock).toHaveBeenCalledTimes(1);
+    const payload = mock.mock.calls[0][0].payload as Record<string, unknown>;
+    expect(payload.activityDate).toBe("2026-03-10");
+    expect(payload.verificationStatus).toBe("submitted");
+    expect(payload.reportingYear).toBe(2026);
+  });
+
+  it("redacts the webhook location to the general area (no postcode, label, or coordinates)", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const mock = await saveAndFlush({ activityDate: "2026-03-10", location: LOCATION });
+    expect(mock).toHaveBeenCalledTimes(1);
+    const payload = mock.mock.calls[0][0].payload as Record<string, unknown>;
+    expect(payload.location).toEqual({
+      mode: "in_person",
+      townCity: "Leeds",
+      localAuthority: "Leeds",
+      region: "Yorkshire and the Humber",
+      country: "England",
+      postcodeArea: "LS",
+    });
+    const raw = JSON.stringify(payload.location);
+    expect(raw).not.toContain("LS6 3HN");
+    expect(raw).not.toContain("Sunnybank");
+    expect(raw).not.toContain("53.8195");
+  });
+
+  it("explicit-submission org: pending/inactive membership emits nothing", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "pending" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const mock = await saveAndFlush({ activityDate: "2026-03-10" });
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("consented org without an active consent: emits nothing", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "consented_logging", revokedAt: null, dashboardSections: null });
+    const mock = await saveAndFlush({ activityDate: "2026-03-10" });
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("consented org: emits only when the activity date is inside the shareFrom window", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "consented_logging", revokedAt: null, dashboardSections: null });
+    state.orgMemberConsents.push({ id: "c1", orgId: "org-1", userId: USER.id, status: "active", shareFrom: new Date("2026-01-01T00:00:00Z") });
+
+    const before = await saveAndFlush({ activityDate: "2025-12-20" });
+    expect(before).not.toHaveBeenCalled();
+
+    const inside = await saveAndFlush({ activityDate: "2026-02-01" });
+    expect(inside).toHaveBeenCalledTimes(1);
+  });
+
+  it("revoked org: emits nothing", async () => {
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "member", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: new Date(), dashboardSections: null });
+    const mock = await saveAndFlush({ activityDate: "2026-03-10" });
+    expect(mock).not.toHaveBeenCalled();
   });
 });

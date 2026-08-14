@@ -15,6 +15,7 @@ import CopyField from "@/components/CopyField";
 import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
+import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
 import { useSaveImpact } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1254,6 +1255,7 @@ export default function Results() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 pb-28">
       <OrgPromptsSection variant="compact" />
+      <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} />
       {/* Hero */}
       <motion.div
         className="text-center mb-10"

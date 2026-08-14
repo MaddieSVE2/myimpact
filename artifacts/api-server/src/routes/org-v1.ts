@@ -311,6 +311,9 @@ router.post("/hours", requireScope("hours.write"), async (req: ApiKeyRequest, re
     attestedAt: now,
     source: "org-attested",
     kind: "org_api",
+    // Date the activity happened — keeps period/location reporting and the
+    // reportingYear (below) consistent for attested records.
+    entryDate: occurredAtRaw,
     reportingYear: occurredAtRaw.getUTCFullYear(),
   }).returning();
 
@@ -330,6 +333,14 @@ router.post("/hours", requireScope("hours.write"), async (req: ApiKeyRequest, re
     attested: true,
     apiKeyId: req.apiKey!.id,
     apiKeyLabel: req.apiKey!.label,
+    // Contribution-model fields (see docs/org-visibility-and-verification.md).
+    // Org-API records are pre-attested, so their state is "verified".
+    activityDate: occurredAtRaw.toISOString().slice(0, 10),
+    kind: "org_api" as const,
+    location: null,
+    reportingYear: occurredAtRaw.getUTCFullYear(),
+    recurrenceSource: null,
+    verificationStatus: "verified" as const,
   };
   await enqueueOrgEvent({ orgId: req.apiKey!.orgId, eventType: "hours.logged", payload: eventData });
   await enqueueOrgEvent({ orgId: req.apiKey!.orgId, eventType: "hours.attested", payload: eventData });

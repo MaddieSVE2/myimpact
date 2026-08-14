@@ -30,3 +30,4 @@
 - [Estimate vs actual double-count rule](contribution-kinds.md) — yearly aggregations keep raw sums and subtract the shared reconciliation excess; never re-sum or bare SQL SUM on new surfaces.
 - [Recurring reminder flow](recurring-reminder-flow.md) — templates log ONE contribution per confirmed occurrence; current-year bulk /confirm retired; forecasts never become actuals.
 - [Admin endpoint testing](admin-endpoint-testing.md) — no admin persona exists; test admin routes by seeding an allowlisted user and signing an mi_session JWT with SESSION_SECRET; clean up test rows after.
+- [Org verification states](org-verification-states.md) — three-state model (submitted/approved/verified) rides alongside the legacy `verified` boolean; never re-add auto-"Verified" labels for member submissions.

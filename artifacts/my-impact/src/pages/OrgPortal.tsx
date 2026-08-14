@@ -202,6 +202,10 @@ interface MemberSubmission {
   totalValue: number;
   submittedAt: string;
   source: SubmissionSource;
+  // Three-state verification: "verified" (pre-attested via the org API),
+  // "approved" (manager or auto-verify approval), "submitted" (awaiting review).
+  verificationStatus?: "verified" | "approved" | "submitted";
+  activityDate?: string | null;
   activityCount: number;
   lines: MemberSubmissionLine[];
   evidence?: SubmissionEvidence[];
@@ -287,13 +291,10 @@ function MemberSubmissionsPanel() {
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <BadgeCheck className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Verified records</h3>
-            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-              Auto-accepted
-            </span>
+            <h3 className="text-sm font-semibold text-foreground">Organisation records</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-2">
-            Records counted toward your organisation's verified totals. Filter by source to see what members sent versus what your org attested via API.
+            Records members sent to your organisation or your org attested via API. Each shows its state: submitted (awaiting review), approved by your organisation, or verified (pre-attested via API).
           </p>
           <div className="flex flex-wrap gap-1.5" data-testid="member-submissions-source-tabs">
             {SOURCE_TABS.map(t => (
@@ -355,6 +356,24 @@ function MemberSubmissionsPanel() {
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${s.source === "member-submitted" ? "bg-primary/10 text-primary" : "bg-emerald-100 text-emerald-700"}`}>
                         {s.source === "member-submitted" ? "Member-submitted" : "Org-attested"}
                       </span>
+                      {s.verificationStatus && (
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            s.verificationStatus === "verified"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : s.verificationStatus === "approved"
+                                ? "bg-green-50 text-green-700"
+                                : "bg-amber-50 text-amber-700"
+                          }`}
+                          data-testid={`submission-status-${s.recordId}`}
+                        >
+                          {s.verificationStatus === "verified"
+                            ? "Verified"
+                            : s.verificationStatus === "approved"
+                              ? "Approved"
+                              : "Awaiting review"}
+                        </span>
+                      )}
                       {s.period && (
                         <span className="text-[11px] text-muted-foreground">· {s.period}</span>
                       )}

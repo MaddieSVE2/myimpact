@@ -338,9 +338,46 @@ describe("POST /api/org/member-submit", () => {
     expect(payload.source).toBe("member-submitted");
     expect(payload.activityCount).toBe(2);
     expect(payload.attested).toBe(true);
+    // Contribution-model fields (see docs/org-visibility-and-verification.md).
+    expect(typeof payload.activityDate).toBe("string");
+    expect(payload.activityDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(payload.kind).toBe("legacy");
+    expect(payload.location).toBeNull();
+    expect(typeof payload.reportingYear).toBe("number");
+    expect(payload.recurrenceSource).toBeNull();
+    // Auto-verify is ON in this test, so the record lands approved — never
+    // "verified" (that state is reserved for org-API pre-attested records).
+    expect(payload.verificationStatus).toBe("approved");
 
     // Analytics tracked.
     expect(state.tracked.some(t => t.eventName === "org_member_submit_completed")).toBe(true);
+  });
+
+  it("without auto-verify: no verification row is written and the webhook reports verificationStatus 'submitted'", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.organisation = { revokedAt: null, autoVerifyActivities: false };
+    state.insertedRecordId = 8888;
+
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      activities: [{ activityId: "tree_planting", quantity: 2 }],
+    });
+
+    expect(res.status).toBe(201);
+
+    // No record_verifications insert — the record awaits manager review.
+    const tables = state.inserts.map(i => i.table);
+    expect(tables).toEqual(["impact_records", "org_audit_log"]);
+
+    // The record persists a reporting year derived from the activity date.
+    const recordValues = state.inserts[0].values as Record<string, unknown>;
+    expect(typeof recordValues.reportingYear).toBe("number");
+
+    expect(state.enqueued).toHaveLength(1);
+    const payload = state.enqueued[0].payload as Record<string, unknown>;
+    expect(payload.verificationStatus).toBe("submitted");
+    expect(typeof payload.reportingYear).toBe("number");
   });
 
   it("saveToPersonal: links the personal copy to its org submission via resultJson.orgRecordId", async () => {

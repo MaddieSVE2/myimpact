@@ -70,6 +70,9 @@ interface RealActivity {
   hours: number;
   socialValueGBP: number;
   verified: boolean;
+  // Three-state verification: "verified" (pre-attested via the org API),
+  // "approved" (manager or auto-verify approval), "submitted" (self-reported).
+  verificationStatus?: "verified" | "approved" | "submitted";
   valuePerUnit: number;
   unitLabel: string;
   proxy: string;
@@ -90,10 +93,164 @@ const SOURCE_BADGE_CLASSES: Record<RealActivity["source"], string> = {
   "shared": "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
+// Three-state verification labels: self-reported submissions, organisation
+// approvals (manual or auto-verify) and pre-attested org-API records.
+const STATUS_LABELS: Record<NonNullable<RealActivity["verificationStatus"]>, string> = {
+  submitted: "Submitted",
+  approved: "Organisation approved",
+  verified: "Verified (pre-attested)",
+};
+
+const STATUS_BADGE_CLASSES: Record<NonNullable<RealActivity["verificationStatus"]>, string> = {
+  submitted: "bg-amber-50 text-amber-700 border border-amber-200",
+  approved: "bg-green-50 text-green-700 border border-green-200",
+  verified: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+};
+
 interface RealMember {
   id: string;
   name: string;
   email: string | null;
+}
+
+// ── Reporting breakdown panel ────────────────────────────────────────────────
+// Groups the org's shared records by one dimension using activity dates and
+// structured locations (GET /api/org/stats/breakdown).
+
+const BREAKDOWN_DIMENSIONS: Array<{ key: string; label: string }> = [
+  { key: "month", label: "Month" },
+  { key: "town", label: "Town / city" },
+  { key: "postcode_area", label: "Postcode area" },
+  { key: "local_authority", label: "Local authority" },
+  { key: "region", label: "Region" },
+  { key: "category", label: "Category" },
+  { key: "sdg", label: "SDG" },
+  { key: "proxy", label: "Proxy / outcome" },
+];
+
+interface BreakdownRow {
+  key: string;
+  label: string;
+  records: number;
+  members: number;
+  hours: number;
+  valueGBP: number;
+}
+
+interface BreakdownResponse {
+  dimension: string;
+  rows: BreakdownRow[];
+  reconciliation: { hoursExcess: number; valueExcess: number };
+}
+
+function OrgBreakdownPanel({ periodOffset }: { periodOffset: number }) {
+  const [dimension, setDimension] = useState("month");
+  const { data, isLoading, isError } = useQuery<BreakdownResponse>({
+    queryKey: ["org-breakdown", dimension, periodOffset],
+    queryFn: async () => {
+      const params = new URLSearchParams({ dimension, periodOffset: String(periodOffset) });
+      const res = await fetch(`${BASE}/api/org/stats/breakdown?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load breakdown");
+      return res.json();
+    },
+  });
+
+  const rows = data?.rows ?? [];
+  const recon = data?.reconciliation;
+
+  function downloadBreakdownCSV() {
+    const dimLabel = BREAKDOWN_DIMENSIONS.find(d => d.key === dimension)?.label ?? dimension;
+    const headers = [dimLabel, "Records", "Members", "Hours", "Social Value (GBP)"];
+    const escape = (v: string) => {
+      const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csvRows = rows.map(r => [r.label, String(r.records), String(r.members), String(r.hours), String(r.valueGBP)]);
+    const csv = [headers, ...csvRows].map(r => r.map(escape).join(",")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `breakdown-${dimension}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 mb-6" data-testid="org-breakdown-panel">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Reporting breakdown</h3>
+          <p className="text-xs text-muted-foreground">
+            Group this period's shared activity by date, location, category, SDG or proxy.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={dimension}
+            onChange={e => setDimension(e.target.value)}
+            className="bg-white px-2 py-1.5 rounded-md border border-border text-[13px]"
+            aria-label="Breakdown dimension"
+            data-testid="select-breakdown-dimension"
+          >
+            {BREAKDOWN_DIMENSIONS.map(d => (
+              <option key={d.key} value={d.key}>{d.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={downloadBreakdownCSV}
+            disabled={rows.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[13px] font-medium hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            data-testid="btn-download-breakdown-csv"
+          >
+            <Download className="w-3.5 h-3.5" /> CSV
+          </button>
+        </div>
+      </div>
+      {isLoading ? (
+        <p className="text-[13px] text-muted-foreground py-4 text-center">Loading…</p>
+      ) : isError ? (
+        <p className="text-[13px] text-muted-foreground py-4 text-center">Could not load the breakdown.</p>
+      ) : rows.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground py-4 text-center">No shared activity in this period yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3">
+                  {BREAKDOWN_DIMENSIONS.find(d => d.key === dimension)?.label}
+                </th>
+                <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Records</th>
+                <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Members</th>
+                <th className="font-semibold uppercase text-[11px] tracking-wider py-2 pr-3 text-right">Hours</th>
+                <th className="font-semibold uppercase text-[11px] tracking-wider py-2 text-right">Social value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.key} className="border-b border-border/60" data-testid={`breakdown-row-${r.key}`}>
+                  <td className="py-2 pr-3 font-medium text-foreground">{r.label}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{r.records}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{r.members}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{Math.round(r.hours).toLocaleString("en-GB")}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold">£{r.valueGBP.toLocaleString("en-GB", { maximumFractionDigits: 0 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {recon && (recon.valueExcess > 0 || recon.hoursExcess > 0) && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Rows are raw sums. £{recon.valueExcess.toLocaleString("en-GB", { maximumFractionDigits: 0 })} / {Math.round(recon.hoursExcess).toLocaleString("en-GB")} hrs of estimate-vs-actual overlap is reconciled out of period totals and can't be attributed to a single row.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function useRealOrgActivities(enabled: boolean, from: string, to: string) {
@@ -263,7 +420,7 @@ export default function OrgActivities() {
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function downloadCSV() {
-    const headers = ["Date", "Member Name", "Member Email", "Category", "Activity", "Description", "Hours", "Social Value (GBP)", "Verified", "Source"];
+    const headers = ["Date", "Member Name", "Member Email", "Category", "Activity", "Description", "Hours", "Social Value (GBP)", "Verified", "Status", "Source"];
 
     const rows = filtered.map(a => {
       const isReal = !isDemoOrg;
@@ -298,6 +455,9 @@ export default function OrgActivities() {
         String(a.hours),
         String(a.socialValueGBP),
         a.verified ? "Yes" : "No",
+        isReal
+          ? STATUS_LABELS[(a as RealActivity).verificationStatus ?? "submitted"]
+          : (a.verified ? "Organisation approved" : "Submitted"),
         isReal ? SOURCE_LABELS[(a as RealActivity).source] ?? "" : "Submitted",
       ];
     });
@@ -502,6 +662,14 @@ export default function OrgActivities() {
                                   {SOURCE_LABELS[realA.source]}
                                 </span>
                               )}
+                              {isReal && realA.verificationStatus && (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${STATUS_BADGE_CLASSES[realA.verificationStatus]}`}
+                                  data-testid={`badge-status-${a.id}`}
+                                >
+                                  {STATUS_LABELS[realA.verificationStatus]}
+                                </span>
+                              )}
                             </div>
                             <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">{a.description}</p>
                             {isReal && (realA.evidence?.length ?? 0) > 0 && (
@@ -575,6 +743,8 @@ export default function OrgActivities() {
             </>
           )}
         </div>
+
+        {!isDemoOrg && <OrgBreakdownPanel periodOffset={periodOffset} />}
 
         {migration && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5" data-testid="migrated-history-section">

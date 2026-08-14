@@ -39,6 +39,10 @@ export interface MyOrgResponse {
     fullTierEnabled?: boolean;
     membershipStatus?: string;
     evidencePolicy?: string;
+    // Visibility mode: "consented_logging" (automatic visibility — logged
+    // activity is shared with the org) or "explicit_submission" (only what
+    // the member submits reaches the org's named feed).
+    dataSharingMode?: "explicit_submission" | "consented_logging";
     branding?: OrgBranding;
   } | null;
 }

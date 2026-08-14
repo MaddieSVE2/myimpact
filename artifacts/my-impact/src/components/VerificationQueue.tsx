@@ -224,7 +224,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Review and confirm hours logged by {orgName} members. Verified hours appear with a chip on members&apos; profiles and feed into funder reports.
+            Review and confirm hours logged by {orgName} members. Approved hours appear with a chip on members&apos; profiles and feed into funder reports.
           </p>
         </div>
         {selected.size > 0 && (

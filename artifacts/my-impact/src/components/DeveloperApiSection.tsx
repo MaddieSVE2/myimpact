@@ -566,6 +566,25 @@ function LiveDeveloperApiSection() {
           </div>
 
           <div>
+            <p className="font-semibold mb-1">hours.logged / hours.attested payload fields</p>
+            <p className="text-muted-foreground mb-1.5">
+              Alongside the original fields (recordId, member, hours, socialValueGBP, occurredAt/loggedAt, attested),
+              payloads now include contribution-model fields:
+            </p>
+            <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
+              <li><code className="font-mono">activityDate</code>: ISO date the activity happened (may differ from when it was logged)</li>
+              <li><code className="font-mono">location</code>: general-area activity location only (townCity, localAuthority, region, country, postcodeArea prefix such as &quot;SW&quot;) or <code className="font-mono">null</code> — the full postcode, venue label and coordinates are never sent</li>
+              <li><code className="font-mono">kind</code>: contribution kind — <code className="font-mono">quick_log</code>, <code className="font-mono">annual_estimate</code>, <code className="font-mono">recurring_confirmation</code>, <code className="font-mono">bulk_retrospective</code>, <code className="font-mono">org_api</code> or <code className="font-mono">legacy</code></li>
+              <li><code className="font-mono">reportingYear</code>: the reporting period the record counts toward, or <code className="font-mono">null</code></li>
+              <li><code className="font-mono">recurrenceSource</code>: <code className="font-mono">{"{ habitTemplateId }"}</code> when the entry came from a recurring activity, else <code className="font-mono">null</code></li>
+              <li><code className="font-mono">verificationStatus</code>: <code className="font-mono">submitted</code> (self-reported), <code className="font-mono">approved</code> (organisation approved) or <code className="font-mono">verified</code> (pre-attested via the org API)</li>
+            </ul>
+            <p className="text-muted-foreground mt-1.5">
+              Quantities are always what the member actually recorded — forecast or projected quantities are never emitted.
+            </p>
+          </div>
+
+          <div>
             <p className="font-semibold mb-1">Verifying webhook signatures</p>
             <p className="text-muted-foreground mb-1.5">
               Every delivery includes an <code className="font-mono bg-muted/30 px-1">X-MyImpact-Signature</code> header in the form

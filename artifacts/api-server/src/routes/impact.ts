@@ -8,7 +8,7 @@ import {
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
-import { getOrgSharingContext, sharedRecordsCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -28,6 +28,7 @@ import { getPeriodBounds } from "../lib/summaryPeriod.js";
 import {
   parseRecordKind,
   normalizeActivityLocation,
+  redactLocationForOrg,
   deriveReportingYear,
   computeEstimateActualReconciliation,
 } from "../lib/contributionModel.js";
@@ -538,6 +539,32 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
         where: eq(orgMembersTable.userId, userId),
       });
       if (!membership) return;
+      // Only emit for records the organisation can actually see under its
+      // sharing mode — the same predicate as dashboards/exports/breakdowns:
+      //   * consented_logging: the member must have an ACTIVE consent and the
+      //     activity date must fall inside their shareFrom window; otherwise
+      //     nothing (including the date/location metadata) is transmitted.
+      //   * explicit_submission (legacy): all active members' records are
+      //     org-visible in aggregates, so the event fires as before.
+      // Revoked orgs never receive events.
+      const sharingCtx = await getOrgSharingContext(membership.orgId);
+      if (sharingCtx.revoked) return;
+      // memberIds is the exact set whose records appear in org aggregates:
+      // active members only (explicit mode), or active members with an ACTIVE
+      // consent (consented mode). Pending/inactive members never emit.
+      if (!sharingCtx.memberIds.includes(userId)) return;
+      if (sharingCtx.mode === "consented_logging") {
+        if (!recordInSharedWindow(sharingCtx, userId, record.entryDate)) return;
+      }
+      // Reflect the record's real state: auto-verify orgs approve personal
+      // saves immediately (see autoVerifyRecordsForUser above).
+      const approvedRow = await db.query.recordVerificationsTable.findFirst({
+        where: and(
+          eq(recordVerificationsTable.recordId, record.id),
+          eq(recordVerificationsTable.orgId, membership.orgId),
+          eq(recordVerificationsTable.status, "approved"),
+        ),
+      });
       await enqueueOrgEvent({
         orgId: membership.orgId,
         eventType: "hours.logged",
@@ -550,6 +577,21 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
           socialValueGBP: Math.round(serverImpactResult.totalValue * 100) / 100,
           attested: false,
           loggedAt: new Date().toISOString(),
+          // Contribution-model fields. Quantities above are what the member
+          // actually recorded (an annualised estimate for kind
+          // "annual_estimate") — forecast/projected quantities are never
+          // emitted over webhooks.
+          activityDate: record.entryDate.toISOString().slice(0, 10),
+          kind: record.kind,
+          // General area only — the member UI promises orgs never receive
+          // the full postcode, venue label, or coordinates.
+          location: redactLocationForOrg(record.locationJson),
+          reportingYear: record.reportingYear ?? null,
+          // Set when this entry was spawned from a recurring activity.
+          recurrenceSource: record.habitTemplateId != null
+            ? { habitTemplateId: record.habitTemplateId }
+            : null,
+          verificationStatus: approvedRow ? "approved" : "submitted",
         },
       });
     } catch (err) {

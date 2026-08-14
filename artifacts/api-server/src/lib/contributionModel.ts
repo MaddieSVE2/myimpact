@@ -104,6 +104,38 @@ export function normalizeActivityLocation(raw: unknown): ActivityLocation | null
   return hasContent ? loc : null;
 }
 
+/** General-area view of a location — safe to disclose to organisations. */
+export interface OrgFacingLocation {
+  mode: LocationMode;
+  townCity: string | null;
+  localAuthority: string | null;
+  region: string | null;
+  country: string | null;
+  /** Letter prefix of the postcode area only (e.g. "SW"), never the full postcode. */
+  postcodeArea: string | null;
+}
+
+/**
+ * Redacts a stored activity location to the general area before it is sent
+ * to organisations (webhook payloads, org APIs). The member-facing UI
+ * promises that "only the general area is shared with organisations", so
+ * this must never include the full postcode, free-text label/venue, or
+ * lat/lng coordinates.
+ */
+export function redactLocationForOrg(raw: unknown): OrgFacingLocation | null {
+  const loc = normalizeActivityLocation(raw);
+  if (!loc) return null;
+  const m = loc.postcode ? /^([A-Za-z]{1,2})\d/.exec(loc.postcode.trim()) : null;
+  return {
+    mode: loc.mode,
+    townCity: loc.townCity,
+    localAuthority: loc.localAuthority,
+    region: loc.region,
+    country: loc.country,
+    postcodeArea: m ? m[1].toUpperCase() : null,
+  };
+}
+
 // ── Reporting period ───────────────────────────────────────────────────────
 
 /**

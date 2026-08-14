@@ -104,6 +104,11 @@ export interface HistoryRecord {
   // can keep the entry on its original calendar day unless the user
   // deliberately changes it.
   entryDate?: string | null;
+  // Optional structured activity location stored on the record. Loaders
+  // MUST set the wizard's activityLocation from this (null clears any
+  // stale location left over from a previous wizard session) so an edit
+  // never silently erases or swaps the record's location.
+  location?: ActivityLocationValue | null;
   // Optional contribution inputs the entry was originally saved with.
   // These aren't stored as raw columns, but both are recoverable from
   // the saved result: donationsGBP === impactResult.donationsValue, and
@@ -417,6 +422,9 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       setLocationMetaState(null);
     }
     setActivitySelectionState(defaultActivitySelection);
+    // Restore (or clear) the record's structured activity location so a
+    // later save can't inherit a location from an unrelated wizard session.
+    setActivityLocationState(record.location ?? null);
     // Pre-fill the wizard's date picker with the record's existing
     // entryDate so an "edit" flow keeps the entry on its original day
     // unless the user deliberately changes it. Falls back to today
@@ -486,6 +494,11 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     });
     setActivityModeState('pick');
     setEntryDateState(record.entryDate || todayIso());
+    // Preserve the record's own structured location — explicitly set null
+    // when it has none, otherwise a stale location from a previously viewed
+    // or created record would be written (and disclosed to the member's
+    // org via webhooks) on save.
+    setActivityLocationState(record.location ?? null);
     setEditRecordIdState(recordId);
     setEditPeriodState(period ?? null);
   }, []);
@@ -553,6 +566,10 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setEntryDateState(todayIso());
     setEditRecordIdState(null);
     setEditPeriodState(null);
+    // Clear the structured activity location too — clearDraft runs when a
+    // different user's draft is discarded on auth change, and a leftover
+    // location must never leak into (or be saved on) another account.
+    setActivityLocationState(null);
     removeDraft();
     setHasDraft(false);
   }, []);

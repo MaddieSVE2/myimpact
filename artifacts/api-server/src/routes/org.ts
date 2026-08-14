@@ -18,8 +18,9 @@ import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, get
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
-import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
+import { computeEstimateActualReconciliation, deriveReportingYear } from "../lib/contributionModel.js";
 import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -1742,6 +1743,108 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
   }
 });
 
+// ─── GET /api/org/stats/breakdown ───────────────────────────────────────────
+// Manager-only reporting breakdown over the org's shared records, grouped by
+// one dimension: month (period), town, postcode_area, local_authority,
+// region, category, sdg, or proxy. Uses each record's activity date
+// (entry_date) and structured location (location_json, legacy flat columns
+// as fallback). Group rows are raw sums (matching the monthly view); the
+// estimate-vs-actual reconciliation excess is returned separately so callers
+// never re-sum it into a group.
+router.get("/stats/breakdown", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.status(404).json({ error: "You are not a member of any organisation." });
+      return;
+    }
+    if (membership.role !== "manager") {
+      res.status(403).json({ error: "Only organisation managers can access analytics." });
+      return;
+    }
+
+    const dimension = parseBreakdownDimension(req.query.dimension);
+    if (!dimension) {
+      res.status(400).json({ error: `Invalid dimension. Use one of: ${BREAKDOWN_DIMENSIONS.join(", ")}.` });
+      return;
+    }
+
+    const sharingCtx = await getOrgSharingContext(membership.orgId);
+    if (sharingCtx.revoked) {
+      res.status(403).json({ error: REVOKED_ORG_MESSAGE });
+      return;
+    }
+    const sharedCondition = sharedRecordsCondition(sharingCtx);
+    if (!sharedCondition) {
+      res.json({ dimension, rows: [], reconciliation: { hoursExcess: 0, valueExcess: 0 } });
+      return;
+    }
+
+    // Resolve period bounds: prefer explicit from/to, otherwise use the
+    // org's saved summaryYearStart + periodOffset query param (same
+    // resolution as /stats/monthly and /stats/regions).
+    let from: Date;
+    let to: Date;
+    const fromRaw = typeof req.query.from === "string" && req.query.from ? new Date(String(req.query.from)) : undefined;
+    const toRaw = typeof req.query.to === "string" && req.query.to ? new Date(String(req.query.to)) : undefined;
+    if (fromRaw && !isNaN(fromRaw.getTime()) && toRaw && !isNaN(toRaw.getTime())) {
+      from = fromRaw;
+      to = toRaw;
+    } else {
+      const periodOffsetParam = req.query.periodOffset;
+      const periodOffset = typeof periodOffsetParam === "string" ? parseInt(periodOffsetParam, 10) : 0;
+      const org = await db.query.organisationsTable.findFirst({
+        where: eq(organisationsTable.id, membership.orgId),
+        columns: { summaryYearStart: true },
+      });
+      const bounds = getPeriodBounds(org?.summaryYearStart ?? "01-01", isNaN(periodOffset) ? 0 : periodOffset);
+      from = bounds.start;
+      to = bounds.end;
+    }
+
+    const records = await db.select({
+      userId: impactRecordsTable.userId,
+      entryDate: impactRecordsTable.entryDate,
+      region: impactRecordsTable.region,
+      outwardCode: impactRecordsTable.outwardCode,
+      locationJson: impactRecordsTable.locationJson,
+      resultJson: impactRecordsTable.resultJson,
+      activitiesJson: impactRecordsTable.activitiesJson,
+      kind: impactRecordsTable.kind,
+      periodLabel: impactRecordsTable.periodLabel,
+      totalHours: impactRecordsTable.totalHours,
+      totalValue: impactRecordsTable.totalValue,
+    }).from(impactRecordsTable).where(and(
+      sharedCondition,
+      gte(impactRecordsTable.entryDate, from),
+      lt(impactRecordsTable.entryDate, to),
+    ));
+
+    const rows = computeOrgBreakdown(records, dimension);
+    // Surface the shared estimate-vs-actual reconciliation excess separately —
+    // it cannot be attributed to a single group (see contributionModel.ts).
+    const recon = computeEstimateActualReconciliation(records);
+
+    res.json({
+      dimension,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      rows,
+      reconciliation: {
+        hoursExcess: Math.round(recon.hoursExcess * 100) / 100,
+        valueExcess: Math.round(recon.valueExcess * 100) / 100,
+      },
+    });
+  } catch (err) {
+    console.error("Org breakdown stats error:", err);
+    res.status(500).json({ error: "Failed to load breakdown data" });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Members management endpoints (manager-only)
 // ---------------------------------------------------------------------------
@@ -3271,6 +3374,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       submittedToOrgId: membership.orgId,
       submittedToOrgAt: now,
       entryDate: parsedActivityDate,
+      reportingYear: deriveReportingYear(parsedActivityDate),
     }).returning();
 
     // Link pre-uploaded evidence photos to the newly created record.
@@ -3365,7 +3469,21 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         hours: calc.totalHours,
         socialValueGBP: calc.totalValue,
         occurredAt: now.toISOString(),
+        // The date the activity happened (member-picked), as opposed to
+        // occurredAt which is when the submission was made.
+        activityDate: parsedActivityDate.toISOString().slice(0, 10),
+        location: null,
+        // Mirrors the stored record's contribution kind (member submissions
+        // don't set an explicit kind today).
+        kind: "legacy" as const,
+        reportingYear: inserted.reportingYear ?? deriveReportingYear(parsedActivityDate),
+        recurrenceSource: null,
+        // Kept for backwards compatibility with existing consumers; the
+        // three-state truth is in verificationStatus. Member submissions are
+        // "approved" only when the org has auto-verify enabled — otherwise
+        // they await manager review.
         attested: true,
+        verificationStatus: autoVerify ? "approved" : "submitted",
       },
     });
 
@@ -3478,6 +3596,22 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
 
     const evidenceByRecord = await loadEvidenceForRecords(records.map(r => r.id));
 
+    // Approved verifications for these records so each row can carry its
+    // real state (verified/pre-attested vs organisation approved vs
+    // submitted) instead of implying everything is verified.
+    const submissionRecordIds = records.map(r => r.id);
+    const approvedRows = submissionRecordIds.length > 0
+      ? await db
+          .select({ recordId: recordVerificationsTable.recordId })
+          .from(recordVerificationsTable)
+          .where(and(
+            eq(recordVerificationsTable.orgId, orgId),
+            eq(recordVerificationsTable.status, "approved"),
+            inArray(recordVerificationsTable.recordId, submissionRecordIds),
+          ))
+      : [];
+    const approvedSubmissionIds = new Set(approvedRows.map(v => v.recordId));
+
     const items = records.map(r => {
       const u = userMap.get(r.userId);
       const lines = Array.isArray(r.activitiesJson) ? (r.activitiesJson as Array<{ activityId?: string; title?: string | null; detail?: string | null; hoursPerYear?: number; quantity?: number }>) : [];
@@ -3493,6 +3627,15 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
         totalValue: Number(r.totalValue),
         submittedAt: (r.submittedToOrgAt ?? r.attestedAt ?? r.createdAt).toISOString(),
         source: rowSource,
+        // Three-state verification: "verified" (pre-attested via the org
+        // API), "approved" (manager or auto-verify approval), "submitted"
+        // (self-reported, awaiting review).
+        verificationStatus: r.attestedAt
+          ? ("verified" as const)
+          : approvedSubmissionIds.has(r.id)
+            ? ("approved" as const)
+            : ("submitted" as const),
+        activityDate: r.entryDate ? new Date(r.entryDate).toISOString().slice(0, 10) : null,
         activityCount: lines.length,
         lines: lines.map(l => {
           const def = ACTIVITIES.find(a => a.id === l.activityId);
@@ -3934,6 +4077,11 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       hours: number;
       socialValueGBP: number;
       verified: boolean;
+      // Three-state verification: "verified" (pre-attested via the org API),
+      // "approved" (manager or auto-verify approval), "submitted"
+      // (self-reported / shared, not reviewed). `verified` stays as the
+      // legacy boolean (approved OR attested) for compatibility.
+      verificationStatus: "verified" | "approved" | "submitted";
       valuePerUnit: number;
       unitLabel: string;
       proxy: string;
@@ -4001,6 +4149,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             hours,
             socialValueGBP: Math.round(Number(r.totalValue) * 100) / 100,
             verified: true,
+            verificationStatus: "verified",
             valuePerUnit,
             unitLabel: "hrs",
             proxy: "Organisation-attested volunteer hours (wage-replacement proxy, ONS)",
@@ -4047,6 +4196,9 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             hours,
             socialValueGBP: isSomethingElse ? 0 : socialValueGBP,
             verified: !!r.attestedAt || approvedRecordIds.has(r.id),
+            verificationStatus: r.attestedAt
+              ? "verified"
+              : approvedRecordIds.has(r.id) ? "approved" : "submitted",
             valuePerUnit: actDef?.valuePerUnit ?? 0,
             unitLabel: actDef?.unitLabel ?? "hrs",
             proxy: actDef?.proxy ?? "",
