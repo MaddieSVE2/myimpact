@@ -17,7 +17,7 @@ import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
-import { useSaveImpact } from "@workspace/api-client-react";
+import { useSaveImpact, useGetAnnualRecap, getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -937,6 +937,23 @@ export default function Results() {
 
   const queryClient = useQueryClient();
 
+  // "My impact" is annual wherever possible: the hero shows the calendar-year
+  // running total (reconciled server-side), with this entry called out
+  // beneath. The year comes from the period this entry counts toward.
+  const heroYear = (() => {
+    const y = parseInt((reportPeriod.startDate ?? "").slice(0, 4), 10);
+    return Number.isFinite(y) && y > 2000 ? y : new Date().getFullYear();
+  })();
+  const recapQuery = useGetAnnualRecap(heroYear, {
+    query: { queryKey: getGetAnnualRecapQueryKey(heroYear), enabled: isLoggedIn },
+  });
+  const annualBase = isLoggedIn && recapQuery.data ? recapQuery.data.totalValue : null;
+  // Until this calculation is saved it isn't in the server total yet; edits of
+  // an existing record are already counted (at their pre-edit value).
+  const annualTotal = annualBase != null
+    ? annualBase + (saved || editRecordId ? 0 : result?.totalValue ?? 0)
+    : null;
+
   if (!result) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
@@ -1095,6 +1112,8 @@ export default function Results() {
       }
 
       setSaved(true);
+      // Refresh the annual running total now this entry is in the server sum.
+      queryClient.invalidateQueries({ queryKey: getGetAnnualRecapQueryKey(heroYear) });
       const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
       // Once a save targeting an existing record succeeds, drop the edit target
@@ -1297,12 +1316,21 @@ export default function Results() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{situationCopy.headline}</p>
-        <h1 className="text-6xl md:text-7xl font-display font-bold text-foreground tracking-tight mb-3">
-          {formatCurrency(result.totalValue)}
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+          {annualTotal != null ? `Your ${heroYear} social value` : situationCopy.headline}
+        </p>
+        <h1 className="text-6xl md:text-7xl font-display font-bold text-foreground tracking-tight mb-3" data-testid="results-hero-value">
+          {formatCurrency(annualTotal ?? result.totalValue)}
         </h1>
+        {annualTotal != null && (
+          <p className="text-sm font-semibold text-foreground mb-2" data-testid="results-entry-value">
+            This entry: {formatCurrency(result.totalValue)}
+          </p>
+        )}
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          {situationCopy.intro}
+          {annualTotal != null
+            ? `Your running total for ${heroYear}, calculated using globally recognised Social Value Engine proxies.`
+            : situationCopy.intro}
         </p>
       </motion.div>
 
