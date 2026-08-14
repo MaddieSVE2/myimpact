@@ -29,6 +29,12 @@ interface HistoryRecord {
   reportEndDate: string | null;
   reportPeriodType: string | null;
   activities: Array<{ activityId?: string; quantity?: number; hoursPerYear?: number; title?: string | null; detail?: string | null }> | null;
+  impactResult?: {
+    activityBreakdowns?: Array<{
+      activityId?: string; activityName?: string; category?: string;
+      quantity?: number; hours?: number; impactValue?: number; unitLabel?: string;
+    }>;
+  } | null;
 }
 
 function useHistoryRecord(recordId: number | null) {
@@ -92,10 +98,13 @@ export default function OrgShareReport() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState<{ recordId: number; status: "pending" | "approved" } | null>(null);
 
-  // Shareable lines: standard catalogue activities present in the report.
+  // Shareable lines: standard catalogue activities present in the report,
+  // plus proxy-valued custom lines (free-text quick logs) from the stored
+  // result breakdowns. The server re-copies everything from the saved record
+  // — this list only drives selection.
   const shareableLines = useMemo(() => {
     const lines = Array.isArray(report?.activities) ? report!.activities! : [];
-    return lines
+    const standard = lines
       .filter(l => typeof l.activityId === "string" && l.activityId && l.activityId !== "something_else" && catalogue.has(l.activityId))
       .map(l => {
         const def = catalogue.get(l.activityId as string)!;
@@ -115,6 +124,19 @@ export default function OrgShareReport() {
           detail: typeof l.detail === "string" ? l.detail : null,
         };
       });
+    const custom = (report?.impactResult?.activityBreakdowns ?? [])
+      .filter(b => typeof b.activityId === "string" && b.activityId.startsWith("custom_") && typeof b.activityName === "string" && b.activityName)
+      .map(b => ({
+        activityId: b.activityId as string,
+        name: b.activityName as string,
+        category: b.category ?? "Custom",
+        unitLabel: b.unitLabel ?? "hrs",
+        quantity: typeof b.quantity === "number" ? b.quantity : 0,
+        hours: typeof b.hours === "number" ? b.hours : 0,
+        value: typeof b.impactValue === "number" ? Math.round(b.impactValue * 100) / 100 : 0,
+        detail: null as string | null,
+      }));
+    return [...standard, ...custom];
   }, [report, catalogue]);
 
   // Default to everything selected once the report loads.
@@ -317,9 +339,9 @@ export default function OrgShareReport() {
 
       {shareableLines.length === 0 ? (
         <div className="bg-white border border-border rounded-xl p-6 text-center" data-testid="share-report-empty">
-          <p className="text-sm font-semibold text-foreground mb-1">This report has no shareable activities.</p>
+          <p className="text-sm font-semibold text-foreground mb-1">This record has no shareable activities.</p>
           <p className="text-xs text-muted-foreground mb-4">
-            Only standard activities can be shared with your organisation. Custom activities and donations stay in your personal report.
+            Activities can be shared with your organisation, but donations and extra hours stay in your personal record.
           </p>
           <Link href="/history" className="text-primary underline text-sm">Back to your impact</Link>
         </div>

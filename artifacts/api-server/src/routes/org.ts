@@ -3191,6 +3191,18 @@ type CleanedMemberActivity = {
   title: string | null;
   detail: string | null;
   isSomethingElse: boolean;
+  // Present for proxy-valued custom activity lines copied from a source
+  // record's stored breakdowns (free-text quick logs). Carries the pricing
+  // inputs so calculateImpact re-values the share identically.
+  custom?: {
+    name: string;
+    valuePerUnit: number;
+    unit: string;
+    proxy: string;
+    proxyYear: string;
+    sdg: string;
+    sdgColor: string;
+  };
 };
 
 // Validates and normalises the `activities` payload shared by the member
@@ -3279,15 +3291,71 @@ function cleanReportShareActivities(
     });
   }
 
+  // Custom (proxy-valued) lines live in the record's stored result
+  // breakdowns, not activitiesJson. Free-text quick logs are saved this way,
+  // so they must be shareable too — quantities, hours AND pricing are always
+  // copied from the stored breakdown, never from the client.
+  const rj = report.resultJson as { activityBreakdowns?: Array<Record<string, unknown>> } | null;
+  const customById = new Map<string, {
+    name: string; quantity: number; hoursPerYear: number;
+    valuePerUnit: number; unit: string; proxy: string; proxyYear: string; sdg: string; sdgColor: string;
+  }>();
+  for (const b of (Array.isArray(rj?.activityBreakdowns) ? rj!.activityBreakdowns! : [])) {
+    const id = typeof b.activityId === "string" ? b.activityId : "";
+    if (!id.startsWith("custom_")) continue;
+    const name = typeof b.activityName === "string" && b.activityName.trim() ? b.activityName.trim().slice(0, 120) : "";
+    if (!name) continue;
+    const q = Number(b.quantity);
+    const h = Number(b.hours);
+    customById.set(id, {
+      name,
+      quantity: Number.isFinite(q) && q > 0 ? q : 0,
+      hoursPerYear: Number.isFinite(h) && h > 0 ? h : 0,
+      valuePerUnit: Number.isFinite(Number(b.valuePerUnit)) && Number(b.valuePerUnit) > 0 ? Number(b.valuePerUnit) : 0,
+      unit: typeof b.unit === "string" ? b.unit : "hour",
+      proxy: typeof b.proxy === "string" ? b.proxy : "",
+      proxyYear: typeof b.proxyYear === "string" ? b.proxyYear : "",
+      sdg: typeof b.sdg === "string" ? b.sdg : "",
+      sdgColor: typeof b.sdgColor === "string" ? b.sdgColor : "",
+    });
+  }
+
   const cleaned: CleanedMemberActivity[] = [];
   const seen = new Set<string>();
   for (const raw of activitiesRaw as MemberSubmitActivity[]) {
     const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
-    if (!id || !byId.has(id)) {
+    if (!id || (!byId.has(id) && !customById.has(id))) {
       return { error: `Activity '${id || "(missing id)"}' is not part of this report.` };
     }
     if (seen.has(id)) continue;
     seen.add(id);
+
+    if (customById.has(id)) {
+      const src = customById.get(id)!;
+      if (src.hoursPerYear <= 0 && src.quantity <= 0) {
+        return { error: `Activity '${src.name}' has no quantity or hours in this record.` };
+      }
+      const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
+      cleaned.push({
+        activityId: id,
+        quantity: src.quantity,
+        hoursPerYear: src.hoursPerYear,
+        title: src.name,
+        detail,
+        isSomethingElse: false,
+        custom: {
+          name: src.name,
+          valuePerUnit: src.valuePerUnit,
+          unit: src.unit,
+          proxy: src.proxy,
+          proxyYear: src.proxyYear,
+          sdg: src.sdg,
+          sdgColor: src.sdgColor,
+        },
+      });
+      continue;
+    }
+
     const src = byId.get(id)!;
     const def = ACTIVITIES.find(a => a.id === id);
     if (!def) {
@@ -3563,20 +3631,36 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       return;
     }
 
-    // Separate standard activities (have SVE proxy) from custom "something_else" ones
-    const standardCleaned = cleaned.filter(c => !c.isSomethingElse);
+    // Separate standard activities (SVE catalogue), proxy-valued custom
+    // lines (copied from a source record's breakdowns) and "something_else"
+    // free-hours lines.
+    const standardCleaned = cleaned.filter(c => !c.isSomethingElse && !c.custom);
+    const customCleaned = cleaned.filter(c => c.custom != null);
     const somethingElseHours = cleaned
       .filter(c => c.isSomethingElse)
       .reduce((sum, c) => sum + c.hoursPerYear, 0);
 
-    // calculateImpact handles standard activities; something_else hours are
-    // passed as additionalVolunteerHours so they count for contribution value
-    // and personal development value but have no SVE proxy impact value.
+    // calculateImpact handles standard activities; custom lines carry their
+    // own proxy pricing so the share is valued identically to the source
+    // record; something_else hours are passed as additionalVolunteerHours so
+    // they count for contribution value and personal development value but
+    // have no SVE proxy impact value.
     const calc = calculateImpact(
       standardCleaned.map(c => ({ activityId: c.activityId, quantity: c.quantity, hoursPerYear: c.hoursPerYear })),
       0,
       somethingElseHours,
-      [],
+      customCleaned.map(c => ({
+        activityId: c.activityId,
+        name: c.custom!.name,
+        quantity: c.quantity,
+        hoursPerYear: c.hoursPerYear,
+        valuePerUnit: c.custom!.valuePerUnit,
+        unit: c.custom!.unit,
+        proxy: c.custom!.proxy,
+        proxyYear: c.custom!.proxyYear,
+        sdg: c.custom!.sdg,
+        sdgColor: c.custom!.sdgColor,
+      })),
     );
 
     const now = new Date();
