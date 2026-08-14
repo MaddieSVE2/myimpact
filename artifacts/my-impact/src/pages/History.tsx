@@ -759,20 +759,7 @@ export default function History() {
     });
   })();
 
-  function inferPeriodType(label: string | null | undefined): string {
-    if (!label) return "unknown";
-    const months = /January|February|March|April|May|June|July|August|September|October|November|December/i;
-    if (months.test(label)) return "monthly";
-    if (/^\d{4}$/.test(label.trim())) return "yearly";
-    return "custom";
-  }
-
   const latest = allRecords[0];
-  const previous = allRecords[1];
-  const sameType = latest && previous && inferPeriodType(latest.period) === inferPeriodType(previous.period);
-  const changeVsLast = sameType && latest.impactResult?.totalValue != null && previous.impactResult?.totalValue != null
-    ? latest.impactResult.totalValue - previous.impactResult.totalValue
-    : null;
   const allTimeTotal = allRecords.reduce((sum, r) => sum + (r.impactResult?.totalValue ?? 0), 0);
 
   return (
@@ -902,22 +889,9 @@ export default function History() {
                 )}
               </div>
               <div className="bg-white border border-border rounded-xl p-5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
-                  {changeVsLast !== null ? "Change vs previous" : "Latest period"}
-                </p>
-                {changeVsLast !== null ? (
-                  <>
-                    <p className={`text-2xl font-display font-bold ${changeVsLast >= 0 ? "text-green-600" : "text-foreground"}`}>
-                      {changeVsLast >= 0 ? "+" : ""}{formatCurrency(changeVsLast)}
-                    </p>
-                    {changeVsLast >= 0 && <p className="text-xs text-muted-foreground mt-1">↑ Growing!</p>}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult?.totalValue ?? 0)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{latest.period || new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
-                  </>
-                )}
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Latest entry</p>
+                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(latest.impactResult?.totalValue ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-1">{latest.period || new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
               </div>
             </motion.div>
           )}
