@@ -3297,7 +3297,7 @@ function cleanReportShareActivities(
   // copied from the stored breakdown, never from the client.
   const rj = report.resultJson as { activityBreakdowns?: Array<Record<string, unknown>> } | null;
   const customById = new Map<string, {
-    name: string; quantity: number; hoursPerYear: number;
+    name: string; quantity: number; hoursPerYear: number; impactValue: number;
     valuePerUnit: number; unit: string; proxy: string; proxyYear: string; sdg: string; sdgColor: string;
   }>();
   for (const b of (Array.isArray(rj?.activityBreakdowns) ? rj!.activityBreakdowns! : [])) {
@@ -3307,11 +3307,25 @@ function cleanReportShareActivities(
     if (!name) continue;
     const q = Number(b.quantity);
     const h = Number(b.hours);
+    const quantity = Number.isFinite(q) && q > 0 ? q : 0;
+    const hoursPerYear = Number.isFinite(h) && h > 0 ? h : 0;
+    const unit = typeof b.unit === "string" ? b.unit : "hour";
+    // Pricing must come from the stored breakdown so the share is valued
+    // identically to the source record. Legacy breakdowns may lack
+    // valuePerUnit — reconstruct it from the stored impactValue so a line
+    // displayed as nonzero is never silently shared at £0.
+    let valuePerUnit = Number.isFinite(Number(b.valuePerUnit)) && Number(b.valuePerUnit) > 0 ? Number(b.valuePerUnit) : 0;
+    const impactValue = Number(b.impactValue);
+    if (valuePerUnit <= 0 && Number.isFinite(impactValue) && impactValue > 0) {
+      const formulaQty = unit === "hour" || unit === "hour_per_week" ? hoursPerYear : quantity;
+      if (formulaQty > 0) valuePerUnit = impactValue / formulaQty;
+    }
     customById.set(id, {
       name,
-      quantity: Number.isFinite(q) && q > 0 ? q : 0,
-      hoursPerYear: Number.isFinite(h) && h > 0 ? h : 0,
-      valuePerUnit: Number.isFinite(Number(b.valuePerUnit)) && Number(b.valuePerUnit) > 0 ? Number(b.valuePerUnit) : 0,
+      quantity,
+      hoursPerYear,
+      impactValue: Number.isFinite(impactValue) && impactValue > 0 ? impactValue : 0,
+      valuePerUnit,
       unit: typeof b.unit === "string" ? b.unit : "hour",
       proxy: typeof b.proxy === "string" ? b.proxy : "",
       proxyYear: typeof b.proxyYear === "string" ? b.proxyYear : "",
@@ -3334,6 +3348,9 @@ function cleanReportShareActivities(
       const src = customById.get(id)!;
       if (src.hoursPerYear <= 0 && src.quantity <= 0) {
         return { error: `Activity '${src.name}' has no quantity or hours in this record.` };
+      }
+      if (src.valuePerUnit <= 0 && src.impactValue > 0) {
+        return { error: `Activity '${src.name}' is missing pricing details and can't be shared. Please re-log it and share the new entry.` };
       }
       const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim().slice(0, 500) : null;
       cleaned.push({

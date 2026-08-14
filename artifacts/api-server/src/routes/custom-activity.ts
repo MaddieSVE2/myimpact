@@ -56,6 +56,13 @@ const UNIT_LABELS: Record<string, string> = {
 
 const FUNDRAISING_RE = /fund[\s-]?rais/i;
 
+// Litter picking is valued via the GMCA "welfare cost from significant
+// litter accumulation" proxy (per household). The proxy title reads like a
+// cost, which confuses users, so this deterministic route pairs it with a
+// plain-English question about households benefiting. Conservative (low
+// value) variant is preferred.
+const LITTER_RE = /\blitter[\s-]?pick(?:ing|er|ers|s|ed)?\b|\bpick(?:ing|ed)?\s+(?:up\s+)?litter\b/i;
+
 // Monetary donation detection: money donations must be valued 1:1 with the
 // amount given (annualised from the stated period), never matched to an
 // hourly/weekly proxy — otherwise "£72 a year" can get inflated into a
@@ -163,6 +170,41 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
 
     // Only admin-enabled proxies are ever offered to the AI matcher.
     const enabledProxies = await getEnabledProxies();
+
+    // Deterministic litter-picking route: always use the GMCA household
+    // litter proxy (low value, conservative) with a friendly question.
+    if (LITTER_RE.test(name.trim())) {
+      const litterProxies = enabledProxies.filter(
+        p =>
+          /litter accumulation/i.test(p.title) &&
+          /household/i.test(p.unit) &&
+          (p.allowedUnits.length === 0 || p.allowedUnits.includes("household")),
+      );
+      // Only the conservative (low value) variant is used deterministically;
+      // if it's missing or disabled, fall through to normal AI matching.
+      const picked = litterProxies.find(p => /low value/i.test(p.title));
+      if (picked) {
+        const valuation = deflateProxyValue(picked, "household");
+        res.json({
+          friendlyQuestion: "Roughly how many households make use of the area you keep tidy?",
+          unit: "household",
+          unitLabel: "households benefiting",
+          defaultQuantity: 10,
+          sdgHint: "SDG 11: Sustainable Cities and Communities",
+          proxyMatch: {
+            title: picked.title,
+            proxyYear: picked.sourceYear,
+            valuePerUnit: valuation.valuePerUnit,
+            unit: "household",
+            fullValuePerUnit: picked.value,
+            deflationFactor: valuation.appliedFactor,
+            deflationNote: valuation.note,
+            horizon: picked.horizon,
+          },
+        });
+        return;
+      }
+    }
     const candidates = candidateProxies(enabledProxies, name.trim());
     const candidateList = candidates
       .map((p, i) => `${i + 1}. "${p.title}" | £${p.value} per ${p.unit}`)
@@ -177,6 +219,8 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
 - friendlyQuestion (string): A warm, simple question asking the user about frequency or volume. Under 15 words. British English. Use plain, accessible language — avoid jargon. If the activity is military-sounding, rephrase it in civilian-friendly terms (e.g. "patrol duties" -> "team leadership and safety responsibilities").
 - unit (string): one of "hour" | "session" | "person" | "item" | "household" — the most natural unit
 - unitLabel (string): human-readable label, e.g. "hours per year", "sessions per year", "people helped"
+
+If the best matching proxy is valued per household, set unit to "household" and phrase friendlyQuestion in plain terms about how many households benefit or make use of the area — never echo cost/welfare-cost jargon from the proxy title.
 - defaultQuantity (number): sensible default for a typical volunteer or community contributor
 - sdgHint (string): most relevant UN SDG, e.g. "SDG 3: Good Health and Well-Being"
 - proxyIndex (number | null): 1-based index of the BEST matching proxy below, or null if none are a reasonable match. Prefer specific outcome matches over generic ones.
