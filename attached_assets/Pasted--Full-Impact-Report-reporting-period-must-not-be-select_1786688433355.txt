@@ -1,0 +1,88 @@
+# Full Impact Report: reporting period must not be selected again when saving
+
+The Full Impact Report currently asks the user to select or define a reporting period again when they click Save.
+
+The current modal includes options such as:
+
+* This month
+* Current term
+* This year
+* Last year
+* Custom label
+
+This duplicates information that should already have been established when the Full Impact Report was created.
+
+## Change the behaviour
+
+A Full Impact Report must have one authoritative reporting period.
+
+Examples:
+
+* 1 January 2026 to 31 December 2026
+* Academic Year 2026/27
+* another custom reporting period selected at the start of the report journey
+
+Once that reporting period has been established, retain it throughout the calculation and save process.
+
+When the user clicks **Save report**, do not ask them to choose the reporting period again.
+
+Save the report directly against its existing reporting-period fields.
+
+For example:
+
+> Saved as **My Impact 2026**
+
+or:
+
+> Saved as **My Impact 2026/27**
+
+## Separate report period from report name
+
+If users need the ability to give a report a friendly name, treat this as an optional `reportTitle` or equivalent field.
+
+The report title must not determine the reporting dates.
+
+For example:
+
+**Report period**
+1 January – 31 December 2026
+
+**Optional report title**
+Duke of Edinburgh volunteering
+
+The dates remain the authoritative reporting period.
+
+A sensible default report title should be generated automatically, such as:
+
+* My Impact 2026
+* My Impact 2026/27
+
+The user can rename the report later.
+
+## Remove conflicting period concepts
+
+Do not allow the save flow to change a Full Impact Report from, for example, a 2026 report into "This month" merely by choosing a different save label.
+
+There should be one source of truth for:
+
+* report start date
+* report end date
+* reporting-period type
+
+Quick Log activity dates remain separate and are used to determine which existing Impact Report they contribute towards.
+
+## Migration/backwards compatibility
+
+Before removing the modal, inspect whether its current value is being used as:
+
+* the actual report-period field
+* a display label only
+* a grouping key
+* dashboard filtering
+* report history filtering
+* organisation reporting
+* API/webhook data
+
+If this modal currently creates the authoritative report period, refactor the Full Impact Report journey so that this information is established earlier and retained through to save.
+
+Do not simply hide the modal while leaving ambiguous or conflicting period fields in the database.

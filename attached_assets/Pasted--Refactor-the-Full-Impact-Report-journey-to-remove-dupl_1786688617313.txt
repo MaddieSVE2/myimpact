@@ -1,0 +1,660 @@
+# Refactor the Full Impact Report journey to remove duplicate activity entry and conflicting date/reporting-period logic
+
+Please review the existing My Impact Full Impact Report journey and refactor two connected areas:
+
+1. organisation members are currently asked to enter or confirm their activities again when they want to share them with their organisation
+2. reporting-period/date logic is duplicated across the Full Impact Report journey, so users can be asked several times what period an entry or report relates to
+
+Treat these as connected UX and data-model issues.
+
+## Core principle
+
+Once the user has entered information as part of their Full Impact Report, reuse it.
+
+Do not ask the user to provide the same activities, quantities, reporting period or other information again unless something genuinely new or organisation-specific is required.
+
+The Full Impact Report remains a real reporting object covering a defined period, normally:
+
+* calendar year, such as 2026
+* academic year, such as 2026/27
+* another supported custom reporting period
+
+Quick Log remains an additional mechanism for adding actual individual activities to an existing report.
+
+Do not remove or replace the Full Impact Report model.
+
+---
+
+# Part 1: Establish one authoritative reporting period
+
+The Full Impact Report should have one authoritative reporting period.
+
+This should be established at the beginning of the Full Impact Report journey and retained throughout the calculation, save and organisation-sharing flows.
+
+Examples:
+
+**Calendar year**
+
+> My Impact 2026
+> 1 January 2026 to 31 December 2026
+
+**Academic year**
+
+> My Impact 2026/27
+> September 2026 to August 2027
+
+Use the exact existing academic-year configuration where one already exists.
+
+The reporting period should have clear underlying fields such as:
+
+* `reportStartDate`
+* `reportEndDate`
+* `reportPeriodType`
+* optional `reportTitle`
+
+or the equivalent fields already present in the codebase.
+
+There must be one source of truth for the report dates.
+
+---
+
+# Part 2: Remove date selection from the middle of the Full Impact Report flow
+
+The Full Impact Report currently contains a section such as:
+
+> What date does this entry count toward?
+
+with options including:
+
+* Today
+* This month
+* Last month
+* This term
+* Last term
+* This year
+* Ongoing
+* Custom date
+
+This should not appear in the normal Full Impact Report flow.
+
+The Full Impact Report already has a reporting period.
+
+Activities entered through the Full Impact Report calculator should therefore be understood as quantities or estimates across that reporting period.
+
+For example:
+
+> Community gardening
+> 50 hours
+
+means:
+
+> approximately 50 hours during the Full Impact Report's reporting period
+
+It does not require another entry date.
+
+Remove this date selector from the Full Impact Report journey.
+
+Do not merely hide it visually. Inspect whether it currently writes to database fields or influences calculations and refactor that logic so the report's authoritative start/end dates are used instead.
+
+---
+
+# Part 3: Keep individual activity dates in Quick Log
+
+Do not apply the above change to Quick Log.
+
+Quick Log represents an actual individual contribution.
+
+A Quick Log entry should continue to have a specific activity date.
+
+Example:
+
+> Food bank volunteering
+> 2 hours
+> 14 August 2026
+> Leeds
+
+Quick Log should default to:
+
+> Today
+
+with:
+
+> Change date
+
+available for retrospective logging.
+
+The specific activity date should help determine which Full Impact Report the contribution belongs to.
+
+This distinction should remain clear:
+
+### Full Impact Report
+
+> What did I do across this reporting period?
+
+### Quick Log
+
+> What did I do on this particular occasion?
+
+---
+
+# Part 4: Remove the reporting-period modal when saving a Full Impact Report
+
+The current Full Impact Report save flow opens a modal such as:
+
+> What period does this cover?
+
+with choices including:
+
+* This month
+* Current term
+* This year
+* Last year
+* Custom label
+
+Remove this period-selection step from the normal save flow.
+
+The reporting period should already be known.
+
+When the user clicks:
+
+> Save report
+
+save the Full Impact Report directly using the period established at the start of the journey.
+
+For example:
+
+> Saved as My Impact 2026
+
+or:
+
+> Saved as My Impact 2026/27
+
+Do not allow the save step to redefine or contradict the report period.
+
+---
+
+# Part 5: Separate report period from report name
+
+If the current custom-label functionality is useful, retain it as an optional report name rather than as a reporting-period selector.
+
+For example:
+
+**Reporting period**
+
+> 1 January to 31 December 2026
+
+**Optional report name**
+
+> Duke of Edinburgh volunteering
+
+The report name must never determine the dates used for calculations or reporting.
+
+Generate a sensible default automatically, such as:
+
+* My Impact 2026
+* My Impact 2026/27
+
+Allow users to rename it later.
+
+---
+
+# Part 6: Review "Ongoing"
+
+"Ongoing" should not be an alternative to a Full Impact Report reporting period.
+
+An activity may be ongoing, but the Impact Report must still calculate the impact generated within its defined reporting period.
+
+For example:
+
+> This volunteering activity is ongoing.
+
+but:
+
+> My Impact 2026 includes the contribution made between 1 January and 31 December 2026.
+
+If `ongoing` is currently used as an activity attribute, retain it where appropriate.
+
+Do not use it as a substitute for the Full Impact Report's dates.
+
+---
+
+# Part 7: Fix organisation sharing after a Full Impact Report
+
+Organisation members currently complete the Full Impact Report, then see a prompt such as:
+
+> Want to share activity with My Impact University?
+
+Selecting this opens another submission form where the member has to choose activities and enter information again.
+
+Change this.
+
+If the user has already told My Impact which activities they undertook as part of the Full Impact Report, do not ask them to rebuild those activities from scratch.
+
+The organisation-sharing flow should reuse data already present in the report.
+
+---
+
+# Part 8: Organisation visibility modes
+
+Preserve the existing organisation visibility model exactly.
+
+Each organisation currently behaves in one of two ways.
+
+## A. Automatic visibility
+
+The organisation automatically sees relevant submissions from its members.
+
+For organisations in this mode:
+
+* do not show a redundant "Want to share?" prompt after the Full Impact Report
+* do not ask the member to submit the activities again
+* make the applicable report/activity information visible according to the organisation's existing rules
+* clearly indicate to the member that relevant information is visible to their organisation where useful
+
+Visibility must remain separate from verification.
+
+An organisation seeing an activity does not necessarily mean it has been verified.
+
+## B. Explicit submission
+
+The organisation only sees activities deliberately submitted by the member.
+
+For organisations in this mode, show an option such as:
+
+> **Share activities from this report with My Impact University**
+
+Do not use wording such as:
+
+> Open submission form
+
+because the user should not be starting the activity-entry process again.
+
+Use a CTA such as:
+
+> **Review & share**
+
+---
+
+# Part 9: Reuse Full Impact Report activities when sharing
+
+When a member chooses to share from their Full Impact Report, show a review screen populated from activities already contained in the report.
+
+Example:
+
+> **Share with My Impact University**
+>
+> Choose which activities from this report you'd like to share.
+>
+> ☑ Community garden volunteering
+> 50 hours during 2026
+> Meanwood Community Garden, Leeds
+>
+> ☑ Food bank volunteering
+> 24 hours during 2026
+> Leeds
+>
+> ☐ Sustainable travel
+> 350 miles during 2026
+
+Allow:
+
+* Select all
+* individual selection
+* Cancel
+* Review & share
+
+Reuse existing information including:
+
+* activity
+* category
+* quantity
+* hours
+* proxy
+* social value calculation
+* reporting period
+* location where already provided
+* relevant supporting detail
+
+Do not ask the member to search the catalogue for the same activity again.
+
+Do not ask the member to re-enter quantities already contained in the report.
+
+---
+
+# Part 10: Ask only for genuinely missing information
+
+The organisation may require information that is not already present in the Full Impact Report.
+
+If so, ask only for the missing fields.
+
+Potential examples:
+
+* location
+* organisation-specific detail
+* evidence
+* supporting note
+* another field genuinely required by the organisation workflow
+
+For example, if the Full Impact Report already contains:
+
+> Community gardening
+> 50 hours during 2026
+> Meanwood Community Garden
+
+do not ask again:
+
+* What activity?
+* How many hours?
+* What reporting period?
+* Where did this happen?
+
+Only ask for fields that do not already exist.
+
+---
+
+# Part 11: Do not invent individual dates for Full Impact Report estimates
+
+A Full Impact Report activity may represent activity across the whole reporting period.
+
+Example:
+
+> Community gardening
+> approximately 50 hours during 2026
+
+This is different from a Quick Log contribution:
+
+> Community gardening
+> 2 hours
+> 14 August 2026
+
+If a Full Impact Report activity is shared with an organisation, preserve its nature as a period-level activity or estimate.
+
+Do not invent a single activity date merely because an existing organisation-submission table expects one.
+
+Use the Full Impact Report's period fields.
+
+If the organisation data model currently requires a single activity date, inspect the schema and propose an appropriate change.
+
+Do not assign an arbitrary date such as:
+
+* today's date
+* the report creation date
+* the report start date
+* the report end date
+
+just to satisfy the existing field.
+
+---
+
+# Part 12: Activity location
+
+Retain the recently added activity-location capability.
+
+For Full Impact Report activities, location may represent the activity's usual or main location during the report period.
+
+It should be attached to the activity rather than to the entire Impact Report where practical.
+
+Examples:
+
+> Community gardening
+> 50 hours during 2026
+> **Usual location:** Meanwood Community Garden, Leeds
+
+> Online mentoring
+> 30 hours during 2026
+> **Location:** Online / remote
+
+A user may have different locations for different activities.
+
+Do not require one global:
+
+> Where did this mostly happen?
+
+location for the whole report if multiple activity locations can be stored.
+
+Location can remain optional.
+
+Support existing location options such as:
+
+* venue/place
+* postcode
+* town/city
+* online/remote
+* multiple locations
+
+Do not infer activity location from the member's home address.
+
+---
+
+# Part 13: Quick Log and Full Impact Report must remain connected
+
+Quick Log should continue to add actual individual contributions to the relevant Full Impact Report.
+
+Example:
+
+> My Impact 2026
+
+may contain:
+
+### Full-report activity
+
+> Community gardening
+> Estimated 50 hours during 2026
+
+and:
+
+### Quick Logged actuals
+
+> Community gardening
+> 2 hours
+> 14 August 2026
+> Leeds
+
+Preserve the safeguards against double counting discussed in the existing Quick Log refactor.
+
+Do not simply add 2 logged hours on top of an existing 50-hour whole-period estimate if those 2 hours were already included in the person's estimate.
+
+Keep enough metadata to distinguish:
+
+* Full Impact Report estimate
+* Quick Log actual
+* recurring confirmed activity
+* organisation/API submission
+* legacy record
+
+---
+
+# Part 14: Organisation sharing must also avoid double counting
+
+If an organisation receives:
+
+* a period-level Full Impact Report activity
+* individual Quick Logged contributions relating to that same underlying activity
+
+do not blindly add them together.
+
+Preserve the distinction between:
+
+* estimated/report-period activity
+* actual logged activity
+
+Use the same double-counting safeguards applied on the personal side.
+
+Organisation dashboards should not inflate social value simply because the member both calculated their annual impact and logged actual occurrences over time.
+
+---
+
+# Part 15: Verification remains separate
+
+Do not redesign the existing manager-verification workflow as part of this task unless changes are required to support the new sharing structure.
+
+Retain:
+
+* approval/rejection
+* bulk verification
+* audit trail
+* auto-verification where configured
+* API-pre-attested activity
+
+However, keep these concepts distinct:
+
+* visible to organisation
+* submitted to organisation
+* approved
+* verified/pre-attested
+
+Do not imply that information reused from a Full Impact Report is independently verified merely because the organisation can see it.
+
+---
+
+# Part 16: Desired end-to-end Full Impact Report journey
+
+The intended normal user flow should become:
+
+## 1. Start Full Impact Report
+
+User chooses or confirms:
+
+> My Impact 2026
+
+or:
+
+> Academic Year 2026/27
+
+This establishes the authoritative reporting period.
+
+## 2. Complete Full Impact Report
+
+User enters:
+
+* activities
+* quantities/hours across the period
+* contributions/donations where applicable
+* optional activity locations
+* any other existing calculator information
+
+Do not ask again what date the whole report entry counts towards.
+
+## 3. View report
+
+User sees their complete social value calculation and existing Full Impact Report outputs.
+
+## 4. Save
+
+User clicks:
+
+> Save report
+
+The report saves against its existing period.
+
+Do not ask the user to select the reporting period again.
+
+## 5. Organisation visibility
+
+### Automatic visibility organisation
+
+Relevant data is already available to the organisation according to its configured rules.
+
+No duplicate sharing form.
+
+### Explicit submission organisation
+
+Offer:
+
+> Share activities from this report with My Impact University
+
+The user reviews the activities they have already entered, selects which ones to share, supplies only missing organisation-specific information, and confirms.
+
+No duplicate activity-entry wizard.
+
+---
+
+# Part 17: Desired mental model
+
+The user should experience:
+
+> **I choose the period once.**
+
+Then:
+
+> **I tell My Impact what I did during that period.**
+
+Then:
+
+> **My Impact calculates and saves my report.**
+
+If they belong to an explicit-submission organisation:
+
+> **I choose which of that existing information I want my organisation to use.**
+
+They should never experience:
+
+> I chose a reporting period, then I was asked for another date, then I chose a period again when saving.
+
+They should also never experience:
+
+> I entered all my activities to calculate my impact, then My Impact asked me to enter all the activities again so I could share them.
+
+---
+
+# Part 18: Backwards compatibility
+
+This is a live application.
+
+Before changing the behaviour, inspect:
+
+* Full Impact Report schema
+* report start/end date fields
+* record labels
+* the "What date does this entry count toward?" logic
+* the save-period modal
+* Full Impact Report activities
+* organisation-sharing/submission tables
+* automatic visibility logic
+* explicit submission logic
+* organisation twins
+* verification
+* activity-location implementation
+* dashboard/report aggregation
+* Quick Log
+* recurring activity
+* API/webhooks
+* historical saved reports
+
+Existing reports and totals must continue to display correctly.
+
+Do not rewrite historical reporting periods or invent missing dates.
+
+---
+
+# Part 19: Before implementation
+
+Please first provide a concise technical assessment and proposed subtask plan.
+
+Specifically identify:
+
+1. where the authoritative reporting period is currently stored
+2. why the Full Impact Report currently asks for dates/periods more than once
+3. which of those fields are used in calculations versus display only
+4. how the save-period modal currently affects stored data
+5. how Full Impact Report activities are represented
+6. how organisation submissions currently duplicate or reference personal activities
+7. how automatic organisation visibility currently works
+8. how explicit submission currently works
+9. which organisation-submission fields are genuinely missing from the Full Impact Report
+10. how activity location is currently stored
+11. what changes are required to share existing report activities rather than recreate them
+12. how backwards compatibility will be maintained
+13. how duplicate/double-counting risks will be managed
+
+Then split the implementation into sensible subtasks.
+
+The intended outcome is a simpler system with:
+
+* one authoritative Full Impact Report period
+* no redundant date selection during the Full Impact Report
+* no redundant period selection when saving
+* no re-entry of activities when sharing with an organisation
+* only genuinely missing organisation information requested
+* Full Impact Report and Quick Log remaining distinct but connected
+* existing calculations, organisation visibility and historical reports preserved
