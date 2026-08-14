@@ -67,7 +67,6 @@ const History = lazyWithRetry(() => import("@/pages/History"));
 const Journal = lazyWithRetry(() => import("@/pages/Journal"));
 const Milestones = lazyWithRetry(() => import("@/pages/Milestones"));
 const OrgPortal = lazyWithRetry(() => import("@/pages/OrgPortal"));
-const OrgMemberSubmit = lazyWithRetry(() => import("@/pages/OrgMemberSubmit"));
 const OrgShareReport = lazyWithRetry(() => import("@/pages/OrgShareReport"));
 const OrgMemberSubmitHistory = lazyWithRetry(() => import("@/pages/OrgMemberSubmitHistory"));
 const OrgDashboard = lazyWithRetry(() => import("@/pages/OrgDashboard"));
@@ -409,8 +408,11 @@ function AppRouter() {
               <Route path="/org/submit/history">
                 {() => <PrivateRoute component={OrgMemberSubmitHistory} />}
               </Route>
+              {/* The manual submit flow is retired: sharing now happens as part
+                  of logging (Quick Log / Results share prompt). Old links land
+                  on Quick Log. */}
               <Route path="/org/submit">
-                {() => <PrivateRoute component={OrgMemberSubmit} />}
+                {() => <Redirect to="/quick-log" />}
               </Route>
               <Route path="/org/share-report/:recordId">
                 {() => <PrivateRoute component={OrgShareReport} />}

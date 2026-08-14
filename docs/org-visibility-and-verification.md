@@ -13,8 +13,10 @@ configured visibility behaviour.
   informational note: "This activity will be visible to [Org]".
 - `explicit_submission`: nothing reaches the org's named feed unless the
   member submits it. The post-log UI asks the share question and routes to
-  the full submission flow (`/org/submit`). The personal Impact Report keeps
-  the activity either way.
+  the "Review & share" flow (`/org/share-report/:recordId`), which copies the
+  logged activities server-side. The personal Impact Report keeps the
+  activity either way. (The old manual re-entry page `/org/submit` is
+  retired and now redirects to `/quick-log`.)
 
 Internal mode names and each org's configured mode are untouched.
 
@@ -22,8 +24,10 @@ The previous inline share flow on the Results page (removed in the earlier
 share-flow overhaul and left unmounted) was **not** reinstated: it created an
 org copy that was not twin-linked to the wizard's personal save, so explicit
 orgs — whose aggregates include all members' personal records — could
-double-count. The share question now routes to `/org/submit`, which links
-personal copies via `resultJson.orgRecordId`.
+double-count. The share question now routes to the "Review & share" flow,
+which creates an org copy twin-linked via `source_report_id` so aggregates
+exclude the personal source record. Report shares stay period-level; quick-log
+shares are dated (they carry the record's own activity date, no period fields).
 
 ## Verification states — audit & compatibility review
 

@@ -38,6 +38,8 @@ import { NumberInput } from "@/components/ui/number-input";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
 import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
+import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
+import type { ImpactResult } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
@@ -290,6 +292,8 @@ export default function QuickLogActivity() {
 
   // Post-save confirmation + duplicate prompt
   const [savedYear, setSavedYear] = useState<number | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
+  const [savedResult, setSavedResult] = useState<ImpactResult | null>(null);
   const [showSaved, setShowSaved] = useState(false);
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null);
 
@@ -475,7 +479,7 @@ export default function QuickLogActivity() {
           ...flatLocation,
           ...(opts?.force ? { force: true } : {}),
         },
-      })) as { reportingYear?: number | null };
+      })) as { id?: number | string | null; reportingYear?: number | null };
 
       // Refresh dashboard/history caches so totals reflect the new entry
       // immediately when the user lands back on their origin page.
@@ -499,6 +503,11 @@ export default function QuickLogActivity() {
       const year = saved?.reportingYear
         ?? (Number.isFinite(parseInt(entryDate.slice(0, 4), 10)) ? parseInt(entryDate.slice(0, 4), 10) : null);
       setSavedYear(year);
+      // Keep the saved record id and result so the confirmation screen can
+      // offer/inform about org sharing (ShareWithOrgPrompt).
+      const numericId = saved?.id != null ? Number(saved.id) : NaN;
+      setSavedRecordId(Number.isFinite(numericId) ? numericId : null);
+      setSavedResult(calcResult);
       setShowSaved(true);
     } catch (err) {
       const apiErr = err as { status?: number; data?: { error?: string; existingRecordId?: string } };
@@ -522,6 +531,8 @@ export default function QuickLogActivity() {
   const resetForAnother = () => {
     setShowSaved(false);
     setSavedYear(null);
+    setSavedRecordId(null);
+    setSavedResult(null);
     setSelectedActivity(null);
     setAnalysed(null);
     setDescribeText("");
@@ -569,6 +580,9 @@ export default function QuickLogActivity() {
               ? `Your entry for ${formatDisplayDate(entryDate)} now counts towards your ${savedYear} record.`
               : "Your entry has been saved to your history."}
           </p>
+          <div className="text-left">
+            <ShareWithOrgPrompt result={savedResult} saved entryDate={entryDate} savedRecordId={savedRecordId} />
+          </div>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               type="button"

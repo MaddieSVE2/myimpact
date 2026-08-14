@@ -126,10 +126,10 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
         <Building2 className="w-4 h-4 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">Share activities from this report with {org.name}?</p>
+        <p className="text-sm font-semibold text-foreground">Share this with {org.name}?</p>
         <p className="text-xs text-muted-foreground">
-          Review the activities you just reported and choose what to share — no re-typing.
-          Your personal Impact Report keeps everything either way.
+          Review what you just logged and choose what to share — no re-typing.
+          Your personal record keeps everything either way.
         </p>
       </div>
       <div className="flex items-center gap-2 ml-auto">

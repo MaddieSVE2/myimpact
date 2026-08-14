@@ -138,8 +138,8 @@ test.describe("Spec 12 — org member sub-nav sits flush under the navbar", () =
         });
         expect(join.ok()).toBe(true);
 
-        await page.goto("/org/submit");
-        await expect(page.getByTestId("org-member-submit-root")).toBeVisible({ timeout: 15_000 });
+        await page.goto("/org/submit/history");
+        await expect(page.getByTestId("org-submit-history-root")).toBeVisible({ timeout: 15_000 });
         await expect(page.getByTestId("org-member-subnav")).toBeVisible({ timeout: 10_000 });
 
         await assertFlushAtAllScrollPositions(page, viewport.name);

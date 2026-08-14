@@ -3386,10 +3386,11 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         res.status(400).json({ error: "Only your own personal Impact Report entries can be shared this way." });
         return;
       }
-      // Qualification: only saved Full Impact Reports are period-level
-      // shareables. Quick logs, recurring confirmations, bulk retrospectives
-      // and API-attested rows must go through their own dated flows.
-      if (report.kind !== "annual_estimate" && report.kind !== "legacy") {
+      // Qualification: saved Full Impact Reports are period-level shareables,
+      // and quick logs are DATED shareables (the share carries the record's
+      // own activity date, never a period). Recurring confirmations, bulk
+      // retrospectives and API-attested rows are still excluded.
+      if (report.kind !== "annual_estimate" && report.kind !== "legacy" && report.kind !== "quick_log") {
         res.status(400).json({ error: "Only a saved Impact Report can be shared this way — this record isn't a report." });
         return;
       }
@@ -3456,9 +3457,10 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
 
     // Authoritative share period. Newer reports store explicit period fields;
     // legacy wizard reports without them get the calendar year they report on
-    // (reportingYear, falling back to the entry date's year). A share is
-    // always period-level — it never falls back to a single date.
-    const sharePeriod = sourceReport
+    // (reportingYear, falling back to the entry date's year). A REPORT share
+    // is always period-level. A QUICK LOG share is dated instead: it carries
+    // the record's own activity date and no period fields.
+    const sharePeriod = sourceReport && sourceReport.kind !== "quick_log"
       ? (() => {
           if (sourceReport.reportStartDate && sourceReport.reportEndDate) {
             return {
@@ -3632,9 +3634,13 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       // first-class link back to the source report for twin exclusion.
       ...(sourceReport ? {
         kind: sourceReport.kind ?? "legacy",
-        reportStartDate: sharePeriod!.start,
-        reportEndDate: sharePeriod!.end,
-        reportPeriodType: sharePeriod!.type,
+        // Quick-log shares are dated (sharePeriod is null); report shares
+        // carry the report's authoritative period.
+        ...(sharePeriod ? {
+          reportStartDate: sharePeriod.start,
+          reportEndDate: sharePeriod.end,
+          reportPeriodType: sharePeriod.type,
+        } : {}),
         locationJson: sourceReport.locationJson,
         sourceReportId: sourceReport.id,
       } : {}),

@@ -15,7 +15,7 @@ The order above is the canonical order used in both the home page "Your organisa
 
 | Job | Top nav | Home page | `/org` member view |
 |---|---|---|---|
-| Share with employer | "Share with {Org}" → `/org/submit` | "Your organisation" panel card 1 → `/org/submit` | Card 1 → `/org/submit` |
+| Share with employer | Log via Quick Log, then "Review & share" prompt → `/org/share-report/:recordId` | "Your organisation" panel card 1 → `/quick-log` | Card 1 → `/quick-log` |
 | Answer pulse | "Pulse" → `/#org-prompts-section` | Panel card 2 + `OrgPromptsSection` survey cards. Disabled state when no pulse is open. | Card 2. Active: link to `/#org-prompts-section`. Inactive: disabled button, "No pulse open right now from {Org}." |
 | Challenges | "Challenges" → `/challenges` | Panel card 3 + `OrgPromptsSection` challenge cards. Disabled state when nothing is active. | Card 3. Active: link to `/challenges` (or to the single active challenge wizard). Inactive: disabled button, "No challenges right now from {Org}." |
 | Calculate impact | Account dropdown ("Calculate my impact") + orange "Calculate" CTA | Panel card 4 → `/wizard/actions` | Card 4 → `/wizard/actions` |

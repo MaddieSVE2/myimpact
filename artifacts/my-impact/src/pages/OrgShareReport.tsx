@@ -289,18 +289,25 @@ export default function OrgShareReport() {
         <div>
           <h1 className="text-2xl font-display font-semibold text-foreground">Review &amp; share with {org.name}</h1>
           <p className="text-sm text-muted-foreground">
-            These activities come straight from your report — nothing to re-enter. Untick anything you don't want to share.
+            {report!.kind === "quick_log"
+              ? "These activities come straight from what you logged — nothing to re-enter. Untick anything you don't want to share."
+              : "These activities come straight from your report — nothing to re-enter. Untick anything you don't want to share."}
           </p>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-5" data-testid="share-report-period">
-        {periodStart && periodEnd && (
+        {periodStart && periodEnd ? (
           <span className="inline-flex items-center gap-1">
             <CalendarRange className="w-3.5 h-3.5" />
             Reporting period: {formatDate(periodStart)} – {formatDate(periodEnd)}
           </span>
-        )}
+        ) : report!.kind === "quick_log" && report!.entryDate ? (
+          <span className="inline-flex items-center gap-1">
+            <CalendarRange className="w-3.5 h-3.5" />
+            Activity date: {formatDate(report!.entryDate.slice(0, 10))}
+          </span>
+        ) : null}
         {locLabel && (
           <span className="inline-flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5" /> {locLabel}

@@ -666,15 +666,6 @@ export function Navbar() {
                   <Trophy className="w-4 h-4 shrink-0" aria-hidden="true" />
                   Challenges
                 </Link>
-                <Link
-                  href="/org/submit"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors min-h-[44px]"
-                  data-testid="member-subnav-share-mobile"
-                >
-                  <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  Share with {orgData?.org?.name ?? "my employer"}
-                </Link>
               </>
             )}
 

@@ -608,9 +608,31 @@ describe("POST /api/org/member-submit with sourceReportId", () => {
     expect(state.inserts).toHaveLength(0);
   });
 
-  it("rejects non-report records (e.g. a quick log) as share sources", async () => {
+  it("accepts a quick log as a DATED share: entry date copied, no period fields", async () => {
     setupMemberWithReport();
     state.impactRecord = { ...REPORT, kind: "quick_log" };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(201);
+    const recordInserts = state.inserts.filter(i => i.table === "impact_records");
+    expect(recordInserts).toHaveLength(1);
+    const rec = recordInserts[0].values as Record<string, unknown>;
+    expect(rec.kind).toBe("quick_log");
+    expect(rec.sourceReportId).toBe(777);
+    expect(rec.source).toBe("member-submitted");
+    // Dated share carries the record's own entry date, never a period.
+    expect(rec.entryDate).toEqual(REPORT.entryDate);
+    expect(rec.reportStartDate).toBeUndefined();
+    expect(rec.reportEndDate).toBeUndefined();
+    expect(rec.reportPeriodType).toBeUndefined();
+  });
+
+  it("rejects other non-report kinds (e.g. a recurring occurrence) as share sources", async () => {
+    setupMemberWithReport();
+    state.impactRecord = { ...REPORT, kind: "recurring_occurrence" };
     const app = makeApp();
     const res = await request(app).post("/api/org/member-submit").send({
       sourceReportId: 777,

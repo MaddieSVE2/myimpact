@@ -795,10 +795,10 @@ export default function Intro() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Share volunteering with {myOrgQuery.data.org.name}</p>
                 </div>
                 <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
-                  Send your volunteering hours into your organisation's totals. Submitted now, no manager approval needed. Your manager sees what you submitted (with your name) and it counts towards their reporting.
+                  Log your volunteering and you'll be offered the chance to share it with your organisation — no re-typing, and your personal record keeps everything either way.
                 </p>
                 <Link
-                  href="/org/submit"
+                  href="/quick-log"
                   data-testid="home-link-org-submit"
                   style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
                 >

@@ -2052,10 +2052,10 @@ export default function OrgPortal() {
                 <p className="text-sm font-semibold text-foreground">Share your hours with {orgData!.org!.name}</p>
               </div>
               <p className="text-xs text-muted-foreground mb-4 flex-1">
-                Send your hours into your organisation's totals. Submitted now, no manager approval needed. {orgData!.org!.name}'s manager can see what you submitted (with your name on it) and it counts towards their reporting.
+                Log your hours and you'll be offered the chance to share them with {orgData!.org!.name} — no re-typing, and your personal record keeps everything either way.
               </p>
               <Link
-                href="/org/submit"
+                href="/quick-log"
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors self-start"
                 data-testid="link-org-submit"
               >

@@ -120,11 +120,11 @@ export default function OrgMemberSubmitHistory() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8" data-testid="org-submit-history-root">
       <Link
-        href="/org/submit"
+        href="/org"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-4"
         data-testid="submit-history-back"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to submit
+        <ArrowLeft className="w-4 h-4" /> Back to Org Portal
       </Link>
 
       <div className="flex items-start gap-3 mb-6">
@@ -159,11 +159,11 @@ export default function OrgMemberSubmitHistory() {
             When you submit activities to {orgName}, they'll show up here so you always have a record.
           </p>
           <Link
-            href="/org/submit"
+            href="/quick-log"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
             data-testid="submit-history-empty-cta"
           >
-            <Plus className="w-4 h-4" /> Submit activities
+            <Plus className="w-4 h-4" /> Log an activity
           </Link>
         </motion.div>
       )}

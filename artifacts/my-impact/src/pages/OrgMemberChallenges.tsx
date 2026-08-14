@@ -113,7 +113,7 @@ function ChallengeCard({ c, orgName }: { c: OrgChallenge; orgName: string }) {
             {new Date(c.startDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} and{" "}
             {new Date(c.endDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}{" "}
             count towards this challenge automatically.{" "}
-            <Link href="/org/submit" className="text-primary hover:underline font-medium">Log hours</Link>
+            <Link href="/quick-log" className="text-primary hover:underline font-medium">Log an activity</Link>
           </p>
         </div>
       )}
