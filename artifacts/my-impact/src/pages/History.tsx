@@ -11,13 +11,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
   HandCoins, UserPlus, Trophy, Clock, FileText, Pencil, Trash2, Check, X, AlertTriangle, ExternalLink, Sparkles, Camera, BadgeCheck, ShieldX, Info,
-  MapPin,
+  MapPin, Building2,
 } from "lucide-react";
 import { calcResultBreakdown, detectInflatedDonations, repairLocalInflatedDonations } from "@/lib/formula";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
+import { useMyOrg } from "@/lib/org-export";
 import { QuickLog } from "@/components/QuickLog";
 import StreakChip from "@/components/StreakChip";
 import { TagEditor } from "@/components/TagEditor";
@@ -326,6 +327,17 @@ export default function History() {
   const updateRecord = useUpdateImpactRecord();
   const deleteRecord = useDeleteImpactRecord();
   const deleteAll = useDeleteAllImpactRecords();
+
+  // Deferred report sharing: members (not managers) of an active
+  // explicit-submission org can launch Review & share from History.
+  const { data: shareOrgData } = useMyOrg();
+  // No membershipStatus gate: explicit-submission orgs accept submissions
+  // from pending members too (matching /org/submit), and the server
+  // re-checks eligibility on the share endpoint regardless.
+  const shareOrgEligible =
+    !!shareOrgData?.org &&
+    shareOrgData.org.role !== "manager" &&
+    shareOrgData.org.dataSharingMode !== "consented_logging";
 
   type MatchInfoEntry = { recordId: string; matchedValue: number; hoursMatched: number; donationsMatched: number; cappedAtMonthlyLimit: boolean };
   type MatchInfoResponse = { org: { id: string; name: string } | null; matches: MatchInfoEntry[] };
@@ -1256,6 +1268,43 @@ export default function History() {
                                   );
                                 }
                                 return null;
+                              })()}
+                              {(() => {
+                                // Deferred "Review & share": members of an
+                                // explicit-submission org can share a saved
+                                // report from History too — not just from the
+                                // post-save prompt. The server re-checks
+                                // eligibility; this only offers the entry
+                                // point for report-like records.
+                                if (!shareOrgEligible) return null;
+                                const rec = record as {
+                                  kind?: string | null; source?: string | null;
+                                  reportStartDate?: string | null; reportEndDate?: string | null;
+                                  habitTemplateId?: number | null;
+                                };
+                                // Same predicate as the server: only saved
+                                // Full Impact Reports qualify. Legacy rows
+                                // qualify ONLY with an authoritative stored
+                                // report period — dated records never do.
+                                const isReport =
+                                  rec.kind === "annual_estimate" ||
+                                  (rec.kind === "legacy" &&
+                                    !!rec.reportStartDate && !!rec.reportEndDate &&
+                                    rec.habitTemplateId == null &&
+                                    (rec.source === "user" || rec.source === "retrospective"));
+                                if (!isReport) return null;
+                                return (
+                                  <Link
+                                    href={`/org/share-report/${record.id}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
+                                    title="Share the activities in this report with your organisation — nothing is re-entered"
+                                    data-testid={`link-share-report-${record.id}`}
+                                  >
+                                    <Building2 className="w-3 h-3" aria-hidden="true" />
+                                    Review &amp; share
+                                  </Link>
+                                );
                               })()}
                             </>
                           )}

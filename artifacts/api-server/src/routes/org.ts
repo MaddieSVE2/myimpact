@@ -18,8 +18,8 @@ import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, get
 import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
-import { computeEstimateActualReconciliation, deriveReportingYear } from "../lib/contributionModel.js";
-import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
+import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, onlyThisOrgsSubmissionsCondition, orgVisibleMemberRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
@@ -2449,7 +2449,7 @@ async function loadOrgMatchSet(orgId: string, from?: Date, to?: Date) {
 
   let records: typeof impactRecordsTable.$inferSelect[] = [];
   if (memberIds.length > 0) {
-    const baseCondition = inArray(impactRecordsTable.userId, memberIds);
+    const baseCondition = orgVisibleMemberRecordsCondition(orgId, memberIds)!;
     const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
     const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
     records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
@@ -2822,7 +2822,11 @@ async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]
   const records = await db
     .select()
     .from(impactRecordsTable)
-    .where(and(inArray(impactRecordsTable.userId, memberIds), notOrgTwinCondition(orgId)));
+    .where(and(
+      inArray(impactRecordsTable.userId, memberIds),
+      onlyThisOrgsSubmissionsCondition(orgId),
+      notOrgTwinCondition(orgId),
+    ));
   return records
     .filter(r => {
       const m = memberMap.get(r.userId);
@@ -2833,7 +2837,13 @@ async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]
 
 async function isRecordEligibleForOrg(recordId: number, orgId: string): Promise<boolean> {
   const record = await db.query.impactRecordsTable.findFirst({
-    where: and(eq(impactRecordsTable.id, recordId), notOrgTwinCondition(orgId)),
+    where: and(
+      eq(impactRecordsTable.id, recordId),
+      // A record submitted/shared to a DIFFERENT org is never eligible here —
+      // a manager of Org B must not be able to verify Org A's submissions.
+      onlyThisOrgsSubmissionsCondition(orgId),
+      notOrgTwinCondition(orgId),
+    ),
   });
   if (!record) return false;
   const member = await db.query.orgMembersTable.findFirst({
@@ -2934,7 +2944,20 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
           totalHours: record.totalHours,
           totalValue: Number(record.totalValue),
           createdAt: record.createdAt.toISOString(),
-          entryDate: record.entryDate ? record.entryDate.toISOString() : null,
+          // Report shares are period-level: no single entry date is shown in
+          // the queue — the report's period range is provided instead.
+          entryDate: record.sourceReportId != null
+            ? null
+            : record.entryDate ? record.entryDate.toISOString() : null,
+          reportPeriod: record.reportStartDate && record.reportEndDate ? {
+            start: record.reportStartDate.toISOString().slice(0, 10),
+            end: record.reportEndDate.toISOString().slice(0, 10),
+            type: record.reportPeriodType ?? null,
+          } : null,
+          sourceReportId: record.sourceReportId ?? null,
+          note: typeof (record.resultJson as Record<string, unknown> | null)?.orgNote === "string"
+            ? ((record.resultJson as Record<string, unknown>).orgNote as string)
+            : null,
           source,
           activityCount: lines.length,
           lines,
@@ -3098,6 +3121,8 @@ export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: D
 
   const rows = await db
     .select({
+      id: impactRecordsTable.id,
+      sourceReportId: impactRecordsTable.sourceReportId,
       totalHours: impactRecordsTable.totalHours,
       totalValue: impactRecordsTable.totalValue,
       userId: impactRecordsTable.userId,
@@ -3149,6 +3174,10 @@ interface MemberSubmitBody {
   activityDate?: unknown;
   saveToPersonal?: unknown;
   activities?: unknown;
+  /** Report share ("Review & share"): id of the member's saved report. */
+  sourceReportId?: unknown;
+  /** Optional organisation-specific note captured in the share flow. */
+  note?: unknown;
 }
 
 // How long a member can edit or withdraw their own submission after sending
@@ -3222,6 +3251,70 @@ function cleanMemberActivities(activitiesRaw: unknown): { cleaned: CleanedMember
   return { cleaned };
 }
 
+// Builds the cleaned lines for a report share. The client only sends WHICH
+// report activities to share (plus an optional per-line detail); quantity,
+// hours and titles are always copied from the saved report so the member
+// never re-enters them and the share can't diverge from the report.
+function cleanReportShareActivities(
+  activitiesRaw: unknown,
+  report: typeof impactRecordsTable.$inferSelect,
+): { cleaned: CleanedMemberActivity[] } | { error: string } {
+  if (!Array.isArray(activitiesRaw) || activitiesRaw.length === 0) {
+    return { error: "Select at least one activity from the report to share." };
+  }
+  const reportLines = Array.isArray(report.activitiesJson)
+    ? (report.activitiesJson as Array<{ activityId?: unknown; quantity?: unknown; hoursPerYear?: unknown; title?: unknown; detail?: unknown }>)
+    : [];
+  const byId = new Map<string, { quantity: number; hoursPerYear: number; title: string | null; detail: string | null }>();
+  for (const l of reportLines) {
+    const id = typeof l.activityId === "string" ? l.activityId : "";
+    if (!id) continue;
+    const q = Number(l.quantity);
+    const h = Number(l.hoursPerYear);
+    byId.set(id, {
+      quantity: Number.isFinite(q) && q > 0 ? q : 0,
+      hoursPerYear: Number.isFinite(h) && h > 0 ? h : 0,
+      title: typeof l.title === "string" && l.title.trim() ? l.title.trim().slice(0, 120) : null,
+      detail: typeof l.detail === "string" && l.detail.trim() ? l.detail.trim().slice(0, 500) : null,
+    });
+  }
+
+  const cleaned: CleanedMemberActivity[] = [];
+  const seen = new Set<string>();
+  for (const raw of activitiesRaw as MemberSubmitActivity[]) {
+    const id = typeof raw.activityId === "string" ? raw.activityId.trim() : "";
+    if (!id || !byId.has(id)) {
+      return { error: `Activity '${id || "(missing id)"}' is not part of this report.` };
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const src = byId.get(id)!;
+    const def = ACTIVITIES.find(a => a.id === id);
+    if (!def) {
+      return { error: `Activity '${id}' is not a standard activity and can't be shared from a report.` };
+    }
+    if (def.unit === "hour" ? src.hoursPerYear <= 0 : src.quantity <= 0) {
+      return { error: `Activity '${def.name}' has no quantity or hours in this report.` };
+    }
+    // The only client-editable field is an organisation-specific detail/note.
+    const detail = typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim().slice(0, 500)
+      : src.detail;
+    cleaned.push({
+      activityId: id,
+      quantity: src.quantity,
+      hoursPerYear: src.hoursPerYear,
+      title: src.title,
+      detail,
+      isSomethingElse: false,
+    });
+  }
+  if (cleaned.length === 0) {
+    return { error: "Select at least one activity from the report to share." };
+  }
+  return { cleaned };
+}
+
 router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -3251,27 +3344,178 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       return;
     }
 
-    const name = typeof body.name === "string" && body.name.trim()
-      ? body.name.trim().slice(0, 120)
-      : "Activities submitted to organisation";
-    const periodLabel = typeof body.periodLabel === "string" && body.periodLabel.trim()
-      ? body.periodLabel.trim().slice(0, 80)
-      : null;
-
     // Parse activityDate (ISO date string, e.g. "2026-05-09")
     const activityDateRaw = typeof body.activityDate === "string" ? body.activityDate.trim() : "";
-    const parsedActivityDate = activityDateRaw
-      ? (() => { const d = new Date(activityDateRaw); return isNaN(d.getTime()) ? new Date() : d; })()
-      : new Date();
 
     const saveToPersonal = body.saveToPersonal === true;
 
-    const parsed = cleanMemberActivities(body.activities);
-    if ("error" in parsed) {
-      res.status(400).json({ error: parsed.error });
+    // ── Report share ("Review & share") ────────────────────────────────────
+    // When sourceReportId is present, the submission is populated from the
+    // member's saved Full Impact Report: quantities, hours, period fields and
+    // location are copied server-side from the report so nothing is
+    // re-entered (or tampered with). The submission stays period-level — a
+    // single activityDate is explicitly forbidden, and the record carries the
+    // report's authoritative period instead.
+    const sourceReportIdRaw = body.sourceReportId;
+    const sourceReportId =
+      typeof sourceReportIdRaw === "number" && Number.isInteger(sourceReportIdRaw) && sourceReportIdRaw > 0
+        ? sourceReportIdRaw
+        : null;
+    if (sourceReportIdRaw !== undefined && sourceReportId === null) {
+      res.status(400).json({ error: "sourceReportId must be a positive integer." });
       return;
     }
-    const cleaned = parsed.cleaned;
+    let sourceReport: typeof impactRecordsTable.$inferSelect | null = null;
+    if (sourceReportId != null) {
+      if (activityDateRaw) {
+        res.status(400).json({ error: "A report share is period-level: it carries the report's period, not a single activity date. Remove activityDate." });
+        return;
+      }
+      if (saveToPersonal) {
+        res.status(400).json({ error: "A report share is already in your personal Impact Report — saveToPersonal is not allowed here." });
+        return;
+      }
+      const report = await db.query.impactRecordsTable.findFirst({
+        where: and(eq(impactRecordsTable.id, sourceReportId), eq(impactRecordsTable.userId, userId)),
+      });
+      if (!report) {
+        res.status(404).json({ error: "Report not found." });
+        return;
+      }
+      if (report.source === "member-submitted" || report.submittedToOrgId || report.attestedAt) {
+        res.status(400).json({ error: "Only your own personal Impact Report entries can be shared this way." });
+        return;
+      }
+      // Qualification: only saved Full Impact Reports are period-level
+      // shareables. Quick logs, recurring confirmations, bulk retrospectives
+      // and API-attested rows must go through their own dated flows.
+      if (report.kind !== "annual_estimate" && report.kind !== "legacy") {
+        res.status(400).json({ error: "Only a saved Impact Report can be shared this way — this record isn't a report." });
+        return;
+      }
+      // Legacy rows need extra qualification: kind='legacy' also covers
+      // pre-kind personal copies of ad-hoc member submissions (linked via
+      // resultJson.orgRecordId), recurring-template occurrences, and other
+      // report-share copies. Only genuine wizard-saved reports qualify.
+      if (report.kind === "legacy") {
+        // Ambiguous legacy rows are REJECTED, never guessed at: kind='legacy'
+        // also covers pre-kind quick logs and other dated personal records,
+        // which must never become period-level shares. The only authoritative
+        // discriminator for a historical Full Impact Report is a stored
+        // report period (reportStartDate/reportEndDate) — a dated record
+        // never has one. Everything else (personal submission copies, habit
+        // occurrences, share copies, non-user sources) is also excluded.
+        const rj = report.resultJson as Record<string, unknown> | null;
+        const isPersonalSubmissionCopy = rj !== null && typeof rj === "object" && rj.orgRecordId != null;
+        const isDatedOccurrence = report.habitTemplateId != null;
+        const isShareCopy = report.sourceReportId != null;
+        const hasAuthoritativePeriod = report.reportStartDate != null && report.reportEndDate != null;
+        if (
+          !hasAuthoritativePeriod ||
+          isPersonalSubmissionCopy || isDatedOccurrence || isShareCopy ||
+          (report.source !== "user" && report.source !== "retrospective")
+        ) {
+          res.status(400).json({ error: "Only a saved Impact Report can be shared this way — this record isn't a report." });
+          return;
+        }
+      }
+      // Review & share exists only for explicit-submission orgs. In
+      // consented-logging mode the whole report is already automatically
+      // visible; accepting a subset share here would let the twin exclusion
+      // suppress the source report and silently DROP the unselected
+      // activities from the org's automatic totals.
+      const shareOrg = await db.query.organisationsTable.findFirst({
+        where: eq(organisationsTable.id, membership.orgId),
+        columns: { dataSharingMode: true },
+      });
+      if (shareOrg?.dataSharingMode === "consented_logging") {
+        res.status(400).json({ error: "Your organisation sees your logged activity automatically — report sharing isn't needed or supported here." });
+        return;
+      }
+      // Reuse-aware: one live share per report per org. Withdrawing the share
+      // deletes the org copy, which frees the report to be shared again.
+      const [existingShare] = await db
+        .select({ id: impactRecordsTable.id })
+        .from(impactRecordsTable)
+        .where(and(
+          eq(impactRecordsTable.sourceReportId, sourceReportId),
+          eq(impactRecordsTable.submittedToOrgId, membership.orgId),
+          eq(impactRecordsTable.source, "member-submitted"),
+        )!)
+        .limit(1);
+      if (existingShare) {
+        res.status(409).json({
+          error: "You've already shared activities from this report with your organisation. Withdraw that submission first if you want to change it.",
+          code: "already_shared",
+          recordId: existingShare.id,
+        });
+        return;
+      }
+      sourceReport = report;
+    }
+
+    // Authoritative share period. Newer reports store explicit period fields;
+    // legacy wizard reports without them get the calendar year they report on
+    // (reportingYear, falling back to the entry date's year). A share is
+    // always period-level — it never falls back to a single date.
+    const sharePeriod = sourceReport
+      ? (() => {
+          if (sourceReport.reportStartDate && sourceReport.reportEndDate) {
+            return {
+              start: sourceReport.reportStartDate,
+              end: sourceReport.reportEndDate,
+              type: sourceReport.reportPeriodType ?? "calendar",
+            };
+          }
+          const year = sourceReport.reportingYear
+            ?? (sourceReport.entryDate ?? sourceReport.createdAt).getUTCFullYear();
+          return {
+            start: new Date(Date.UTC(year, 0, 1)),
+            end: new Date(Date.UTC(year, 11, 31)),
+            type: "calendar",
+          };
+        })()
+      : null;
+
+    // For report shares, entryDate is the report's own (already
+    // period-clamped) entry date — used only as the record's home date for
+    // windowed aggregation, never presented as "the activity date".
+    const parsedActivityDate = sourceReport
+      ? (sourceReport.entryDate ?? sourceReport.createdAt)
+      : activityDateRaw
+        ? (() => { const d = new Date(activityDateRaw); return isNaN(d.getTime()) ? new Date() : d; })()
+        : new Date();
+
+    const name = typeof body.name === "string" && body.name.trim()
+      ? body.name.trim().slice(0, 120)
+      : sourceReport
+        ? `Shared from report: ${sourceReport.name}`.slice(0, 120)
+        : "Activities submitted to organisation";
+    const periodLabel = typeof body.periodLabel === "string" && body.periodLabel.trim()
+      ? body.periodLabel.trim().slice(0, 80)
+      : sourceReport?.periodLabel ?? null;
+
+    // Optional organisation-specific note (share flow's missing-fields step).
+    const orgNote = typeof body.note === "string" && body.note.trim()
+      ? body.note.trim().slice(0, 500)
+      : null;
+
+    let cleaned: CleanedMemberActivity[];
+    if (sourceReport) {
+      const parsed = cleanReportShareActivities(body.activities, sourceReport);
+      if ("error" in parsed) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      cleaned = parsed.cleaned;
+    } else {
+      const parsed = cleanMemberActivities(body.activities);
+      if ("error" in parsed) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      cleaned = parsed.cleaned;
+    }
 
     // ── Evidence policy enforcement ─────────────────────────────────────────
     // Evidence photos are uploaded before submission (purpose=org-evidence,
@@ -3348,6 +3592,8 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       submittedToOrgId: membership.orgId,
       submittedToOrgAt: now.toISOString(),
       memberLines,
+      ...(sourceReport ? { sourceReportId: sourceReport.id } : {}),
+      ...(orgNote ? { orgNote } : {}),
     };
 
     const activitiesJson = cleaned.map(c => ({
@@ -3358,7 +3604,9 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       detail: c.detail,
     }));
 
-    const [inserted] = await db.insert(impactRecordsTable).values({
+    let inserted: typeof impactRecordsTable.$inferSelect;
+    try {
+      [inserted] = await db.insert(impactRecordsTable).values({
       userId,
       name,
       periodLabel,
@@ -3374,8 +3622,49 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       submittedToOrgId: membership.orgId,
       submittedToOrgAt: now,
       entryDate: parsedActivityDate,
-      reportingYear: deriveReportingYear(parsedActivityDate),
-    }).returning();
+      reportingYear: sourceReport
+        ? (sourceReport.reportingYear ?? deriveReportingYear(parsedActivityDate))
+        : deriveReportingYear(parsedActivityDate),
+      // Report shares stay period-level: they carry the report's contribution
+      // kind (so estimate-vs-actual reconciliation applies to org aggregates
+      // exactly as it does personally), its authoritative period fields, its
+      // structured location (redacted at org-facing read time), and a
+      // first-class link back to the source report for twin exclusion.
+      ...(sourceReport ? {
+        kind: sourceReport.kind ?? "legacy",
+        reportStartDate: sharePeriod!.start,
+        reportEndDate: sharePeriod!.end,
+        reportPeriodType: sharePeriod!.type,
+        locationJson: sourceReport.locationJson,
+        sourceReportId: sourceReport.id,
+      } : {}),
+      }).returning();
+    } catch (insertErr) {
+      // A partial unique index enforces one live share per report per org, so
+      // concurrent submissions can't slip past the pre-insert check above.
+      if (
+        sourceReport &&
+        typeof insertErr === "object" && insertErr !== null &&
+        (insertErr as { code?: string }).code === "23505"
+      ) {
+        const [racedShare] = await db
+          .select({ id: impactRecordsTable.id })
+          .from(impactRecordsTable)
+          .where(and(
+            eq(impactRecordsTable.sourceReportId, sourceReport.id),
+            eq(impactRecordsTable.submittedToOrgId, membership.orgId),
+            eq(impactRecordsTable.source, "member-submitted"),
+          )!)
+          .limit(1);
+        res.status(409).json({
+          error: "You've already shared activities from this report with your organisation. Withdraw that submission first if you want to change it.",
+          code: "already_shared",
+          recordId: racedShare?.id ?? null,
+        });
+        return;
+      }
+      throw insertErr;
+    }
 
     // Link pre-uploaded evidence photos to the newly created record.
     if (evidenceRows.length > 0) {
@@ -3470,12 +3759,23 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         socialValueGBP: calc.totalValue,
         occurredAt: now.toISOString(),
         // The date the activity happened (member-picked), as opposed to
-        // occurredAt which is when the submission was made.
-        activityDate: parsedActivityDate.toISOString().slice(0, 10),
-        location: null,
-        // Mirrors the stored record's contribution kind (member submissions
-        // don't set an explicit kind today).
-        kind: "legacy" as const,
+        // occurredAt which is when the submission was made. Report shares are
+        // period-level: no single date is invented — consumers get the
+        // report's period fields instead.
+        activityDate: sourceReport ? null : parsedActivityDate.toISOString().slice(0, 10),
+        reportPeriod: sharePeriod ? {
+          start: sharePeriod.start.toISOString().slice(0, 10),
+          end: sharePeriod.end.toISOString().slice(0, 10),
+          type: sharePeriod.type,
+        } : null,
+        sourceReportId: sourceReport ? sourceReport.id : null,
+        location: sourceReport?.locationJson
+          ? redactLocationForOrg(sourceReport.locationJson)
+          : null,
+        // Mirrors the stored record's contribution kind (ad-hoc member
+        // submissions don't set an explicit kind today; report shares carry
+        // the report's kind).
+        kind: (sourceReport ? (sourceReport.kind ?? "legacy") : "legacy") as string,
         reportingYear: inserted.reportingYear ?? deriveReportingYear(parsedActivityDate),
         recurrenceSource: null,
         // Kept for backwards compatibility with existing consumers; the
@@ -3505,6 +3805,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         submittedToOrgAt: now.toISOString(),
         personalRecordId: personalRecordId ?? undefined,
         verificationStatus: autoVerify ? "approved" : "pending",
+        sourceReportId: sourceReport ? sourceReport.id : undefined,
       },
     });
   } catch (err) {
@@ -3635,7 +3936,20 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
           : approvedSubmissionIds.has(r.id)
             ? ("approved" as const)
             : ("submitted" as const),
-        activityDate: r.entryDate ? new Date(r.entryDate).toISOString().slice(0, 10) : null,
+        // Report shares are period-level: no single activity date is
+        // presented — the report's period range is returned instead.
+        activityDate: r.sourceReportId != null
+          ? null
+          : r.entryDate ? new Date(r.entryDate).toISOString().slice(0, 10) : null,
+        reportPeriod: r.reportStartDate && r.reportEndDate ? {
+          start: r.reportStartDate.toISOString().slice(0, 10),
+          end: r.reportEndDate.toISOString().slice(0, 10),
+          type: r.reportPeriodType ?? null,
+        } : null,
+        sourceReportId: r.sourceReportId ?? null,
+        note: typeof (r.resultJson as Record<string, unknown> | null)?.orgNote === "string"
+          ? ((r.resultJson as Record<string, unknown>).orgNote as string)
+          : null,
         activityCount: lines.length,
         lines: lines.map(l => {
           const def = ACTIVITIES.find(a => a.id === l.activityId);
@@ -3715,6 +4029,15 @@ router.get("/my-submissions", authenticate, async (req: AuthenticatedRequest, re
         totalHours: r.totalHours,
         totalValue: Number(r.totalValue),
         submittedAt: submittedAt.toISOString(),
+        reportPeriod: r.reportStartDate && r.reportEndDate ? {
+          start: r.reportStartDate.toISOString().slice(0, 10),
+          end: r.reportEndDate.toISOString().slice(0, 10),
+          type: r.reportPeriodType ?? null,
+        } : null,
+        sourceReportId: r.sourceReportId ?? null,
+        note: typeof (r.resultJson as Record<string, unknown> | null)?.orgNote === "string"
+          ? ((r.resultJson as Record<string, unknown>).orgNote as string)
+          : null,
         activityCount: lines.length,
         editableUntil: editableUntil.toISOString(),
         canEdit: nowMs < editableUntil.getTime(),
@@ -3877,6 +4200,12 @@ router.patch("/member-submissions/:recordId", authenticate, async (req: Authenti
     }
     if (record.userId !== userId) {
       res.status(403).json({ error: "You can only edit your own submissions." });
+      return;
+    }
+    if (record.sourceReportId != null) {
+      // Report shares mirror the saved report; editing lines here would let
+      // the share diverge from it. Withdraw (within the window) and re-share.
+      res.status(400).json({ error: "This submission was shared from an Impact Report and can't be edited directly. Withdraw it and share the report again instead." });
       return;
     }
     const submittedAtMs = (record.submittedToOrgAt ?? record.createdAt).getTime();
@@ -4088,6 +4417,10 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       proxyYear: string;
       source: "member-submitted" | "org-attested" | "shared";
       evidence: Array<{ id: number; url: string; mimeType: string }>;
+      // Present for period-level records (report shares / period-scoped
+      // reports): the record's reporting period. Frontends should show this
+      // range instead of a single date when set.
+      reportPeriod: { start: string; end: string; type: string | null } | null;
     }
 
     const lines: ActivityLine[] = [];
@@ -4121,6 +4454,14 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       // uniformly regardless of which DB column holds the activity date.
       if (fromStr && recordDate < fromStr) continue;
       if (toStr   && recordDate > toStr)   continue;
+
+      // Period-level records (report shares) carry the report's period so
+      // the UI can show a range instead of a single date.
+      const recordReportPeriod = r.reportStartDate && r.reportEndDate ? {
+        start: r.reportStartDate.toISOString().slice(0, 10),
+        end: r.reportEndDate.toISOString().slice(0, 10),
+        type: r.reportPeriodType ?? null,
+      } : null;
 
       for (let i = 0; i < actLines.length; i++) {
         const l = actLines[i];
@@ -4156,6 +4497,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             proxyYear: "2023",
             source: "org-attested",
             evidence: [],
+            reportPeriod: recordReportPeriod,
           });
         } else {
           // Member-submitted or consented-shared: look up the canonical
@@ -4207,6 +4549,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
             // Evidence is record-level; only attach it to the first line so
             // multi-activity records don't repeat the same photos per row.
             evidence: i === 0 ? (evidenceByRecord.get(r.id) ?? []) : [],
+            reportPeriod: recordReportPeriod,
           });
         }
       }

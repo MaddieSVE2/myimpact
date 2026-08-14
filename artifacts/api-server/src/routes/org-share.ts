@@ -3,6 +3,7 @@ import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgShareLi
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
+import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
 
 const router: IRouter = Router();
 
@@ -86,7 +87,9 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
   const memberIds = members.map(m => m.userId);
 
   const records = memberIds.length > 0
-    ? await db.select().from(impactRecordsTable).where(inArray(impactRecordsTable.userId, memberIds))
+    ? await db.select().from(impactRecordsTable).where(
+        orgVisibleMemberRecordsCondition(link.orgId, memberIds)!,
+      )
     : [];
 
   // ── Summary ─────────────────────────────────────────────────────────────────

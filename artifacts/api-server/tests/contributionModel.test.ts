@@ -81,6 +81,53 @@ describe("computeEstimateActualReconciliation", () => {
     expect(recon.activities).toEqual([]);
   });
 
+  it("report share + its source report in the same set counts once (share is pure duplicate)", () => {
+    const report = {
+      ...record({ kind: "annual_estimate", activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),
+      id: 777,
+    };
+    const share = {
+      ...record({ kind: "annual_estimate", activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),
+      id: 888,
+      sourceReportId: 777,
+    };
+    const recon = computeEstimateActualReconciliation([report, share]);
+    const shareJson = share.resultJson as { totalValue: number; totalHours: number };
+    expect(recon.valueExcess).toBeCloseTo(shareJson.totalValue, 6);
+    expect(recon.hoursExcess).toBeCloseTo(shareJson.totalHours, 6);
+    // Per-activity detail carries the duplicate excess too, so activity /
+    // category / SDG maps dedupe alongside the headline totals.
+    const act = recon.activities.find(a => a.activityId === "community_garden");
+    expect(act).toBeDefined();
+    expect(act!.excessValue).toBeCloseTo(721.5, 6);
+    expect(act!.excessHours).toBeCloseTo(50, 6);
+  });
+
+  it("report share WITHOUT its source report present (org aggregates after twin exclusion) is untouched", () => {
+    const share = {
+      ...record({ kind: "annual_estimate", activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),
+      id: 888,
+      sourceReportId: 777, // report id 777 not in the input set
+    };
+    const recon = computeEstimateActualReconciliation([share]);
+    expect(recon.valueExcess).toBe(0);
+    expect(recon.hoursExcess).toBe(0);
+  });
+
+  it("report share still reconciles against quick logs when the source report is absent", () => {
+    // Org side: the personal report is twin-excluded, but the member also
+    // quick-logged actuals for the same activity — estimate-vs-actual
+    // reconciliation must still apply to the share.
+    const share = {
+      ...record({ kind: "annual_estimate", activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),
+      id: 888,
+      sourceReportId: 777,
+    };
+    const quick = record({ kind: "quick_log", entryDate: "2026-05-03T00:00:00Z", activities: [{ activityId: "community_garden", impactValue: 28.86, hours: 2 }] });
+    const recon = computeEstimateActualReconciliation([share, quick]);
+    expect(recon.hoursExcess).toBeCloseTo(2, 6);
+  });
+
   it("estimate only: no adjustment", () => {
     const recon = computeEstimateActualReconciliation([
       record({ kind: "annual_estimate", activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),

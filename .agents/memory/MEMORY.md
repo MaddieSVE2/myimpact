@@ -11,7 +11,6 @@
 - [Persona instant login](persona-instant-login.md) — demo persona emails (x@x.org) log in instantly via /api/auth/demo-login or the sign-in form; best auth path for curl and UI tests.
 - [Dev DB drift vs drizzle push](dev-db-drift.md) — push aborts on leftover `opportunities` table drop; apply new tables/columns via psql SQL matching the schema instead.
 - [ffmpeg in production](ffmpeg-in-production.md) — spawn ffmpeg/ffprobe via ffmpeg-static/ffprobe-static (Nix binaries are dev-only); needs onlyBuiltDependencies + api-server dep listing to stay external.
-- [Parallel validation contention](parallel-validation-contention.md) — validation runs all Playwright suites at once sharing test-results/; ENOENT trace errors + timeouts are contention, verify suites individually via workflows.
 - [Prod seeding constraints](prod-seeding-constraints.md) — prod DB is read-only from dev and prod DATABASE_URL is hidden; seed/backfill jobs must run inside the deployed app (startup sweep pattern), landing on next publish.
 - [E2E email suppression](e2e-email-suppression.md) — Resend sends are now stubbed centrally in the resend helper when E2E_TEST_MODE=1; task merges adding columns via ad-hoc SQL must also ship a numbered migration or e2e reset-user 500s.
 - [Vite manualChunks white screen](vite-manualchunks-whitescreen.md) — never split React into a manual vendor chunk in my-impact; it caused a prod-only chunk-init cycle and a white screen at myimpact.uk.
@@ -31,4 +30,5 @@
 - [Recurring reminder flow](recurring-reminder-flow.md) — templates log ONE contribution per confirmed occurrence; current-year bulk /confirm retired; forecasts never become actuals.
 - [Admin endpoint testing](admin-endpoint-testing.md) — no admin persona exists; test admin routes by seeding an allowlisted user and signing an mi_session JWT with SESSION_SECRET; clean up test rows after.
 - [Authoritative report period](report-period.md) — a report's stored period is the single source of truth: dates clamp into it, invalid periods are rejected, and windowed aggregations consume estimate capacity once.
+- [Report share flow](report-share-flow.md) — shares copy report data server-side, stay period-level (no activityDate), and dedupe via source_report_id in twin SQL + recon pre-pass; recon inputs need id+sourceReportId.
 - [Org verification states](org-verification-states.md) — three-state model (submitted/approved/verified) rides alongside the legacy `verified` boolean; never re-add auto-"Verified" labels for member submissions.

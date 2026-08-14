@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getUncachableResendClient } from "./resend.js";
+import { orgVisibleMemberRecordsCondition } from "./orgSharing.js";
 
 // Send a reminder when submissions have been waiting longer than this.
 const STALE_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
@@ -54,7 +55,7 @@ async function getPendingSummary(orgId: string, orgName: string): Promise<OrgPen
       createdAt: impactRecordsTable.createdAt,
     })
     .from(impactRecordsTable)
-    .where(inArray(impactRecordsTable.userId, members.map(m => m.userId)));
+    .where(orgVisibleMemberRecordsCondition(orgId, members.map(m => m.userId))!);
 
   const eligible = records.filter(r => {
     const m = memberMap.get(r.userId);

@@ -8,7 +8,7 @@ import {
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
-import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -941,6 +941,13 @@ router.delete("/all", authenticate, async (req: AuthenticatedRequest, res) => {
   const attachmentsRemoved = await deleteAllAttachmentsForUser(userId);
   await db.delete(journalEntriesTable).where(eq(journalEntriesTable.userId, userId));
   await db.delete(recurringTemplatesTable).where(eq(recurringTemplatesTable.userId, userId));
+  // A full wipe withdraws the member's org submissions too: delete report
+  // shares (records that point at a source report) BEFORE their sources so
+  // the DB-level provenance FK never blocks the wipe.
+  await db.delete(impactRecordsTable).where(and(
+    eq(impactRecordsTable.userId, userId),
+    isNotNull(impactRecordsTable.sourceReportId),
+  )!);
   await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
   await recordAuditEvent({
     userId,
@@ -973,6 +980,25 @@ router.delete("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
 
   if (!record) {
     res.status(404).json({ error: "Record not found" });
+    return;
+  }
+
+  // A report with a live org share can't be deleted — the share's provenance
+  // (immutability guard, dedupe, one-share-per-report) hangs off the link.
+  // The member must withdraw the share first.
+  const [liveShare] = await db
+    .select({ id: impactRecordsTable.id })
+    .from(impactRecordsTable)
+    .where(and(
+      eq(impactRecordsTable.sourceReportId, recordId),
+      eq(impactRecordsTable.source, "member-submitted"),
+    ))
+    .limit(1);
+  if (liveShare) {
+    res.status(409).json({
+      error: "This report has been shared with your organisation. Withdraw that submission first, then delete the report.",
+      code: "shared_with_org",
+    });
     return;
   }
 
@@ -1465,6 +1491,16 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       const result = parseRecapResult(r.resultJson);
       lifetimeTotalValue += result.totalValue ?? 0;
     }
+    // Same dedupe rule as the yearly totals: estimate-vs-actual overlap and
+    // report-share copies (a report plus its org share) count once lifetime.
+    const lifetimeRecon = computeEstimateActualReconciliation(lifetimeRecords);
+    lifetimeTotalValue -= lifetimeRecon.valueExcess;
+    // A share copy of an in-set report is the same underlying report, not an
+    // extra record.
+    const lifetimeIds = new Set(lifetimeRecords.map(r => r.id));
+    const lifetimeRecordCount = lifetimeRecords.filter(
+      r => !(r.sourceReportId != null && lifetimeIds.has(r.sourceReportId)),
+    ).length;
     const firstRecord = lifetimeRecords[0] ?? null;
 
     const milestonesEarnedCount = computeMilestoneCount(totalValue, totalHours, categories.size);
@@ -1474,7 +1510,14 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
     res.json({
       year: yearParam,
       hasEnoughActivity,
-      recordCount: yearRecords.length,
+      recordCount: (() => {
+        // Same in-set source-report rule as lifetime/YoY counts: a share copy
+        // of an in-year report is the same underlying contribution.
+        const ids = new Set(yearRecords.map(r => r.id));
+        return yearRecords.filter(
+          r => !(r.sourceReportId != null && ids.has(r.sourceReportId)),
+        ).length;
+      })(),
       totalValue: Math.round(totalValue * 100) / 100,
       totalHours: Math.round(totalHours * 100) / 100,
       totalDonations: Math.round(totalDonations * 100) / 100,
@@ -1487,7 +1530,7 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       journalHighlight,
       milestonesEarnedCount,
       firstRecordAt: firstRecord ? firstRecord.createdAt.toISOString() : null,
-      lifetimeRecordCount: lifetimeRecords.length,
+      lifetimeRecordCount,
       lifetimeTotalValue: Math.round(lifetimeTotalValue * 100) / 100,
     });
   } catch (err) {
@@ -2419,6 +2462,8 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
     // quick logs cover the same activity in the same year.
     const rows = await db
       .select({
+        id: impactRecordsTable.id,
+        sourceReportId: impactRecordsTable.sourceReportId,
         userId: impactRecordsTable.userId,
         totalValue: impactRecordsTable.totalValue,
         kind: impactRecordsTable.kind,
@@ -2445,7 +2490,13 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
       [...rows, ...overlapping],
       { window: { start, endExclusive: end } },
     ).valueExcess;
-    return { total, count: rows.length };
+    // A share copy of an in-window report is the same underlying report, not
+    // an extra contribution — mirror the recap lifetime count rule.
+    const ids = new Set(rows.map(r => r.id));
+    const count = rows.filter(
+      r => !(r.sourceReportId != null && ids.has(r.sourceReportId)),
+    ).length;
+    return { total, count };
   }
 
   const [selected, priorPeriod, priorFull] = await Promise.all([
@@ -2670,7 +2721,13 @@ router.get("/match-info", authenticate, async (req: AuthenticatedRequest, res) =
         resultJson: impactRecordsTable.resultJson,
       })
       .from(impactRecordsTable)
-      .where(eq(impactRecordsTable.userId, userId));
+      // Mirror the org-side match set: submissions to OTHER orgs and personal
+      // twins of this org's submissions don't earn matching here either.
+      .where(and(
+        eq(impactRecordsTable.userId, userId),
+        onlyThisOrgsSubmissionsCondition(org.id),
+        notOrgTwinCondition(org.id),
+      )!);
 
     const recordsForMatch: RecordForMatch[] = records.map(r => {
       const raw = r.resultJson as Record<string, unknown> | null;

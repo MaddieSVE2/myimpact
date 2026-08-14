@@ -206,6 +206,11 @@ interface MemberSubmission {
   // "approved" (manager or auto-verify approval), "submitted" (awaiting review).
   verificationStatus?: "verified" | "approved" | "submitted";
   activityDate?: string | null;
+  // Present for report shares: the report's period range replaces a single
+  // activity date.
+  reportPeriod?: { start: string; end: string; type: string | null } | null;
+  sourceReportId?: number | null;
+  note?: string | null;
   activityCount: number;
   lines: MemberSubmissionLine[];
   evidence?: SubmissionEvidence[];
@@ -379,8 +384,13 @@ function MemberSubmissionsPanel() {
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"} · {new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {s.activityCount} activit{s.activityCount === 1 ? "y" : "ies"} · {s.reportPeriod
+                        ? `${new Date(s.reportPeriod.start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} – ${new Date(s.reportPeriod.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                        : new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
+                    {s.note && (
+                      <p className="text-[11px] text-muted-foreground italic" data-testid={`member-submission-note-${s.recordId}`}>“{s.note}”</p>
+                    )}
                   </div>
                   <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">{s.totalHours} hrs</span>
                   <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">{formatCurrency(s.totalValue)}</span>

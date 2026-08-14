@@ -109,7 +109,7 @@ vi.mock("@workspace/db", () => {
     "lat", "lng", "attestedByApiKeyId", "attestedAt", "submittedToOrgId",
     "submittedToOrgAt", "source", "tags", "entryDate", "habitTemplateId",
     "createdAt", "kind", "locationJson", "reportingYear",
-    "reportStartDate", "reportEndDate", "reportPeriodType",
+    "reportStartDate", "reportEndDate", "reportPeriodType", "sourceReportId",
   ]);
   const recurringTemplatesTable = tableTag("recurring_templates", [
     "id", "userId", "label", "cadence", "dayOfPeriod", "anchorDate",
@@ -447,6 +447,9 @@ function makeRecord(opts: {
   reportStartDate?: Date | null;
   reportEndDate?: Date | null;
   reportPeriodType?: string | null;
+  sourceReportId?: number | null;
+  source?: string;
+  submittedToOrgId?: string | null;
 }): Record<string, unknown> {
   const impactValue = opts.impactValue ?? 0;
   const hours = opts.hours ?? 0;
@@ -484,7 +487,9 @@ function makeRecord(opts: {
       sdgBreakdowns: impactValue > 0 ? [{ sdg: "Climate Action", sdgColor: "#3F7E44", value: impactValue }] : [],
     },
     region: null, outwardCode: null, lat: null, lng: null,
-    source: "user", tags: [],
+    source: opts.source ?? "user", tags: [],
+    submittedToOrgId: opts.submittedToOrgId ?? null,
+    sourceReportId: opts.sourceReportId ?? null,
     entryDate: opts.entryDate,
     habitTemplateId: null,
     createdAt: opts.entryDate,
@@ -902,6 +907,89 @@ describe("cross-year report periods — quick logs reconcile against the period,
     seedAcademicMix();
     const res25 = await request(app).get("/api/impact/yoy?year=2025").expect(200);
     expect(res25.body.selectedTotal ?? res25.body.selectedYearTotalValue).toBeCloseTo(0, 2);
+  });
+
+  it("/yoy counts a report and its org share once (report-share dedupe)", async () => {
+    const app = makeApp();
+    // Personal report + the org copy created by "Review & share".
+    state.impactRecords.push(
+      makeRecord({
+        id: 500, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+      }),
+      makeRecord({
+        id: 501, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+        source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 500,
+      }),
+    );
+    const res26 = await request(app).get("/api/impact/yoy?year=2026").expect(200);
+    // Only the report counts — the share's totals are removed as duplicates.
+    expect(res26.body.selectedTotal ?? res26.body.selectedYearTotalValue).toBeCloseTo(
+      Math.round((721.5 + 50 * (NLW + PD)) * 100) / 100, 2,
+    );
+    // The record COUNT dedupes too: report + its share = one contribution.
+    expect(res26.body.selectedCount).toBe(1);
+  });
+
+  it("deleting a report with a live org share is blocked until the share is withdrawn", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        id: 700, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+      }),
+      makeRecord({
+        id: 701, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+        source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 700,
+      }),
+    );
+    const res = await request(app).delete("/api/impact/700");
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("shared_with_org");
+    // Both records remain.
+    expect(state.impactRecords.map(r => r.id)).toEqual(expect.arrayContaining([700, 701]));
+  });
+
+  it("DELETE /all wipes shares before their source reports (full wipe still succeeds)", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        id: 710, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+      }),
+      makeRecord({
+        id: 711, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+        source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 710,
+      }),
+    );
+    const res = await request(app).delete("/api/impact/all");
+    expect(res.status).toBe(200);
+    expect(state.impactRecords).toHaveLength(0);
+  });
+
+  it("/recap lifetime totals count a report and its org share once", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        id: 600, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+      }),
+      makeRecord({
+        id: 601, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)),
+        impactValue: 721.5, hours: 50,
+        source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 600,
+      }),
+    );
+    const res = await request(app).get("/api/impact/recap/2026").expect(200);
+    expect(res.body.lifetimeTotalValue).toBeCloseTo(
+      Math.round((721.5 + 50 * (NLW + PD)) * 100) / 100, 2,
+    );
+    expect(res.body.lifetimeRecordCount).toBe(1);
+    // Yearly count dedupes the same way.
+    expect(res.body.recordCount).toBe(1);
   });
 
   it("actuals exceeding the estimate across years never reuse its capacity per window", async () => {

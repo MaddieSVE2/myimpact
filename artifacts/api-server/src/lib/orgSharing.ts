@@ -134,7 +134,11 @@ export function recordInSharedWindow(ctx: OrgSharingContext, userId: string, ent
 export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined {
   if (ctx.memberIds.length === 0) return undefined;
   if (ctx.mode !== "consented_logging") {
-    return and(inArray(impactRecordsTable.userId, ctx.memberIds), notOrgTwinCondition(ctx.orgId));
+    return and(
+      inArray(impactRecordsTable.userId, ctx.memberIds),
+      onlyThisOrgsSubmissionsCondition(ctx.orgId),
+      notOrgTwinCondition(ctx.orgId),
+    );
   }
   const parts: SQL[] = [];
   for (const userId of ctx.memberIds) {
@@ -144,7 +148,26 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
     if (cond) parts.push(cond);
   }
   if (parts.length === 0) return undefined;
-  return and(or(...parts), notOrgTwinCondition(ctx.orgId));
+  return and(
+    or(...parts),
+    onlyThisOrgsSubmissionsCondition(ctx.orgId),
+    notOrgTwinCondition(ctx.orgId),
+  );
+}
+
+/**
+ * Records submitted/attested to a SPECIFIC organisation (member submissions,
+ * report shares, API-attested rows — anything with submitted_to_org_id set)
+ * are visible only to that organisation. A member who belongs to several
+ * orgs never leaks Org A's submissions into Org B's dashboards, exports or
+ * manager surfaces. Personal records (submitted_to_org_id IS NULL) keep the
+ * documented per-mode behaviour.
+ */
+export function onlyThisOrgsSubmissionsCondition(orgId: string): SQL {
+  return sql`(
+    ${impactRecordsTable.submittedToOrgId} IS NULL
+    OR ${impactRecordsTable.submittedToOrgId} = ${orgId}
+  )`;
 }
 
 /**
@@ -161,14 +184,23 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
  * member-submitted record for THIS org exists for the same user and either:
  *   - the personal record's resultJson carries an explicit `orgRecordId` link
  *     pointing at that org submission (written by the member-submit flow), or
+ *   - the org submission's `source_report_id` points back at the personal
+ *     record (written by the report "Review & share" flow — the org copy is
+ *     authoritative for the org, so the source report is excluded), or
  *   - (legacy rows without the link) the org submission has the same
  *     entry_date and identical activities_json.
  *
- * Genuine personal-only records never match and remain visible.
+ * Personal records include wizard saves dated to a prior year
+ * (source='retrospective') — a shared report keeps its twin exclusion even
+ * when it was logged retrospectively.
+ *
+ * Genuine personal-only records never match and remain visible. If the org
+ * submission is withdrawn (deleted), the EXISTS stops matching and the
+ * personal record automatically becomes visible again.
  */
 export function notOrgTwinCondition(orgId: string): SQL {
   return sql`NOT (
-    ${impactRecordsTable.source} = 'user'
+    ${impactRecordsTable.source} IN ('user', 'retrospective')
     AND EXISTS (
       SELECT 1 FROM impact_records AS org_twin
       WHERE org_twin.source = 'member-submitted'
@@ -179,6 +211,7 @@ export function notOrgTwinCondition(orgId: string): SQL {
             (${impactRecordsTable.resultJson} ->> 'orgRecordId') ~ '^[0-9]+$'
             AND org_twin.id = (${impactRecordsTable.resultJson} ->> 'orgRecordId')::int
           )
+          OR org_twin.source_report_id = ${impactRecordsTable.id}
           OR (
             org_twin.entry_date = ${impactRecordsTable.entryDate}
             AND org_twin.activities_json = ${impactRecordsTable.activitiesJson}
@@ -186,6 +219,21 @@ export function notOrgTwinCondition(orgId: string): SQL {
         )
     )
   )`;
+}
+
+/**
+ * Full record-visibility condition for org-facing surfaces that filter by an
+ * explicit member list (public share links, match sets, digests): member's
+ * records, minus submissions belonging to OTHER orgs, minus personal twins of
+ * this org's submissions (incl. report shares) so nothing is double-counted.
+ */
+export function orgVisibleMemberRecordsCondition(orgId: string, memberIds: string[]): SQL | undefined {
+  if (memberIds.length === 0) return undefined;
+  return and(
+    inArray(impactRecordsTable.userId, memberIds),
+    onlyThisOrgsSubmissionsCondition(orgId),
+    notOrgTwinCondition(orgId),
+  );
 }
 
 /** Returns true (and sends a 403) when the org has been revoked. */

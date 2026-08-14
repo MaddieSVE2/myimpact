@@ -246,6 +246,16 @@ interface BreakdownEntry {
 }
 
 export interface ReconcilableRecord {
+  /** Record id — only needed for report-share dedupe (see sourceReportId). */
+  id?: number | null;
+  /**
+   * Set on org submissions created by sharing a saved Full Impact Report.
+   * When BOTH the share and its source report appear in the same input set
+   * (personal aggregations), the share is a pure duplicate: its full
+   * totals are added to the returned excess. When only one side is present
+   * (org aggregates exclude the personal twin), nothing changes.
+   */
+  sourceReportId?: number | null;
   userId?: string | null;
   kind?: string | null;
   entryDate: Date;
@@ -360,7 +370,84 @@ export function computeEstimateActualReconciliation(
     donEntries: { t: number; amount: number; inWindow: boolean }[];
   }>();
 
-  const all = Array.isArray(records) ? records : [...records];
+  const allRaw = Array.isArray(records) ? records : [...records];
+
+  // Report-share dedupe: an org submission created by sharing a saved Full
+  // Impact Report (sourceReportId set) is a byte-for-byte copy of (a subset
+  // of) that report. When BOTH rows are in the input set — personal
+  // aggregations, where the user's own report and their org share are each
+  // selected — count the underlying activities once by treating the share's
+  // full totals as excess and removing it from estimate/actual grouping.
+  // Org aggregates never see both sides (the personal report is excluded as
+  // a twin), so this pass is a no-op there.
+  const presentIds = new Set<number>();
+  for (const r of allRaw) {
+    if (typeof r.id === "number") presentIds.add(r.id);
+  }
+  let duplicateValueExcess = 0;
+  let duplicateHoursExcess = 0;
+  // Per-activity share of the duplicate excess, so aggregators that adjust
+  // activity/category/SDG maps via recon.activities dedupe those maps too,
+  // not just the headline totals. Keyed by user|activityId.
+  const duplicateActs = new Map<string, {
+    userId: string;
+    year: number;
+    activityId: string;
+    activityName: string;
+    category: string;
+    sdg: string;
+    sdgColor: string;
+    value: number;
+    hours: number;
+  }>();
+  const all: ReconcilableRecord[] = [];
+  for (const r of allRaw) {
+    if (
+      typeof r.sourceReportId === "number" &&
+      presentIds.has(r.sourceReportId) &&
+      r.sourceReportId !== r.id
+    ) {
+      if (!window || inWindow(r.entryDate)) {
+        const result = r.resultJson !== null && typeof r.resultJson === "object"
+          ? (r.resultJson as Record<string, unknown>)
+          : {};
+        duplicateValueExcess += num(result.totalValue);
+        duplicateHoursExcess += num(result.totalHours);
+        const breakdowns = Array.isArray(result.activityBreakdowns)
+          ? (result.activityBreakdowns as BreakdownEntry[])
+          : [];
+        for (const b of breakdowns) {
+          const activityId =
+            typeof b.activityId === "string" && b.activityId
+              ? b.activityId
+              : typeof b.activityName === "string" && b.activityName
+                ? b.activityName
+                : "unknown";
+          const userId = r.userId ?? "";
+          const key = `${userId}|${activityId}`;
+          let d = duplicateActs.get(key);
+          if (!d) {
+            d = {
+              userId,
+              year: r.entryDate.getUTCFullYear(),
+              activityId,
+              activityName: typeof b.activityName === "string" ? b.activityName : activityId,
+              category: typeof b.category === "string" ? b.category : "Other",
+              sdg: typeof b.sdg === "string" ? b.sdg : "",
+              sdgColor: typeof b.sdgColor === "string" ? b.sdgColor : "#999",
+              value: 0,
+              hours: 0,
+            };
+            duplicateActs.set(key, d);
+          }
+          d.value += num(b.impactValue);
+          d.hours += num(b.hours);
+        }
+      }
+      continue; // never participates in estimate-vs-actual grouping
+    }
+    all.push(r);
+  }
 
   // Pass 1: register each user's authoritative estimate periods so quick
   // logs can be matched to them regardless of calendar-year boundaries.
@@ -531,6 +618,36 @@ export function computeEstimateActualReconciliation(
     }
   }
 
+  // Fold the report-share duplicate excess into the per-activity detail so
+  // activity/category/SDG adjustments dedupe alongside the headline totals.
+  for (const d of duplicateActs.values()) {
+    const existing = activities.find(
+      (a) => a.userId === d.userId && a.activityId === d.activityId,
+    );
+    if (existing) {
+      existing.excessValue = round2(existing.excessValue + d.value);
+      existing.excessHours = round2(existing.excessHours + d.hours);
+    } else {
+      activities.push({
+        userId: d.userId,
+        year: d.year,
+        activityId: d.activityId,
+        activityName: d.activityName,
+        category: d.category,
+        sdg: d.sdg,
+        sdgColor: d.sdgColor,
+        estimatedValue: round2(d.value),
+        loggedValue: round2(d.value),
+        countedValue: round2(d.value),
+        estimatedHours: round2(d.hours),
+        loggedHours: round2(d.hours),
+        countedHours: round2(d.hours),
+        excessValue: round2(d.value),
+        excessHours: round2(d.hours),
+      });
+    }
+  }
+
   // Excluded hours also carry their contribution + personal-development
   // components inside totalValue.
   const valueExcess =
@@ -539,8 +656,8 @@ export function computeEstimateActualReconciliation(
     hoursExcess * (VOLUNTEER_RATE + PERSONAL_DEV_RATE_PER_HOUR);
 
   return {
-    valueExcess,
-    hoursExcess,
+    valueExcess: valueExcess + duplicateValueExcess,
+    hoursExcess: hoursExcess + duplicateHoursExcess,
     donationExcess,
     activities,
   };

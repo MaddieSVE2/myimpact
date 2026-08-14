@@ -21,6 +21,11 @@ interface MySubmission {
   totalHours: number;
   totalValue: number;
   submittedAt: string;
+  // Present for report shares: the report's period range replaces a single
+  // activity date.
+  reportPeriod?: { start: string; end: string; type: string | null } | null;
+  sourceReportId?: number | null;
+  note?: string | null;
   activityCount: number;
   evidence?: SubmissionEvidence[];
   verificationStatus?: "pending" | "approved" | "rejected";
@@ -196,6 +201,11 @@ export default function OrgMemberSubmitHistory() {
                   <tr key={s.recordId} data-testid={`submit-history-row-${s.recordId}`}>
                     <td className="py-2.5 px-4">
                       <p className="font-medium text-foreground">{s.period || s.name}</p>
+                      {s.reportPeriod && (
+                        <p className="text-[11px] text-muted-foreground" data-testid={`submit-history-period-${s.recordId}`}>
+                          Reporting period {formatDate(s.reportPeriod.start)} – {formatDate(s.reportPeriod.end)}
+                        </p>
+                      )}
                       <p className="text-[11px] text-muted-foreground">Submitted {formatDate(s.submittedAt)}</p>
                       {(s.evidence?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 mt-1.5" data-testid={`submit-history-evidence-${s.recordId}`}>

@@ -445,6 +445,340 @@ describe("POST /api/org/member-submit", () => {
   });
 });
 
+// ── Report shares ("Review & share" from a saved Full Impact Report) ────────
+describe("POST /api/org/member-submit with sourceReportId", () => {
+  const REPORT = {
+    id: 777,
+    userId: "user-1",
+    source: "user",
+    submittedToOrgId: null,
+    attestedAt: null,
+    name: "My 2026 report",
+    periodLabel: "2026",
+    kind: "annual_estimate",
+    entryDate: new Date("2026-06-30T00:00:00Z"),
+    createdAt: new Date("2026-07-01T00:00:00Z"),
+    reportingYear: 2026,
+    reportStartDate: new Date("2026-01-01T00:00:00Z"),
+    reportEndDate: new Date("2026-12-31T00:00:00Z"),
+    reportPeriodType: "calendar",
+    locationJson: { mode: "single", townCity: "Leeds", postcode: "LS1 4AP" },
+    activitiesJson: [
+      { activityId: "tree_planting", quantity: 12, hoursPerYear: 6 },
+      { activityId: "community_garden", quantity: 0, hoursPerYear: 20, detail: "Weekly sessions" },
+    ],
+  };
+
+  function setupMemberWithReport() {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.organisation = { revokedAt: null, autoVerifyActivities: false };
+    state.impactRecord = { ...REPORT };
+    // Duplicate-share check → no existing share.
+    state.selectQueue.push([]);
+  }
+
+  it("copies quantities, period fields, kind and location from the report; the member sends only activity ids", async () => {
+    setupMemberWithReport();
+    state.insertedRecordId = 8888;
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [
+        { activityId: "tree_planting" },
+        { activityId: "community_garden", detail: "For the org" },
+      ],
+      note: "All with the Riverside branch",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.record.sourceReportId).toBe(777);
+    expect(res.body.record.activityCount).toBe(2);
+
+    const rec = state.inserts.find(i => i.table === "impact_records")!.values as Record<string, unknown>;
+    expect(rec.sourceReportId).toBe(777);
+    expect(rec.kind).toBe("annual_estimate");
+    expect(rec.reportStartDate).toEqual(REPORT.reportStartDate);
+    expect(rec.reportEndDate).toEqual(REPORT.reportEndDate);
+    expect(rec.reportPeriodType).toBe("calendar");
+    expect(rec.entryDate).toEqual(REPORT.entryDate);
+    expect(rec.reportingYear).toBe(2026);
+    expect(rec.locationJson).toEqual(REPORT.locationJson);
+    // Quantities come from the report, not the request.
+    const lines = rec.activitiesJson as Array<Record<string, unknown>>;
+    expect(lines.find(l => l.activityId === "tree_planting")).toMatchObject({ quantity: 12, hoursPerYear: 6 });
+    expect(lines.find(l => l.activityId === "community_garden")).toMatchObject({ hoursPerYear: 20, detail: "For the org" });
+    const rj = rec.resultJson as Record<string, unknown>;
+    expect(rj.sourceReportId).toBe(777);
+    expect(rj.orgNote).toBe("All with the Riverside branch");
+
+    // Webhook is period-level: no invented single activity date.
+    const evt = state.enqueued.find(e => e.eventType === "hours.logged")!;
+    const payload = evt.payload as Record<string, unknown>;
+    expect(payload.activityDate).toBeNull();
+    expect(payload.reportPeriod).toEqual({ start: "2026-01-01", end: "2026-12-31", type: "calendar" });
+    expect(payload.sourceReportId).toBe(777);
+    expect(payload.kind).toBe("annual_estimate");
+    // Location is redacted for the org (town + outward code only).
+    expect(payload.location).toMatchObject({ townCity: "Leeds", postcodeArea: "LS" });
+    expect(payload.verificationStatus).toBe("submitted");
+    // No auto-verify → no verification row: lands in the pending queue.
+    expect(state.inserts.some(i => i.table === "record_verifications")).toBe(false);
+  });
+
+  it("ignores client-supplied quantities — the report is authoritative", async () => {
+    setupMemberWithReport();
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting", quantity: 9999, hoursPerYear: 9999 }],
+    });
+    expect(res.status).toBe(201);
+    const rec = state.inserts.find(i => i.table === "impact_records")!.values as Record<string, unknown>;
+    const lines = rec.activitiesJson as Array<Record<string, unknown>>;
+    expect(lines[0]).toMatchObject({ activityId: "tree_planting", quantity: 12, hoursPerYear: 6 });
+  });
+
+  it("rejects a single activityDate alongside sourceReportId (period-level only)", async () => {
+    setupMemberWithReport();
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activityDate: "2026-06-01",
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/period/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects saveToPersonal alongside sourceReportId (the report IS the personal copy)", async () => {
+    setupMemberWithReport();
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      saveToPersonal: true,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/personal/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects report shares for consented-logging orgs (report is already automatically visible)", async () => {
+    setupMemberWithReport();
+    state.organisation = { revokedAt: null, dataSharingMode: "consented_logging" };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/automatically/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects a legacy personal copy of an ad-hoc submission (resultJson.orgRecordId) as a share source", async () => {
+    setupMemberWithReport();
+    state.impactRecord = {
+      ...REPORT,
+      kind: "legacy",
+      resultJson: { ...(REPORT.resultJson as Record<string, unknown>), orgRecordId: 555 },
+    };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isn't a report/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects a legacy recurring-template occurrence as a share source", async () => {
+    setupMemberWithReport();
+    state.impactRecord = { ...REPORT, kind: "legacy", habitTemplateId: 42 };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isn't a report/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects non-report records (e.g. a quick log) as share sources", async () => {
+    setupMemberWithReport();
+    state.impactRecord = { ...REPORT, kind: "quick_log" };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isn't a report/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects a plain legacy dated record (no stored report period) as a share source", async () => {
+    // Pre-kind quick logs and other dated personal rows are kind='legacy'
+    // with no authoritative report period — they must never become
+    // period-level shares. Ambiguous legacy rows are rejected, not guessed.
+    setupMemberWithReport();
+    state.impactRecord = {
+      ...REPORT,
+      kind: "legacy",
+      reportStartDate: null,
+      reportEndDate: null,
+      reportPeriodType: null,
+    };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isn't a report/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("accepts a legacy report that has an authoritative stored period", async () => {
+    setupMemberWithReport();
+    state.impactRecord = {
+      ...REPORT,
+      kind: "legacy",
+      reportStartDate: new Date(Date.UTC(2025, 0, 1)),
+      reportEndDate: new Date(Date.UTC(2025, 11, 31)),
+      reportPeriodType: "calendar",
+    };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(201);
+    const rec = state.inserts.find(i => i.table === "impact_records")!.values as Record<string, unknown>;
+    expect((rec.reportStartDate as Date).toISOString().slice(0, 10)).toBe("2025-01-01");
+  });
+
+  it("derives a calendar-year period for reports without stored period fields", async () => {
+    setupMemberWithReport();
+    state.impactRecord = {
+      ...REPORT,
+      kind: "annual_estimate",
+      reportStartDate: null,
+      reportEndDate: null,
+      reportPeriodType: null,
+      reportingYear: 2025,
+    };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(201);
+    const rec = state.inserts.find(i => i.table === "impact_records")!.values as Record<string, unknown>;
+    expect((rec.reportStartDate as Date).toISOString().slice(0, 10)).toBe("2025-01-01");
+    expect((rec.reportEndDate as Date).toISOString().slice(0, 10)).toBe("2025-12-31");
+    expect(rec.reportPeriodType).toBe("calendar");
+    const evt = state.enqueued.find(e => e.eventType === "hours.logged")!;
+    const payload = evt.payload as Record<string, unknown>;
+    expect(payload.activityDate).toBeNull();
+    expect(payload.reportPeriod).toEqual({ start: "2025-01-01", end: "2025-12-31", type: "calendar" });
+  });
+
+  it("404s when the report doesn't exist or belongs to someone else", async () => {
+    setupMemberWithReport();
+    state.impactRecord = null;
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(404);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects sharing a record that is itself an org submission", async () => {
+    setupMemberWithReport();
+    state.impactRecord = { ...REPORT, source: "member-submitted", submittedToOrgId: "org-1" };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("409s when the report was already shared with this org", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.organisation = { revokedAt: null };
+    state.impactRecord = { ...REPORT };
+    state.selectQueue.push([{ id: 5555 }]); // existing share found
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("already_shared");
+    expect(res.body.recordId).toBe(5555);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("rejects activities that are not part of the report", async () => {
+    setupMemberWithReport();
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "beach_clean" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/not part of this report/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("enforces the org's evidence-required policy on report shares too", async () => {
+    setupMemberWithReport();
+    state.organisation = { revokedAt: null, evidencePolicy: "required" };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/evidence/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+});
+
+describe("PATCH /api/org/member-submissions/:recordId for report shares", () => {
+  it("rejects direct edits to a report share (withdraw and re-share instead)", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.impactRecord = {
+      id: 8888,
+      userId: "user-1",
+      source: "member-submitted",
+      submittedToOrgId: "org-1",
+      sourceReportId: 777,
+      submittedToOrgAt: new Date(),
+      createdAt: new Date(),
+      totalHours: 10,
+      totalValue: "100",
+    };
+    const app = makeApp();
+    const res = await request(app).patch("/api/org/member-submissions/8888").send({
+      activities: [{ activityId: "tree_planting", quantity: 5 }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/shared from an impact report/i);
+    expect(state.updates).toHaveLength(0);
+  });
+});
+
 describe("GET /api/org/member-submissions", () => {
   it("rejects unauthenticated callers with 401", async () => {
     const app = makeApp();

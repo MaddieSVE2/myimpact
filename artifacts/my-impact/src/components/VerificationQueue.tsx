@@ -44,6 +44,11 @@ export interface PendingVerification {
   totalValue: number;
   createdAt: string;
   entryDate?: string | null;
+  // Present for report shares: the report's period range replaces a single
+  // activity date.
+  reportPeriod?: { start: string; end: string; type: string | null } | null;
+  sourceReportId?: number | null;
+  note?: string | null;
   source?: PendingVerificationSource;
   activityCount?: number;
   lines?: PendingVerificationLine[];
@@ -376,10 +381,19 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
                             {SOURCE_LABELS[p.source]}
                           </span>
                         )}
-                        {p.entryDate && <span>Activity date: <span className="text-foreground">{formatDate(p.entryDate)}</span></span>}
+                        {p.reportPeriod ? (
+                          <span data-testid={`pending-report-period-${p.recordId}`}>
+                            Reporting period: <span className="text-foreground">{formatDate(p.reportPeriod.start)} – {formatDate(p.reportPeriod.end)}</span>
+                          </span>
+                        ) : (
+                          p.entryDate && <span>Activity date: <span className="text-foreground">{formatDate(p.entryDate)}</span></span>
+                        )}
                         <span>Logged: <span className="text-foreground">{loggedLabel}</span></span>
                         {p.memberEmail && <span className="truncate">{p.memberEmail}</span>}
                       </div>
+                      {p.note && (
+                        <p className="text-[11px] text-muted-foreground italic" data-testid={`pending-note-${p.recordId}`}>Member note: “{p.note}”</p>
+                      )}
 
                       {(p.lines?.length ?? 0) > 0 && (
                         <ul className="space-y-1.5">

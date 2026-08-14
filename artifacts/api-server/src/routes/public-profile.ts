@@ -25,6 +25,8 @@ const EMPTY_RECON: ReconciliationResult = {
 async function computeUserReconciliation(userId: string): Promise<ReconciliationResult> {
   const rows = await db
     .select({
+      id: impactRecordsTable.id,
+      sourceReportId: impactRecordsTable.sourceReportId,
       userId: impactRecordsTable.userId,
       kind: impactRecordsTable.kind,
       entryDate: impactRecordsTable.entryDate,
@@ -943,6 +945,8 @@ router.get("/:slug", publicRateLimit, async (req: Request<Record<string, string>
       // Reconcile the approved subset the same way as the headline hours.
       const approvedRows = await db
         .select({
+          id: impactRecordsTable.id,
+          sourceReportId: impactRecordsTable.sourceReportId,
           userId: impactRecordsTable.userId,
           kind: impactRecordsTable.kind,
           entryDate: impactRecordsTable.entryDate,

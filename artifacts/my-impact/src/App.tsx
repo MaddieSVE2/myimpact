@@ -68,6 +68,7 @@ const Journal = lazyWithRetry(() => import("@/pages/Journal"));
 const Milestones = lazyWithRetry(() => import("@/pages/Milestones"));
 const OrgPortal = lazyWithRetry(() => import("@/pages/OrgPortal"));
 const OrgMemberSubmit = lazyWithRetry(() => import("@/pages/OrgMemberSubmit"));
+const OrgShareReport = lazyWithRetry(() => import("@/pages/OrgShareReport"));
 const OrgMemberSubmitHistory = lazyWithRetry(() => import("@/pages/OrgMemberSubmitHistory"));
 const OrgDashboard = lazyWithRetry(() => import("@/pages/OrgDashboard"));
 const OrgActivities = lazyWithRetry(() => import("@/pages/OrgActivities"));
@@ -410,6 +411,9 @@ function AppRouter() {
               </Route>
               <Route path="/org/submit">
                 {() => <PrivateRoute component={OrgMemberSubmit} />}
+              </Route>
+              <Route path="/org/share-report/:recordId">
+                {() => <PrivateRoute component={OrgShareReport} />}
               </Route>
               <Route path="/org/dashboard">
                 {() => <PrivateRoute component={OrgDashboard} />}

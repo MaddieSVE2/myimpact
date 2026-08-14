@@ -1254,7 +1254,7 @@ export default function Results() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 pb-28">
       <OrgPromptsSection variant="compact" />
-      <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} />
+      <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} savedRecordId={savedRecordId} />
 
       {/* Report identity: the authoritative period chosen at the start of the
           journey plus an optional display-only name. Saving uses these

@@ -78,6 +78,9 @@ interface RealActivity {
   proxy: string;
   proxyYear: string;
   source: "member-submitted" | "org-attested" | "shared";
+  // Present for period-level records (report shares): the report's period
+  // range replaces a single activity date in the UI.
+  reportPeriod?: { start: string; end: string; type: string | null } | null;
   evidence?: Array<{ id: number; url: string; mimeType: string }>;
 }
 
@@ -645,7 +648,11 @@ export default function OrgActivities() {
 
                       return (
                         <tr key={a.id} className="border-b border-border/60 align-top hover:bg-muted/20" data-testid={`row-activity-${a.id}`}>
-                          <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                          <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
+                            {"reportPeriod" in a && a.reportPeriod
+                              ? `${new Date(a.reportPeriod.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} – ${new Date(a.reportPeriod.end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`
+                              : new Date(a.occurredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
                           <td className="py-2 pr-3">
                             <p className="font-medium text-foreground">{m.name}</p>
                             {!anonymise && m.email && <p className="text-[11px] text-muted-foreground">{m.email}</p>}

@@ -123,6 +123,12 @@ export const impactRecordsTable = pgTable("impact_records", {
   // 'calendar' | 'academic' | 'financial' | 'custom' — display-only hint for
   // how the period was chosen. Never used in calculations.
   reportPeriodType: text("report_period_type"),
+  // Set on org submissions created by sharing a saved Full Impact Report
+  // (the "Review & share" flow). Points at the member's source report record
+  // so (a) org-facing views can exclude the personal report as a twin and
+  // (b) personal aggregations can drop the org copy as a duplicate. NULL for
+  // ad-hoc submissions and all non-submission rows.
+  sourceReportId: integer("source_report_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),

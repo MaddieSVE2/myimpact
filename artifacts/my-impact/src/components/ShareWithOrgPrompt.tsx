@@ -31,9 +31,10 @@ function useMyConsent(enabled: boolean) {
  *   visible to the organisation, so asking "share with organisation?" would
  *   be redundant — we show an informational note instead.
  * - explicit_submission: nothing reaches the organisation's named feed
- *   unless the member submits it, so we ask the share question and route to
- *   the full submission flow (/org/submit). That flow supports evidence,
- *   activity dates and twin-linked personal copies, so org totals are never
+ *   unless the member submits it, so we offer "Review & share": a checklist
+ *   pre-populated from the saved report (never the blank submission form),
+ *   so the member never re-enters activities or quantities. The shared
+ *   record is twin-linked to the report, so org totals are never
  *   double-counted. The personal Impact Report keeps this activity either way.
  */
 interface ShareWithOrgPromptProps {
@@ -42,9 +43,11 @@ interface ShareWithOrgPromptProps {
   saved?: boolean;
   /** ISO activity date (YYYY-MM-DD) of the saved/shown entry, when known. */
   entryDate?: string | null;
+  /** Id of the saved impact record backing the shown result, when known. */
+  savedRecordId?: number | null;
 }
 
-export function ShareWithOrgPrompt({ result, saved = false, entryDate = null }: ShareWithOrgPromptProps) {
+export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, savedRecordId = null }: ShareWithOrgPromptProps) {
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const consentedOrg = orgData?.org?.dataSharingMode === "consented_logging" && orgData.org.role !== "manager";
   const { data: consentData, isLoading: consentLoading } = useMyConsent(!!consentedOrg);
@@ -108,7 +111,10 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null }: 
     );
   }
 
-  // Explicit submission: ask the share question.
+  // Explicit submission: offer "Review & share" from the saved report. The
+  // review screen is populated from the persisted record, so it can only be
+  // offered once the report has been saved.
+  if (!saved || savedRecordId == null) return null;
   return (
     <motion.div
       className="mb-4 bg-card border border-border rounded-xl px-4 py-3 flex items-start gap-3 flex-wrap"
@@ -120,10 +126,10 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null }: 
         <Building2 className="w-4 h-4 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">Want to share activity with {org.name}?</p>
+        <p className="text-sm font-semibold text-foreground">Share activities from this report with {org.name}?</p>
         <p className="text-xs text-muted-foreground">
-          Use the submission form to send activities to {org.name} — with an activity date and
-          evidence if you like. Your personal Impact Report keeps everything you log either way.
+          Review the activities you just reported and choose what to share — no re-typing.
+          Your personal Impact Report keeps everything either way.
         </p>
       </div>
       <div className="flex items-center gap-2 ml-auto">
@@ -136,11 +142,11 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null }: 
           Not now
         </button>
         <Link
-          href="/org/submit"
+          href={`/org/share-report/${savedRecordId}`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           data-testid="share-with-org-share-link"
         >
-          Open submission form <ArrowRight className="w-3 h-3" />
+          Review &amp; share <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
     </motion.div>
