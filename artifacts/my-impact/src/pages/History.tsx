@@ -1297,6 +1297,35 @@ export default function History() {
                             </span>
                           )}
                         </p>
+                        {(() => {
+                          // Authoritative report period coverage (Full Impact
+                          // Report saves only). Legacy rows have NULL period
+                          // fields and skip this line entirely.
+                          const rs = (record as { reportStartDate?: string | null }).reportStartDate;
+                          const re = (record as { reportEndDate?: string | null }).reportEndDate;
+                          if (!rs || !re) return null;
+                          const rt = (record as { reportPeriodType?: string | null }).reportPeriodType;
+                          const typeLabel =
+                            rt === "calendar" ? "Calendar year"
+                            : rt === "academic" ? "Academic year"
+                            : rt === "financial" ? "Financial year"
+                            : rt === "custom" ? "Custom period"
+                            : null;
+                          const fmt = (isoDate: string) =>
+                            new Date(isoDate + "T00:00:00Z").toLocaleDateString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+                            });
+                          return (
+                            <p
+                              className="text-[11px] text-muted-foreground/80 mt-0.5 inline-flex items-center gap-1"
+                              data-testid={`record-report-period-${record.id}`}
+                            >
+                              <Calendar className="w-3 h-3 inline" aria-hidden="true" />
+                              Covers {fmt(rs)} – {fmt(re)}
+                              {typeLabel && <span className="text-muted-foreground/60">· {typeLabel}</span>}
+                            </p>
+                          );
+                        })()}
                         {match && orgName && (
                           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
