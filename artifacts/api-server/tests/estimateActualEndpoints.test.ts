@@ -66,10 +66,12 @@ vi.mock("drizzle-orm", () => {
   const gte = (col: Col, val: unknown): Pred => (row) => compare(row[col.__col], val) >= 0;
   const lte = (col: Col, val: unknown): Pred => (row) => compare(row[col.__col], val) <= 0;
   const lt = (col: Col, val: unknown): Pred => (row) => compare(row[col.__col], val) < 0;
+  // Raw sql`` markers (e.g. notOrgTwinCondition) are not evaluable in the
+  // mock — treat them as pass-through TRUE inside and()/or().
   const and = (...preds: Array<Pred | undefined | null | false>): Pred => (row) =>
-    preds.every((p) => !p || (typeof p === "function" && p(row)));
+    preds.every((p) => !p || typeof p !== "function" || p(row));
   const or = (...preds: Array<Pred | undefined | null | false>): Pred => (row) =>
-    preds.some((p) => typeof p === "function" && p(row));
+    preds.some((p) => (typeof p === "function" ? p(row) : Boolean(p)));
   const inArray = (col: Col, vals: unknown[]): Pred => (row) => vals.includes(row[col.__col]);
   const isNotNull = (col: Col): Pred => (row) => row[col.__col] != null;
   const ilike = (col: Col, val: string): Pred => {
@@ -107,6 +109,7 @@ vi.mock("@workspace/db", () => {
     "lat", "lng", "attestedByApiKeyId", "attestedAt", "submittedToOrgId",
     "submittedToOrgAt", "source", "tags", "entryDate", "habitTemplateId",
     "createdAt", "kind", "locationJson", "reportingYear",
+    "reportStartDate", "reportEndDate", "reportPeriodType",
   ]);
   const recurringTemplatesTable = tableTag("recurring_templates", [
     "id", "userId", "label", "cadence", "dayOfPeriod", "anchorDate",
@@ -400,6 +403,11 @@ function makeApp() {
   app.use(express.json());
   app.use("/api/impact", impactRouter);
   app.use("/api/public-profile", publicProfileRouter);
+  // Surface unexpected 500s in test output instead of swallowing them.
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("[test] unhandled route error:", err);
+    res.status(500).json({ error: String(err) });
+  });
   return app;
 }
 
@@ -436,6 +444,9 @@ function makeRecord(opts: {
   name?: string;
   locationJson?: unknown;
   reportingYear?: number | null;
+  reportStartDate?: Date | null;
+  reportEndDate?: Date | null;
+  reportPeriodType?: string | null;
 }): Record<string, unknown> {
   const impactValue = opts.impactValue ?? 0;
   const hours = opts.hours ?? 0;
@@ -480,6 +491,9 @@ function makeRecord(opts: {
     kind: opts.kind ?? "legacy",
     locationJson: opts.locationJson ?? null,
     reportingYear: opts.reportingYear !== undefined ? opts.reportingYear : opts.entryDate.getUTCFullYear(),
+    reportStartDate: opts.reportStartDate ?? null,
+    reportEndDate: opts.reportEndDate ?? null,
+    reportPeriodType: opts.reportPeriodType ?? null,
   };
 }
 
@@ -544,6 +558,209 @@ describe("/save — kind, location, reportingYear", () => {
     expect(state.impactRecords).toHaveLength(1);
     expect(state.impactRecords[0].name).toBe("edited");
     expect(state.impactRecords[0].kind).toBe("quick_log");
+  });
+});
+
+describe("/save — authoritative report period", () => {
+  const PERIOD_2026 = { type: "calendar", startDate: "2026-01-01", endDate: "2026-12-31" };
+
+  it("persists and echoes the report period; derives entryDate inside it and defaults the label", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: PERIOD_2026 }))
+      .expect(200);
+
+    expect(res.body.reportStartDate).toBe("2026-01-01");
+    expect(res.body.reportEndDate).toBe("2026-12-31");
+    expect(res.body.reportPeriodType).toBe("calendar");
+    // No explicit entryDate → derived by clamping today into the period, so
+    // reportingYear is keyed off the report's period.
+    expect(res.body.reportingYear).toBe(2026);
+    const stored = state.impactRecords[0];
+    expect(stored.reportStartDate).toEqual(new Date("2026-01-01T00:00:00Z"));
+    expect(stored.reportEndDate).toEqual(new Date("2026-12-31T00:00:00Z"));
+    expect((stored.entryDate as Date) >= new Date("2026-01-01T00:00:00Z")).toBe(true);
+    expect((stored.entryDate as Date) <= new Date("2026-12-31T23:59:59Z")).toBe(true);
+    // Display-only default name derived from the period.
+    expect(stored.periodLabel).toBe("My Impact 2026");
+  });
+
+  it("clamps the derived entryDate into a past period (never invents out-of-period dates)", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: { type: "calendar", startDate: "2024-01-01", endDate: "2024-12-31" } }))
+      .expect(200);
+    expect(res.body.entryDate).toBe("2024-12-31");
+    expect(res.body.reportingYear).toBe(2024);
+    // Prior-year entry → marked retrospective, exactly like a dated legacy save.
+    expect(state.impactRecords[0].source).toBe("retrospective");
+  });
+
+  it("uses a cross-year default name for academic periods and respects an explicit name", async () => {
+    const app = makeApp();
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: { type: "academic", startDate: "2026-09-01", endDate: "2027-08-31" } }))
+      .expect(200);
+    expect(state.impactRecords[0].periodLabel).toBe("My Impact 2026/27");
+
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: PERIOD_2026, period: "My custom name" }))
+      .expect(200);
+    expect(state.impactRecords[1].periodLabel).toBe("My custom name");
+  });
+
+  it("absent reportPeriod falls back to legacy behaviour (no period stored)", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ entryDate: "2026-05-03" }))
+      .expect(200);
+    expect(res.body.reportStartDate).toBeNull();
+    expect(res.body.reportEndDate).toBeNull();
+    expect(res.body.reportPeriodType).toBeNull();
+    expect(res.body.entryDate).toBe("2026-05-03");
+    expect(res.body.reportingYear).toBe(2026);
+  });
+
+  it("a supplied-but-invalid reportPeriod is rejected with 400 (never silently dropped)", async () => {
+    const app = makeApp();
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ entryDate: "2026-05-03", reportPeriod: { type: "calendar", startDate: "2026-12-31", endDate: "2026-01-01" } }))
+      .expect(400);
+    expect(state.impactRecords).toHaveLength(0);
+  });
+
+  it("PATCH date edits are clamped into a stored report period and keep reportingYear in sync", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        id: 7, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 2, 15)),
+        hours: 10,
+        reportStartDate: new Date(Date.UTC(2026, 0, 1)),
+        reportEndDate: new Date(Date.UTC(2026, 11, 31)),
+        reportPeriodType: "calendar",
+      }),
+    );
+    // Attempt to move the report outside its own period → clamped to the edge.
+    const res = await request(app).patch("/api/impact/7").send({ entryDate: "2030-06-01" }).expect(200);
+    expect(res.body.entryDate).toBe("2026-12-31");
+    expect(state.impactRecords[0].reportingYear).toBe(2026);
+
+    // An in-period edit is honoured, and reportingYear stays consistent.
+    const ok = await request(app).patch("/api/impact/7").send({ entryDate: "2026-04-20" }).expect(200);
+    expect(ok.body.entryDate).toBe("2026-04-20");
+    expect(state.impactRecords[0].reportingYear).toBe(2026);
+  });
+
+  it("targetRecordId saves without a new period clamp entryDate into the stored period", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        id: 9, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 2, 15)), hours: 10,
+        reportStartDate: new Date(Date.UTC(2026, 0, 1)),
+        reportEndDate: new Date(Date.UTC(2026, 11, 31)),
+        reportPeriodType: "calendar",
+      }),
+    );
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ targetRecordId: "9", entryDate: "2030-06-01" }))
+      .expect(200);
+    // The stored period survives the edit AND remains authoritative.
+    expect(res.body.entryDate).toBe("2026-12-31");
+    expect(res.body.reportingYear).toBe(2026);
+    expect(res.body.reportStartDate).toBe("2026-01-01");
+    expect(state.impactRecords[0].reportingYear).toBe(2026);
+  });
+
+  it("PATCH date edits on legacy period-less records update reportingYear from the new date", async () => {
+    const app = makeApp();
+    state.impactRecords.push(makeRecord({ id: 8, kind: "legacy", entryDate: new Date(Date.UTC(2025, 5, 1)), hours: 5 }));
+    const res = await request(app).patch("/api/impact/8").send({ entryDate: "2026-02-10" }).expect(200);
+    expect(res.body.entryDate).toBe("2026-02-10");
+    expect(state.impactRecords[0].reportingYear).toBe(2026);
+  });
+
+  it("malformed reportPeriod shapes get 400 (not a schema 500); explicit null means absent", async () => {
+    const app = makeApp();
+    const cases: unknown[] = [
+      { type: "quarterly", startDate: "2026-01-01", endDate: "2026-03-31" }, // unknown enum
+      { type: "calendar" }, // missing dates
+      "2026", // non-object
+      { startDate: "2026-01-01", endDate: "2026-12-31" }, // missing type
+    ];
+    for (const reportPeriod of cases) {
+      await request(app)
+        .post("/api/impact/save")
+        .send(savePayload({ kind: "annual_estimate", reportPeriod }))
+        .expect(400);
+    }
+    expect(state.impactRecords).toHaveLength(0);
+
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ entryDate: "2026-05-03", reportPeriod: null }))
+      .expect(200);
+    expect(res.body.reportStartDate).toBeNull();
+    expect(res.body.reportPeriodType).toBeNull();
+  });
+
+  it("rejects semantically impossible ISO dates in a supplied period (no JS date normalization)", async () => {
+    const app = makeApp();
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({
+        kind: "annual_estimate",
+        reportPeriod: { type: "calendar", startDate: "2026-02-30", endDate: "2026-12-31" },
+      }))
+      .expect(400);
+    expect(state.impactRecords).toHaveLength(0);
+  });
+
+  it("clamps an explicit entryDate that falls OUTSIDE the supplied period into it", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: PERIOD_2026, entryDate: "2030-06-01" }))
+      .expect(200);
+    // The period is authoritative: bucketing can never diverge from it.
+    expect(res.body.entryDate).toBe("2026-12-31");
+    expect(res.body.reportingYear).toBe(2026);
+  });
+
+  it("an explicit in-range entryDate is preserved alongside the period", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ kind: "annual_estimate", reportPeriod: PERIOD_2026, entryDate: "2026-03-15" }))
+      .expect(200);
+    expect(res.body.entryDate).toBe("2026-03-15");
+    expect(res.body.reportStartDate).toBe("2026-01-01");
+  });
+
+  it("editing via targetRecordId without a reportPeriod preserves the stored period", async () => {
+    const app = makeApp();
+    state.impactRecords.push({
+      ...makeRecord({ id: 600, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 4, 3)), impactValue: 10, hours: 1 }),
+      reportStartDate: new Date("2026-01-01T00:00:00Z"),
+      reportEndDate: new Date("2026-12-31T00:00:00Z"),
+      reportPeriodType: "calendar",
+    });
+
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({ name: "edited", targetRecordId: "600", entryDate: "2026-05-03" }))
+      .expect(200);
+
+    expect(state.impactRecords).toHaveLength(1);
+    expect(state.impactRecords[0].name).toBe("edited");
+    expect(state.impactRecords[0].reportStartDate).toEqual(new Date("2026-01-01T00:00:00Z"));
+    expect(state.impactRecords[0].reportPeriodType).toBe("calendar");
   });
 });
 
@@ -620,6 +837,158 @@ describe("/recap/:year — estimate/actual reconciliation", () => {
     const y26 = await request(app).get("/api/impact/recap/2026").expect(200);
     expect(y26.body.totalHours).toBe(2);
     expect(y26.body.estimateVsLogged).toEqual([]);
+  });
+});
+
+describe("cross-year report periods — quick logs reconcile against the period, not the calendar year", () => {
+  // Academic-year estimate Sep 2025 – Aug 2026, homed (entryDate/reportingYear)
+  // in 2026, with quick logs for the SAME activity on both sides of the
+  // calendar-year boundary. The activity must be counted once overall: each
+  // year's raw sum only contains its own rows, and the estimate absorbs the
+  // in-period quick logs on both sides.
+  const ACADEMIC = {
+    reportStartDate: new Date(Date.UTC(2025, 8, 1)),
+    reportEndDate: new Date(Date.UTC(2026, 7, 31)),
+    reportPeriodType: "academic",
+  };
+
+  function seedAcademicMix() {
+    state.impactRecords.push(
+      makeRecord({
+        kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)),
+        impactValue: 721.5, hours: 50, ...ACADEMIC,
+      }),
+      // Quick log inside the period but in the PRIOR calendar year.
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2025, 9, 5)), impactValue: 28.86, hours: 2 }),
+      // Quick log inside the period, in the estimate's home year.
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 2, 3)), impactValue: 43.29, hours: 3 }),
+      // Quick log OUTSIDE the period (after it ends) — never reconciled.
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 10, 1)), impactValue: 14.43, hours: 1 }),
+    );
+  }
+
+  it("/recap subtracts in-period quick logs in BOTH calendar years; out-of-period logs stay", async () => {
+    const app = makeApp();
+    seedAcademicMix();
+
+    // 2025: raw sum is just the October quick log; the overlapping academic
+    // estimate joins the reconciliation input, so the quick log is absorbed.
+    const y25 = await request(app).get("/api/impact/recap/2025").expect(200);
+    expect(y25.body.totalHours).toBe(0);
+    expect(y25.body.totalValue).toBeCloseTo(0, 2);
+
+    // 2026: estimate + March quick log reconcile (estimate wins); the
+    // November out-of-period quick log is added on top untouched.
+    const y26 = await request(app).get("/api/impact/recap/2026").expect(200);
+    expect(y26.body.totalHours).toBe(51);
+    expect(y26.body.totalValue).toBeCloseTo(
+      Math.round(((721.5 + 50 * (NLW + PD)) + (14.43 + 1 * (NLW + PD))) * 100) / 100, 2,
+    );
+  });
+
+  it("total across both calendar years counts the activity once (estimate + out-of-period log only)", async () => {
+    const app = makeApp();
+    seedAcademicMix();
+    const y25 = await request(app).get("/api/impact/recap/2025").expect(200);
+    const y26 = await request(app).get("/api/impact/recap/2026").expect(200);
+    const combined = y25.body.totalValue + y26.body.totalValue;
+    expect(combined).toBeCloseTo(
+      Math.round(((721.5 + 50 * (NLW + PD)) + (14.43 + 1 * (NLW + PD))) * 100) / 100, 2,
+    );
+  });
+
+  it("/yoy applies the same cross-year rule to yearly totals", async () => {
+    const app = makeApp();
+    seedAcademicMix();
+    const res25 = await request(app).get("/api/impact/yoy?year=2025").expect(200);
+    expect(res25.body.selectedTotal ?? res25.body.selectedYearTotalValue).toBeCloseTo(0, 2);
+  });
+
+  it("actuals exceeding the estimate across years never reuse its capacity per window", async () => {
+    // 50-hour academic estimate homed in 2026; 40 actual hours in EACH
+    // calendar year. Correct combined result is the logged 80 hours — the
+    // estimate's capacity must be consumed once (chronologically), not once
+    // per calendar-year window.
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({
+        kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)),
+        impactValue: 721.5, hours: 50, ...ACADEMIC,
+      }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2025, 9, 5)), impactValue: 577.2, hours: 40 }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 2, 3)), impactValue: 577.2, hours: 40 }),
+    );
+
+    // 2025: its 40 hours are fully absorbed by the estimate (first come).
+    const y25 = await request(app).get("/api/impact/recap/2025").expect(200);
+    expect(y25.body.totalHours).toBe(0);
+    expect(y25.body.totalValue).toBeCloseTo(0, 2);
+
+    // 2026: only the estimate's REMAINING 10 hours of capacity absorb the
+    // March log; total = est(50h) + log(40h) − remaining capacity(10h) = 80h.
+    const y26 = await request(app).get("/api/impact/recap/2026").expect(200);
+    expect(y26.body.totalHours).toBe(80);
+    const hourValue = (h: number) => h * (NLW + PD);
+    expect(y26.body.totalValue).toBeCloseTo(
+      Math.round(((721.5 + hourValue(50)) + (577.2 + hourValue(40)) - (144.3 + hourValue(10))) * 100) / 100, 2,
+    );
+
+    // Combined = the 80 logged hours, counted once.
+    expect(y25.body.totalHours + y26.body.totalHours).toBe(80);
+
+    // /yoy agrees with recap for both windows.
+    const res25 = await request(app).get("/api/impact/yoy?year=2025").expect(200);
+    expect(res25.body.selectedTotal ?? res25.body.selectedYearTotalValue).toBeCloseTo(0, 2);
+    const res26 = await request(app).get("/api/impact/yoy?year=2026").expect(200);
+    expect(res26.body.selectedTotal ?? res26.body.selectedYearTotalValue).toBeCloseTo(y26.body.totalValue, 2);
+  });
+
+  it("rejects a client-supplied period longer than the supported maximum instead of silently dropping it", async () => {
+    const app = makeApp();
+    await request(app)
+      .post("/api/impact/save")
+      .send(savePayload({
+        kind: "annual_estimate",
+        reportPeriod: { type: "custom", startDate: "2025-01-01", endDate: "2026-12-31" },
+      }))
+      .expect(400);
+    expect(state.impactRecords).toHaveLength(0);
+  });
+
+  it("org-stats bounded windows reconcile cross-year periods like recap/YoY", async () => {
+    // Manager's own academic estimate + logs; the org's bounded reporting
+    // window must neither double-count nor reuse the estimate's capacity.
+    const app = makeApp();
+    state.orgMembers.push({ id: "m1", orgId: "org-1", userId: USER.id, role: "manager", status: "active" });
+    state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    state.impactRecords.push(
+      makeRecord({
+        kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)),
+        impactValue: 721.5, hours: 50, ...ACADEMIC,
+      }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2025, 9, 5)), impactValue: 577.2, hours: 40 }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 2, 3)), impactValue: 577.2, hours: 40 }),
+    );
+
+    const y25 = await request(app)
+      .get("/api/impact/org-stats?from=2025-01-01T00:00:00.000Z&to=2026-01-01T00:00:00.000Z")
+      .expect(200);
+    expect(y25.body.totalHours).toBe(0);
+
+    const y26 = await request(app)
+      .get("/api/impact/org-stats?from=2026-01-01T00:00:00.000Z&to=2027-01-01T00:00:00.000Z")
+      .expect(200);
+    expect(y26.body.totalHours).toBe(80);
+  });
+
+  it("estimates WITHOUT a stored period keep the legacy per-year behaviour", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({ kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)), impactValue: 721.5, hours: 50 }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2025, 9, 5)), impactValue: 28.86, hours: 2 }),
+    );
+    const y25 = await request(app).get("/api/impact/recap/2025").expect(200);
+    expect(y25.body.totalHours).toBe(2); // no period → no cross-year absorption
   });
 });
 

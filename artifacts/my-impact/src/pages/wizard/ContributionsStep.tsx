@@ -3,23 +3,21 @@ import { useLocation } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { motion } from "framer-motion";
-import { ArrowLeft, Heart, Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Heart, Sparkles, Loader2, AlertCircle, Repeat, CalendarRange } from "lucide-react";
 import { useCalculateImpact, useCreateRecurringTemplate, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useT } from "@/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { TimescalePresetPicker } from "@/components/TimescalePresetPicker";
 import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateDialog";
-import { type TimescalePresetId } from "@/lib/timescale-presets";
-import { todayIso } from "@/components/quicklog/activity-shared";
+import { formatPeriodRange } from "@/lib/report-period";
 import { NumberInput } from "@/components/ui/number-input";
 import { LocationPicker } from "@/components/quicklog/LocationPicker";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 
 export default function ContributionsStep() {
   const [, setLocation] = useLocation();
-  const { input, updateInput, setResult, customActivities, entryDate, setEntryDate, activityLocation, setActivityLocation } = useWizard();
+  const { input, updateInput, setResult, customActivities, reportPeriod, editRecordId, activityLocation, setActivityLocation } = useWizard();
   const t = useT();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -31,7 +29,6 @@ export default function ContributionsStep() {
   const calculateMutation = useCalculateImpact();
   const createTemplateMutation = useCreateRecurringTemplate();
 
-  const [activePreset, setActivePreset] = useState<TimescalePresetId>("today");
   const [showRecurring, setShowRecurring] = useState(false);
   const [tplLabel, setTplLabel] = useState("");
   const [tplCadence, setTplCadence] = useState<"weekly" | "fortnightly" | "monthly">("weekly");
@@ -54,8 +51,6 @@ export default function ContributionsStep() {
 
   const handleCloseRecurring = () => {
     setShowRecurring(false);
-    setActivePreset("today");
-    setEntryDate(todayIso());
   };
 
   const handleSaveRecurring = async () => {
@@ -98,7 +93,6 @@ export default function ContributionsStep() {
   };
 
   const handleFinish = async () => {
-    if (activePreset === "ongoing") return;
     setCalcError(null);
     const finalInput = {
       ...input,
@@ -123,31 +117,38 @@ export default function ContributionsStep() {
     }
   };
 
-  const isOngoing = activePreset === "ongoing";
-
   return (
     <div className={`${CONTENT_CONTAINER} py-12`}>
       <StepProgress currentStep={3} />
 
-      <motion.div
-        className="bg-white border border-border shadow-sm rounded-xl p-6 md:p-8 mb-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <label className="block text-sm font-medium text-foreground mb-1">
-          What date does this entry count toward?
-        </label>
-        <p className="text-xs text-muted-foreground mb-3">
-          This date applies to the whole entry — all activities, donations and volunteering hours logged here. Today by default, backdate it for past activity.
-        </p>
-        <TimescalePresetPicker
-          entryDate={entryDate}
-          onChange={setEntryDate}
-          onOngoing={handleOngoing}
-          activePreset={activePreset}
-          onActivePresetChange={setActivePreset}
-        />
-      </motion.div>
+      {/* The report's period was chosen ONCE at the start of the journey —
+          shown here as a read-only reminder, never asked about again. Edits
+          of an existing entry keep that entry's original period, so the
+          banner is hidden for them. */}
+      {!editRecordId && (
+        <motion.div
+          className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-muted/40 border border-border"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="wizard-period-banner"
+        >
+          <span className="flex items-center gap-2 text-sm text-foreground">
+            <CalendarRange className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+            <span>
+              Reporting period: <strong>{reportPeriod.label}</strong>
+              <span className="text-muted-foreground"> · {formatPeriodRange(reportPeriod)}</span>
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setLocation("/wizard/actions")}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors shrink-0"
+            data-testid="wizard-period-change"
+          >
+            Change
+          </button>
+        </motion.div>
+      )}
 
       <motion.div
         className="bg-white border border-border shadow-sm rounded-xl p-6 md:p-8 mb-6"
@@ -210,6 +211,18 @@ export default function ContributionsStep() {
           </div>
         </div>
 
+        {/* "Ongoing" is a route into recurring-activity setup — an attribute
+            of the activity, never a substitute for the report period. */}
+        <button
+          type="button"
+          onClick={handleOngoing}
+          className="mt-5 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="wizard-ongoing-link"
+        >
+          <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
+          Do this regularly? Set it up as a recurring activity instead
+        </button>
+
       </motion.div>
 
       {calcError && (
@@ -228,9 +241,8 @@ export default function ContributionsStep() {
         </button>
         <button
           onClick={handleFinish}
-          disabled={calculateMutation.isPending || isOngoing}
+          disabled={calculateMutation.isPending}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-70 min-h-[44px]"
-          title={isOngoing ? "Complete the recurring setup below, or choose a different date option" : undefined}
         >
           {calculateMutation.isPending ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> {t("wizard.calculating")}</>

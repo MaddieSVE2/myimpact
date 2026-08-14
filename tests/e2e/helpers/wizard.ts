@@ -66,14 +66,11 @@ export async function completeWizardWithExtraHours(
   await expect(page.getByRole("button", { name: /^save progress$|^saved!$/i })).toBeVisible();
 
   // Persist the calculated impact to the user's history. The Results page
-  // does NOT auto-save: it shows a "Save progress" CTA which opens a
-  // period-picker dialog before POSTing /api/impact/save. Drive both.
+  // does NOT auto-save: it shows a "Save progress" CTA that saves directly
+  // against the authoritative report period chosen at the start of the
+  // journey — there is no save-time period dialog any more.
   if (opts.save !== false) {
     await page.getByRole("button", { name: /^save progress$/i }).click();
-    // Pick the first preset chip in the dialog (e.g. "2026").
-    const dialog = page.getByText(/what period does this cover\?/i);
-    await dialog.waitFor({ state: "visible" });
-    await page.getByRole("button", { name: /^save record$/i }).click();
     // After save the primary CTA flips to "Saved!".
     await expect(page.getByRole("button", { name: /^saved!$/i })).toBeVisible({
       timeout: 15_000,

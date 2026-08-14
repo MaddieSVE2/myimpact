@@ -61,9 +61,9 @@ test.describe("Spec 13 — edit a saved record in place from History", () => {
     await page.waitForURL(/\/results/, { timeout: 30_000 });
     const saveProgress = page.getByRole("button", { name: /^save progress$/i });
     await expect(saveProgress).toBeVisible({ timeout: 15_000 });
+    // Saves go straight against the report period chosen at journey start —
+    // there is no save-time period dialog any more.
     await saveProgress.click();
-    await expect(page.getByText(/what period does this cover\?/i)).toBeVisible();
-    await page.getByRole("button", { name: /^save record$/i }).click();
     await expect(page.getByRole("button", { name: /^saved!$/i })).toBeVisible({
       timeout: 15_000,
     });

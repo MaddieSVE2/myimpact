@@ -32,14 +32,6 @@ args = "build"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "smoke"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "e2e-edit-record"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "lighthouse"
 
 [[workflows.workflow.tasks]]
@@ -48,19 +40,7 @@ args = "typecheck"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "lighthouse-mobile"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "typecheck-api"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "copy-fields"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "quick-log-occurrence"
 
 [[workflows.workflow]]
 name = "e2e"
@@ -85,37 +65,15 @@ args = "pnpm -r --if-present run build"
 isValidation = true
 
 [[workflows.workflow]]
-name = "smoke"
-author = "agent"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5002 E2E_WEB_PORT=3002 pnpm --filter @workspace/e2e exec playwright test tests/01-magic-link-signup.spec.ts tests/03-journal-crud.spec.ts"
-
-[[workflows.workflow]]
-name = "e2e-edit-record"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5003 E2E_WEB_PORT=3003 pnpm --filter @workspace/e2e test tests/13-edit-record.spec.ts tests/09-habit-conflict.spec.ts"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow]]
 name = "lighthouse"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun && rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun --config=lighthouserc.mobile.cjs"
 
 [[workflows.workflow]]
 name = "typecheck"
@@ -129,45 +87,12 @@ task = "shell.exec"
 args = "pnpm exec tsc -b lib/db lib/api-zod lib/api-client-react lib/integrations-openai-ai-server && pnpm --filter @workspace/api-server typecheck"
 
 [[workflows.workflow]]
-name = "lighthouse-mobile"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun --config=lighthouserc.mobile.cjs"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow]]
 name = "typecheck-api"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/api-server run typecheck"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow]]
-name = "copy-fields"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5004 E2E_WEB_PORT=3004 pnpm --filter @workspace/e2e exec playwright test tests/17-copy-fields.spec.ts"
-
-[workflows.workflow.metadata]
-isValidation = true
-
-[[workflows.workflow]]
-name = "quick-log-occurrence"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 E2E_API_PORT=5005 E2E_WEB_PORT=3005 pnpm --filter @workspace/e2e exec playwright test tests/19-quick-log-occurrence.spec.ts"
 
 [workflows.workflow.metadata]
 isValidation = true

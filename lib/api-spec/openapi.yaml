@@ -872,6 +872,8 @@ components:
             the activity actually happened. Ignored when entryDate is set.
         location:
           $ref: "#/components/schemas/ActivityLocation"
+        reportPeriod:
+          $ref: "#/components/schemas/ReportPeriodInput"
         force:
           type: boolean
           nullable: true
@@ -921,6 +923,29 @@ components:
         country:
           type: string
           nullable: true
+    ReportPeriodInput:
+      type: object
+      description: |
+        Authoritative Full Impact Report period, chosen ONCE at the start of
+        the wizard journey. Both dates are inclusive ISO dates (YYYY-MM-DD).
+        When present and no explicit entryDate is sent, the server derives
+        entryDate by clamping "today" into the period, so reconciliation and
+        calendar dashboards key off the report's period. Invalid/absent →
+        legacy entryDate-driven behaviour.
+      properties:
+        type:
+          type: string
+          enum: [calendar, academic, financial, custom]
+        startDate:
+          type: string
+          description: Inclusive period start (YYYY-MM-DD).
+        endDate:
+          type: string
+          description: Inclusive period end (YYYY-MM-DD).
+      required:
+        - type
+        - startDate
+        - endDate
     SavedImpact:
       type: object
       properties:
@@ -953,6 +978,18 @@ components:
           type: integer
           nullable: true
           description: Reporting period derived from the entry date (calendar year); null when no period fits.
+        reportStartDate:
+          type: string
+          nullable: true
+          description: Authoritative report period start (inclusive, YYYY-MM-DD); null on legacy rows.
+        reportEndDate:
+          type: string
+          nullable: true
+          description: Authoritative report period end (inclusive, YYYY-MM-DD); null on legacy rows.
+        reportPeriodType:
+          type: string
+          nullable: true
+          description: How the report period was chosen ('calendar' | 'academic' | 'financial' | 'custom'); display-only.
         habitTemplateId:
           type: integer
           nullable: true

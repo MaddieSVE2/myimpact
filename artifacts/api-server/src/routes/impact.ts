@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
@@ -30,7 +30,11 @@ import {
   normalizeActivityLocation,
   redactLocationForOrg,
   deriveReportingYear,
+  type ReportPeriodType,
   computeEstimateActualReconciliation,
+  parseReportPeriod,
+  clampDateToPeriod,
+  defaultReportName,
 } from "../lib/contributionModel.js";
 import { repairInflatedDonations } from "../lib/donationRepair.js";
 
@@ -239,6 +243,71 @@ function endOfYearUTC(year: number): Date {
   return new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
 }
 
+/**
+ * Annual estimates whose authoritative report period overlaps the given
+ * window but whose entryDate falls OUTSIDE it (e.g. an academic-year report
+ * homed in the prior calendar year). Appending these to a windowed
+ * reconciliation input lets quick logs inside the window reconcile against
+ * the cross-year estimate; their values are NEVER added to the window's raw
+ * sums, so each estimate still counts in exactly one calendar year while the
+ * activity itself is counted once across years. Legacy rows have NULL period
+ * fields and are never returned — historical aggregates stay byte-identical.
+ */
+async function fetchOverlappingPeriodEstimates(
+  scope: string | SQL,
+  windowStart: Date,
+  windowEndExclusive: Date,
+): Promise<(typeof impactRecordsTable.$inferSelect)[]> {
+  // `scope` is either a personal user id or an arbitrary base condition
+  // (e.g. an org's shared-records condition), so personal dashboards and org
+  // stats reconcile cross-window periods with identical logic.
+  const scopeCondition = typeof scope === "string" ? eq(impactRecordsTable.userId, scope) : scope;
+  // ALL estimates whose period overlaps the window — including ones homed
+  // inside it (already in the caller's rows): their in-period quick logs
+  // outside the window must still join as capacity-consuming context.
+  const estimates = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(
+      and(
+        scopeCondition,
+        eq(impactRecordsTable.kind, "annual_estimate"),
+        isNotNull(impactRecordsTable.reportStartDate),
+        isNotNull(impactRecordsTable.reportEndDate),
+        lt(impactRecordsTable.reportStartDate, windowEndExclusive),
+        gte(impactRecordsTable.reportEndDate, windowStart),
+      ),
+    );
+  if (estimates.length === 0) return [];
+  const outOfWindowEstimates = estimates.filter(
+    (e) => e.entryDate < windowStart || e.entryDate >= windowEndExclusive,
+  );
+
+  // The estimates' in-period quick logs OUTSIDE the window must also join
+  // the reconciliation input as context: they consume the estimates'
+  // capacity first (chronological order), so a windowed caller can never
+  // reuse capacity another calendar year has already absorbed.
+  const minStart = new Date(Math.min(...estimates.map((e) => e.reportStartDate!.getTime())));
+  // Inclusive period end → exclusive upper bound one day later.
+  const maxEndExclusive = new Date(Math.max(...estimates.map((e) => e.reportEndDate!.getTime())) + 86_400_000);
+  const contextLogs = await db
+    .select()
+    .from(impactRecordsTable)
+    .where(
+      and(
+        scopeCondition,
+        eq(impactRecordsTable.kind, "quick_log"),
+        gte(impactRecordsTable.entryDate, minStart),
+        lt(impactRecordsTable.entryDate, maxEndExclusive),
+        or(
+          lt(impactRecordsTable.entryDate, windowStart),
+          gte(impactRecordsTable.entryDate, windowEndExclusive),
+        ),
+      ),
+    );
+  return [...outOfWindowEstimates, ...contextLogs];
+}
+
 function startOfMonthOfDate(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
 }
@@ -301,12 +370,28 @@ async function autoVerifyRecordsForUser(userId: string, recordIds: number[]): Pr
 }
 
 router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
+  // A supplied-but-malformed reportPeriod (wrong type, null, missing fields,
+  // unknown enum value) must be a 400, never a schema-level 500 — check it
+  // BEFORE the Zod contract parse so every invalid shape gets the documented
+  // invalid-period response.
+  const suppliedPeriod = (req.body as Record<string, unknown> | undefined)?.reportPeriod;
+  if (suppliedPeriod === null) {
+    // Explicit null means "no period" — normalise to absent so the schema
+    // parse (which only allows object-or-absent) doesn't 500 on it.
+    delete (req.body as Record<string, unknown>).reportPeriod;
+  } else if (suppliedPeriod !== undefined && !parseReportPeriod(suppliedPeriod)) {
+    res.status(400).json({
+      error: "Invalid report period: expected { type, startDate, endDate } with inclusive ISO dates, start ≤ end, and a span of at most 400 days.",
+    });
+    return;
+  }
   const body = SaveImpactBody.parse(req.body);
   const userId = req.user!.id;
   const rawBody = req.body as Record<string, unknown>;
   // `activityDate` is the Quick Log alias for entryDate — the date the
   // occurrence actually happened.
-  const entryDate = parseEntryDate(rawBody.entryDate ?? rawBody.activityDate);
+  const explicitEntryDate = rawBody.entryDate ?? rawBody.activityDate;
+  let entryDate = parseEntryDate(explicitEntryDate);
   // First-class contribution kind. Clients that know what they're saving send
   // it explicitly ('annual_estimate' for the Full Impact Report wizard,
   // 'quick_log' for per-occurrence actuals — Quick Log payloads are stored
@@ -314,10 +399,38 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   // values stay 'legacy' so existing clients keep producing rows that
   // aggregate exactly as before.
   const kind = parseRecordKind(rawBody.kind) ?? "legacy";
+  // Authoritative Full Impact Report period, chosen ONCE at the start of the
+  // wizard journey ({ type, startDate, endDate }, inclusive ISO dates).
+  // Absent/invalid → null, and every downstream value falls back to the
+  // legacy entryDate-driven behaviour.
+  const reportPeriod = parseReportPeriod(body.reportPeriod);
+  // A CLIENT-SUPPLIED period that fails validation (bad dates, start after
+  // end, longer than the supported maximum) is rejected outright rather than
+  // silently saving a legacy row without its authoritative period.
+  if (body.reportPeriod !== undefined && body.reportPeriod !== null && !reportPeriod) {
+    res.status(400).json({
+      error: "Invalid report period: expected inclusive ISO dates with start ≤ end and a span of at most 400 days.",
+    });
+    return;
+  }
   // Structured activity location (label/postcode/town/lat/lng/local
   // authority/region/country + mode incl. 'online' and 'multiple').
   const activityLocation = normalizeActivityLocation(rawBody.location);
   const todayUTC = new Date();
+  // When an authoritative report period is supplied and the client didn't
+  // send an explicit entry date, derive entryDate by clamping "today" into
+  // the period. This keeps calendar-year dashboard membership and
+  // reconciliation grouping (reportingYear) keyed off the report's period
+  // while never inventing dates outside it.
+  if (reportPeriod && (typeof explicitEntryDate !== "string" || !explicitEntryDate)) {
+    entryDate = clampDateToPeriod(todayUTC, reportPeriod);
+  } else if (reportPeriod && entryDate) {
+    // An explicit entry date sent ALONGSIDE a report period must agree with
+    // it — otherwise a record could be bucketed into one calendar year while
+    // reconciliation assigns the period's quick logs to another. Clamp it
+    // into the inclusive range so the period stays authoritative.
+    entryDate = clampDateToPeriod(entryDate, reportPeriod);
+  }
   // If the entry is dated to a prior calendar year, mark its source so the
   // UI can label it "added later". Habit-spawned entries are never created
   // through /save (see /templates/:id/confirm), so source is one of
@@ -327,7 +440,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   // Derive a calendar period label when the client doesn't supply one,
   // so existing UI surfaces (history list, org webhooks) keep showing a
   // human-friendly window.
-  const periodLabel = body.period ?? calendarMonthLabel(entryDate);
+  const periodLabel = body.period ?? (reportPeriod ? defaultReportName(reportPeriod) : calendarMonthLabel(entryDate));
 
   // Optional `targetRecordId` lets the client deliberately edit a specific
   // existing record (used by the History "edit" flow). When omitted, /save
@@ -379,8 +492,15 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     kind,
     locationJson: activityLocation,
     // Reporting period derived from the activity date (calendar year today).
-    // Nullable by design: an unassociable date still saves.
+    // Nullable by design: an unassociable date still saves. When an
+    // authoritative report period is present, entryDate was clamped into it
+    // above, so this derivation is keyed off the report's period.
     reportingYear: deriveReportingYear(entryDate),
+    // Authoritative report period (Full Impact Report saves only). NULL for
+    // legacy/quick-log rows — aggregation then falls back to entryDate.
+    reportStartDate: reportPeriod?.start ?? null,
+    reportEndDate: reportPeriod?.end ?? null,
+    reportPeriodType: reportPeriod?.periodType ?? null,
   };
 
   let record;
@@ -394,6 +514,9 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
         source: impactRecordsTable.source,
         habitTemplateId: impactRecordsTable.habitTemplateId,
         kind: impactRecordsTable.kind,
+        reportStartDate: impactRecordsTable.reportStartDate,
+        reportEndDate: impactRecordsTable.reportEndDate,
+        reportPeriodType: impactRecordsTable.reportPeriodType,
       })
       .from(impactRecordsTable)
       .where(and(eq(impactRecordsTable.id, targetRecordId), eq(impactRecordsTable.userId, userId)))
@@ -415,6 +538,28 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     // demote e.g. a quick_log row back to 'legacy'.
     if (parseRecordKind(rawBody.kind) === null) {
       updateValues = { ...updateValues, kind: parseRecordKind(owned.kind) ?? "legacy" };
+    }
+    // Preserve the record's authoritative report period on edits unless the
+    // client explicitly supplies a new one — otherwise a History edit would
+    // silently strip the period off a saved Full Impact Report.
+    if (!reportPeriod) {
+      const { reportStartDate: _rs, reportEndDate: _re, reportPeriodType: _rt, ...rest } = updateValues;
+      updateValues = rest as typeof updateValues;
+      // The preserved stored period stays authoritative: an edit's entry
+      // date can never move the report outside it, or calendar bucketing
+      // and reconciliation would diverge.
+      if (owned.reportStartDate && owned.reportEndDate) {
+        const clamped = clampDateToPeriod(entryDate, {
+          periodType: (owned.reportPeriodType ?? "custom") as ReportPeriodType,
+          start: owned.reportStartDate,
+          end: owned.reportEndDate,
+        });
+        updateValues = {
+          ...updateValues,
+          entryDate: clamped,
+          reportingYear: deriveReportingYear(clamped),
+        };
+      }
     }
     const [updated] = await db
       .update(impactRecordsTable)
@@ -610,6 +755,9 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
     kind: record.kind,
     location: record.locationJson ?? null,
     reportingYear: record.reportingYear ?? null,
+    reportStartDate: record.reportStartDate ? record.reportStartDate.toISOString().slice(0, 10) : null,
+    reportEndDate: record.reportEndDate ? record.reportEndDate.toISOString().slice(0, 10) : null,
+    reportPeriodType: record.reportPeriodType ?? null,
     habitTemplateId: record.habitTemplateId ?? null,
     impactResult: serverImpactResult,
     tags: record.tags ?? [],
@@ -638,12 +786,9 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
       .filter(Boolean);
     updates.tags = Array.from(new Set(tags));
   }
-  if (typeof body.entryDate === "string" && body.entryDate) {
-    const d = new Date(body.entryDate);
-    if (!isNaN(d.getTime())) updates.entryDate = d;
-  }
+  const hasEntryDateEdit = typeof body.entryDate === "string" && Boolean(body.entryDate);
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && !hasEntryDateEdit) {
     res.status(400).json({ error: "Provide periodLabel, entryDate, or tags" });
     return;
   }
@@ -657,6 +802,30 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   if (!record) {
     res.status(404).json({ error: "Record not found" });
     return;
+  }
+
+  if (hasEntryDateEdit) {
+    const d = new Date(body.entryDate as string);
+    if (!isNaN(d.getTime())) {
+      // The stored report period is authoritative: an entry-date edit can
+      // never move a report outside its own period, or calendar bucketing
+      // and reconciliation would diverge from it.
+      const newDate =
+        record.reportStartDate && record.reportEndDate
+          ? clampDateToPeriod(d, {
+              periodType: (record.reportPeriodType ?? "custom") as ReportPeriodType,
+              start: record.reportStartDate,
+              end: record.reportEndDate,
+            })
+          : d;
+      updates.entryDate = newDate;
+      // Keep the derived reporting year in lockstep with the entry date.
+      updates.reportingYear = deriveReportingYear(newDate);
+    }
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "Provide periodLabel, entryDate, or tags" });
+      return;
+    }
   }
 
   const [updated] = await db
@@ -899,6 +1068,9 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     kind: r.kind,
     location: r.locationJson ?? null,
     reportingYear: r.reportingYear ?? null,
+    reportStartDate: r.reportStartDate ? r.reportStartDate.toISOString().slice(0, 10) : null,
+    reportEndDate: r.reportEndDate ? r.reportEndDate.toISOString().slice(0, 10) : null,
+    reportPeriodType: r.reportPeriodType ?? null,
     habitTemplateId: r.habitTemplateId ?? null,
     impactResult: r.resultJson,
     activities: r.activitiesJson,
@@ -977,7 +1149,21 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
   // where an annual estimate AND quick-logged actuals cover the same
   // activity, count it once (the greater of the two). Zero adjustment for
   // legacy-only data, so historical org stats are unchanged.
-  const recon = computeEstimateActualReconciliation(records);
+  let recon;
+  if (sharedCondition && (from || to)) {
+    // Bounded org reporting windows need the same cross-window period logic
+    // as personal recap/YoY: pull in period-overlapping estimates homed
+    // outside the window plus their out-of-window in-period actuals as
+    // capacity context, and consume each estimate's capacity exactly once.
+    const windowStart = from ?? new Date(0);
+    const windowEndExclusive = to ?? new Date(Date.UTC(3000, 0, 1));
+    const overlapping = await fetchOverlappingPeriodEstimates(sharedCondition, windowStart, windowEndExclusive);
+    recon = computeEstimateActualReconciliation([...records, ...overlapping], {
+      window: { start: windowStart, endExclusive: windowEndExclusive },
+    });
+  } else {
+    recon = computeEstimateActualReconciliation(records);
+  }
   totalSocialValue -= recon.valueExcess;
   totalHours -= recon.hoursExcess;
   for (const a of recon.activities) {
@@ -1194,7 +1380,15 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
     // counts each such activity once (the greater of the two) and the
     // response carries per-activity "Estimated: X / Logged so far: Y" detail.
     // All-legacy years get a zero adjustment — historical recaps unchanged.
-    const recon = computeEstimateActualReconciliation(yearRecords);
+    // Include cross-year estimates whose authoritative report period overlaps
+    // this calendar year (recon input only — never the raw sums), so quick
+    // logs here reconcile against e.g. an academic-year report homed in the
+    // prior calendar year.
+    const overlappingEstimates = await fetchOverlappingPeriodEstimates(userId, start, end);
+    const recon = computeEstimateActualReconciliation(
+      [...yearRecords, ...overlappingEstimates],
+      { window: { start, endExclusive: end } },
+    );
     totalValue -= recon.valueExcess;
     totalHours -= recon.hoursExcess;
     totalDonations -= recon.donationExcess;
@@ -2225,11 +2419,14 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
     // quick logs cover the same activity in the same year.
     const rows = await db
       .select({
+        userId: impactRecordsTable.userId,
         totalValue: impactRecordsTable.totalValue,
         kind: impactRecordsTable.kind,
         entryDate: impactRecordsTable.entryDate,
         reportingYear: impactRecordsTable.reportingYear,
         resultJson: impactRecordsTable.resultJson,
+        reportStartDate: impactRecordsTable.reportStartDate,
+        reportEndDate: impactRecordsTable.reportEndDate,
       })
       .from(impactRecordsTable)
       .where(
@@ -2241,7 +2438,13 @@ router.get("/yoy", authenticate, async (req: AuthenticatedRequest, res) => {
       );
     let total = 0;
     for (const r of rows) total += Number(r.totalValue ?? 0);
-    total -= computeEstimateActualReconciliation(rows).valueExcess;
+    // Cross-year period estimates join the recon input (never the raw sum)
+    // so in-window quick logs reconcile against them.
+    const overlapping = await fetchOverlappingPeriodEstimates(userId, start, end);
+    total -= computeEstimateActualReconciliation(
+      [...rows, ...overlapping],
+      { window: { start, endExclusive: end } },
+    ).valueExcess;
     return { total, count: rows.length };
   }
 
@@ -2310,7 +2513,13 @@ router.get("/year-rollover", authenticate, async (req: AuthenticatedRequest, res
   }
   // Count each activity once where the prior year mixed an annual estimate
   // with quick-logged actuals (zero adjustment for legacy-only years).
-  const priorRecon = computeEstimateActualReconciliation(priorYearRecords);
+  const priorOverlapping = await fetchOverlappingPeriodEstimates(
+    userId, startOfYearUTC(priorYear), endOfYearUTC(priorYear),
+  );
+  const priorRecon = computeEstimateActualReconciliation(
+    [...priorYearRecords, ...priorOverlapping],
+    { window: { start: startOfYearUTC(priorYear), endExclusive: endOfYearUTC(priorYear) } },
+  );
   priorTotal -= priorRecon.valueExcess;
   priorHours -= priorRecon.hoursExcess;
 

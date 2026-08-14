@@ -51,7 +51,23 @@ function makeConfig({ settings, assertions }) {
         },
       },
       assert: {
-        assertions,
+        // SEO is only asserted on publicly indexable routes. The app
+        // intentionally noindexes private in-app pages (wizard, results,
+        // history — see NOINDEX_PATH_PREFIXES in my-impact's App.tsx), which
+        // hard-fails Lighthouse's is-crawlable/meta-description audits, so an
+        // SEO score there is meaningless and only produces flaky failures.
+        assertMatrix: [
+          {
+            matchingUrlPattern: ".*/(wizard|results|history)($|/.*)",
+            assertions: Object.fromEntries(
+              Object.entries(assertions).filter(([key]) => key !== "categories:seo"),
+            ),
+          },
+          {
+            matchingUrlPattern: "^(?!.*/(wizard|results|history)($|/)).*$",
+            assertions,
+          },
+        ],
       },
       upload: {
         target: "temporary-public-storage",

@@ -112,6 +112,17 @@ export const impactRecordsTable = pgTable("impact_records", {
   // at save time (calendar year today). Nullable so a record whose date fits
   // no period — or several — still saves and can be associated later.
   reportingYear: integer("reporting_year"),
+  // Authoritative Full Impact Report period (annual_estimate rows saved by
+  // the wizard from Aug 2026 on). Chosen ONCE at the start of the report
+  // journey — calendar year, academic year, or a supported custom range —
+  // and carried through save and display. Both dates are inclusive, stored
+  // at midnight UTC. NULL on legacy rows and non-report kinds; aggregation
+  // falls back to entryDate/reportingYear exactly as before.
+  reportStartDate: timestamp("report_start_date"),
+  reportEndDate: timestamp("report_end_date"),
+  // 'calendar' | 'academic' | 'financial' | 'custom' — display-only hint for
+  // how the period was chosen. Never used in calculations.
+  reportPeriodType: text("report_period_type"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),

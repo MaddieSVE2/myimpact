@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from '@/lib/auth-context';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
 import type { ActivityLocationValue } from '@/components/quicklog/LocationPicker';
+import { type ReportPeriod, isReportPeriod, defaultReportPeriod } from '@/lib/report-period';
 
 /**
  * sessionStorage key used by the Inspire page's "Log activity with this
@@ -78,6 +79,12 @@ interface WizardState {
   // Defaults to today; the user can backdate it from the Contributions step
   // when logging a past activity. Drives the calendar-year bucketing.
   entryDate: string;
+  // ONE authoritative reporting period for the Full Impact Report, chosen or
+  // confirmed at the start of the journey. Defaults to the current calendar
+  // year; the user is never asked again mid-flow or at save time. Ignored by
+  // Quick Log (which keeps its per-occurrence date) and by edits of existing
+  // records (which preserve their original period).
+  reportPeriod: ReportPeriod;
   // When set, the wizard is editing an existing saved record in place rather
   // than creating a new one. On save, Results passes this as `targetRecordId`
   // so the server updates the same row (re-running the social-value engine)
@@ -144,6 +151,7 @@ interface WizardContextType extends WizardState {
   setActivitySelection: (sel: Partial<ActivitySelectionDraft>) => void;
   setActivityMode: (mode: ActivityMode) => void;
   setEntryDate: (iso: string) => void;
+  setReportPeriod: (period: ReportPeriod) => void;
 }
 
 const defaultInput: ImpactInput = {
@@ -217,6 +225,7 @@ const defaultState: WizardState = {
   activitySelection: defaultActivitySelection,
   activityMode: 'pick',
   entryDate: todayIso(),
+  reportPeriod: defaultReportPeriod(),
   editRecordId: null,
   editPeriod: null,
   activityLocation: null,
@@ -282,6 +291,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         activitySelection: draft.activitySelection ?? defaultActivitySelection,
         activityMode: (draft.activityMode as ActivityMode | undefined) ?? 'pick',
         entryDate: typeof draft.entryDate === 'string' && draft.entryDate ? draft.entryDate : todayIso(),
+        reportPeriod: isReportPeriod(draft.reportPeriod) ? draft.reportPeriod : defaultReportPeriod(),
         editRecordId: typeof draft.editRecordId === 'string' ? draft.editRecordId : null,
         editPeriod: typeof draft.editPeriod === 'string' ? draft.editPeriod : null,
         activityLocation: (draft.activityLocation && typeof draft.activityLocation === 'object') ? draft.activityLocation : null,
@@ -310,6 +320,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [activityMode, setActivityModeState] = useState<ActivityMode>(initialState.activityMode);
   const [entryDate, setEntryDateState] = useState<string>(initialState.entryDate);
   const setEntryDate = useCallback((iso: string) => setEntryDateState(iso || todayIso()), []);
+  const [reportPeriod, setReportPeriodState] = useState<ReportPeriod>(initialState.reportPeriod);
+  const setReportPeriod = useCallback((p: ReportPeriod) => setReportPeriodState(p), []);
   const [editRecordId, setEditRecordIdState] = useState<string | null>(initialState.editRecordId);
   const [editPeriod, setEditPeriodState] = useState<string | null>(initialState.editPeriod);
   const [activityLocation, setActivityLocationState] = useState<ActivityLocationValue | null>(initialState.activityLocation);
@@ -330,12 +342,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation }, user?.id);
+      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation }, user?.id);
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation, user?.id]);
+  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation, user?.id]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
@@ -544,6 +556,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
     setEntryDateState(todayIso());
+    setReportPeriodState(defaultReportPeriod());
     setEditRecordIdState(null);
     setEditPeriodState(null);
     setActivityLocationState(null);
@@ -564,6 +577,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setActivitySelectionState(defaultActivitySelection);
     setActivityModeState('pick');
     setEntryDateState(todayIso());
+    setReportPeriodState(defaultReportPeriod());
     setEditRecordIdState(null);
     setEditPeriodState(null);
     // Clear the structured activity location too — clearDraft runs when a
@@ -589,10 +603,10 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, editRecordId, editPeriod, activityLocation,
+      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation,
       setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadRecordForEdit, setEditRecordId, loadFromTemplate, reset,
-      clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate, setActivityLocation,
+      clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate, setReportPeriod, setActivityLocation,
     }}>
       {children}
     </WizardContext.Provider>

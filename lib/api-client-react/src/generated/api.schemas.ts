@@ -144,6 +144,33 @@ export interface ActivityLocation {
   country?: string | null;
 }
 
+export type ReportPeriodInputType =
+  (typeof ReportPeriodInputType)[keyof typeof ReportPeriodInputType];
+
+export const ReportPeriodInputType = {
+  calendar: "calendar",
+  academic: "academic",
+  financial: "financial",
+  custom: "custom",
+} as const;
+
+/**
+ * Authoritative Full Impact Report period, chosen ONCE at the start of
+the wizard journey. Both dates are inclusive ISO dates (YYYY-MM-DD).
+When present and no explicit entryDate is sent, the server derives
+entryDate by clamping "today" into the period, so reconciliation and
+calendar dashboards key off the report's period. Invalid/absent →
+legacy entryDate-driven behaviour.
+
+ */
+export interface ReportPeriodInput {
+  type: ReportPeriodInputType;
+  /** Inclusive period start (YYYY-MM-DD). */
+  startDate: string;
+  /** Inclusive period end (YYYY-MM-DD). */
+  endDate: string;
+}
+
 export interface SaveImpactInput {
   userId: string;
   name: string;
@@ -181,6 +208,7 @@ the activity actually happened. Ignored when entryDate is set.
  */
   activityDate?: string | null;
   location?: ActivityLocation;
+  reportPeriod?: ReportPeriodInput;
   /** Bypass the habit-overlap check. By default, /save returns 409
 when the entryDate's month already has a habit-generated entry
 with any overlapping activity, so the UI can prompt the user to
@@ -208,6 +236,12 @@ how the entry was created so the UI can label it (e.g. show a
   location?: ActivityLocation;
   /** Reporting period derived from the entry date (calendar year); null when no period fits. */
   reportingYear?: number | null;
+  /** Authoritative report period start (inclusive, YYYY-MM-DD); null on legacy rows. */
+  reportStartDate?: string | null;
+  /** Authoritative report period end (inclusive, YYYY-MM-DD); null on legacy rows. */
+  reportEndDate?: string | null;
+  /** How the report period was chosen ('calendar' | 'academic' | 'financial' | 'custom'); display-only. */
+  reportPeriodType?: string | null;
   /** ID of the recurring template that generated this entry, if any.
 Lets the client cross-reference bulk-created monthly entries with
 their parent habit.

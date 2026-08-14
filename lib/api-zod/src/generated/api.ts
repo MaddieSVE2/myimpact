@@ -255,6 +255,16 @@ export const SaveImpactBody = zod.object({
     .describe(
       "Structured activity location. mode 'online' = Online \/ remote,\n'multiple' = Multiple locations (other fields typically null).\nA future beneficiary-location field will be a sibling structure.\n",
     ),
+  reportPeriod: zod
+    .object({
+      type: zod.enum(["calendar", "academic", "financial", "custom"]),
+      startDate: zod.string().describe("Inclusive period start (YYYY-MM-DD)."),
+      endDate: zod.string().describe("Inclusive period end (YYYY-MM-DD)."),
+    })
+    .optional()
+    .describe(
+      'Authoritative Full Impact Report period, chosen ONCE at the start of\nthe wizard journey. Both dates are inclusive ISO dates (YYYY-MM-DD).\nWhen present and no explicit entryDate is sent, the server derives\nentryDate by clamping \"today\" into the period, so reconciliation and\ncalendar dashboards key off the report\'s period. Invalid\/absent →\nlegacy entryDate-driven behaviour.\n',
+    ),
   force: zod
     .boolean()
     .nullish()
@@ -302,6 +312,24 @@ export const SaveImpactResponse = zod.object({
     .nullish()
     .describe(
       "Reporting period derived from the entry date (calendar year); null when no period fits.",
+    ),
+  reportStartDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "Authoritative report period start (inclusive, YYYY-MM-DD); null on legacy rows.",
+    ),
+  reportEndDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "Authoritative report period end (inclusive, YYYY-MM-DD); null on legacy rows.",
+    ),
+  reportPeriodType: zod
+    .string()
+    .nullish()
+    .describe(
+      "How the report period was chosen ('calendar' | 'academic' | 'financial' | 'custom'); display-only.",
     ),
   habitTemplateId: zod
     .number()
@@ -407,6 +435,24 @@ export const GetImpactHistoryResponse = zod.object({
         .nullish()
         .describe(
           "Reporting period derived from the entry date (calendar year); null when no period fits.",
+        ),
+      reportStartDate: zod
+        .string()
+        .nullish()
+        .describe(
+          "Authoritative report period start (inclusive, YYYY-MM-DD); null on legacy rows.",
+        ),
+      reportEndDate: zod
+        .string()
+        .nullish()
+        .describe(
+          "Authoritative report period end (inclusive, YYYY-MM-DD); null on legacy rows.",
+        ),
+      reportPeriodType: zod
+        .string()
+        .nullish()
+        .describe(
+          "How the report period was chosen ('calendar' | 'academic' | 'financial' | 'custom'); display-only.",
         ),
       habitTemplateId: zod
         .number()

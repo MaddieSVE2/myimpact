@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
+import { ReportPeriodPicker } from "@/components/wizard/ReportPeriodPicker";
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -103,7 +104,7 @@ export default function ActionsStep() {
     location, interests, customInterest, careerBreak, situations,
     setLocation: setWizardLocation, toggleInterest,
     setCustomInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
-    hasDraft, clearDraft,
+    hasDraft, clearDraft, reportPeriod, setReportPeriod,
   } = useWizard();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
   const t = useT();
@@ -258,6 +259,23 @@ export default function ActionsStep() {
       )}
 
       <ChallengeContextBanner />
+
+      {/* ONE authoritative reporting period, chosen/confirmed here at the
+          start of the journey and never asked about again. */}
+      <motion.div
+        className="bg-white border border-border rounded-xl p-6 md:p-8 mb-4"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <label className="block text-sm font-medium text-foreground mb-1">
+          What period will this report cover?
+        </label>
+        <p className="text-xs text-muted-foreground mb-3">
+          Your whole report counts toward this period. You won't be asked again — you can rename the saved report later.
+        </p>
+        <ReportPeriodPicker value={reportPeriod} onChange={setReportPeriod} />
+      </motion.div>
 
       {!hasDraft && profileLoaded && (
         <motion.div

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
+import { formatPeriodRange } from "@/lib/report-period";
 import { formatCurrency } from "@/lib/utils";
 import { calcResultBreakdown } from "@/lib/formula";
 import { computeBadges, getNextMilestone } from "@/lib/badges";
@@ -907,7 +908,7 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
+  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, reportPeriod, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
   const situation = situations[0] ?? null;
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
@@ -925,29 +926,16 @@ export default function Results() {
   const [savedWasEdit, setSavedWasEdit] = useState(false);
   const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [conflictInfo, setConflictInfo] = useState<{
     existingRecordId: string;
     period: string;
     attemptedPeriod: string;
   } | null>(null);
-  const [chosenPeriod, setChosenPeriod] = useState("");
-  const [customPeriod, setCustomPeriod] = useState("");
+  // Optional user-editable report name. Defaults to the period-derived title
+  // ("My Impact 2026"); display-only — it never affects dates or calculations.
+  const [reportName, setReportName] = useState<string>(reportPeriod.label);
 
   const queryClient = useQueryClient();
-
-  // Compute period presets from today's date
-  const now = new Date();
-  const month = now.getMonth() + 1; // 1–12
-  const year = now.getFullYear();
-  const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-  const termLabel = month >= 9 ? `Autumn Term ${year}` : month >= 5 ? `Summer Term ${year}` : `Spring Term ${year}`;
-  const PERIOD_PRESETS = [
-    { label: "This month", value: monthLabel },
-    { label: "Current term", value: termLabel },
-    { label: "This year", value: String(year) },
-    { label: "Last year", value: String(year - 1) },
-  ];
 
   if (!result) {
     return (
@@ -996,7 +984,20 @@ export default function Results() {
           userId: user?.id ?? "",
           name: "My Impact Record",
           period: period || undefined,
-          entryDate: entryDate || undefined,
+          // Edits keep the record's original entry date. New Full Impact
+          // Report saves send the authoritative period instead and let the
+          // server derive the entry date inside it — the mid-flow "what date
+          // does this count toward?" question is gone.
+          entryDate: targetRecordId ? (entryDate || undefined) : undefined,
+          ...(targetRecordId
+            ? {}
+            : {
+                reportPeriod: {
+                  type: reportPeriod.type,
+                  startDate: reportPeriod.startDate,
+                  endDate: reportPeriod.endDate,
+                },
+              }),
           impactResult: result,
           activities: input.activities,
           // Persist any "describe your own" activities so the server recomputes
@@ -1096,7 +1097,6 @@ export default function Results() {
       setSaved(true);
       const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
-      setShowSaveDialog(false);
       // Once a save targeting an existing record succeeds, drop the edit target
       // so any later save on this page creates a fresh entry rather than
       // silently overwriting the one we just updated.
@@ -1106,7 +1106,7 @@ export default function Results() {
       toast(
         wasEdit
           ? { title: "Entry updated!", description: "Your changes have been saved and the value recalculated." }
-          : { title: "Saved!", description: period ? `Your ${period} record has been saved.` : "Your impact record has been added to your history." }
+          : { title: `Saved as ${period || reportPeriod.label}`, description: "Your impact report has been added to your history." }
       );
 
       // If the user came from an org-challenge "Contribute" prompt, refresh
@@ -1131,7 +1131,6 @@ export default function Results() {
       if (apiErr?.status === 409 && apiErr?.data?.error === "habit_entry_conflict") {
         const existingId = apiErr.data.existingRecordId ?? "";
         const periodLabel = apiErr.data.period ?? "this month";
-        setShowSaveDialog(false);
         setConflictInfo({
           existingRecordId: existingId,
           period: periodLabel,
@@ -1256,6 +1255,41 @@ export default function Results() {
     <div className="max-w-4xl mx-auto px-4 py-10 pb-28">
       <OrgPromptsSection variant="compact" />
       <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} />
+
+      {/* Report identity: the authoritative period chosen at the start of the
+          journey plus an optional display-only name. Saving uses these
+          directly — there is no save-time period dialog. Hidden while editing
+          an existing entry (which keeps its original period and label). */}
+      {!editRecordId && !saved && (
+        <motion.div
+          className="mb-8 bg-white border border-border rounded-xl p-4 sm:p-5"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="results-report-name-card"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex-1">
+              <label htmlFor="report-name-input" className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
+                Report name (optional)
+              </label>
+              <input
+                id="report-name-input"
+                type="text"
+                value={reportName}
+                onChange={e => setReportName(e.target.value)}
+                placeholder={reportPeriod.label}
+                className="w-full px-3 py-2.5 min-h-[44px] rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                data-testid="report-name-input"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground sm:max-w-[220px]" data-testid="results-period-line">
+              Counts toward <strong className="text-foreground">{reportPeriod.label}</strong>
+              <br />
+              {formatPeriodRange(reportPeriod)} · you can rename it any time in History.
+            </p>
+          </div>
+        </motion.div>
+      )}
       {/* Hero */}
       <motion.div
         className="text-center mb-10"
@@ -1585,9 +1619,11 @@ export default function Results() {
             onClick={() => {
               if (saved) return;
               // In edit mode we already know which entry and period this maps
-              // to, so update it directly rather than re-asking for the period.
+              // to, so update it directly. New saves go straight against the
+              // authoritative period chosen at the start of the journey —
+              // there is no save-time period dialog any more.
               if (editRecordId) handleSave(editPeriod ?? "");
-              else setShowSaveDialog(true);
+              else handleSave(reportName.trim() || reportPeriod.label);
             }}
             disabled={saveMutation.isPending || saved}
             className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
@@ -1676,79 +1712,6 @@ export default function Results() {
 
         </div>
       </div>
-
-      {/* Period picker dialog */}
-      {showSaveDialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-          onClick={() => setShowSaveDialog(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-6 shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-foreground mb-1">What period does this cover?</h2>
-            <p className="text-xs text-muted-foreground mb-5">
-              Label this record so you can track progress across different periods over time.
-            </p>
-
-            {/* Preset chips */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {PERIOD_PRESETS.map(p => (
-                <button
-                  key={p.value}
-                  onClick={() => { setChosenPeriod(p.value); setCustomPeriod(""); }}
-                  className="px-3 py-2.5 min-h-[44px] rounded-full text-xs font-medium border transition-all"
-                  style={chosenPeriod === p.value
-                    ? { background: "#213547", color: "white", borderColor: "#213547" }
-                    : { background: "white", color: "hsl(var(--foreground))", borderColor: "hsl(var(--border))" }
-                  }
-                >
-                  <span className="text-muted-foreground text-[10px] mr-1">{p.label}</span>
-                  {p.value}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom input */}
-            <div className="mb-5">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                Or enter a custom label
-              </label>
-              <input
-                type="text"
-                value={customPeriod}
-                onChange={e => { setCustomPeriod(e.target.value); setChosenPeriod(""); }}
-                placeholder='e.g. "Summer holiday 2026" or "Year 12"'
-                className="w-full px-3 py-3 min-h-[44px] rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setShowSaveDialog(false)}
-                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleSave(customPeriod || chosenPeriod)}
-                disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
-                style={{ background: "#213547" }}
-              >
-                {saveMutation.isPending ? "Saving…" : "Save record"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Conflict dialog, opens when /save returns 409 habit_entry_conflict.
           The user can either replace the existing habit-generated entry

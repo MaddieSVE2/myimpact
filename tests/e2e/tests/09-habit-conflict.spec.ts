@@ -116,10 +116,9 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     await expect(saveProgress).toBeVisible({ timeout: 15_000 });
 
     // ---- 3. Trigger the conflict ----------------------------------------
+    // Saving goes straight against the journey's report period (no period
+    // dialog); the server returns 409 for the habit overlap.
     await saveProgress.click();
-    // Period dialog → Save record → server returns 409.
-    await expect(page.getByText(/what period does this cover\?/i)).toBeVisible();
-    await page.getByRole("button", { name: /^save record$/i }).click();
 
     // Conflict dialog appears with the three documented options.
     const conflictDialog = page.getByTestId("habit-conflict-dialog");

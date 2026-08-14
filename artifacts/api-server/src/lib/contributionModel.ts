@@ -151,6 +151,88 @@ export function deriveReportingYear(entryDate: Date | null | undefined): number 
   return y >= 2000 && y <= 2100 ? y : null;
 }
 
+// ── Authoritative report period ────────────────────────────────────────────
+
+export const REPORT_PERIOD_TYPES = ["calendar", "academic", "financial", "custom"] as const;
+export type ReportPeriodType = (typeof REPORT_PERIOD_TYPES)[number];
+
+export interface ReportPeriod {
+  periodType: ReportPeriodType;
+  /** Inclusive start, midnight UTC. */
+  start: Date;
+  /** Inclusive end, midnight UTC. */
+  end: Date;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseIsoDateUTC(raw: unknown): Date | null {
+  if (typeof raw !== "string" || !ISO_DATE_RE.test(raw)) return null;
+  const d = new Date(raw + "T00:00:00Z");
+  if (isNaN(d.getTime())) return null;
+  // Strict calendar validation: JS normalizes impossible dates (2026-02-30
+  // → 2 March), so require the parsed date to round-trip exactly.
+  const [ys, ms, ds] = raw.split("-");
+  if (
+    d.getUTCFullYear() !== Number(ys) ||
+    d.getUTCMonth() + 1 !== Number(ms) ||
+    d.getUTCDate() !== Number(ds)
+  ) {
+    return null;
+  }
+  const y = d.getUTCFullYear();
+  return y >= 2000 && y <= 2100 ? d : null;
+}
+
+const MAX_REPORT_PERIOD_DAYS = 400; // year-shaped periods, with slack
+
+/**
+ * Parses the client-supplied authoritative Full Impact Report period
+ * ({ type, startDate, endDate } with inclusive ISO dates). Returns null when
+ * absent or invalid — the record then saves with the legacy behaviour
+ * (entryDate-derived reportingYear, no stored period), never an error.
+ */
+export function parseReportPeriod(raw: unknown): ReportPeriod | null {
+  if (raw === null || raw === undefined || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const periodType =
+    typeof o.type === "string" && (REPORT_PERIOD_TYPES as readonly string[]).includes(o.type)
+      ? (o.type as ReportPeriodType)
+      : null;
+  const start = parseIsoDateUTC(o.startDate);
+  const end = parseIsoDateUTC(o.endDate);
+  if (!periodType || !start || !end) return null;
+  if (end < start) return null;
+  const days = (end.getTime() - start.getTime()) / 86_400_000;
+  if (days > MAX_REPORT_PERIOD_DAYS) return null;
+  return { periodType, start, end };
+}
+
+/**
+ * Clamps a reference date (normally "now") into the report period so the
+ * derived entryDate — which still drives calendar dashboards and
+ * reconciliation grouping — always falls inside the authoritative period.
+ */
+export function clampDateToPeriod(reference: Date, period: ReportPeriod): Date {
+  if (reference < period.start) return new Date(period.start);
+  if (reference > period.end) return new Date(period.end);
+  // Normalise to midnight UTC of the reference day.
+  return new Date(Date.UTC(
+    reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate(),
+  ));
+}
+
+/**
+ * Default display name for a report period: "My Impact 2026" for periods
+ * within one calendar year, "My Impact 2026/27" for cross-year (academic /
+ * financial) periods. Display-only — never feeds dates or calculations.
+ */
+export function defaultReportName(period: ReportPeriod): string {
+  const sy = period.start.getUTCFullYear();
+  const ey = period.end.getUTCFullYear();
+  return sy === ey ? `My Impact ${sy}` : `My Impact ${sy}/${String(ey % 100).padStart(2, "0")}`;
+}
+
 // ── Estimate vs actual reconciliation ─────────────────────────────────────
 
 interface BreakdownEntry {
@@ -169,6 +251,15 @@ export interface ReconcilableRecord {
   entryDate: Date;
   reportingYear?: number | null;
   resultJson: unknown;
+  /**
+   * Authoritative report period (annual_estimate rows saved by the wizard).
+   * When present, reconciliation groups by this inclusive range instead of
+   * the calendar reportingYear, so quick logs dated anywhere inside the
+   * period (e.g. both sides of an academic-year boundary) reconcile against
+   * the estimate. NULL/absent → legacy per-year grouping, unchanged.
+   */
+  reportStartDate?: Date | null;
+  reportEndDate?: Date | null;
 }
 
 export interface ReconciledActivity {
@@ -207,6 +298,13 @@ export interface ReconciliationResult {
   activities: ReconciledActivity[];
 }
 
+interface LoggedEntry {
+  t: number;
+  value: number;
+  hours: number;
+  inWindow: boolean;
+}
+
 interface ActivityAgg {
   activityName: string;
   category: string;
@@ -216,6 +314,7 @@ interface ActivityAgg {
   loggedValue: number;
   estimatedHours: number;
   loggedHours: number;
+  logEntries: LoggedEntry[];
 }
 
 function num(v: unknown): number {
@@ -233,30 +332,100 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  */
 export function computeEstimateActualReconciliation(
   records: Iterable<ReconcilableRecord>,
+  opts?: {
+    /**
+     * Aggregation window ([start, endExclusive)) whose raw sums the returned
+     * excess will be subtracted from. Records outside the window act as
+     * CONTEXT only: they consume estimate capacity (in chronological order of
+     * quick-log dates) but contribute nothing to the returned excess. This
+     * lets an estimate spanning two calendar years absorb each in-period
+     * quick log exactly once across all windows — its capacity is never
+     * reused per window. Omit for unwindowed aggregations (previous
+     * behaviour, byte-identical).
+     */
+    window?: { start: Date; endExclusive: Date };
+  },
 ): ReconciliationResult {
-  // group key: user|year → activityId → aggregate
-  const groups = new Map<string, { user: string; year: number; acts: Map<string, ActivityAgg>; estDonations: number; logDonations: number }>();
+  const window = opts?.window;
+  const inWindow = (d: Date): boolean =>
+    !window || (d.getTime() >= window.start.getTime() && d.getTime() < window.endExclusive.getTime());
+  // Group key: user|period (estimates with a stored report period, and the
+  // quick logs whose entryDate falls inside it) or user|year (legacy).
+  const groups = new Map<string, {
+    user: string;
+    year: number;
+    acts: Map<string, ActivityAgg>;
+    estDonations: number;
+    logDonations: number;
+    donEntries: { t: number; amount: number; inWindow: boolean }[];
+  }>();
 
-  for (const r of records) {
+  const all = Array.isArray(records) ? records : [...records];
+
+  // Pass 1: register each user's authoritative estimate periods so quick
+  // logs can be matched to them regardless of calendar-year boundaries.
+  const periodsByUser = new Map<string, { start: Date; end: Date; key: string }[]>();
+  for (const r of all) {
+    if ((r.kind ?? "legacy") !== "annual_estimate") continue;
+    if (!(r.reportStartDate instanceof Date) || !(r.reportEndDate instanceof Date)) continue;
+    const user = r.userId ?? "";
+    const key = `${user}|P|${r.reportStartDate.toISOString()}|${r.reportEndDate.toISOString()}`;
+    let list = periodsByUser.get(user);
+    if (!list) { list = []; periodsByUser.set(user, list); }
+    if (!list.some((p) => p.key === key)) {
+      list.push({ start: r.reportStartDate, end: r.reportEndDate, key });
+    }
+  }
+  // Inclusive end: a quick log dated on the period's last day still matches.
+  const END_OF_DAY_MS = 86_400_000 - 1;
+  const matchPeriod = (user: string, d: Date): string | null => {
+    const list = periodsByUser.get(user);
+    if (!list) return null;
+    let best: { start: Date; key: string } | null = null;
+    for (const p of list) {
+      if (d.getTime() >= p.start.getTime() && d.getTime() <= p.end.getTime() + END_OF_DAY_MS) {
+        if (!best || p.start > best.start) best = p; // most specific (latest-starting) period wins
+      }
+    }
+    return best?.key ?? null;
+  };
+
+  for (const r of all) {
     const kind = r.kind ?? "legacy";
     if (kind !== "annual_estimate" && kind !== "quick_log") continue;
     const isEstimate = kind === "annual_estimate";
     const year = r.reportingYear ?? deriveReportingYear(r.entryDate);
     if (year === null) continue; // unassociated records are summed as-is
     const user = r.userId ?? "";
-    const key = `${user}|${year}`;
+    // Estimates with an authoritative period group by that period; quick logs
+    // join the period whose range contains their activity date. Everything
+    // else keeps the legacy per-calendar-year grouping (historical rows have
+    // no period, so their aggregates are byte-identical to before).
+    const periodKey = isEstimate
+      ? (r.reportStartDate instanceof Date && r.reportEndDate instanceof Date
+          ? `${user}|P|${r.reportStartDate.toISOString()}|${r.reportEndDate.toISOString()}`
+          : null)
+      : matchPeriod(user, r.entryDate);
+    const key = periodKey ?? `${user}|${year}`;
     let g = groups.get(key);
     if (!g) {
-      g = { user, year, acts: new Map(), estDonations: 0, logDonations: 0 };
+      g = { user, year, acts: new Map(), estDonations: 0, logDonations: 0, donEntries: [] };
       groups.set(key, g);
     }
 
+    const recordInWindow = inWindow(r.entryDate);
     const result = r.resultJson !== null && typeof r.resultJson === "object"
       ? (r.resultJson as Record<string, unknown>)
       : {};
     const donations = num(result.donationsValue);
-    if (isEstimate) g.estDonations += donations;
-    else g.logDonations += donations;
+    if (isEstimate) {
+      g.estDonations += donations;
+    } else {
+      g.logDonations += donations;
+      if (donations > 0) {
+        g.donEntries.push({ t: r.entryDate.getTime(), amount: donations, inWindow: recordInWindow });
+      }
+    }
 
     const breakdowns = Array.isArray(result.activityBreakdowns)
       ? (result.activityBreakdowns as BreakdownEntry[])
@@ -279,6 +448,7 @@ export function computeEstimateActualReconciliation(
           loggedValue: 0,
           estimatedHours: 0,
           loggedHours: 0,
+          logEntries: [],
         };
         g.acts.set(activityId, a);
       }
@@ -288,6 +458,12 @@ export function computeEstimateActualReconciliation(
       } else {
         a.loggedValue += num(b.impactValue);
         a.loggedHours += num(b.hours);
+        a.logEntries.push({
+          t: r.entryDate.getTime(),
+          value: num(b.impactValue),
+          hours: num(b.hours),
+          inWindow: recordInWindow,
+        });
       }
     }
   }
@@ -298,14 +474,41 @@ export function computeEstimateActualReconciliation(
   const activities: ReconciledActivity[] = [];
 
   for (const g of groups.values()) {
-    donationExcess += Math.min(g.estDonations, g.logDonations);
+    // Estimate donation capacity is consumed by quick-log donations in
+    // chronological order; only in-window consumption becomes excess, so
+    // windowed callers never reuse the same capacity twice.
+    let donCap = g.estDonations;
+    for (const e of [...g.donEntries].sort((x, y) => x.t - y.t)) {
+      const used = Math.min(donCap, e.amount);
+      donCap -= used;
+      if (e.inWindow) donationExcess += used;
+      if (donCap <= 0) break;
+    }
     for (const [activityId, a] of g.acts) {
       const hasBoth =
         (a.estimatedValue > 0 || a.estimatedHours > 0) &&
         (a.loggedValue > 0 || a.loggedHours > 0);
       if (!hasBoth) continue;
-      const excessValue = Math.min(a.estimatedValue, a.loggedValue);
-      const excessHours = Math.min(a.estimatedHours, a.loggedHours);
+      // Chronological capacity consumption (value and hours independently).
+      // Unwindowed callers see every entry as in-window, which reduces to the
+      // old min(estimated, logged) — historical aggregates unchanged.
+      let capV = a.estimatedValue;
+      let capH = a.estimatedHours;
+      let excessValue = 0;
+      let excessHours = 0;
+      for (const e of [...a.logEntries].sort((x, y) => x.t - y.t)) {
+        const usedV = Math.min(capV, e.value);
+        const usedH = Math.min(capH, e.hours);
+        capV -= usedV;
+        capH -= usedH;
+        if (e.inWindow) {
+          excessValue += usedV;
+          excessHours += usedH;
+        }
+      }
+      // An in-window estimate whose logs (anywhere in the period) exceed it
+      // is itself the double-counted side: the counted total is the logged
+      // side, so the estimate's overage is excess in its home window.
       impactExcess += excessValue;
       hoursExcess += excessHours;
       activities.push({
