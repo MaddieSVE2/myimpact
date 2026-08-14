@@ -2699,10 +2699,36 @@ router.get("/match-info", authenticate, async (req: AuthenticatedRequest, res) =
   }
 });
 
-async function renderPdf(impactResult: unknown, userName: string, date: string): Promise<Buffer> {
-  const pdfData = parsePdfData(impactResult, userName, date);
+async function renderPdf(
+  impactResult: unknown,
+  userName: string,
+  date: string,
+  coveredPeriod?: string,
+): Promise<Buffer> {
+  const pdfData = parsePdfData(impactResult, userName, date, coveredPeriod);
   const doc = buildImpactDocument(pdfData);
   return await renderToBuffer(doc);
+}
+
+// Human-readable covered-period line for the PDF, matching the History row
+// format ("Covers 1 Jan – 31 Dec 2026 · Calendar year"). Returns undefined
+// for legacy records (NULL period fields) so their PDFs render as before.
+function formatCoveredPeriod(record: {
+  reportStartDate: Date | null;
+  reportEndDate: Date | null;
+  reportPeriodType: string | null;
+}): string | undefined {
+  if (!record.reportStartDate || !record.reportEndDate) return undefined;
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const typeLabel =
+    record.reportPeriodType === "calendar" ? "Calendar year"
+    : record.reportPeriodType === "academic" ? "Academic year"
+    : record.reportPeriodType === "financial" ? "Financial year"
+    : record.reportPeriodType === "custom" ? "Custom period"
+    : null;
+  const range = `Covers ${fmt(record.reportStartDate)} \u2013 ${fmt(record.reportEndDate)}`;
+  return typeLabel ? `${range} \u00b7 ${typeLabel}` : range;
 }
 
 function sendPdfBuffer(res: import("express").Response, buffer: Buffer): void {
@@ -2785,7 +2811,7 @@ router.get("/pdf", authenticate, async (req: AuthenticatedRequest, res) => {
     const userName = record.name ?? "My Impact";
     const date = record.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-    const buffer = await renderPdf(record.resultJson, userName, date);
+    const buffer = await renderPdf(record.resultJson, userName, date, formatCoveredPeriod(record));
     sendPdfBuffer(res, buffer);
   } catch (err) {
     console.error("PDF generation error:", err);

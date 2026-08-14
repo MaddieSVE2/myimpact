@@ -131,6 +131,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 4,
   },
+  coverPeriod: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    fontFamily: "DM Sans",
+    marginBottom: 8,
+  },
   coverName: {
     color: "rgba(255,255,255,0.9)",
     fontSize: 14,
@@ -402,6 +408,12 @@ export interface PdfSdgBreakdown {
 export interface PdfData {
   userName: string;
   date: string;
+  /**
+   * Authoritative covered date range for Full Impact Report saves, e.g.
+   * "Covers 1 Jan – 31 Dec 2026 · Calendar year". Undefined for legacy
+   * records (NULL period fields) so their PDFs render exactly as before.
+   */
+  coveredPeriod?: string;
   totalValue: number;
   impactValue: number;
   contributionValue: number;
@@ -455,7 +467,8 @@ function parseSdgBreakdown(item: unknown): PdfSdgBreakdown {
 export function parsePdfData(
   raw: unknown,
   userName: string,
-  date: string
+  date: string,
+  coveredPeriod?: string
 ): PdfData {
   const obj = isObjectWithKey(raw) ? raw : {};
 
@@ -470,6 +483,7 @@ export function parsePdfData(
   return {
     userName,
     date,
+    coveredPeriod,
     totalValue: toNumber(obj.totalValue),
     impactValue: toNumber(obj.impactValue),
     contributionValue: toNumber(obj.contributionValue),
@@ -498,6 +512,9 @@ function CoverPage({ data }: { data: PdfData }) {
           <Text style={{ ...styles.coverHeadline, marginTop: 16 }}>
             The Difference I Make
           </Text>
+          {data.coveredPeriod ? (
+            <Text style={styles.coverPeriod}>{data.coveredPeriod}</Text>
+          ) : null}
           <Text style={styles.coverName}>{data.userName}</Text>
           <Text style={styles.coverDate}>{data.date}</Text>
         </View>
