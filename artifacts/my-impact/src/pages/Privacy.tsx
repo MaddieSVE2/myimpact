@@ -120,7 +120,8 @@ const SECTIONS: Section[] = [
     title: "Data storage and security",
     content: (
       <>
-        <p>All personal data is stored and processed in <strong>UK data centres</strong>. We do not transfer your data outside the UK or European Economic Area.</p>
+        <p>All personal data is currently hosted on <strong>US-based cloud infrastructure</strong>. We are planning a migration to UK/EEA-based hosting in a future release.</p>
+        <p style={{ marginTop: 12 }}><strong>International transfers.</strong> Transferring personal data from the UK to our US-based hosting provider is covered by Standard Contractual Clauses (SCCs) with the UK addendum, as permitted under UK GDPR. The same safeguard applies to our other US-based sub-processors (Resend, Stripe, OpenAI, and Sentry) — full details are in the "Third-party services" section below.</p>
         <p style={{ marginTop: 12 }}>We use industry-standard security measures including:</p>
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>Encrypted connections (HTTPS/TLS) for all data in transit.</li>
@@ -251,7 +252,7 @@ export default function Privacy() {
           </p>
 
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 7 May 2026
+            Last updated: 15 August 2026
           </p>
         </div>
       </section>
