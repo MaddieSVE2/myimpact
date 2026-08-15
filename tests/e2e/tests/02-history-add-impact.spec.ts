@@ -36,5 +36,17 @@ test.describe("Spec 2 — logged-in user logs additional impact from History", (
     expect(recordsRes.ok()).toBe(true);
     const body = (await recordsRes.json()) as { records: Array<{ id: string }> };
     expect(body.records.length).toBeGreaterThanOrEqual(2);
+
+    // Regression guard: the attachment counts lookup must return 200 with
+    // empty maps when the user has records but no uploaded photos.
+    // A type/cast mismatch on the nullable record_id column would cause a
+    // 500 error here instead of a clean empty response.
+    const recordIds = body.records.map((r) => r.id).join(",");
+    const countsRes = await page.request.get(`/api/attachments/counts?recordIds=${encodeURIComponent(recordIds)}`);
+    expect(countsRes.ok()).toBe(true);
+    const counts = (await countsRes.json()) as { records: Record<string, number>; journals: Record<string, number> };
+    expect(counts.records).toBeDefined();
+    // No attachments uploaded → every count should be 0 (keys absent from map).
+    expect(Object.values(counts.records).every((n) => n === 0)).toBe(true);
   });
 });

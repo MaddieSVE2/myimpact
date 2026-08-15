@@ -6,7 +6,7 @@ import {
   journalEntriesTable,
   orgMembersTable,
 } from "@workspace/db";
-import { and, eq, sum, desc, inArray, sql } from "drizzle-orm";
+import { and, eq, sum, desc, sql } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import {
   generateAttachmentKey,
@@ -646,7 +646,9 @@ router.get("/counts", authenticate, async (req: AuthenticatedRequest, res) => {
       .where(and(
         eq(attachmentsTable.userId, userId),
         eq(attachmentsTable.kind, "photo"),
-        inArray(attachmentsTable.recordId, recordIds),
+        // Use explicit integer-array cast so PostgreSQL can resolve the
+        // parameter types for the nullable record_id column without ambiguity.
+        sql`${attachmentsTable.recordId} = ANY(ARRAY[${sql.join(recordIds.map(id => sql`${id}`), sql`, `)}]::integer[])`,
       ))
       .groupBy(attachmentsTable.recordId);
     for (const r of rows) {
@@ -664,7 +666,8 @@ router.get("/counts", authenticate, async (req: AuthenticatedRequest, res) => {
       .where(and(
         eq(attachmentsTable.userId, userId),
         eq(attachmentsTable.kind, "photo"),
-        inArray(attachmentsTable.journalId, journalIds),
+        // Same explicit cast for nullable journal_id.
+        sql`${attachmentsTable.journalId} = ANY(ARRAY[${sql.join(journalIds.map(id => sql`${id}`), sql`, `)}]::integer[])`,
       ))
       .groupBy(attachmentsTable.journalId);
     for (const r of rows) {

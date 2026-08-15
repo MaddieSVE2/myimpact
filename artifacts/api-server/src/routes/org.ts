@@ -3936,7 +3936,10 @@ async function loadEvidenceForRecords(recordIds: number[]): Promise<Map<number, 
       createdAt: attachmentsTable.createdAt,
     })
     .from(attachmentsTable)
-    .where(inArray(attachmentsTable.recordId, recordIds))
+    // Use explicit integer-array cast so PostgreSQL can resolve the parameter
+    // types for the nullable record_id column without ambiguity (prevents a
+    // type/cast mismatch error when the table has no matching rows).
+    .where(sql`${attachmentsTable.recordId} = ANY(ARRAY[${sql.join(recordIds.map(id => sql`${id}`), sql`, `)}]::integer[])`)
     .orderBy(attachmentsTable.createdAt);
   for (const row of rows) {
     if (row.recordId == null) continue;
