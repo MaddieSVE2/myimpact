@@ -64,4 +64,39 @@ test.describe("Spec 3 — journal entry create, edit, delete", () => {
     listBody = (await listRes.json()) as { entries: Array<{ id: string }> };
     expect(listBody.entries).toHaveLength(0);
   });
+
+  test("attachment counts endpoint returns 200 with empty journals object for entries with no photos", async ({ page }) => {
+    await signInWithMagicLink(page, api, email);
+
+    // Create two journal entries with no photos attached.
+    const createRes1 = await page.request.post("/api/journal", {
+      data: { text: `Attachment count test A ${Date.now()}` },
+    });
+    expect(createRes1.ok()).toBe(true);
+    const entry1 = (await createRes1.json()) as { id: number };
+
+    const createRes2 = await page.request.post("/api/journal", {
+      data: { text: `Attachment count test B ${Date.now()}` },
+    });
+    expect(createRes2.ok()).toBe(true);
+    const entry2 = (await createRes2.json()) as { id: number };
+
+    // Query the bulk counts endpoint for both journal IDs.
+    const countsRes = await page.request.get(
+      `/api/attachments/counts?journalIds=${entry1.id},${entry2.id}`
+    );
+    expect(countsRes.status()).toBe(200);
+
+    const countsBody = (await countsRes.json()) as {
+      records: Record<string, number>;
+      journals: Record<string, number>;
+    };
+
+    // Neither entry has photos, so journals must be an empty object.
+    expect(countsBody.journals).toEqual({});
+
+    // Clean up the entries created in this test.
+    await page.request.delete(`/api/journal/${entry1.id}`);
+    await page.request.delete(`/api/journal/${entry2.id}`);
+  });
 });
