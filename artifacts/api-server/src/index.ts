@@ -13,6 +13,7 @@ async function bootstrap(): Promise<void> {
   const { startAiSpendAlertJob } = await import("./lib/aiSpendAlert.js");
   const { startInflightReservationSweepJob } = await import("./lib/aiUsage.js");
   const { startRetentionCleanupJob, ensureAnalyticsDailySummaryTable } = await import("./lib/retentionCleanup.js");
+  const { startOrgPurgeJob } = await import("./lib/orgPurge.js");
   const { startPremappedRefreshJob } = await import("./lib/premappedCharities.js");
   const { startApprovalDigestJob } = await import("./lib/approvalDigest.js");
   const { seedProxies } = await import("./lib/proxyStore.js");
@@ -72,6 +73,7 @@ async function bootstrap(): Promise<void> {
         console.error("[retention-cleanup] Failed to ensure analytics_daily_summary table (non-fatal):", err);
         startRetentionCleanupJob();
       });
+    startOrgPurgeJob();
     startPremappedRefreshJob();
     startApprovalDigestJob();
     // Seed the proxies table from proxyData.json (insert-only), then run the

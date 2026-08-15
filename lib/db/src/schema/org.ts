@@ -388,7 +388,26 @@ export const orgAuditLogTable = pgTable("org_audit_log", {
   orgIdx: index("org_audit_log_org_idx").on(table.orgId, table.createdAt),
 }));
 
+// Snapshot of everything deleted by the revoked-org purge job. One row per
+// purged organisation, written in the same transaction as the deletes so a
+// purge can never lose data without also losing its archive (and vice versa).
+// `snapshot` holds the full JSON export of every org-owned table's rows;
+// `counts` is a small { tableName: rowCount } summary for logging/audit.
+// Deliberately no FK to organisations — the org row is gone after the purge.
+export const orgPurgeArchivesTable = pgTable("org_purge_archives", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull(),
+  orgName: text("org_name").notNull(),
+  revokedAt: timestamp("revoked_at").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  counts: jsonb("counts").notNull(),
+  purgedAt: timestamp("purged_at").defaultNow().notNull(),
+}, (t) => ({
+  orgIdx: index("org_purge_archives_org_idx").on(t.orgId),
+}));
+
 export type Organisation = typeof organisationsTable.$inferSelect;
+export type OrgPurgeArchive = typeof orgPurgeArchivesTable.$inferSelect;
 export type OrgMemberConsent = typeof orgMemberConsentsTable.$inferSelect;
 export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type OrgRegistration = typeof orgRegistrationsTable.$inferSelect;
