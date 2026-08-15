@@ -39,6 +39,7 @@ import { CONTENT_CONTAINER } from "@/lib/layout";
 import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
 import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
 import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
+import { useMyOrg } from "@/lib/org-export";
 import type { ImpactResult } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -297,6 +298,25 @@ export default function QuickLogActivity() {
   const [showSaved, setShowSaved] = useState(false);
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null);
 
+  // Inline org sharing (explicit-submission orgs): the member decides on the
+  // logging screen, and the confirmation simply states what happened.
+  // Evidence-required orgs keep the review flow (photos can't be attached here).
+  const { data: myOrgData } = useMyOrg();
+  const myOrg = myOrgData?.org ?? null;
+  const canShareInline =
+    !!myOrg &&
+    myOrg.dataSharingMode === "explicit_submission" &&
+    myOrg.role !== "manager" &&
+    myOrg.membershipStatus === "active" &&
+    (myOrg.evidencePolicy ?? "optional") !== "required";
+  const [shareWithOrg, setShareWithOrg] = useState(false);
+  const [sharedOrgName, setSharedOrgName] = useState<string | null>(null);
+  const [shareFailed, setShareFailed] = useState<string | null>(null);
+  // Snapshot of whether the inline share choice was actually offered when the
+  // user submitted — the org query can resolve mid-save, and eligibility
+  // changing under our feet must not alter the confirmation branching.
+  const [inlineShareOffered, setInlineShareOffered] = useState(false);
+
   // Reset quantity when picking a different activity, unless a "Log again"
   // pre-fill just set the usual amount.
   useEffect(() => {
@@ -508,6 +528,47 @@ export default function QuickLogActivity() {
       const numericId = saved?.id != null ? Number(saved.id) : NaN;
       setSavedRecordId(Number.isFinite(numericId) ? numericId : null);
       setSavedResult(calcResult);
+
+      // Inline org share: the member opted in on the logging screen, so
+      // submit the saved record to the org now. A share failure never blocks
+      // the save — the confirmation offers the review flow as a fallback.
+      setSharedOrgName(null);
+      setShareFailed(null);
+      // Eligibility snapshot at submit time: only share (and only suppress
+      // the confirmation prompt) based on what was actually offered.
+      const offeredNow = canShareInline;
+      setInlineShareOffered(offeredNow);
+      if (shareWithOrg && offeredNow && myOrg && Number.isFinite(numericId)) {
+        const sharedActivityId =
+          activities[0]?.activityId ?? customActivities[0]?.activityId ?? null;
+        if (sharedActivityId) {
+          try {
+            const res = await fetch(`${BASE}/api/org/member-submit`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                sourceReportId: numericId,
+                activities: [{ activityId: sharedActivityId }],
+              }),
+            });
+            if (res.ok) {
+              setSharedOrgName(myOrg.name);
+              queryClient.invalidateQueries({ queryKey: ["org-prompts"] });
+            } else {
+              const data = await res.json().catch(() => ({}));
+              // Already shared = idempotent success, never a retry prompt.
+              if ((data as { code?: string }).code === "already_shared") {
+                setSharedOrgName(myOrg.name);
+              } else {
+                setShareFailed(myOrg.name);
+              }
+            }
+          } catch {
+            setShareFailed(myOrg.name);
+          }
+        }
+      }
       setShowSaved(true);
     } catch (err) {
       const apiErr = err as { status?: number; data?: { error?: string; existingRecordId?: string } };
@@ -543,6 +604,10 @@ export default function QuickLogActivity() {
     setShowDatePicker(false);
     setActivityLocation(null);
     setDuplicate(null);
+    setShareWithOrg(false);
+    setSharedOrgName(null);
+    setShareFailed(null);
+    setInlineShareOffered(false);
   };
 
   // ── Render ──
@@ -577,12 +642,32 @@ export default function QuickLogActivity() {
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
             {savedYear != null
-              ? `Your entry for ${formatDisplayDate(entryDate)} now counts towards your ${savedYear} record.`
-              : "Your entry has been saved to your history."}
+              ? `Your entry for ${formatDisplayDate(entryDate)} has been added to your impact record: My Impact ${savedYear}${sharedOrgName ? `, and shared with ${sharedOrgName}` : ""}. Great job!`
+              : `Your entry has been saved to your history${sharedOrgName ? ` and shared with ${sharedOrgName}` : ""}.`}
           </p>
-          <div className="text-left">
-            <ShareWithOrgPrompt result={savedResult} saved entryDate={entryDate} savedRecordId={savedRecordId} />
-          </div>
+          {shareFailed && savedRecordId != null && (
+            <div
+              className="mb-6 text-left rounded-lg border border-amber-300 bg-amber-50 px-4 py-3"
+              data-testid="quick-log-share-failed"
+            >
+              <p className="text-sm text-foreground">
+                Your entry was saved, but we couldn't share it with {shareFailed} automatically.{" "}
+                <button
+                  type="button"
+                  onClick={() => setLocation(`/org/share-report/${savedRecordId}`)}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  Review &amp; share it here
+                </button>
+                .
+              </p>
+            </div>
+          )}
+          {!inlineShareOffered && (
+            <div className="text-left">
+              <ShareWithOrgPrompt result={savedResult} saved entryDate={entryDate} savedRecordId={savedRecordId} />
+            </div>
+          )}
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               type="button"
@@ -590,7 +675,7 @@ export default function QuickLogActivity() {
               className="px-5 py-3 min-h-[44px] rounded-md bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
               data-testid="quick-log-saved-done"
             >
-              Done
+              Back to home
             </button>
             <button
               type="button"
@@ -894,6 +979,30 @@ export default function QuickLogActivity() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Share with organisation — decided here, not after saving */}
+      {canShareInline && myOrg && (
+        <label
+          className="mb-5 flex items-start gap-3 bg-white border border-border rounded-xl p-4 cursor-pointer hover:border-primary/40 transition-colors"
+          data-testid="quick-log-share-org"
+        >
+          <input
+            type="checkbox"
+            checked={shareWithOrg}
+            onChange={e => setShareWithOrg(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[var(--brand-orange-bright)] shrink-0"
+            data-testid="quick-log-share-org-checkbox"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-foreground">
+              Also share this with {myOrg.name}
+            </span>
+            <span className="block text-xs text-muted-foreground mt-0.5">
+              Your personal record keeps everything either way.
+            </span>
+          </span>
+        </label>
       )}
 
       {/* Submit */}
