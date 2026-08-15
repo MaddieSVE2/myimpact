@@ -2,6 +2,35 @@ import { db, analyticsEventsTable, pageViewsTable } from "@workspace/db";
 import { lt, sql } from "drizzle-orm";
 
 /**
+ * Idempotent startup guard: creates the `analytics_daily_summary` table and
+ * its indexes if they do not already exist (matching migration 0033).
+ *
+ * Production databases cannot be reached from the dev environment, so schema
+ * fixes that need to land in prod must ship inside the running app. This
+ * function runs at startup and is a no-op once the table exists.
+ */
+export async function ensureAnalyticsDailySummaryTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS analytics_daily_summary (
+      id SERIAL PRIMARY KEY,
+      day DATE NOT NULL,
+      event_name TEXT NOT NULL,
+      surface TEXT NOT NULL DEFAULT 'member',
+      count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS analytics_daily_summary_day_event_surface_uq
+      ON analytics_daily_summary (day, event_name, surface)
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS analytics_daily_summary_day_idx
+      ON analytics_daily_summary (day)
+  `);
+}
+
+/**
  * Retention window for raw activity logs (page views and raw analytics
  * events). Rows older than this are deleted automatically so the tables
  * stay a bounded size as the user base grows.

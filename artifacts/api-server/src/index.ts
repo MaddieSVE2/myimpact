@@ -12,7 +12,7 @@ async function bootstrap(): Promise<void> {
   const { startAttachmentGCJob } = await import("./lib/attachmentGC.js");
   const { startAiSpendAlertJob } = await import("./lib/aiSpendAlert.js");
   const { startInflightReservationSweepJob } = await import("./lib/aiUsage.js");
-  const { startRetentionCleanupJob } = await import("./lib/retentionCleanup.js");
+  const { startRetentionCleanupJob, ensureAnalyticsDailySummaryTable } = await import("./lib/retentionCleanup.js");
   const { startPremappedRefreshJob } = await import("./lib/premappedCharities.js");
   const { startApprovalDigestJob } = await import("./lib/approvalDigest.js");
   const { seedProxies } = await import("./lib/proxyStore.js");
@@ -63,7 +63,15 @@ async function bootstrap(): Promise<void> {
     startAttachmentGCJob();
     startAiSpendAlertJob();
     startInflightReservationSweepJob();
-    startRetentionCleanupJob();
+    // Ensure analytics_daily_summary exists before the cleanup job runs.
+    // Production databases can't be reached from dev, so this CREATE IF NOT
+    // EXISTS guard heals prod on first deploy after migration 0033.
+    ensureAnalyticsDailySummaryTable()
+      .then(() => startRetentionCleanupJob())
+      .catch((err) => {
+        console.error("[retention-cleanup] Failed to ensure analytics_daily_summary table (non-fatal):", err);
+        startRetentionCleanupJob();
+      });
     startPremappedRefreshJob();
     startApprovalDigestJob();
     // Seed the proxies table from proxyData.json (insert-only), then run the
