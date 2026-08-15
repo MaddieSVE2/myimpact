@@ -32,3 +32,4 @@
 - [Authoritative report period](report-period.md) — a report's stored period is the single source of truth: dates clamp into it, invalid periods are rejected, and windowed aggregations consume estimate capacity once.
 - [Report share flow](report-share-flow.md) — shares copy report data server-side, stay period-level (no activityDate), and dedupe via source_report_id in twin SQL + recon pre-pass; recon inputs need id+sourceReportId.
 - [Org verification states](org-verification-states.md) — three-state model (submitted/approved/verified) rides alongside the legacy `verified` boolean; never re-add auto-"Verified" labels for member submissions.
+- [Annual total bucketing](results-hero-year.md) — annual figures come from the server-bucketed entryDate (period-clamped) via the recap total on every surface; matched funding is History-only on top.

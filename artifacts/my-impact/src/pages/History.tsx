@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import {
   useGetImpactHistory, useUpdateImpactRecord, useDeleteImpactRecord, useDeleteAllImpactRecords,
-  getGetImpactHistoryQueryKey,
+  getGetImpactHistoryQueryKey, useGetAnnualRecap, getGetAnnualRecapQueryKey,
 } from "@workspace/api-client-react";
 import type { ImpactResult, SelectedActivity, SavedImpact } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -270,6 +270,14 @@ export default function History() {
     },
   });
 
+  // Reconciled annual total for the selected year — the same server figure
+  // the Results page hero uses (de-duplicates estimate-vs-actual overlaps
+  // and report-share copies), so both pages always agree.
+  const recapQuery = useGetAnnualRecap(selectedYear, {
+    query: { queryKey: getGetAnnualRecapQueryKey(selectedYear), enabled: isAuthenticated },
+  });
+  const recapData = recapQuery.data;
+
   const yearOptions = useMemo(() => {
     const set = new Set<number>([currentYear, selectedYear]);
     for (const y of yearsData?.years ?? []) set.add(y.year);
@@ -397,6 +405,12 @@ export default function History() {
     // so editing an entry's date (which can move it into a new calendar year)
     // immediately surfaces that year as an option.
     queryClient.invalidateQueries({ queryKey: ["impact-years", user?.id ?? ""] });
+    // The year-total card is fed by the reconciled recap endpoint; refresh
+    // ALL cached recap years, not just the selected one — editing an entry's
+    // date can move value between two calendar years' totals.
+    queryClient.invalidateQueries({
+      predicate: q => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/impact/recap/"),
+    });
   };
 
   // One-tap repair for entries saved before the donation-inflation fix
@@ -559,6 +573,12 @@ export default function History() {
       location: (r as { location?: HistoryRecord["location"] }).location ?? null,
       donationsGBP,
       additionalVolunteerHours,
+      // Carry the stored authoritative report period into the wizard so the
+      // Results hero queries the calendar year the server keeps this record
+      // in (the server preserves the stored period on edits).
+      reportStartDate: (r as { reportStartDate?: string | null }).reportStartDate ?? null,
+      reportEndDate: (r as { reportEndDate?: string | null }).reportEndDate ?? null,
+      reportPeriodType: (r as { reportPeriodType?: string | null }).reportPeriodType ?? null,
     };
     loadRecordForEdit(histRecord, String(r.id), r.period ?? null);
     navigate("/wizard/activities");
@@ -760,7 +780,14 @@ export default function History() {
   })();
 
   const latest = allRecords[0];
+  // Raw client-side sum — used only as the signed-out fallback (local records
+  // never contain estimates or org shares, so a plain sum is correct there).
   const allTimeTotal = allRecords.reduce((sum, r) => sum + (r.impactResult?.totalValue ?? 0), 0);
+  // Signed-in users get the reconciled annual total from the recap endpoint —
+  // the same figure the Results page hero shows — so estimate-vs-actual
+  // overlaps and report-share copies are de-duplicated identically on both
+  // pages. Matched funding is still added on top.
+  const yearTotalBase = isAuthenticated && recapData ? recapData.totalValue : allTimeTotal;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -877,7 +904,12 @@ export default function History() {
             >
               <div className="bg-white border border-border rounded-xl p-5">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{selectedYear} total</p>
-                <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(allTimeTotal + lifetimeMatched)}</p>
+                {/* Base figure is the reconciled server total shared with the
+                    Results hero. Org matched funding is deliberately added on
+                    top HERE ONLY (per product spec: "matched-funding amount is
+                    still added on top as today") and is called out separately
+                    below so the shared base remains recognisable. */}
+                <p className="text-2xl font-display font-bold text-foreground" data-testid="text-history-year-total">{formatCurrency(yearTotalBase + lifetimeMatched)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Across {records.length} {records.length === 1 ? "record" : "records"} in {selectedYear}
                 </p>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from '@/lib/auth-context';
 import type { ImpactInput, SelectedActivity, ImpactResult } from '@workspace/api-client-react';
 import type { ActivityLocationValue } from '@/components/quicklog/LocationPicker';
-import { type ReportPeriod, isReportPeriod, defaultReportPeriod } from '@/lib/report-period';
+import { type ReportPeriod, isReportPeriod, defaultReportPeriod, customPeriod, calendarPeriod } from '@/lib/report-period';
 
 /**
  * sessionStorage key used by the Inspire page's "Log activity with this
@@ -124,6 +124,15 @@ export interface HistoryRecord {
   // so they aren't reset to 0 on save.
   donationsGBP?: number | null;
   additionalVolunteerHours?: number | null;
+  // Optional authoritative report period stored on the record (Full Impact
+  // Report saves). When present, the edit flow MUST restore it into the
+  // wizard's reportPeriod so year-derived UI (e.g. the Results annual hero)
+  // matches the calendar year the server buckets the record into — the
+  // server preserves the stored period on edits and clamps the entry date
+  // against it.
+  reportStartDate?: string | null;
+  reportEndDate?: string | null;
+  reportPeriodType?: string | null;
 }
 
 interface WizardContextType extends WizardState {
@@ -506,6 +515,26 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     });
     setActivityModeState('pick');
     setEntryDateState(record.entryDate || todayIso());
+    // Restore the record's authoritative report period so year-derived UI
+    // (Results' annual hero) queries the same calendar year the server will
+    // keep the record in. Records without a stored period are bucketed purely
+    // by their entry date, so mirror that with a calendar period around it —
+    // never leave a stale/default period from a previous wizard session.
+    const isIsoDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (isIsoDate(record.reportStartDate) && isIsoDate(record.reportEndDate)) {
+      const restored = customPeriod(record.reportStartDate, record.reportEndDate);
+      const rt = record.reportPeriodType;
+      setReportPeriodState(
+        rt === 'calendar' || rt === 'academic' ? { ...restored, type: rt } : restored,
+      );
+    } else {
+      const entryYear = isIsoDate(record.entryDate) ? parseInt(record.entryDate.slice(0, 4), 10) : NaN;
+      setReportPeriodState(
+        Number.isFinite(entryYear) && entryYear > 2000
+          ? calendarPeriod(entryYear)
+          : defaultReportPeriod(),
+      );
+    }
     // Preserve the record's own structured location — explicitly set null
     // when it has none, otherwise a stale location from a previously viewed
     // or created record would be written (and disclosed to the member's

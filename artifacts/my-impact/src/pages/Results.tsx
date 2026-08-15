@@ -925,6 +925,11 @@ export default function Results() {
   // "Updated!" instead of flipping to "Saved!".
   const [savedWasEdit, setSavedWasEdit] = useState(false);
   const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
+  // Entry date the server actually persisted on the last successful save
+  // (ISO YYYY-MM-DD). Once set, it is the authoritative anchor for the hero
+  // year — it survives editRecordId being cleared post-save, so a completed
+  // edit of a cross-year report keeps showing the year the record lives in.
+  const [savedEntryDate, setSavedEntryDate] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [conflictInfo, setConflictInfo] = useState<{
     existingRecordId: string;
@@ -939,9 +944,27 @@ export default function Results() {
 
   // "My impact" is annual wherever possible: the hero shows the calendar-year
   // running total (reconciled server-side), with this entry called out
-  // beneath. The year comes from the period this entry counts toward.
+  // beneath. The year must match the calendar year the server will actually
+  // bucket this record into: /save clamps the persisted entryDate (the
+  // explicit date on edits, otherwise "today") into the report period, and
+  // recap/History group by that entryDate's calendar year. Mirroring the
+  // clamp here keeps the hero aligned with History for cross-year periods
+  // (e.g. an academic year starting in the prior calendar year).
   const heroYear = (() => {
-    const y = parseInt((reportPeriod.startDate ?? "").slice(0, 4), 10);
+    const start = reportPeriod.startDate ?? "";
+    const end = reportPeriod.endDate ?? "";
+    const isIso = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+    const rawDate = savedEntryDate && isIso(savedEntryDate)
+      ? savedEntryDate
+      : editRecordId && entryDate && isIso(entryDate)
+        ? entryDate
+        : new Date().toISOString().slice(0, 10);
+    // ISO date strings compare lexicographically, so plain string comparison
+    // reproduces the server's inclusive clamp-into-period rule.
+    const clamped = isIso(start) && isIso(end)
+      ? (rawDate < start ? start : rawDate > end ? end : rawDate)
+      : rawDate;
+    const y = parseInt(clamped.slice(0, 4), 10);
     return Number.isFinite(y) && y > 2000 ? y : new Date().getFullYear();
   })();
   const recapQuery = useGetAnnualRecap(heroYear, {
@@ -1113,9 +1136,23 @@ export default function Results() {
 
       setSaved(true);
       // Refresh the annual running total now this entry is in the server sum.
-      queryClient.invalidateQueries({ queryKey: getGetAnnualRecapQueryKey(heroYear) });
+      // Refresh ALL cached recap years, not just the hero's — an edit can
+      // move value between calendar years (the server clamps the entry date
+      // against the record's stored period).
+      queryClient.invalidateQueries({
+        predicate: q => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/impact/recap/"),
+      });
       const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
+      // Anchor the hero year to the entry date the server persisted (it may
+      // have clamped the date into the record's stored report period), so the
+      // post-save render keeps querying the year the record is bucketed in.
+      const persistedEntryDate = typeof savedRecord.entryDate === "string"
+        ? savedRecord.entryDate.slice(0, 10)
+        : null;
+      if (persistedEntryDate && /^\d{4}-\d{2}-\d{2}$/.test(persistedEntryDate)) {
+        setSavedEntryDate(persistedEntryDate);
+      }
       // Once a save targeting an existing record succeeds, drop the edit target
       // so any later save on this page creates a fresh entry rather than
       // silently overwriting the one we just updated.
