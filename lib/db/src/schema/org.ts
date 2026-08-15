@@ -146,7 +146,7 @@ export const orgMatchRatesTable = pgTable("org_match_rates", {
   onlyVerifiedHours: boolean("only_verified_hours").notNull().default(false),
   effectiveFrom: timestamp("effective_from").notNull(),
   effectiveTo: timestamp("effective_to"),
-  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdBy: text("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -154,7 +154,7 @@ export const orgShareLinksTable = pgTable("org_share_links", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
-  createdByUserId: text("created_by_user_id").notNull().references(() => usersTable.id),
+  createdByUserId: text("created_by_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   // 'all' | 'summary' | 'timeline' | 'categories' | 'regions'
   scope: text("scope").notNull().default("all"),
   funderLabel: text("funder_label"),
@@ -178,7 +178,7 @@ export const orgApiKeysTable = pgTable("org_api_keys", {
   scopes: text("scopes").array().notNull().default(["hours.write", "members.read", "stats.read"]),
   lastUsedAt: timestamp("last_used_at"),
   revokedAt: timestamp("revoked_at"),
-  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdBy: text("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   orgIdx: index("org_api_keys_org_idx").on(t.orgId),
@@ -198,7 +198,7 @@ export const orgWebhooksTable = pgTable("org_webhooks", {
   lastSuccessAt: timestamp("last_success_at"),
   lastFailureAt: timestamp("last_failure_at"),
   lastError: text("last_error"),
-  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdBy: text("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   orgIdx: index("org_webhooks_org_idx").on(t.orgId),
@@ -282,7 +282,7 @@ export const orgSurveysTable = pgTable("org_surveys", {
   // array of exactly five short strings. NULL = use the template defaults
   // (backward compatible with surveys created before this column existed).
   scaleLabels: jsonb("scale_labels"),
-  createdBy: text("created_by").notNull().references(() => usersTable.id),
+  createdBy: text("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   archivedAt: timestamp("archived_at"),
 }, (t) => ({
@@ -292,7 +292,7 @@ export const orgSurveysTable = pgTable("org_surveys", {
 export const orgSurveyResponsesTable = pgTable("org_survey_responses", {
   id: text("id").primaryKey(),
   surveyId: text("survey_id").notNull().references(() => orgSurveysTable.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => usersTable.id),
+  userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   // 'once' for one_off, 'YYYY-MM' for monthly, 'YYYY-Qn' for quarterly
   windowKey: text("window_key").notNull(),
   rating: integer("rating").notNull(),
@@ -307,7 +307,7 @@ export const orgSurveyResponsesTable = pgTable("org_survey_responses", {
 // affecting other features (dashboard contribution, etc.).
 export const orgSurveyOptOutsTable = pgTable("org_survey_opt_outs", {
   orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => usersTable.id),
+  userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   pk: unique("org_survey_opt_outs_pk").on(t.orgId, t.userId),
@@ -318,7 +318,7 @@ export const recordVerificationsTable = pgTable("record_verifications", {
   recordId: integer("record_id").notNull().references(() => impactRecordsTable.id, { onDelete: "cascade" }),
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
   status: text("status").notNull().default("pending"),
-  verifiedBy: text("verified_by").references(() => usersTable.id),
+  verifiedBy: text("verified_by").references(() => usersTable.id, { onDelete: "set null" }),
   decidedAt: timestamp("decided_at"),
   reason: text("reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -378,7 +378,7 @@ export const orgMigratedActivitiesTable = pgTable("org_migrated_activities", {
 export const orgAuditLogTable = pgTable("org_audit_log", {
   id: serial("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organisationsTable.id),
-  actorUserId: text("actor_user_id").notNull().references(() => usersTable.id),
+  actorUserId: text("actor_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   action: text("action").notNull(),
   targetType: text("target_type").notNull(),
   targetId: text("target_id").notNull(),

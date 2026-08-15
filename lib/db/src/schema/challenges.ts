@@ -10,7 +10,7 @@ export const challengesTable = pgTable("challenges", {
   target: numeric("target", { precision: 12, scale: 2 }).notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  ownerId: text("owner_id").references(() => usersTable.id),
+  ownerId: text("owner_id").references(() => usersTable.id, { onDelete: "set null" }),
   orgId: text("org_id").references(() => organisationsTable.id),
   scope: text("scope").notNull(),
   departmentTag: text("department_tag"),

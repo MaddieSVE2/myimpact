@@ -9,7 +9,7 @@
 - [gpt-5-mini JSON truncation](reasoning-model-json-truncation.md) — reasoning tokens eat small max_completion_tokens budgets; guard JSON.parse and use reasoning_effort low + big budget.
 - [E2E run quirks](e2e-run-quirks.md) — run Playwright suite with E2E_API_PORT=5000 E2E_WEB_PORT=3000 via the validation runner; shell reaps background servers; magic-link sign-in rate-limits per email.
 - [Persona instant login](persona-instant-login.md) — demo persona emails (x@x.org) log in instantly via /api/auth/demo-login or the sign-in form; best auth path for curl and UI tests.
-- [Dev DB drift vs drizzle push](dev-db-drift.md) — push aborts on leftover `opportunities` table drop; apply new tables/columns via psql SQL matching the schema instead.
+- [Dev DB drift vs drizzle push](dev-db-drift.md) — drift reconciled; push runs clean. Array columns must use $default (app-side), never a DDL default, or push loops forever. Prod schema syncs only via Publish.
 - [ffmpeg in production](ffmpeg-in-production.md) — spawn ffmpeg/ffprobe via ffmpeg-static/ffprobe-static (Nix binaries are dev-only); needs onlyBuiltDependencies + api-server dep listing to stay external.
 - [Prod seeding constraints](prod-seeding-constraints.md) — prod DB is read-only from dev and prod DATABASE_URL is hidden; seed/backfill jobs must run inside the deployed app (startup sweep pattern), landing on next publish.
 - [E2E email suppression](e2e-email-suppression.md) — Resend sends are now stubbed centrally in the resend helper when E2E_TEST_MODE=1; task merges adding columns via ad-hoc SQL must also ship a numbered migration or e2e reset-user 500s.

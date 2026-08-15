@@ -75,7 +75,7 @@ export const impactRecordsTable = pgTable("impact_records", {
   submittedToOrgId: text("submitted_to_org_id"),
   submittedToOrgAt: timestamp("submitted_to_org_at"),
   source: text("source").notNull().default("user"),
-  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
+  tags: text("tags").array().notNull().$default(() => []),
   // The date this entry counts toward — determines which calendar year and
   // month the entry belongs to on the dashboard. Defaults to the time the
   // record was created but can be backdated by the user when they log a

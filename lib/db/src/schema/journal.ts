@@ -14,7 +14,7 @@ export const journalEntriesTable = pgTable("journal_entries", {
   impactRecordId: text("impact_record_id"),
   summary: text("summary"),
   reflectionPrompt: text("reflection_prompt"),
-  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
+  tags: text("tags").array().notNull().$default(() => []),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

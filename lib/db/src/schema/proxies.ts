@@ -1,4 +1,5 @@
 import { pgTable, serial, text, numeric, real, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Financial proxies used by the AI matcher for custom activities.
@@ -26,7 +27,7 @@ export const proxiesTable = pgTable("proxies", {
   sourceYear: text("source_year").notNull().default(""),
   horizon: text("horizon").notNull().default("per_instance"),
   deflationFactor: real("deflation_factor").notNull().default(1),
-  allowedUnits: text("allowed_units").array().notNull().default([]),
+  allowedUnits: text("allowed_units").array().notNull().$default(() => []),
   enabled: boolean("enabled").notNull().default(true),
   updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

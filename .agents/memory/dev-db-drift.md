@@ -1,15 +1,11 @@
 ---
 name: Dev DB drift vs drizzle push
-description: drizzle-kit push aborts interactively on the dev database; how to apply schema changes safely
+description: Rules that keep drizzle-kit push clean and prevent it undoing FK behaviours
 ---
+**Array columns must never have a DDL default.** drizzle-kit push perpetually re-diffs any DB-level default on `text[]` columns (it mis-parses the introspected default), re-applying `SET DEFAULT` on every run forever. Use `.$default(() => [])` (app-side) with no DB default.
 
-The dev database has drifted from the Drizzle schema. `pnpm --filter @workspace/db run push` is interactive and currently aborts because it wants to drop a leftover `opportunities` table (has rows, not in schema) and add unique constraints on `org_share_links` / `challenges`.
+**FK `onDelete` behaviour must be declared in the Drizzle schema.** Any ON DELETE SET NULL / CASCADE applied via SQL but not via `.references(..., { onDelete })` gets silently reverted to a plain FK by the next push — which blocks user deletion (GDPR erasure relies on those FK actions for retained org rows).
 
-**Why:** letting push proceed would delete data; answering prompts non-interactively requires a pty driver and still ends at the data-loss abort.
+**Why:** both patterns have bitten this project: an array-default push loop blocked non-interactive pushes, and a push that reverted erasure FKs broke user deletion.
 
-**How to apply:** for new tables/columns, create them directly with psql SQL matching the schema (defaults/nullability included), or reconcile the drift deliberately (archive/drop `opportunities`) so push runs clean. Several `organisations` columns (data_sharing_mode, contact_*, revoked_at, dashboard_sections) were added manually this way.
-- analytics_daily_summary was missing from dev DB (drizzle push aborts); created via psql to match lib/db schema — same pattern as other drift tables.
-- users.voice_accent was also missing (broke demo seed + persona login with "column does not exist"); added via psql with the schema default. If demo login fails oddly, suspect drift first.
-- Prefer `pnpm --filter @workspace/db run migrate` first: it applies numbered lib/db/migrations non-interactively and skips already-applied ones (e.g. fixed missing organisations.evidence_policy that 500'd e2e create-org). Numbered migrations in lib/db/migrations are not auto-applied to the dev DB — apply via psql when e2e hits "column does not exist". Only fall back to manual psql when no migration file exists.
-- org_surveys.scale_labels jsonb was also missing in dev DB; added via ALTER TABLE ADD COLUMN IF NOT EXISTS — broke demo seed and org survey e2e specs until applied.
-- impact_records kind/location_json/reporting_year (migration 0043) also existed as a file but was never applied to dev DB — e2e suites run against dev DATABASE_URL, so "column does not exist" in e2e logs means run the migration file via psql and record it as applied.
+**How to apply:** schema changes go in `lib/db/src/schema/*` and are applied with `pnpm --filter @workspace/db run push` — never hand SQL alone. If SQL is unavoidable, mirror it in the schema and in a numbered migration. Prod schema is synced only by the Publish diff flow; startup DDL for prod is forbidden by platform rules.
