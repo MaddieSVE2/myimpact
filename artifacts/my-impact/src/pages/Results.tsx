@@ -936,9 +936,6 @@ export default function Results() {
     period: string;
     attemptedPeriod: string;
   } | null>(null);
-  // Optional user-editable report name. Defaults to the period-derived title
-  // ("My Impact 2026"); display-only — it never affects dates or calculations.
-  const [reportName, setReportName] = useState<string>(reportPeriod.label);
 
   const queryClient = useQueryClient();
 
@@ -1312,40 +1309,6 @@ export default function Results() {
       <OrgPromptsSection variant="compact" />
       <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} savedRecordId={savedRecordId} />
 
-      {/* Report identity: the authoritative period chosen at the start of the
-          journey plus an optional display-only name. Saving uses these
-          directly — there is no save-time period dialog. Hidden while editing
-          an existing entry (which keeps its original period and label). */}
-      {!editRecordId && !saved && (
-        <motion.div
-          className="mb-8 bg-white border border-border rounded-xl p-4 sm:p-5"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          data-testid="results-report-name-card"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div className="flex-1">
-              <label htmlFor="report-name-input" className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
-                Report name (optional)
-              </label>
-              <input
-                id="report-name-input"
-                type="text"
-                value={reportName}
-                onChange={e => setReportName(e.target.value)}
-                placeholder={reportPeriod.label}
-                className="w-full px-3 py-2.5 min-h-[44px] rounded-lg border border-border text-sm text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                data-testid="report-name-input"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground sm:max-w-[220px]" data-testid="results-period-line">
-              Counts toward <strong className="text-foreground">{reportPeriod.label}</strong>
-              <br />
-              {formatPeriodRange(reportPeriod)} · you can rename it any time in History.
-            </p>
-          </div>
-        </motion.div>
-      )}
       {/* Hero */}
       <motion.div
         className="text-center mb-10"
@@ -1369,6 +1332,11 @@ export default function Results() {
             ? `Your running total for ${heroYear}, calculated using globally recognised Social Value Engine proxies.`
             : situationCopy.intro}
         </p>
+        {!editRecordId && !saved && (
+          <p className="text-xs text-muted-foreground mt-3" data-testid="results-period-line">
+            Counts toward <strong className="text-foreground">{reportPeriod.label}</strong> ({formatPeriodRange(reportPeriod)}) · rename it any time in History
+          </p>
+        )}
       </motion.div>
 
       {/* Donut charts */}
@@ -1688,7 +1656,7 @@ export default function Results() {
               // authoritative period chosen at the start of the journey —
               // there is no save-time period dialog any more.
               if (editRecordId) handleSave(editPeriod ?? "");
-              else handleSave(reportName.trim() || reportPeriod.label);
+              else handleSave(reportPeriod.label);
             }}
             disabled={saveMutation.isPending || saved}
             className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
