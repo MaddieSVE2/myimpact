@@ -137,6 +137,7 @@ vi.mock("@workspace/db", () => {
       case "record_verifications": return state.recordVerifications;
       case "user_profiles": return state.userProfiles;
       case "org_members": return state.orgMembers;
+      case "organisations": return state.organisations;
       case "public_profiles": return state.publicProfiles;
       case "users": return state.users;
       default: return [];
@@ -1271,5 +1272,137 @@ describe("/save — hours.logged webhook respects org sharing mode", () => {
     state.organisations.push({ id: "org-1", name: "Org", dataSharingMode: "explicit_submission", revokedAt: new Date(), dashboardSections: null });
     const mock = await saveAndFlush({ activityDate: "2026-03-10" });
     expect(mock).not.toHaveBeenCalled();
+  });
+});
+
+describe("/history — twin dedupe and sharedWith badge", () => {
+  // Each test in this suite runs after beforeEach() resets state.
+
+  it("unshared records appear unmodified with sharedWith=null", async () => {
+    const app = makeApp();
+    state.impactRecords.push(
+      makeRecord({ id: 1, kind: "quick_log", entryDate: new Date(Date.UTC(2026, 4, 1)), impactValue: 50, hours: 2, name: "solo" }),
+    );
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    expect(res.body.records[0].name).toBe("solo");
+    expect(res.body.records[0].sharedWith).toBeNull();
+  });
+
+  it("quick-log shared via orgRecordId link appears once with sharedWith metadata", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-1", name: "Acme Volunteers", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    // Personal record: resultJson carries orgRecordId pointing at the twin (id=20).
+    const personal = makeRecord({ id: 10, kind: "quick_log", entryDate: new Date(Date.UTC(2026, 3, 5)), impactValue: 30, hours: 1, name: "litter pick" });
+    (personal.resultJson as Record<string, unknown>).orgRecordId = 20;
+    // Member-submitted twin.
+    const twin = makeRecord({ id: 20, kind: "quick_log", entryDate: new Date(Date.UTC(2026, 3, 5)), impactValue: 30, hours: 1, name: "litter pick", source: "member-submitted", submittedToOrgId: "org-1" });
+    state.impactRecords.push(personal, twin);
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    const rec = res.body.records[0];
+    expect(rec.id).toBe("10");
+    expect(rec.sharedWith).toEqual({ orgId: "org-1", orgName: "Acme Volunteers" });
+    expect(rec.source).toBe("user");
+  });
+
+  it("yearly estimate twin pair (sourceReportId link) appears once", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-2", name: "University of Example", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    // Personal annual estimate (the source report).
+    const report = makeRecord({ id: 500, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)), impactValue: 721.5, hours: 50, name: "Impact Report" });
+    // Org copy created by "Review & share" — sourceReportId → personal.
+    const share = makeRecord({ id: 501, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 5, 15)), impactValue: 721.5, hours: 50, name: "Impact Report", source: "member-submitted", submittedToOrgId: "org-2", sourceReportId: 500 });
+    state.impactRecords.push(report, share);
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    const rec = res.body.records[0];
+    expect(rec.id).toBe("500");
+    expect(rec.sharedWith).toEqual({ orgId: "org-2", orgName: "University of Example" });
+  });
+
+  it("diverged-value twin pair collapses to the personal record (keeps personal values)", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-3", name: "Local Charity", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const report = makeRecord({ id: 300, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)), impactValue: 21350, hours: 100, name: "Big estimate" });
+    // Org copy has a slightly different impactValue (data drift scenario).
+    const share = makeRecord({ id: 301, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)), impactValue: 21822, hours: 100, name: "Big estimate", source: "member-submitted", submittedToOrgId: "org-3", sourceReportId: 300 });
+    state.impactRecords.push(report, share);
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    // Personal record's value is preserved.
+    expect(res.body.records[0].id).toBe("300");
+    expect((res.body.records[0].impactResult as { impactValue: number }).impactValue).toBeCloseTo(21350, 0);
+    expect(res.body.records[0].sharedWith).not.toBeNull();
+  });
+
+  it("verification status is inherited from the suppressed twin when the personal record has none", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-4", name: "Trust", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const report = makeRecord({ id: 400, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 2, 1)), impactValue: 100, hours: 5, name: "Report" });
+    const share = makeRecord({ id: 401, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 2, 1)), impactValue: 100, hours: 5, name: "Report", source: "member-submitted", submittedToOrgId: "org-4", sourceReportId: 400 });
+    state.impactRecords.push(report, share);
+    // Verification is on the twin (401), not the personal record (400).
+    state.recordVerifications.push({ id: 1, recordId: 401, orgId: "org-4", status: "approved", reason: null, decidedAt: new Date("2026-03-10T12:00:00Z") });
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    const rec = res.body.records[0];
+    expect(rec.id).toBe("400");
+    // Verification inherited from suppressed twin.
+    expect(rec.verification).not.toBeNull();
+    expect(rec.verification.status).toBe("approved");
+  });
+
+  it("personal record's own verification takes priority over the twin's", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-5", name: "Charity", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const report = makeRecord({ id: 600, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 4, 1)), impactValue: 200, hours: 10, name: "R" });
+    const share = makeRecord({ id: 601, kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 4, 1)), impactValue: 200, hours: 10, name: "R", source: "member-submitted", submittedToOrgId: "org-5", sourceReportId: 600 });
+    state.impactRecords.push(report, share);
+    // Both have verifications — personal record's own takes priority.
+    state.recordVerifications.push(
+      { id: 10, recordId: 600, orgId: "org-5", status: "rejected", reason: "Wrong data", decidedAt: new Date("2026-05-02T00:00:00Z") },
+      { id: 11, recordId: 601, orgId: "org-5", status: "approved", reason: null, decidedAt: new Date("2026-05-03T00:00:00Z") },
+    );
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    const rec = res.body.records[0];
+    expect(rec.verification.status).toBe("rejected");
+  });
+
+  it("legacy fallback twin pair (same date + activities, no explicit link) is collapsed", async () => {
+    const app = makeApp();
+    state.organisations.push({ id: "org-6", name: "Neighbourhood Trust", dataSharingMode: "explicit_submission", revokedAt: null, dashboardSections: null });
+    const acts = [{ activityId: "food_bank", quantity: 3, hoursPerYear: 3, category: "Community", hours: 3 }];
+    const personal = {
+      ...makeRecord({ id: 700, kind: "legacy", entryDate: new Date(Date.UTC(2025, 6, 1)), impactValue: 50, hours: 3, name: "legacy" }),
+      activitiesJson: acts,
+    };
+    const twin = {
+      ...makeRecord({ id: 701, kind: "legacy", entryDate: new Date(Date.UTC(2025, 6, 1)), impactValue: 50, hours: 3, name: "legacy", source: "member-submitted", submittedToOrgId: "org-6" }),
+      activitiesJson: acts,
+    };
+    state.impactRecords.push(personal, twin);
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    expect(res.body.records[0].id).toBe("700");
+    expect(res.body.records[0].sharedWith).not.toBeNull();
+  });
+
+  it("unmatched member-submitted records (no linked personal record) still appear", async () => {
+    // Edge case: a record submitted directly to an org with no personal twin.
+    const app = makeApp();
+    const orphan = makeRecord({ id: 800, kind: "quick_log", entryDate: new Date(Date.UTC(2026, 3, 1)), impactValue: 10, hours: 1, name: "direct submit", source: "member-submitted", submittedToOrgId: "org-99" });
+    state.impactRecords.push(orphan);
+
+    const res = await request(app).get("/api/impact/history").expect(200);
+    expect(res.body.records).toHaveLength(1);
+    expect(res.body.records[0].id).toBe("800");
+    expect(res.body.records[0].sharedWith).toBeNull();
   });
 });

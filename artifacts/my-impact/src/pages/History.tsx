@@ -1276,6 +1276,20 @@ export default function History() {
                                 return null;
                               })()}
                               {(() => {
+                                const sw = (record as { sharedWith?: { orgId: string; orgName: string } | null }).sharedWith;
+                                if (!sw) return null;
+                                return (
+                                  <span
+                                    title={`Shared with ${sw.orgName}`}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                                    data-testid={`badge-shared-with-${record.id}`}
+                                  >
+                                    <Building2 className="w-3 h-3" aria-hidden="true" />
+                                    Shared with {sw.orgName}
+                                  </span>
+                                );
+                              })()}
+                              {(() => {
                                 // Deferred "Review & share": members of an
                                 // explicit-submission org can share a saved
                                 // report from History too — not just from the

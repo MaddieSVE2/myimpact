@@ -1053,13 +1053,119 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     .where(and(...conditions))
     .orderBy(desc(impactRecordsTable.entryDate), desc(impactRecordsTable.createdAt));
 
+  // ── Twin dedupe ──────────────────────────────────────────────────────────
+  // When a user shares an activity with an organisation a "member-submitted"
+  // twin record is created alongside their personal record. Both rows are
+  // owned by the same user so the raw query returns them both. We keep the
+  // personal record, suppress the twin, and carry over its shared-with
+  // metadata and verification status so no information is lost.
+
+  const memberSubmittedTwins = records.filter(
+    (r) => r.source === "member-submitted" && r.submittedToOrgId != null,
+  );
+  const personalRecords = records.filter(
+    (r) => !(r.source === "member-submitted" && r.submittedToOrgId != null),
+  );
+
+  // For each twin find its linked personal record using the same three rules
+  // that org-facing views use to exclude personal copies (notOrgTwinCondition).
+  const suppressedTwinIds = new Set<number>();
+  // personalRecordId → { orgId, orgName (resolved below), twinId }
+  const sharedWithMap = new Map<number, { orgId: string; orgName: string; twinId: number }>();
+
+  for (const twin of memberSubmittedTwins) {
+    const orgId = twin.submittedToOrgId!;
+    let linkedPersonalId: number | null = null;
+
+    for (const personal of personalRecords) {
+      // Rule 1: personal's resultJson.orgRecordId → twin.id (member-submit flow).
+      const rj = personal.resultJson as Record<string, unknown> | null;
+      if (rj && typeof rj === "object" && rj.orgRecordId != null) {
+        const orgRecordId = Number(rj.orgRecordId);
+        if (!isNaN(orgRecordId) && orgRecordId === twin.id) {
+          linkedPersonalId = personal.id;
+          break;
+        }
+      }
+      // Rule 2: twin's sourceReportId → personal.id (Review & share flow).
+      if (twin.sourceReportId != null && twin.sourceReportId === personal.id) {
+        linkedPersonalId = personal.id;
+        break;
+      }
+      // Rule 3: legacy fallback — same entryDate + identical activitiesJson.
+      if (
+        (personal.source === "user" || personal.source === "retrospective") &&
+        personal.entryDate.getTime() === twin.entryDate.getTime() &&
+        JSON.stringify(personal.activitiesJson) === JSON.stringify(twin.activitiesJson)
+      ) {
+        linkedPersonalId = personal.id;
+        break;
+      }
+    }
+
+    if (linkedPersonalId != null) {
+      suppressedTwinIds.add(twin.id);
+      if (!sharedWithMap.has(linkedPersonalId)) {
+        sharedWithMap.set(linkedPersonalId, { orgId, orgName: orgId, twinId: twin.id });
+      }
+    }
+  }
+
+  // Fetch display names for the sharing orgs.
+  const sharedOrgIds = [...new Set([...sharedWithMap.values()].map((v) => v.orgId))];
+  if (sharedOrgIds.length > 0) {
+    const orgs = await db
+      .select({ id: organisationsTable.id, name: organisationsTable.name })
+      .from(organisationsTable)
+      .where(inArray(organisationsTable.id, sharedOrgIds));
+    for (const org of orgs) {
+      for (const info of sharedWithMap.values()) {
+        if (info.orgId === org.id) info.orgName = org.name;
+      }
+    }
+  }
+
+  // Carry verification status from the suppressed twin to the personal record
+  // so "Verified by X" badges don't regress after dedupe.
+  const inheritedVerifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
+  const twinIdsArr = [...suppressedTwinIds];
+  if (twinIdsArr.length > 0) {
+    const twinVerifs = await db
+      .select({
+        recordId: recordVerificationsTable.recordId,
+        status: recordVerificationsTable.status,
+        reason: recordVerificationsTable.reason,
+        decidedAt: recordVerificationsTable.decidedAt,
+        orgName: organisationsTable.name,
+      })
+      .from(recordVerificationsTable)
+      .innerJoin(organisationsTable, eq(organisationsTable.id, recordVerificationsTable.orgId))
+      .where(inArray(recordVerificationsTable.recordId, twinIdsArr));
+    const twinVerifById = new Map(
+      twinVerifs.map((v) => [v.recordId, {
+        status: v.status,
+        reason: v.reason,
+        orgName: v.orgName,
+        decidedAt: v.decidedAt ? v.decidedAt.toISOString() : null,
+      }]),
+    );
+    for (const [personalId, info] of sharedWithMap) {
+      const tv = twinVerifById.get(info.twinId);
+      if (tv) inheritedVerifMap.set(personalId, tv);
+    }
+  }
+
+  // Deduped list: personal records + unmatched member-submitted records.
+  const deduped = records.filter((r) => !suppressedTwinIds.has(r.id));
+  // ── End twin dedupe ──────────────────────────────────────────────────────
+
   const profile = await db.query.userProfilesTable.findFirst({
     where: eq(userProfilesTable.userId, userId),
   });
-  const streakInfo = calculateStreak(records.map((r) => r.createdAt));
+  const streakInfo = calculateStreak(deduped.map((r) => r.createdAt));
   const streak = { ...streakInfo, lastAckedMilestone: profile?.lastAckedStreakMilestone ?? 0 };
 
-  const recordIds = records.map(r => r.id);
+  const recordIds = deduped.map(r => r.id);
   let verifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
   if (recordIds.length > 0) {
     const verifs = await db
@@ -1083,7 +1189,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     }
   }
 
-  const formatted = records.map((r) => ({
+  const formatted = deduped.map((r) => ({
     id: String(r.id),
     userId: r.userId,
     name: r.name,
@@ -1104,8 +1210,14 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     outwardCode: r.outwardCode ?? null,
     lat: r.lat != null ? Number(r.lat) : null,
     lng: r.lng != null ? Number(r.lng) : null,
-    verification: verifMap.get(r.id) ?? null,
+    // Personal record's own verification takes priority; fall back to the
+    // suppressed twin's verification so "Verified by X" badges don't regress.
+    verification: verifMap.get(r.id) ?? inheritedVerifMap.get(r.id) ?? null,
     tags: r.tags ?? [],
+    // Present when a member-submitted twin was suppressed for this record.
+    sharedWith: sharedWithMap.has(r.id)
+      ? { orgId: sharedWithMap.get(r.id)!.orgId, orgName: sharedWithMap.get(r.id)!.orgName }
+      : null,
   }));
 
   res.json({ records: formatted, streak });
