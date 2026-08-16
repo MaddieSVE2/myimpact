@@ -5,7 +5,7 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
@@ -1159,6 +1159,54 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const deduped = records.filter((r) => !suppressedTwinIds.has(r.id));
   // ── End twin dedupe ──────────────────────────────────────────────────────
 
+  // ── Consented-logging visibility ─────────────────────────────────────────
+  // Members of 'consented_logging' orgs have their records automatically
+  // visible to the org from their consent date onward — no explicit twin is
+  // created. Annotate those records so the UI can show a distinct "Visible
+  // to <org>" indicator (different from the explicit "Shared with" badge).
+  const visibleToMap = new Map<number, { orgId: string; orgName: string }>();
+
+  const userConsents = await db
+    .select({
+      orgId: orgMemberConsentsTable.orgId,
+      shareFrom: orgMemberConsentsTable.shareFrom,
+      orgName: organisationsTable.name,
+    })
+    .from(orgMemberConsentsTable)
+    .innerJoin(
+      orgMembersTable,
+      and(
+        eq(orgMembersTable.orgId, orgMemberConsentsTable.orgId),
+        eq(orgMembersTable.userId, orgMemberConsentsTable.userId),
+        eq(orgMembersTable.status, "active"),
+      ),
+    )
+    .innerJoin(organisationsTable, eq(organisationsTable.id, orgMemberConsentsTable.orgId))
+    .where(
+      and(
+        eq(orgMemberConsentsTable.userId, userId),
+        eq(orgMemberConsentsTable.status, "active"),
+        eq(organisationsTable.dataSharingMode, "consented_logging"),
+        sql`${organisationsTable.revokedAt} IS NULL`,
+      ),
+    );
+
+  if (userConsents.length > 0) {
+    for (const r of deduped) {
+      const existingShare = sharedWithMap.get(r.id);
+      for (const consent of userConsents) {
+        // If the record is already explicitly "Shared with" the same org,
+        // skip the automatic badge — it would be redundant.
+        if (existingShare && existingShare.orgId === consent.orgId) continue;
+        if (r.entryDate.getTime() >= consent.shareFrom.getTime()) {
+          visibleToMap.set(r.id, { orgId: consent.orgId, orgName: consent.orgName });
+          break; // First matching consent wins (users typically have at most one)
+        }
+      }
+    }
+  }
+  // ── End consented-logging visibility ─────────────────────────────────────
+
   const profile = await db.query.userProfilesTable.findFirst({
     where: eq(userProfilesTable.userId, userId),
   });
@@ -1217,6 +1265,11 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     // Present when a member-submitted twin was suppressed for this record.
     sharedWith: sharedWithMap.has(r.id)
       ? { orgId: sharedWithMap.get(r.id)!.orgId, orgName: sharedWithMap.get(r.id)!.orgName }
+      : null,
+    // Present when the user belongs to a consented_logging org and this
+    // record falls within their consent window (automatic sharing, not explicit).
+    visibleTo: visibleToMap.has(r.id)
+      ? { orgId: visibleToMap.get(r.id)!.orgId, orgName: visibleToMap.get(r.id)!.orgName }
       : null,
   }));
 

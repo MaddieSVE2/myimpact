@@ -1290,6 +1290,20 @@ export default function History() {
                                 );
                               })()}
                               {(() => {
+                                const vt = (record as { visibleTo?: { orgId: string; orgName: string } | null }).visibleTo;
+                                if (!vt) return null;
+                                return (
+                                  <span
+                                    title={`Automatically visible to ${vt.orgName} because you've consented to share your activity`}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200"
+                                    data-testid={`badge-visible-to-${record.id}`}
+                                  >
+                                    <Building2 className="w-3 h-3" aria-hidden="true" />
+                                    Visible to {vt.orgName}
+                                  </span>
+                                );
+                              })()}
+                              {(() => {
                                 // Deferred "Review & share": members of an
                                 // explicit-submission org can share a saved
                                 // report from History too — not just from the
