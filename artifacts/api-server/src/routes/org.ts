@@ -86,7 +86,7 @@ router.post("/register", orgRegisterRateLimit, async (req, res) => {
     const { client, fromEmail } = await getUncachableResendClient();
     const { error: sendError } = await client.emails.send({
       from: fromEmail,
-      to: "hello@myimpact.uk",
+      to: "maddie@socialvalueengine.com",
       replyTo: contactEmail,
       subject: `New organisation registration: ${escHtml(orgName)}`,
       html: `
