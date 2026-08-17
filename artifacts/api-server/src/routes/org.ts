@@ -5,6 +5,7 @@ import { randomUUID, randomBytes } from "crypto";
 import { promises as dnsPromises } from "dns";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildOrgDocument } from "../lib/orgPdf.js";
 import React from "react";
@@ -86,7 +87,7 @@ router.post("/register", orgRegisterRateLimit, async (req, res) => {
     const { client, fromEmail } = await getUncachableResendClient();
     const { error: sendError } = await client.emails.send({
       from: fromEmail,
-      to: "maddie@socialvalueengine.com",
+      to: ADMIN_NOTIFICATION_EMAILS,
       replyTo: contactEmail,
       subject: `New organisation registration: ${escHtml(orgName)}`,
       html: `

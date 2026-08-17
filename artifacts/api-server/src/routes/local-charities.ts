@@ -17,6 +17,7 @@ import {
 } from "../lib/localCharityVotes.js";
 import { isPersonaEmail } from "./auth.js";
 import { addOverride } from "../lib/charityOverrides.js";
+import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import {
   verifyAgainstRegister,
   verifyWebsiteForCharity,
@@ -33,7 +34,6 @@ const localCharitiesRateLimit = createRateLimiter({
 });
 
 const MAX_POSTCODE_CHARS = 12;
-const ADMIN_EMAIL = "hello@myimpact.uk";
 
 /** Per-user submission rate limit: 5 submissions per 10 minutes. */
 const SUBMISSION_WINDOW_MS = 10 * 60 * 1000;
@@ -89,7 +89,7 @@ async function emailNeedsReview(details: {
       .join("");
     await client.emails.send({
       from: fromEmail,
-      to: ADMIN_EMAIL,
+      to: ADMIN_NOTIFICATION_EMAILS,
       subject: `Charity ${details.kind} needs review: ${details.charityName} (${details.localAuthority})`,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">

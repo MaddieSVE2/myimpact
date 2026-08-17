@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 
 const router: IRouter = Router();
 
@@ -43,7 +44,7 @@ router.post("/", contactRateLimit, async (req, res) => {
 
     const { error: notifyError } = await client.emails.send({
       from: fromEmail,
-      to: "hello@myimpact.uk",
+      to: ADMIN_NOTIFICATION_EMAILS,
       replyTo: safeEmail,
       subject: `New contact form message from ${escHtml(safeName)}`,
       html: `

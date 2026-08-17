@@ -3,6 +3,7 @@ import { db, feedbackTable } from "@workspace/db";
 import { attachUserIfPresent, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 
 const router: IRouter = Router();
 
@@ -11,8 +12,6 @@ const feedbackRateLimit = createRateLimiter({
   max: 10,
   message: "Too many feedback submissions. Please wait before trying again.",
 });
-
-const ADMIN_EMAIL = "hello@myimpact.uk";
 
 function escapeHtml(str: string): string {
   return str
@@ -60,7 +59,7 @@ router.post("/", feedbackRateLimit, attachUserIfPresent, async (req: Authenticat
 
     await client.emails.send({
       from: fromEmail,
-      to: ADMIN_EMAIL,
+      to: ADMIN_NOTIFICATION_EMAILS,
       subject,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
