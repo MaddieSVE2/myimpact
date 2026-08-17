@@ -4213,7 +4213,10 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
     const orgId = record.submittedToOrgId;
     const isOwner = record.userId === userId;
 
-    // Managers can withdraw at any time; members only within the edit window.
+    // The submitting member can withdraw their own share at any time — this is
+    // a data-control action ("un-share my report"), not an edit. The 24-hour
+    // window only applies to the edit endpoint. Managers can also withdraw
+    // on behalf of the org at any time.
     const membership = await db.query.orgMembersTable.findFirst({
       where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId)),
     });
@@ -4223,13 +4226,6 @@ router.delete("/member-submissions/:recordId", authenticate, async (req: Authent
     if (!isOwner && !isManager) {
       res.status(403).json({ error: "You don't have permission to withdraw this submission." });
       return;
-    }
-    if (!isManager) {
-      const submittedAtMs = (record.submittedToOrgAt ?? record.createdAt).getTime();
-      if (Date.now() - submittedAtMs > MEMBER_SUBMISSION_EDIT_WINDOW_MS) {
-        res.status(403).json({ error: "This submission is more than 24 hours old. Ask an organisation manager to withdraw it." });
-        return;
-      }
     }
 
     await deleteAttachmentsForRecord(record.userId, recordId);

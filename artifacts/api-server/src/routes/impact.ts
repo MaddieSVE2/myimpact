@@ -1263,8 +1263,9 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     verification: verifMap.get(r.id) ?? inheritedVerifMap.get(r.id) ?? null,
     tags: r.tags ?? [],
     // Present when a member-submitted twin was suppressed for this record.
+    // twinId is the org-side record id needed for the withdraw endpoint.
     sharedWith: sharedWithMap.has(r.id)
-      ? { orgId: sharedWithMap.get(r.id)!.orgId, orgName: sharedWithMap.get(r.id)!.orgName }
+      ? { orgId: sharedWithMap.get(r.id)!.orgId, orgName: sharedWithMap.get(r.id)!.orgName, twinId: sharedWithMap.get(r.id)!.twinId }
       : null,
     // Present when the user belongs to a consented_logging org and this
     // record falls within their consent window (automatic sharing, not explicit).

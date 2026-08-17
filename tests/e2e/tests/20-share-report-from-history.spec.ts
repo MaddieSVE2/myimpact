@@ -84,4 +84,84 @@ test.describe("Spec 20 — share a saved report from History", () => {
       await ctx.close();
     }
   });
+
+  test("History withdraw button removes the badge and restores Review & share", async ({ browser }) => {
+    // Create a fresh org + member and share a report, then withdraw it from History.
+    const withdrawEmail = uniqueEmail("withdraw-history");
+    const created2 = await api.createOrg(`E2E Withdraw History Org ${Date.now()}`, "charity");
+    const withdrawOrgId = created2.orgId;
+
+    const ctx = await browser.newContext();
+    try {
+      const page = await ctx.newPage();
+      await api.resetUser(withdrawEmail);
+      await signInWithMagicLink(page, api, withdrawEmail);
+
+      const join = await page.request.post("/api/org/join", {
+        data: { inviteCode: created2.inviteCode, orgId: withdrawOrgId },
+      });
+      expect(join.ok()).toBe(true);
+
+      // Save a Full Impact Report.
+      const saveRes = await page.request.post("/api/impact/save", {
+        data: {
+          userId: "",
+          name: "Withdraw Test Report",
+          period: "2026",
+          kind: "annual_estimate",
+          activities: [{ activityId: "recycling", quantity: 6, hoursPerYear: 6 }],
+          reportPeriod: { type: "calendar", startDate: "2026-01-01", endDate: "2026-12-31" },
+          donationsGBP: 0,
+          additionalVolunteerHours: 0,
+        },
+      });
+      expect(saveRes.ok(), `report save failed: ${await saveRes.text()}`).toBe(true);
+      const saved = await saveRes.json();
+      const reportId = String(saved.id);
+
+      // Share it via the member-submit endpoint — same payload the share-report
+      // UI sends: sourceReportId selects the report; activities lists which
+      // activities to include (quantities are copied server-side from the report).
+      const shareRes = await page.request.post("/api/org/member-submit", {
+        data: {
+          sourceReportId: Number(reportId),
+          activities: [{ activityId: "recycling" }],
+        },
+      });
+      expect(shareRes.ok(), `member-submit failed: ${await shareRes.text()}`).toBe(true);
+      const shareJson = await shareRes.json();
+      const twinId: number = shareJson.record?.id;
+      expect(twinId, "twinId should be a number from record.id").toBeTruthy();
+
+      // History: "Shared with" badge must be visible; "Review & share" must be hidden.
+      await page.goto("/history");
+      const badge = page.getByTestId(`badge-shared-with-${reportId}`);
+      await expect(badge).toBeVisible({ timeout: 15_000 });
+      const shareLink = page.getByTestId(`link-share-report-${reportId}`);
+      await expect(shareLink).not.toBeVisible();
+
+      // Withdraw — click the × button on the badge, then confirm.
+      await page.getByTestId(`button-withdraw-share-${reportId}`).click();
+      const confirmBtn = page.getByTestId(`button-confirm-withdraw-${reportId}`);
+      await expect(confirmBtn).toBeVisible({ timeout: 5_000 });
+      await confirmBtn.click();
+
+      // Badge disappears; "Review & share" reappears.
+      await expect(badge).not.toBeVisible({ timeout: 10_000 });
+      await expect(shareLink).toBeVisible({ timeout: 10_000 });
+
+      // Server-side: the twin should be gone.
+      const subsAfter = await page.request.get("/api/org/my-submissions");
+      expect(subsAfter.ok()).toBe(true);
+      const subsAfterJson = await subsAfter.json();
+      const remaining = (subsAfterJson.submissions ?? subsAfterJson.records ?? []).find(
+        (s: { sourceReportId?: number | null }) => String(s.sourceReportId ?? "") === reportId,
+      );
+      expect(remaining, "twin should be gone after withdrawal").toBeFalsy();
+    } finally {
+      await ctx.close();
+      await api.resetUser(withdrawEmail);
+      await api.deleteOrg(withdrawOrgId);
+    }
+  });
 });

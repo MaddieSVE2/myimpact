@@ -326,6 +326,8 @@ export default function History() {
   const [editDate, setEditDate] = useState("");
   const [originalEditDate, setOriginalEditDate] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [withdrawingShareId, setWithdrawingShareId] = useState<string | null>(null);
+  const [withdrawingShareBusy, setWithdrawingShareBusy] = useState(false);
   const [fixingDonationsId, setFixingDonationsId] = useState<string | null>(null);
   const todayIso = new Date().toISOString().slice(0, 10);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -625,6 +627,32 @@ export default function History() {
     }
     setDeletingId(null);
     if (expandedId === recordId) setExpandedId(null);
+  };
+
+  const handleWithdrawShare = async (twinId: number, personalRecordId: string) => {
+    setWithdrawingShareBusy(true);
+    try {
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE}/api/org/member-submissions/${twinId}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast({ title: "Withdraw failed", description: data.error ?? "Could not withdraw the submission.", variant: "destructive" });
+      } else {
+        toast({ title: "Submission withdrawn", description: "Your report has been removed from your organisation's view." });
+        invalidateHistory();
+        if (expandedId === personalRecordId) setExpandedId(null);
+      }
+    } catch {
+      toast({ title: "Withdraw failed", description: "Could not reach the server. Please try again.", variant: "destructive" });
+    } finally {
+      setWithdrawingShareBusy(false);
+      setWithdrawingShareId(null);
+    }
   };
 
   const handleResetAll = async () => {
@@ -1127,6 +1155,7 @@ export default function History() {
               const isOpen = expandedId === record.id;
               const isEditing = editingId === record.id;
               const isDeleting = deletingId === record.id;
+              const isWithdrawingShare = withdrawingShareId === record.id;
               const activityCount = record.impactResult?.activityBreakdowns?.length ?? 0;
               const photoCount = photoCountByRecordId[String(record.id)] ?? 0;
               const match = matchByRecordId.get(record.id);
@@ -1276,16 +1305,34 @@ export default function History() {
                                 return null;
                               })()}
                               {(() => {
-                                const sw = (record as { sharedWith?: { orgId: string; orgName: string } | null }).sharedWith;
+                                const sw = (record as { sharedWith?: { orgId: string; orgName: string; twinId: number } | null }).sharedWith;
                                 if (!sw) return null;
+                                const isConfirmingWithdraw = withdrawingShareId === record.id;
                                 return (
                                   <span
-                                    title={`Shared with ${sw.orgName}`}
                                     className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
                                     data-testid={`badge-shared-with-${record.id}`}
                                   >
                                     <Building2 className="w-3 h-3" aria-hidden="true" />
                                     Shared with {sw.orgName}
+                                    <button
+                                      title="Withdraw this submission from your organisation"
+                                      aria-label={`Withdraw submission from ${sw.orgName}`}
+                                      data-testid={`button-withdraw-share-${record.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isConfirmingWithdraw) {
+                                          setWithdrawingShareId(null);
+                                        } else {
+                                          setWithdrawingShareId(record.id);
+                                          setDeletingId(null);
+                                          setExpandedId(null);
+                                        }
+                                      }}
+                                      className="ml-0.5 rounded-full hover:bg-violet-200/60 transition-colors p-0.5 -mr-0.5"
+                                    >
+                                      <X className="w-2.5 h-2.5" aria-hidden="true" />
+                                    </button>
                                   </span>
                                 );
                               })()}
@@ -1310,6 +1357,12 @@ export default function History() {
                                 // post-save prompt. The server re-checks
                                 // eligibility; this only offers the entry
                                 // point for report-like records.
+                                //
+                                // Hide the link while a live share exists — the member
+                                // must withdraw it first. The link reappears automatically
+                                // once the withdrawal invalidates the history query.
+                                const swCheck = (record as { sharedWith?: { orgId: string; orgName: string; twinId: number } | null }).sharedWith;
+                                if (swCheck) return null;
                                 if (!shareOrgEligible) return null;
                                 const rec = record as {
                                   kind?: string | null; source?: string | null;
@@ -1455,7 +1508,7 @@ export default function History() {
                       )}
 
                       {/* Edit button */}
-                      {!isEditing && !isDeleting && (
+                      {!isEditing && !isDeleting && !isWithdrawingShare && (
                         <button
                           onClick={() => {
                             const recEntryDate = (record as { entryDate?: string | null }).entryDate
@@ -1476,7 +1529,7 @@ export default function History() {
                       )}
 
                       {/* Delete button / confirmation */}
-                      {!isEditing && !isDeleting && (
+                      {!isEditing && !isDeleting && !isWithdrawingShare && (
                         <button
                           onClick={() => { setDeletingId(record.id); setExpandedId(null); }}
                           className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
@@ -1529,6 +1582,49 @@ export default function History() {
                             </button>
                           </div>
                         </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Inline withdraw-share confirmation */}
+                  <AnimatePresence initial={false}>
+                    {withdrawingShareId === record.id && (
+                      <motion.div
+                        key="withdraw-confirm"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: "easeInOut" }}
+                        style={{ overflow: "hidden" }}
+                      >
+                        {(() => {
+                          const sw = (record as { sharedWith?: { orgId: string; orgName: string; twinId: number } | null }).sharedWith;
+                          if (!sw) return null;
+                          return (
+                            <div className="flex items-center justify-between px-4 py-3 bg-violet-50 border-t border-violet-200">
+                              <p className="text-xs text-violet-800 font-medium">
+                                Remove this report from {sw.orgName}'s view?
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleWithdrawShare(sw.twinId, record.id)}
+                                  disabled={withdrawingShareBusy}
+                                  className="px-3 py-1.5 rounded-md bg-violet-700 text-white text-xs font-medium hover:bg-violet-800 transition-colors disabled:opacity-60"
+                                  data-testid={`button-confirm-withdraw-${record.id}`}
+                                >
+                                  {withdrawingShareBusy ? "Withdrawing…" : "Withdraw"}
+                                </button>
+                                <button
+                                  onClick={() => setWithdrawingShareId(null)}
+                                  disabled={withdrawingShareBusy}
+                                  className="px-3 py-1.5 rounded-md border border-violet-300 text-xs font-medium hover:bg-violet-100 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </motion.div>
                     )}
                   </AnimatePresence>
