@@ -34,3 +34,4 @@
 - [Org verification states](org-verification-states.md) — three-state model (submitted/approved/verified) rides alongside the legacy `verified` boolean; never re-add auto-"Verified" labels for member submissions.
 - [Revoked-org purge](org-purge.md) — daily job archives to org_purge_archives then deletes org-owned rows in FK-safe order; member source records and attested records are user-owned, never touched.
 - [Annual total bucketing](results-hero-year.md) — annual figures come from the server-bucketed entryDate (period-clamped) via the recap total on every surface; matched funding is History-only on top.
+- [Consent sharing dates](consent-sharing-dates.md) — date-only activity is visible from the whole day consent starts; manual-submission orgs still require deliberate submission.

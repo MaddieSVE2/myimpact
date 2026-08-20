@@ -13,6 +13,11 @@ import { randomUUID } from "crypto";
 import crypto from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import {
+  getOrgSharingContext,
+  sharedRecordsCondition,
+  type OrgSharingContext,
+} from "../lib/orgSharing.js";
 
 const router: IRouter = Router();
 
@@ -64,7 +69,8 @@ async function ensureParticipant(challengeId: string, userId: string) {
 
 async function listChallengeRecords(
   challenge: typeof challengesTable.$inferSelect,
-  participantIds: string[]
+  participantIds: string[],
+  suppliedSharingCtx?: OrgSharingContext,
 ) {
   if (participantIds.length === 0) return [] as typeof impactRecordsTable.$inferSelect[];
 
@@ -76,7 +82,21 @@ async function listChallengeRecords(
   ];
 
   if (challenge.scope === "org" && challenge.orgId) {
-    conditions.push(eq(impactRecordsTable.submittedToOrgId, challenge.orgId));
+    const sharingCtx = suppliedSharingCtx?.orgId === challenge.orgId
+      ? suppliedSharingCtx
+      : await getOrgSharingContext(challenge.orgId);
+
+    // Manual-submission organisations only count activity deliberately
+    // submitted to this organisation. For automatic-sharing organisations,
+    // reuse the dashboard's canonical condition: active membership, consent
+    // window, organisation boundary and personal/org twin exclusion.
+    if (sharingCtx.mode === "explicit_submission") {
+      conditions.push(eq(impactRecordsTable.submittedToOrgId, challenge.orgId));
+    } else {
+    const sharedCondition = sharedRecordsCondition(sharingCtx);
+    if (!sharedCondition) return [];
+    conditions.push(sharedCondition);
+    }
   }
 
   return await db
@@ -87,9 +107,10 @@ async function listChallengeRecords(
 
 async function computeProgress(
   challenge: typeof challengesTable.$inferSelect,
-  participantIds: string[]
+  participantIds: string[],
+  suppliedSharingCtx?: OrgSharingContext,
 ) {
-  const records = await listChallengeRecords(challenge, participantIds);
+  const records = await listChallengeRecords(challenge, participantIds, suppliedSharingCtx);
 
   const perUser: Record<string, { value: number; hours: number }> = {};
   for (const id of participantIds) perUser[id] = { value: 0, hours: 0 };
@@ -288,6 +309,7 @@ router.get("/org", authenticate, async (req: AuthenticatedRequest, res) => {
       .orderBy(desc(challengesTable.startDate));
 
     if (orgChallenges.length === 0) { res.json({ challenges: [] }); return; }
+    const sharingCtx = await getOrgSharingContext(orgId);
 
     const allIds = orgChallenges.map(c => c.id);
     const allParts = await db
@@ -306,7 +328,7 @@ router.get("/org", authenticate, async (req: AuthenticatedRequest, res) => {
     const summaries = await Promise.all(
       orgChallenges.map(async (c) => {
         const participantIds = partsMap[c.id] ?? [];
-        const records = await listChallengeRecords(c, participantIds);
+        const records = await listChallengeRecords(c, participantIds, sharingCtx);
         let total = 0;
         let mine = 0;
         for (const r of records) {
@@ -388,11 +410,20 @@ router.get("/mine", authenticate, async (req: AuthenticatedRequest, res) => {
       if (!partsMap[row.challengeId]) partsMap[row.challengeId] = [];
       partsMap[row.challengeId].push(row.userId);
     }
+    const orgSharingContexts = new Map<string, OrgSharingContext>();
+    await Promise.all(
+      [...new Set(challenges.flatMap((challenge) => challenge.orgId ? [challenge.orgId] : []))]
+        .map(async (orgId) => orgSharingContexts.set(orgId, await getOrgSharingContext(orgId)))
+    );
 
     const summaries = await Promise.all(
       challenges.map(async (c) => {
         const participantIds = partsMap[c.id] ?? [];
-        const progress = await computeProgress(c, participantIds);
+        const progress = await computeProgress(
+          c,
+          participantIds,
+          c.orgId ? orgSharingContexts.get(c.orgId) : undefined,
+        );
         return {
           ...serializeChallenge(c),
           participantCount: participantIds.length,

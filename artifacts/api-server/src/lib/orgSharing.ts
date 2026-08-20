@@ -116,13 +116,22 @@ export async function getOrgSharingContext(orgId: string): Promise<OrgSharingCon
   return { orgId, mode, revoked, sections, memberIds, shareFromByUser };
 }
 
+/**
+ * Activity records use a date-only value, while consent is timestamped.
+ * Normalise consent to the start of its UTC calendar day so an activity
+ * logged later on the day consent was granted is included.
+ */
+function startOfActivityDay(value: Date): Date {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
 /** True when a record dated `entryDate` for `userId` is inside the member's shared window. */
 export function recordInSharedWindow(ctx: OrgSharingContext, userId: string, entryDate: Date | null | undefined): boolean {
   if (ctx.mode !== "consented_logging") return true;
   const from = ctx.shareFromByUser.get(userId);
   if (!from) return false;
   if (!entryDate) return false;
-  return entryDate.getTime() >= from.getTime();
+  return entryDate.getTime() >= startOfActivityDay(from).getTime();
 }
 
 /**
@@ -144,7 +153,10 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
   for (const userId of ctx.memberIds) {
     const from = ctx.shareFromByUser.get(userId);
     if (!from) continue;
-    const cond = and(eq(impactRecordsTable.userId, userId), gte(impactRecordsTable.entryDate, from));
+    const cond = and(
+      eq(impactRecordsTable.userId, userId),
+      gte(impactRecordsTable.entryDate, startOfActivityDay(from)),
+    );
     if (cond) parts.push(cond);
   }
   if (parts.length === 0) return undefined;

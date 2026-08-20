@@ -52,6 +52,10 @@ const tables = vi.hoisted(() => ({
   nextRecordId: 1,
   authUser: null as { id: string; email: string } | null,
 }));
+const orgSharing = vi.hoisted(() => ({
+  getOrgSharingContext: vi.fn(),
+  sharedRecordsCondition: vi.fn(),
+}));
 
 // ── @workspace/db mock with a tiny evaluatable query layer ──────────────────
 vi.mock("@workspace/db", () => {
@@ -338,6 +342,7 @@ vi.mock("../src/routes/org.js", () => ({
   default: express.Router(),
   getVerifiedTotalsForOrg: vi.fn(async () => ({ totalValue: 0, totalHours: 0 })),
 }));
+vi.mock("../src/lib/orgSharing.js", () => orgSharing);
 
 // Now import the routers (after all mocks are registered) and the *real*
 // challenge-context helpers from QuickLogActivity's shared module.
@@ -367,6 +372,8 @@ beforeEach(() => {
   tables.organisations.length = 0;
   tables.nextRecordId = 1;
   tables.authUser = null;
+  orgSharing.getOrgSharingContext.mockReset();
+  orgSharing.sharedRecordsCondition.mockReset();
   memSessionStorage.clear();
 });
 
@@ -452,5 +459,110 @@ describe("Quick log → challenge attribution (strict regression)", () => {
     expect(afterRes.body.leaderboard[0].contribution).toBe(
       Math.round(newRecordValue * 100) / 100
     );
+  });
+
+  it("counts an automatically shared personal log toward an organisation challenge", async () => {
+    const orgId = "consented-org";
+    const userId = "consented-student";
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const challengeId = "consented-challenge";
+
+    tables.authUser = { id: userId, email: "student@example.com" };
+    tables.users.push({ id: userId, email: "student@example.com", displayName: "Student" });
+    tables.organisations.push({ id: orgId, name: "Consented College", challengeLeaderboardEnabled: true });
+    tables.challenges.push({
+      id: challengeId,
+      name: "Digital support",
+      goalType: "hours",
+      target: "20",
+      startDate,
+      endDate,
+      scope: "org",
+      orgId,
+      ownerId: null,
+      departmentTag: null,
+      inviteCode: "CONSENT1",
+      endSummarySentAt: null,
+      createdAt: now,
+    });
+    tables.challengeParticipants.push({ challengeId, userId });
+    tables.impactRecords.push({
+      id: 99,
+      userId,
+      entryDate: now,
+      createdAt: now,
+      submittedToOrgId: null,
+      resultJson: { totalValue: 125, totalHours: 3 },
+    });
+
+    // The real sharing helper owns all consent, organisation-boundary and
+    // twin rules. This mock represents its decision that the personal log is
+    // eligible for this consented organisation.
+    orgSharing.getOrgSharingContext.mockResolvedValue({ orgId, mode: "consented_logging" });
+    orgSharing.sharedRecordsCondition.mockReturnValue({ op: "true" });
+
+    const res = await request(makeApp()).get(`/api/challenges/${challengeId}`);
+
+    expect(res.status).toBe(200);
+    expect(orgSharing.getOrgSharingContext).toHaveBeenCalledWith(orgId);
+    expect(res.body.progress.contributingRecordIds).toEqual(["99"]);
+    expect(res.body.progress.total).toBe(3);
+    expect(res.body.myContribution.contribution).toBe(3);
+  });
+
+  it("does not count a personal log toward a manual-submission organisation challenge", async () => {
+    const orgId = "manual-org";
+    const userId = "manual-student";
+    const now = new Date();
+    const challengeId = "manual-challenge";
+
+    tables.authUser = { id: userId, email: "manual@example.com" };
+    tables.users.push({ id: userId, email: "manual@example.com", displayName: "Student" });
+    tables.organisations.push({ id: orgId, name: "Manual College", challengeLeaderboardEnabled: true });
+    tables.challenges.push({
+      id: challengeId,
+      name: "Community support",
+      goalType: "hours",
+      target: "20",
+      startDate: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      scope: "org",
+      orgId,
+      ownerId: null,
+      departmentTag: null,
+      inviteCode: "MANUAL1",
+      endSummarySentAt: null,
+      createdAt: now,
+    });
+    tables.challengeParticipants.push({ challengeId, userId });
+    tables.impactRecords.push(
+      {
+        id: 100,
+        userId,
+        entryDate: now,
+        createdAt: now,
+        submittedToOrgId: null,
+        resultJson: { totalValue: 125, totalHours: 3 },
+      },
+      {
+        id: 101,
+        userId,
+        entryDate: now,
+        createdAt: now,
+        submittedToOrgId: orgId,
+        resultJson: { totalValue: 180, totalHours: 4 },
+      },
+    );
+    orgSharing.getOrgSharingContext.mockResolvedValue({ orgId, mode: "explicit_submission" });
+    orgSharing.sharedRecordsCondition.mockReturnValue({ op: "true" });
+
+    const res = await request(makeApp()).get(`/api/challenges/${challengeId}`);
+
+    expect(res.status).toBe(200);
+    expect(orgSharing.sharedRecordsCondition).not.toHaveBeenCalled();
+    expect(res.body.progress.contributingRecordIds).toEqual(["101"]);
+    expect(res.body.progress.total).toBe(4);
   });
 });

@@ -9,7 +9,12 @@ vi.mock("@workspace/db", async () => {
   return { ...schema, db: {}, pool: {} };
 });
 
-const { sharedRecordsCondition, notOrgTwinCondition, orgVisibleMemberRecordsCondition } = await import("../src/lib/orgSharing.js");
+const {
+  sharedRecordsCondition,
+  notOrgTwinCondition,
+  orgVisibleMemberRecordsCondition,
+  recordInSharedWindow,
+} = await import("../src/lib/orgSharing.js");
 import type { OrgSharingContext } from "../src/lib/orgSharing.js";
 
 const dialect = new PgDialect();
@@ -74,6 +79,20 @@ describe("sharedRecordsCondition", () => {
     expect(q.sql).toContain("org_twin");
     expect(q.params).toContain("user-1");
     expect(q.params).toContain("org-1");
+  });
+
+  it("consented mode: makes activity logged on the consent day visible even when consent was granted later that day", () => {
+    const consentedAt = new Date("2026-08-20T14:29:51.108Z");
+    const ctx = makeCtx({
+      shareFromByUser: new Map([["user-1", consentedAt]]),
+    });
+
+    expect(recordInSharedWindow(ctx, "user-1", new Date("2026-08-20T00:00:00.000Z"))).toBe(true);
+    expect(recordInSharedWindow(ctx, "user-1", new Date("2026-08-19T23:59:59.999Z"))).toBe(false);
+
+    const q = render(sharedRecordsCondition(ctx)!);
+    expect(q.params).toContain("2026-08-20T00:00:00.000Z");
+    expect(q.params).not.toContain(consentedAt.toISOString());
   });
 
   it("consented mode: members without a shareFrom are excluded entirely", () => {
