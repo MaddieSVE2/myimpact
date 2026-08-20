@@ -369,6 +369,18 @@ router.post("/seed-org-challenge", async (req, res) => {
   res.json({ ok: true, id, inviteCode });
 });
 
+/** Delete one ephemeral challenge and its participant rows after an E2E run. */
+router.post("/delete-challenge", async (req, res) => {
+  const challengeId = typeof req.body?.challengeId === "string" ? req.body.challengeId : "";
+  if (!challengeId) {
+    res.status(400).json({ error: "challengeId required" });
+    return;
+  }
+  await db.delete(challengeParticipantsTable).where(eq(challengeParticipantsTable.challengeId, challengeId));
+  await db.delete(challengesTable).where(eq(challengesTable.id, challengeId));
+  res.json({ ok: true });
+});
+
 /**
  * Insert an APPROVED org_registrations row matching `inviteCode` + `contactEmail`.
  * When the user with that email next calls /api/org/join with the same invite

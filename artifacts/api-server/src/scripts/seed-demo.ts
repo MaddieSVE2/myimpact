@@ -1,11 +1,11 @@
 import {
   db, pool,
-  usersTable, organisationsTable, orgMembersTable,
+  usersTable, organisationsTable, orgMembersTable, orgMemberConsentsTable,
   orgSurveysTable, orgSurveyResponsesTable,
   challengesTable, challengeParticipantsTable,
   impactRecordsTable, recordVerificationsTable,
 } from "@workspace/db";
-import { eq, and, inArray, isNull } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { calculateImpact } from "../lib/impactData.js";
 
 const DEMO_USER_ID = "demo-user-000000000000";
@@ -491,6 +491,8 @@ const UNI_MANAGER_EMAIL = "university@university.org";
 const UNI_MANAGER_USER_ID = "uni-manager-0000000000";
 const UNI_STUDENT_EMAIL = "student@student.org";
 const UNI_STUDENT_USER_ID = "uni-student-0000000000";
+const UNI_CONSENT_SHARE_FROM = new Date("2025-09-01T00:00:00.000Z");
+const UNI_CONSENT_GRANTED_AT = new Date("2025-09-15T10:00:00.000Z");
 
 // 25 synthetic university students used to give the dashboard realistic
 // aggregate numbers. Emails match the exclusion pattern in
@@ -618,9 +620,10 @@ const UNI_RESPONSE_WINDOWS: Array<{
   },
 ];
 
-// Insert one impact record (if missing) and guarantee an approved
-// record_verifications row for the university org. Idempotency key is
-// (userId, name, entryDate) — good enough for fixed seed data.
+// Insert one personal impact record (if missing) and guarantee an approved
+// record_verifications row for the university org. University sharing happens
+// through member consent, not by pre-submitting these personal records.
+// Idempotency key is (userId, name, entryDate) — good enough for fixed seed data.
 async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ inserted: boolean }> {
   const result = calculateImpact(spec.activities, spec.donationsGBP ?? 0, 0, []);
 
@@ -652,22 +655,18 @@ async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ 
         entryDate: spec.entryDate,
         source: "user",
         createdAt: spec.entryDate,
-        submittedToOrgId: UNI_ORG_ID,
-        submittedToOrgAt: spec.entryDate,
       })
       .returning({ id: impactRecordsTable.id });
     existing = created;
     inserted = true;
   } else {
-    // Backfill records seeded before submittedToOrgId was set, so the
-    // org activities feed picks them up.
+    // Earlier university seeds treated these as manual submissions. Convert
+    // those fixed demo rows back to personal records so consent is the single
+    // route through which the university sees activity.
     await db
       .update(impactRecordsTable)
-      .set({ submittedToOrgId: UNI_ORG_ID, submittedToOrgAt: spec.entryDate })
-      .where(and(
-        eq(impactRecordsTable.id, existing.id),
-        isNull(impactRecordsTable.submittedToOrgId),
-      ));
+      .set({ submittedToOrgId: null, submittedToOrgAt: null })
+      .where(eq(impactRecordsTable.id, existing.id));
   }
 
   await db
@@ -684,6 +683,31 @@ async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ 
   return { inserted };
 }
 
+async function ensureUniversityConsent(userId: string) {
+  await db
+    .insert(orgMemberConsentsTable)
+    .values({
+      id: `uni-consent-${userId}`,
+      orgId: UNI_ORG_ID,
+      userId,
+      status: "active",
+      shareFrom: UNI_CONSENT_SHARE_FROM,
+      shareScope: "historic",
+      grantedAt: UNI_CONSENT_GRANTED_AT,
+      withdrawnAt: null,
+    })
+    .onConflictDoUpdate({
+      target: [orgMemberConsentsTable.orgId, orgMemberConsentsTable.userId],
+      set: {
+        status: "active",
+        shareFrom: UNI_CONSENT_SHARE_FROM,
+        shareScope: "historic",
+        grantedAt: UNI_CONSENT_GRANTED_AT,
+        withdrawnAt: null,
+      },
+    });
+}
+
 export async function seedUniversity() {
   console.log("Seeding My Impact University…");
 
@@ -698,15 +722,16 @@ export async function seedUniversity() {
       type: UNI_ORG_TYPE,
       inviteCode: UNI_INVITE_CODE,
       autoVerifyActivities: true,
+      dataSharingMode: "consented_logging",
       summaryYearStart: "09-01",
     }).onConflictDoNothing();
     console.log(`  Organisation created: ${UNI_ORG_NAME} (${UNI_ORG_ID})`);
-  } else if (!existingOrg.autoVerifyActivities) {
+  } else if (!existingOrg.autoVerifyActivities || existingOrg.dataSharingMode !== "consented_logging") {
     await db
       .update(organisationsTable)
-      .set({ autoVerifyActivities: true })
+      .set({ autoVerifyActivities: true, dataSharingMode: "consented_logging" })
       .where(eq(organisationsTable.id, UNI_ORG_ID));
-    console.log("  Organisation existed without auto-verify — enabled it.");
+    console.log("  Organisation settings updated for consented logging.");
   } else {
     console.log(`  Organisation already exists (${UNI_ORG_ID}), skipping insert.`);
   }
@@ -736,6 +761,14 @@ export async function seedUniversity() {
       .insert(orgMembersTable)
       .values({ orgId: UNI_ORG_ID, userId: synth.id, role: "member", status: "active" })
       .onConflictDoNothing();
+  }
+
+  // Seed historic, active consent for every member whose personal activity is
+  // part of the university demo. This preserves the dashboard's realistic
+  // aggregate while keeping the student account ready to demonstrate the same
+  // automatic-sharing behaviour for newly logged activity.
+  for (const userId of [studentId, ...UNI_SYNTH_USERS.map((user) => user.id)]) {
+    await ensureUniversityConsent(userId);
   }
 
   // ── Student persona activities (pre-approved) ─────────────────────────────

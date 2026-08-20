@@ -159,6 +159,14 @@ export class TestApi {
     return ((await res.json()) as { id: string }).id;
   }
 
+  /** Remove one ephemeral challenge created by an E2E spec. */
+  async deleteChallenge(challengeId: string): Promise<void> {
+    const res = await this.ctx.post("/api/test/delete-challenge", { data: { challengeId } });
+    if (!res.ok()) {
+      throw new Error(`delete-challenge failed (${res.status()}): ${await res.text()}`);
+    }
+  }
+
   /**
    * Insert an approved org_registrations row so that the next /api/org/join
    * call from `contactEmail` with `inviteCode` promotes the user to manager.
