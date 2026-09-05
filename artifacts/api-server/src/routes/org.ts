@@ -133,16 +133,19 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     res.status(400).json({ error: "Invite code is required" });
     return;
   }
-  if (!orgId || typeof orgId !== "string") {
-    res.status(400).json({ error: "Organisation selection is required" });
+  if (orgId !== undefined && typeof orgId !== "string") {
+    res.status(400).json({ error: "Organisation selection is invalid" });
     return;
   }
 
+  const normalizedInviteCode = inviteCode.trim().toUpperCase();
   const org = await db.query.organisationsTable.findFirst({
-    where: and(
-      eq(organisationsTable.inviteCode, inviteCode.trim().toUpperCase()),
-      eq(organisationsTable.id, orgId),
-    ),
+    where: orgId
+      ? and(
+          eq(organisationsTable.inviteCode, normalizedInviteCode),
+          eq(organisationsTable.id, orgId),
+        )
+      : eq(organisationsTable.inviteCode, normalizedInviteCode),
   });
 
   if (!org) {

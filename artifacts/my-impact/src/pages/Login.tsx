@@ -105,7 +105,7 @@ export default function Login() {
         marketingOptIn,
       });
       if (result.instantLogin) {
-        const target = result.orgRedirect ? "/org" : postLoginTo ?? "/";
+        const target = postLoginTo ?? (result.orgRedirect ? "/org" : "/");
         navigate(target);
         return;
       }

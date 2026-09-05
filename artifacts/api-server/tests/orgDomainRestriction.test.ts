@@ -210,6 +210,25 @@ beforeEach(() => {
   state.selectQueue.length = 0;
 });
 
+describe("POST /api/org/validate-invite — direct invite links", () => {
+  it("resolves an invite code to its organisation when the link does not include an org id", async () => {
+    state.authUser = { id: "new-user", email: "new@example.com" };
+    state.organisation = baseOrg;
+    state.membershipQueue.push(null);
+
+    const res = await request(makeApp())
+      .post("/api/org/validate-invite")
+      .send({ inviteCode: "acme1234" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      ok: true,
+      orgId: "org-1",
+      orgName: "Acme Volunteers",
+    });
+  });
+});
+
 describe("PATCH /api/org/my/settings — allowedDomain", () => {
   function asManager() {
     state.authUser = { id: "mgr-1", email: "owner@acme.org" };

@@ -860,12 +860,14 @@ function JoinOrgPanel() {
   const [consentHistoricFrom, setConsentHistoricFrom] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fromInviteLink, setFromInviteLink] = useState(false);
+  const [resolveOrgFromCode, setResolveOrgFromCode] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlOrgId = params.get("orgId");
-    const urlCode = params.get("inviteCode");
+    const legacyInviteCode = params.get("invite");
+    const urlCode = params.get("inviteCode") ?? legacyInviteCode;
     if (urlCode && urlOrgId) {
       setFromInviteLink(true);
       setCode(urlCode.toUpperCase());
@@ -876,8 +878,10 @@ function JoinOrgPanel() {
           if (found) setSelectedOrg(found);
         })
         .catch(() => {});
-    } else {
-      if (urlCode) setCode(urlCode.toUpperCase());
+    } else if (urlCode) {
+      setFromInviteLink(true);
+      setResolveOrgFromCode(!!legacyInviteCode);
+      setCode(urlCode.toUpperCase());
       if (urlOrgId) {
         fetch(`${BASE}/api/org/list`, { credentials: "include" })
           .then(r => r.json())
@@ -891,18 +895,25 @@ function JoinOrgPanel() {
   }, []);
 
   const validateMutation = useMutation({
-    mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
+    mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId?: string }) => {
       const res = await fetch(`${BASE}/api/org/validate-invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ inviteCode, orgId }),
+        body: JSON.stringify({ inviteCode, ...(orgId ? { orgId } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
-      return data as { ok: boolean; orgName: string; allowedDomain: string | null; dataSharingMode?: "explicit_submission" | "consented_logging" };
+      return data as {
+        ok: boolean;
+        orgId: string;
+        orgName: string;
+        allowedDomain: string | null;
+        dataSharingMode?: "explicit_submission" | "consented_logging";
+      };
     },
     onSuccess: (data) => {
+      setSelectedOrg({ id: data.orgId, name: data.orgName });
       setOrgName(data.orgName);
       setAllowedDomain(data.allowedDomain ?? null);
       setDataSharingMode(data.dataSharingMode ?? "explicit_submission");
@@ -914,10 +925,11 @@ function JoinOrgPanel() {
   });
 
   useEffect(() => {
-    if (fromInviteLink && selectedOrg && code && step === "entry" && !validateMutation.isPending) {
-      validateMutation.mutate({ inviteCode: code, orgId: selectedOrg.id });
+    const canResolveInvite = !!selectedOrg || resolveOrgFromCode;
+    if (fromInviteLink && canResolveInvite && code && step === "entry" && !validateMutation.isPending) {
+      validateMutation.mutate({ inviteCode: code, orgId: selectedOrg?.id });
     }
-  }, [fromInviteLink, selectedOrg, code]);
+  }, [fromInviteLink, resolveOrgFromCode, selectedOrg, code, step]);
 
   const joinMutation = useMutation({
     mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
