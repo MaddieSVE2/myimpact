@@ -93,12 +93,44 @@ function writeHtml(pagePath: string, html: string): void {
   console.log(`[prerender] wrote ${outFile}`);
 }
 
+function validateSitemap(): void {
+  const sitemapPath = join(DIST, "sitemap.xml");
+  if (!existsSync(sitemapPath)) {
+    throw new Error("[prerender] dist/public/sitemap.xml not found");
+  }
+
+  const sitemap = readFileSync(sitemapPath, "utf-8");
+  const sitemapUrls = new Set(
+    Array.from(sitemap.matchAll(/<loc>([^<]+)<\/loc>/g), match => match[1]),
+  );
+  const expectedUrls = new Set(
+    PRERENDER_PAGES
+      .filter(page => page.canonical && page.robots.split(",")[0]?.trim() === "index")
+      .map(page => page.canonical as string),
+  );
+
+  const missing = [...expectedUrls].filter(url => !sitemapUrls.has(url));
+  const unexpected = [...sitemapUrls].filter(url => !expectedUrls.has(url));
+
+  if (missing.length > 0 || unexpected.length > 0) {
+    const details = [
+      missing.length > 0 ? `missing: ${missing.join(", ")}` : null,
+      unexpected.length > 0 ? `unexpected: ${unexpected.join(", ")}` : null,
+    ].filter(Boolean).join("; ");
+    throw new Error(`[prerender] sitemap does not match indexable canonical metadata (${details})`);
+  }
+
+  console.log(`[prerender] sitemap validated — ${sitemapUrls.size} indexable URLs`);
+}
+
 function main(): void {
   const indexPath = join(DIST, "index.html");
   if (!existsSync(indexPath)) {
     console.error(`[prerender] dist/public/index.html not found — run 'pnpm build' first`);
     process.exit(1);
   }
+
+  validateSitemap();
 
   let template = readFileSync(indexPath, "utf-8");
 
