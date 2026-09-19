@@ -67,7 +67,7 @@ interface WizardState {
   location: string;
   locationMeta: LocationMeta | null;
   interests: string[];
-  customInterest: string;
+  customInterests: string[];
   careerBreak: boolean;
   situations: string[];
   input: ImpactInput;
@@ -138,11 +138,13 @@ export interface HistoryRecord {
 interface WizardContextType extends WizardState {
   setLocation: (location: string) => void;
   setLocationMeta: (meta: LocationMeta | null) => void;
-  setCustomInterest: (val: string) => void;
+  addCustomInterest: (val: string) => boolean;
+  updateCustomInterest: (current: string, next: string) => boolean;
+  removeCustomInterest: (val: string) => void;
   toggleInterest: (interestId: string) => void;
   setCareerBreak: (val: boolean) => void;
   toggleSituation: (id: string) => void;
-  seedFromProfile: (profile: { postcode: string | null; interests: string[]; situations: string[] }) => void;
+  seedFromProfile: (profile: { postcode: string | null; interests: string[]; customInterests?: string[]; situations: string[] }) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
   removeActivity: (index: number) => void;
@@ -225,7 +227,7 @@ const defaultState: WizardState = {
   location: '',
   locationMeta: null,
   interests: [],
-  customInterest: '',
+  customInterests: [],
   careerBreak: false,
   situations: [],
   input: defaultInput,
@@ -243,6 +245,37 @@ const defaultState: WizardState = {
 const DRAFT_KEY = 'wizard_draft_v1';
 
 type StoredDraft = Partial<WizardState> & { interests?: string[]; situation?: string | null; userId?: string | null };
+
+export function normalizeCustomInterest(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+export function hasCustomInterest(values: string[], candidate: string, except?: string): boolean {
+  const key = normalizeCustomInterest(candidate).toLocaleLowerCase('en-GB');
+  const exceptKey = except ? normalizeCustomInterest(except).toLocaleLowerCase('en-GB') : null;
+  return values.some(value => {
+    const valueKey = normalizeCustomInterest(value).toLocaleLowerCase('en-GB');
+    return valueKey !== exceptKey && valueKey === key;
+  });
+}
+
+const CUSTOM_INTEREST_CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Environment: ['environment', 'climate', 'nature', 'wildlife', 'animal', 'sustainability', 'conservation'],
+  Health: ['health', 'wellbeing', 'mental', 'care', 'caring', 'disability', 'medical'],
+  Education: ['education', 'learning', 'school', 'skills', 'literacy', 'children', 'young people', 'youth'],
+  Community: ['community', 'refugee', 'housing', 'homeless', 'poverty', 'justice', 'equality', 'prison', 'violence', 'veteran'],
+};
+
+export function inferCustomInterestCategories(values: string[]): Set<string> {
+  const categories = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeCustomInterest(value).toLocaleLowerCase('en-GB');
+    for (const [category, keywords] of Object.entries(CUSTOM_INTEREST_CATEGORY_KEYWORDS)) {
+      if (keywords.some(keyword => normalized.includes(keyword))) categories.add(category);
+    }
+  }
+  return categories;
+}
 
 function loadDraft(): StoredDraft | null {
   try {
@@ -291,7 +324,11 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
         location: draft.location ?? '',
         locationMeta: draft.locationMeta ?? null,
         interests: sanitizedInterests,
-        customInterest: draft.customInterest ?? '',
+        customInterests: Array.isArray(draft.customInterests)
+          ? draft.customInterests.map(normalizeCustomInterest).filter(Boolean)
+          : (typeof (draft as StoredDraft & { customInterest?: unknown }).customInterest === 'string'
+              ? [normalizeCustomInterest((draft as StoredDraft & { customInterest: string }).customInterest)].filter(Boolean)
+              : []),
         careerBreak: draft.careerBreak ?? hadLegacyCareerBreak,
         situations,
         input: draft.input ?? defaultInput,
@@ -319,7 +356,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   const [location, setLocationState] = useState(initialState.location);
   const [locationMeta, setLocationMetaState] = useState<LocationMeta | null>(initialState.locationMeta);
   const [interests, setInterests] = useState<string[]>(initialState.interests);
-  const [customInterest, setCustomInterestState] = useState(initialState.customInterest);
+  const [customInterests, setCustomInterestsState] = useState<string[]>(initialState.customInterests);
   const [careerBreak, setCareerBreakState] = useState<boolean>(initialState.careerBreak);
   const [situations, setSituationsState] = useState<string[]>(initialState.situations);
   const [input, setInput] = useState<ImpactInput>(initialState.input);
@@ -346,21 +383,35 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (result !== null) return;
-    const hasProgress = !!(location || interests.length > 0 || customInterest || careerBreak || situations.length > 0 ||
+    const hasProgress = !!(location || interests.length > 0 || customInterests.length > 0 || careerBreak || situations.length > 0 ||
       input.activities.length > 0 || input.donationsGBP > 0 ||
       input.additionalVolunteerHours > 0 || customActivities.length > 0 ||
       activitySelection.selectedIds.length > 0);
     if (hasProgress) {
-      saveDraft({ location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation }, user?.id);
+      saveDraft({ location, locationMeta, interests, customInterests, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation }, user?.id);
     } else {
       removeDraft();
       setHasDraft(false);
     }
-  }, [location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation, user?.id]);
+  }, [location, locationMeta, interests, customInterests, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation, user?.id]);
 
   const setLocation = (loc: string) => setLocationState(loc);
   const setLocationMeta = (meta: LocationMeta | null) => setLocationMetaState(meta);
-  const setCustomInterest = (val: string) => setCustomInterestState(val);
+  const addCustomInterest = useCallback((value: string) => {
+    const normalized = normalizeCustomInterest(value);
+    if (!normalized || normalized.length > 100 || hasCustomInterest(customInterests, normalized)) return false;
+    setCustomInterestsState(prev => [...prev, normalized]);
+    return true;
+  }, [customInterests]);
+  const updateCustomInterest = useCallback((current: string, value: string) => {
+    const normalized = normalizeCustomInterest(value);
+    if (!normalized || normalized.length > 100 || hasCustomInterest(customInterests, normalized, current)) return false;
+    setCustomInterestsState(prev => prev.map(item => item === current ? normalized : item));
+    return true;
+  }, [customInterests]);
+  const removeCustomInterest = useCallback((value: string) => {
+    setCustomInterestsState(prev => prev.filter(item => item !== value));
+  }, []);
   const setCareerBreak = (val: boolean) => setCareerBreakState(val);
 
   const toggleSituation = (id: string) => {
@@ -372,10 +423,11 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const seedFromProfile = useCallback((profile: { postcode: string | null; interests: string[]; situations: string[] }) => {
+  const seedFromProfile = useCallback((profile: { postcode: string | null; interests: string[]; customInterests?: string[]; situations: string[] }) => {
     setLocationState(profile.postcode ?? '');
     const sanitized = (profile.interests ?? []).filter(id => INTEREST_OPTIONS.some(o => o.id === id));
     setInterests(sanitized);
+    setCustomInterestsState((profile.customInterests ?? []).map(normalizeCustomInterest).filter(Boolean));
     setSituationsState(profile.situations ?? []);
     setCareerBreakState((profile.situations ?? []).includes('career_break'));
   }, []);
@@ -428,7 +480,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setSituationsState(recs);
     setCareerBreakState(record.situation === 'career_break');
     setInterests([]);
-    setCustomInterestState('');
+    setCustomInterestsState([]);
     if (record.region != null && record.lat != null && record.lng != null && record.outwardCode != null) {
       setLocationState(record.outwardCode);
       setLocationMetaState({
@@ -485,7 +537,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setSituationsState(recs);
     setCareerBreakState(record.situation === 'career_break');
     setInterests([]);
-    setCustomInterestState('');
+    setCustomInterestsState([]);
     if (record.region != null && record.lat != null && record.lng != null && record.outwardCode != null) {
       setLocationState(record.outwardCode);
       setLocationMetaState({
@@ -576,7 +628,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setLocationState('');
     setLocationMetaState(null);
     setInterests([]);
-    setCustomInterestState('');
+    setCustomInterestsState([]);
     setCareerBreakState(false);
     setSituationsState([]);
     setInput(defaultInput);
@@ -597,7 +649,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setLocationState('');
     setLocationMetaState(null);
     setInterests([]);
-    setCustomInterestState('');
+    setCustomInterestsState([]);
     setCareerBreakState(false);
     setSituationsState([]);
     setInput(defaultInput);
@@ -632,8 +684,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   return (
     <WizardContext.Provider value={{
-      location, locationMeta, interests, customInterest, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation,
-      setLocation, setLocationMeta, setCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
+      location, locationMeta, interests, customInterests, careerBreak, situations, input, customActivities, result, activitySelection, activityMode, entryDate, reportPeriod, editRecordId, editPeriod, activityLocation,
+      setLocation, setLocationMeta, addCustomInterest, updateCustomInterest, removeCustomInterest, toggleInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput,
       addActivity, removeActivity, addCustomActivity, removeCustomActivity, setResult, loadFromRecord, loadRecordForEdit, setEditRecordId, loadFromTemplate, reset,
       clearDraft, hasDraft, setActivitySelection, setActivityMode, setEntryDate, setReportPeriod, setActivityLocation,
     }}>

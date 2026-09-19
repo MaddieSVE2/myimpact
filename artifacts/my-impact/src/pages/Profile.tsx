@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useGetProfile, useUpdateProfile, useAckStreakMilestone } from "@workspace/api-client-react";
-import { INTEREST_OPTIONS } from "@/lib/wizard-context";
-import { Lock, ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
+import { INTEREST_OPTIONS, hasCustomInterest, normalizeCustomInterest } from "@/lib/wizard-context";
+import { Lock, ChevronRight, Loader2, Check, AlertCircle, Plus, X } from "lucide-react";
 import RecapBanner from "@/components/RecapBanner";
 import StreakChip from "@/components/StreakChip";
 import StreakCelebration from "@/components/StreakCelebration";
@@ -31,6 +31,9 @@ export default function Profile() {
 
   const [situation, setSituation] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
+  const [customInterests, setCustomInterests] = useState<string[]>([]);
+  const [customInterestInput, setCustomInterestInput] = useState("");
+  const [customInterestError, setCustomInterestError] = useState<string | null>(null);
   const [postcode, setPostcode] = useState("");
   const [postcodeError, setPostcodeError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,7 +42,9 @@ export default function Profile() {
 
   const [savedSituation, setSavedSituation] = useState<string[]>([]);
   const [savedInterests, setSavedInterests] = useState<string[]>([]);
+  const [savedCustomInterests, setSavedCustomInterests] = useState<string[]>([]);
   const [savedPostcode, setSavedPostcode] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!gamificationEnabled) return;
@@ -60,12 +65,15 @@ export default function Profile() {
       const p = profileData.profile;
       const sit = p?.situation ?? [];
       const ints = p?.interests ?? [];
+      const customInts = p?.customInterests ?? [];
       const pc = p?.postcode ?? "";
       setSituation(sit);
       setInterests(ints);
+      setCustomInterests(customInts);
       setPostcode(pc);
       setSavedSituation(sit);
       setSavedInterests(ints);
+      setSavedCustomInterests(customInts);
       setSavedPostcode(pc);
       setDirty(false);
     }
@@ -83,6 +91,28 @@ export default function Profile() {
     setSituation(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     );
+    setDirty(true);
+    setSaved(false);
+  };
+
+  const addCustomInterest = () => {
+    const value = normalizeCustomInterest(customInterestInput);
+    if (!value || value.length > 100 || hasCustomInterest(customInterests, value)) {
+      setCustomInterestError("Enter a unique interest of up to 100 characters.");
+      return;
+    }
+    setCustomInterests(prev => [...prev, value]);
+    setCustomInterestInput("");
+    setCustomInterestError(null);
+    setSaveError(null);
+    setDirty(true);
+    setSaved(false);
+  };
+
+  const removeCustomInterest = (value: string) => {
+    setCustomInterests(prev => prev.filter(item => item !== value));
+    setCustomInterestError(null);
+    setSaveError(null);
     setDirty(true);
     setSaved(false);
   };
@@ -105,14 +135,19 @@ export default function Profile() {
       return;
     }
     setSaving(true);
+    setSaveError(null);
     try {
-      await updateProfile({ data: { situation, interests, postcode: trimmed || null } });
+      await updateProfile({ data: { situation, interests, customInterests, postcode: trimmed || null } });
       await refetch();
       setSaved(true);
       setDirty(false);
       setSavedSituation(situation);
       setSavedInterests(interests);
+      setSavedCustomInterests(customInterests);
       setSavedPostcode(trimmed || "");
+    } catch {
+      setSaved(false);
+      setSaveError("Could not save your profile. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -121,8 +156,12 @@ export default function Profile() {
   const handleDiscard = () => {
     setSituation(savedSituation);
     setInterests(savedInterests);
+    setCustomInterests(savedCustomInterests);
+    setCustomInterestInput("");
     setPostcode(savedPostcode);
     setPostcodeError(null);
+    setCustomInterestError(null);
+    setSaveError(null);
     setDirty(false);
     setSaved(false);
   };
@@ -224,6 +263,33 @@ export default function Profile() {
               );
             })}
           </div>
+          {customInterests.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3" data-testid="profile-custom-interests">
+              {customInterests.map(value => (
+                <span key={value} className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
+                  {value}
+                  <button type="button" onClick={() => removeCustomInterest(value)} className="p-1.5 rounded-full hover:bg-primary/15" aria-label={`Remove ${value}`}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 mt-3 max-w-lg">
+            <input
+              type="text"
+              value={customInterestInput}
+              onChange={e => { setCustomInterestInput(e.target.value); setCustomInterestError(null); }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomInterest(); } }}
+              maxLength={100}
+              placeholder="Add another interest"
+              className="flex-1 min-w-0 bg-white px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
+            />
+            <button type="button" onClick={addCustomInterest} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/30">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+          {customInterestError && <p className="mt-1.5 text-xs text-red-600" role="alert">{customInterestError}</p>}
         </section>
 
         <section>
@@ -268,6 +334,7 @@ export default function Profile() {
             </button>
           )}
         </div>
+        {saveError && <p className="text-sm text-red-600" role="alert">{saveError}</p>}
       </div>
     </div>
   );

@@ -637,7 +637,7 @@ function effortLabel(sug: { unit?: string; defaultQuantity?: number; recommended
 }
 
 export default function Suggestions() {
-  const { input, interests, location, locationMeta, result } = useWizard();
+  const { input, interests, customInterests, location, locationMeta, result } = useWizard();
   const suggestionsMutation = useGetSuggestions();
   const { data: profileData } = useGetProfile();
   const t = useT();
@@ -665,6 +665,7 @@ export default function Suggestions() {
   const interestLabels = interests
     .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
     .filter(Boolean) as string[];
+  interestLabels.push(...customInterests);
 
   useEffect(() => {
     suggestionsMutation.mutate({

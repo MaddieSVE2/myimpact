@@ -331,6 +331,7 @@ export interface SuggestionsResponse {
 export interface UserProfileData {
   situation?: string[];
   interests?: string[];
+  customInterests?: string[];
   postcode?: string | null;
   updatedAt?: string;
 }
@@ -343,6 +344,7 @@ export interface ProfileResponse {
 export interface ProfileInput {
   situation?: string[];
   interests?: string[];
+  customInterests?: string[];
   postcode?: string | null;
 }
 

@@ -33,6 +33,7 @@ export const userProfilesTable = pgTable("user_profiles", {
   userId: text("user_id").primaryKey().references(() => usersTable.id),
   situation: text("situation").array(),
   interests: text("interests").array(),
+  customInterests: text("custom_interests").array(),
   postcode: text("postcode"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   inviteCode: text("invite_code").unique(),

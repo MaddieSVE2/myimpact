@@ -405,7 +405,7 @@ export function Sidekick() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const { result, interests, careerBreak, situations } = useWizard();
+  const { result, interests, customInterests, careerBreak, situations } = useWizard();
   const situation = situations[0] ?? null;
   const [location] = useLocation();
   const { isLoggedIn, user } = useAuth();
@@ -667,7 +667,7 @@ export function Sidekick() {
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
     if (situation) ctx.situation = situation;
-    const effectiveInterests = [...interests];
+    const effectiveInterests = [...interests, ...customInterests];
     if (isOrgManager && isOnOrgPage && !effectiveInterests.includes("org_manager")) {
       effectiveInterests.push("org_manager");
     }
@@ -853,7 +853,7 @@ export function Sidekick() {
         quotaQuery.refetch().catch(() => {});
       }
     },
-    [messages, streaming, result, interests, situations, isOrgManager, isOnOrgPage, locale, toast, quotaQuery]
+    [messages, streaming, result, interests, customInterests, situations, isOrgManager, isOnOrgPage, locale, toast, quotaQuery]
   );
 
   const fireTemplate = useCallback(

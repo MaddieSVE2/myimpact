@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY, inferCustomInterestCategories, type CustomActivityDetail, type ActivityMode } from "@/lib/wizard-context";
 import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompts";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { useGetActivities, type ActivityItem } from "@workspace/api-client-react";
@@ -64,7 +64,7 @@ type Phase = "select" | "quantify";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
+  const { input, interests, customInterests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -178,10 +178,17 @@ export default function ActivitiesStep() {
   }, [isLoggedIn]);
 
   const preferredCategories = useMemo(() => {
-    return new Set(
+    const categories = new Set(
       interests.map(id => INTEREST_OPTIONS.find(o => o.id === id)?.category).filter(Boolean) as string[]
     );
-  }, [interests]);
+    inferCustomInterestCategories(customInterests).forEach(category => categories.add(category));
+    return categories;
+  }, [interests, customInterests]);
+
+  const inferredCustomCategories = useMemo(
+    () => inferCustomInterestCategories(customInterests),
+    [customInterests],
+  );
 
   // Boost specific activities based on the user's selected interests only.
   // Situation/background no longer affects activity ranking, it only influences
@@ -518,6 +525,17 @@ export default function ActivitiesStep() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
+            {customInterests.length > 0 && (
+              <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground" data-testid="custom-interest-context">
+                <p className="font-medium">Your interests: {customInterests.join(", ")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {inferredCustomCategories.size > 0
+                    ? `We'll prioritise ${Array.from(inferredCustomCategories).join(" and ")} activities based on what you entered.`
+                    : "We couldn't map these to a standard category, so we're showing a broad range of activities."}
+                  {" "}You can also describe exactly what you do.
+                </p>
+              </div>
+            )}
             {/* Mode choice cards */}
             <div className="mb-5">
               <p className="text-sm font-medium text-foreground mb-3">How would you like to add your activities?</p>

@@ -198,7 +198,7 @@ export default function ProfileSetup() {
   const handleSave = async (data: { situation: string[]; interests: string[]; postcode: string | null }) => {
     setSaving(true);
     try {
-      await updateProfile({ data });
+      await updateProfile({ data: { ...data, customInterests: existing?.customInterests ?? [] } });
       window.location.href = destination;
     } catch {
       setSaving(false);
@@ -211,7 +211,7 @@ export default function ProfileSetup() {
   const handleSkip = async () => {
     if (isNewUser) {
       try {
-        await updateProfile({ data: { situation: [], interests: [], postcode: null } });
+        await updateProfile({ data: { situation: [], interests: [], customInterests: [], postcode: null } });
       } catch {
       }
     }

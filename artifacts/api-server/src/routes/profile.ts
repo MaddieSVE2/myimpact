@@ -16,6 +16,25 @@ import { createRateLimiter } from "../lib/rateLimiter.js";
 
 const router: IRouter = Router();
 
+const MAX_CUSTOM_INTERESTS = 20;
+const MAX_CUSTOM_INTEREST_LENGTH = 100;
+
+export function normalizeCustomInterests(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const label = item.trim().replace(/\s+/g, " ");
+    const key = label.toLocaleLowerCase("en-GB");
+    if (!label || label.length > MAX_CUSTOM_INTEREST_LENGTH || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(label);
+    if (normalized.length >= MAX_CUSTOM_INTERESTS) break;
+  }
+  return normalized;
+}
+
 // Public endpoint: keep the limit tight since it needs no auth.
 const unsubscribeRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
@@ -115,6 +134,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
     profile: {
       situation: profile.situation ?? [],
       interests: profile.interests ?? [],
+      customInterests: profile.customInterests ?? [],
       postcode: profile.postcode ?? null,
       emailOptIn: profile.emailOptIn,
       updatedAt: profile.updatedAt.toISOString(),
@@ -126,6 +146,9 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
 router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const body = req.body as Record<string, unknown>;
+  const existingProfile = await db.query.userProfilesTable.findFirst({
+    where: eq(userProfilesTable.userId, userId),
+  });
 
   const situation = Array.isArray(body.situation)
     ? body.situation.filter((s): s is string => typeof s === "string")
@@ -135,6 +158,9 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const interests = Array.isArray(body.interests)
     ? body.interests.filter((i): i is string => typeof i === "string")
     : [];
+  const customInterests = Object.prototype.hasOwnProperty.call(body, "customInterests")
+    ? normalizeCustomInterests(body.customInterests)
+    : (existingProfile?.customInterests ?? []);
   const postcode = typeof body.postcode === "string" ? body.postcode.trim() : null;
 
   const [upserted] = await db
@@ -143,6 +169,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       userId,
       situation,
       interests,
+      customInterests,
       postcode,
       updatedAt: new Date(),
     })
@@ -151,6 +178,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       set: {
         situation,
         interests,
+        customInterests,
         postcode,
         updatedAt: new Date(),
       },
@@ -163,6 +191,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
     profile: {
       situation: upserted.situation ?? [],
       interests: upserted.interests ?? [],
+      customInterests: upserted.customInterests ?? [],
       postcode: upserted.postcode ?? null,
       emailOptIn: upserted.emailOptIn,
       updatedAt: upserted.updatedAt.toISOString(),

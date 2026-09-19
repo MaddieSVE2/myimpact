@@ -5,7 +5,7 @@ import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { ReportPeriodPicker } from "@/components/wizard/ReportPeriodPicker";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History, Trophy } from "lucide-react";
+import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History, Trophy, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
@@ -101,15 +101,19 @@ function ChallengeContextBanner() {
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterest, careerBreak, situations,
+    location, interests, customInterests, careerBreak, situations,
     setLocation: setWizardLocation, toggleInterest,
-    setCustomInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
+    addCustomInterest, updateCustomInterest, removeCustomInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
     hasDraft, clearDraft, reportPeriod, setReportPeriod,
   } = useWizard();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
   const t = useT();
 
-  const [showCustom, setShowCustom] = useState(!!customInterest);
+  const [showCustom, setShowCustom] = useState(false);
+  const [customInterestInput, setCustomInterestInput] = useState("");
+  const [editingCustomInterest, setEditingCustomInterest] = useState<string | null>(null);
+  const [customInterestError, setCustomInterestError] = useState("");
+  const [profileSaveError, setProfileSaveError] = useState("");
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
   const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -128,7 +132,13 @@ export default function ActionsStep() {
         const loadedSituations: string[] = Array.isArray(rawSituation)
           ? rawSituation.filter(Boolean)
           : (typeof rawSituation === "string" && rawSituation ? [rawSituation] : []);
-        const hasAnyData = data.profile.postcode || (data.profile.interests ?? []).length > 0 || loadedSituations.length > 0;
+        const loadedCustomInterests: string[] = Array.isArray(data.profile.customInterests)
+          ? data.profile.customInterests.filter((value: unknown): value is string => typeof value === "string" && !!value.trim())
+          : [];
+        const hasAnyData = data.profile.postcode
+          || (data.profile.interests ?? []).length > 0
+          || loadedCustomInterests.length > 0
+          || loadedSituations.length > 0;
         // Only seed when the profile actually has data. Seeding an empty
         // profile would wipe anything the user typed while the fetch was
         // in flight (the fetch resolves after mount, racing fast typers).
@@ -136,6 +146,7 @@ export default function ActionsStep() {
           seedFromProfile({
             postcode: data.profile.postcode ?? null,
             interests: data.profile.interests ?? [],
+            customInterests: loadedCustomInterests,
             situations: loadedSituations,
           });
           setProfileLoaded(true);
@@ -192,11 +203,12 @@ export default function ActionsStep() {
   };
 
   const handleNext = async () => {
+    setProfileSaveError("");
     const interestLabels = interests
       .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
       .filter(Boolean)
       .join(', ');
-    const allInterests = [interestLabels, customInterest].filter(Boolean).join(', ');
+    const allInterests = [interestLabels, ...customInterests].filter(Boolean).join(', ');
     const description = location
       ? `I live in ${location} and care most about: ${allInterests || 'making a positive difference'}.`
       : `I care most about: ${allInterests || 'making a positive difference'}.`;
@@ -208,29 +220,56 @@ export default function ActionsStep() {
       interestCount: interests.length,
     });
 
-    // Silently auto-save profile if logged in
     if (isLoggedIn) {
       const postcode = location.trim() || null;
       // For guests without situations, fall back to careerBreak checkbox
       const situationsToSave = situations.length > 0
         ? situations
         : (careerBreak ? ['career_break'] : []);
-      fetch(`${BASE}/api/profile`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          situation: situationsToSave,
-          interests,
-          postcode,
-        }),
-      }).catch(() => {});
+      try {
+        const response = await fetch(`${BASE}/api/profile`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            situation: situationsToSave,
+            interests,
+            customInterests,
+            postcode,
+          }),
+        });
+        if (!response.ok) throw new Error("profile save failed");
+      } catch {
+        setProfileSaveError(t("wizard.profileSaveError"));
+        return;
+      }
     }
 
     setLocation("/wizard/activities");
   };
 
-  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterest.trim().length > 0 || careerBreak || situations.length > 0;
+  const canProceed = location.trim().length > 0 || interests.length > 0 || customInterests.length > 0 || careerBreak || situations.length > 0;
+
+  const confirmCustomInterest = () => {
+    const ok = editingCustomInterest
+      ? updateCustomInterest(editingCustomInterest, customInterestInput)
+      : addCustomInterest(customInterestInput);
+    if (!ok) {
+      setCustomInterestError(t("wizard.customInterestInvalid"));
+      return;
+    }
+    setCustomInterestInput("");
+    setEditingCustomInterest(null);
+    setCustomInterestError("");
+    setShowCustom(false);
+  };
+
+  const startEditingCustomInterest = (value: string) => {
+    setEditingCustomInterest(value);
+    setCustomInterestInput(value);
+    setCustomInterestError("");
+    setShowCustom(true);
+  };
 
   return (
     <div className={`${CONTENT_CONTAINER} py-10`}>
@@ -386,6 +425,7 @@ export default function ActionsStep() {
                   key={option.id}
                   type="button"
                   onClick={() => toggleInterest(option.id)}
+                  aria-pressed={selected}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-sm border transition-all duration-150 select-none",
                     selected
@@ -399,6 +439,22 @@ export default function ActionsStep() {
               );
             })}
           </div>
+
+          {customInterests.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3" data-testid="custom-interest-list">
+              {customInterests.map(value => (
+                <span key={value} className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
+                  {value}
+                  <button type="button" onClick={() => startEditingCustomInterest(value)} className="p-1.5 rounded-full hover:bg-primary/15" aria-label={`${t("common.edit")} ${value}`}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => removeCustomInterest(value)} className="p-1.5 rounded-full hover:bg-primary/15" aria-label={`${t("common.remove")} ${value}`}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Custom interest */}
           {!showCustom ? (
@@ -416,14 +472,22 @@ export default function ActionsStep() {
               animate={{ opacity: 1, height: "auto" }}
               className="mt-3"
             >
-              <input
-                type="text"
-                value={customInterest}
-                onChange={e => setCustomInterest(e.target.value)}
-                placeholder={t("wizard.customInterestPlaceholder")}
-                className="w-full px-4 py-3 min-h-[44px] rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customInterestInput}
+                  onChange={e => { setCustomInterestInput(e.target.value); setCustomInterestError(""); }}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); confirmCustomInterest(); } }}
+                  placeholder={t("wizard.customInterestPlaceholder")}
+                  maxLength={100}
+                  className="flex-1 px-4 py-3 min-h-[44px] rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  autoFocus
+                />
+                <button type="button" onClick={confirmCustomInterest} className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium">
+                  {editingCustomInterest ? t("common.save") : t("wizard.addInterest")}
+                </button>
+              </div>
+              {customInterestError && <p className="mt-2 text-xs text-red-600" role="alert">{customInterestError}</p>}
             </motion.div>
           )}
         </div>
@@ -467,6 +531,7 @@ export default function ActionsStep() {
         )}
 
         <div className="flex justify-end pt-6">
+          {profileSaveError && <p className="mr-auto self-center text-sm text-red-600" role="alert">{profileSaveError}</p>}
           <button
             onClick={handleNext}
             disabled={!canProceed}
