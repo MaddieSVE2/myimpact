@@ -439,7 +439,7 @@ function JournalEntryItem({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="bg-white border border-border rounded-xl p-5 group"
+      className="bg-white border border-border rounded-xl p-4 sm:p-5 group"
     >
       {editing ? (
         <>
@@ -488,6 +488,7 @@ function JournalEntryItem({
               journalId={numericId}
               maxImages={1}
               label="Private photo"
+              presentation="journal-feed"
               onChange={(attachments) => onPhotoCount(entry.id, attachments.filter((attachment) => attachment.kind === "photo").length)}
             />
           )}
@@ -1060,7 +1061,8 @@ export default function Journal() {
                 onSelect={setSelectedDate}
                 modifiers={{ hasEntry: journalDates }}
                 modifiersClassNames={{ hasEntry: "after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-primary" }}
-                className="mx-auto w-full [--cell-size:2.5rem] sm:w-fit"
+                fullWidth
+                className="w-full p-1 [--cell-size:2.25rem] sm:p-3 sm:[--cell-size:2.75rem]"
                 aria-label="Browse journal entries by date"
               />
               <p className="mt-2 text-center text-xs text-muted-foreground">Dates with a dot contain journal entries.</p>
@@ -1105,7 +1107,7 @@ export default function Journal() {
           <p className="mt-1 text-xs text-muted-foreground">{selectedDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <AnimatePresence>
             {visibleEntries.map((item) => {
               if (item.type === "activity") {

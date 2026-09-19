@@ -86,6 +86,14 @@ test.describe("Spec 3 — journal entry create, edit, delete", () => {
 
     await page.getByRole("button", { name: "Calendar" }).click();
     await expect(page.getByText("Dates with a dot contain journal entries.")).toBeVisible();
+    const calendar = page.locator('[data-slot="calendar"]');
+    const calendarWidth = await calendar.evaluate((element) => element.getBoundingClientRect().width);
+    const weekdayWidths = await calendar.locator("thead th").evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().width),
+    );
+    expect(calendarWidth).toBeGreaterThan(300);
+    expect(weekdayWidths).toHaveLength(7);
+    expect(Math.max(...weekdayWidths) - Math.min(...weekdayWidths)).toBeLessThan(1);
     const today = new Date();
     await page.locator(`[data-day="${today.toLocaleDateString()}"]`).click();
     await expect(page.getByText(editedText, { exact: true })).toBeVisible();

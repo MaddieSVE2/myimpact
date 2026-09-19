@@ -31,6 +31,8 @@ interface AttachmentsProps {
   compact?: boolean;
   /** Callback after attachments change. */
   onChange?: (items: AttachmentItem[]) => void;
+  /** Large, responsive media treatment for chronological journal entries. */
+  presentation?: "compact" | "journal-feed";
 }
 
 // Keep in sync with api-server attachments route (ALLOWED_IMAGE_TYPES / ALLOWED_PDF_TYPES / MAX_FILE_SIZE_BYTES).
@@ -101,6 +103,7 @@ export default function Attachments({
   label,
   compact = false,
   onChange,
+  presentation = "compact",
 }: AttachmentsProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -112,6 +115,8 @@ export default function Attachments({
   const [usage, setUsage] = useState<UsageData | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const receiptInputRef = useRef<HTMLInputElement | null>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement | null>(null);
+  const lightboxTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const fetchUsage = useCallback(async () => {
     try {
@@ -314,6 +319,20 @@ export default function Attachments({
 
   const photosFull = photos.length >= photoLimit;
   const hasReceipt = receipts.length > 0;
+  const isJournalFeed = presentation === "journal-feed";
+
+  useEffect(() => {
+    if (!lightbox) return;
+    lightboxCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      lightboxTriggerRef.current?.focus();
+    };
+  }, [lightbox]);
 
   return (
     <div className={compact ? "" : "mt-3"}>
@@ -399,24 +418,27 @@ export default function Attachments({
         )}
       </div>
 
-      {/* Thumbnail grid */}
+      {/* Attachment media */}
       {!loading && items.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className={isJournalFeed ? "mt-4 space-y-3" : "mt-3 flex flex-wrap gap-2"}>
           {photos.map(p => (
             <div
               key={p.id}
-              className="relative group w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted/20"
+              className={isJournalFeed
+                ? "relative group w-full overflow-hidden rounded-xl border border-border bg-muted/20"
+                : "relative group w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted/20"}
             >
               <button
+                ref={isJournalFeed ? lightboxTriggerRef : undefined}
                 type="button"
                 onClick={() => setLightbox(p)}
-                className="w-full h-full block"
+                className={isJournalFeed ? "block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" : "w-full h-full block"}
                 aria-label="View photo"
               >
                 <img
                   src={`${BASE}${p.url}`}
-                  alt="Attachment"
-                  className="w-full h-full object-cover"
+                  alt="Journal attachment"
+                  className={isJournalFeed ? "block h-auto max-h-[32rem] w-full object-contain" : "w-full h-full object-cover"}
                   loading="lazy"
                 />
               </button>
@@ -424,13 +446,16 @@ export default function Attachments({
                 type="button"
                 onClick={() => handleDelete(p.id)}
                 disabled={deletingId === p.id}
-                className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
+                className={isJournalFeed
+                  ? "absolute right-2 top-2 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60"
+                  : "absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/70 transition-all"}
                 aria-label="Remove photo"
               >
                 {deletingId === p.id
                   ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
                   : <X className="w-3 h-3" aria-hidden="true" />
                 }
+                {isJournalFeed && <span>{deletingId === p.id ? "Removing…" : "Remove"}</span>}
               </button>
             </div>
           ))}
@@ -475,8 +500,12 @@ export default function Attachments({
             transition={{ duration: 0.18 }}
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
             onClick={() => setLightbox(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Journal photo preview"
           >
             <button
+              ref={lightboxCloseRef}
               type="button"
               onClick={() => setLightbox(null)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
