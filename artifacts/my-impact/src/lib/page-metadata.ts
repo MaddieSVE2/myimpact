@@ -12,6 +12,8 @@
  * HTML are updated automatically — no manual sync needed.
  */
 
+import publicRoutes from "./public-routes.json";
+
 export const SITE_ORIGIN = "https://myimpact.uk";
 export const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/opengraph.jpg`;
 
@@ -28,6 +30,8 @@ export interface PageMetadata {
 export interface PrerenderPage extends PageMetadata {
   path: string;
 }
+
+export const PUBLIC_ROUTES: readonly string[] = publicRoutes;
 
 /**
  * FAQ data used both for the homepage FAQ UI and the FAQPage JSON-LD schema.
@@ -188,18 +192,27 @@ export const ORG_REGISTER_META: PageMetadata = {
 
 /**
  * All public pages to pre-render, in order.
- * Used by prerender.ts to write static HTML for crawlers.
+ * Routes come from public-routes.json, which is also consumed by the
+ * accessibility gate. Adding or removing a route therefore affects both.
  */
-export const PRERENDER_PAGES: PrerenderPage[] = [
-  { path: "/", ...HOME_META },
-  { path: "/about", ...ABOUT_META },
-  { path: "/methodology", ...METHODOLOGY_META },
-  { path: "/whats-new", ...WHATS_NEW_META },
-  { path: "/contact", ...CONTACT_META },
-  { path: "/organisations", ...ORGANISATIONS_META },
-  { path: "/org/demo", ...ORG_DEMO_META },
-  { path: "/pricing", ...PRICING_META },
-  { path: "/org/register", ...ORG_REGISTER_META },
-  { path: "/suggestions", ...SUGGESTIONS_META },
-  { path: "/404", ...NOT_FOUND_META },
-];
+const METADATA_BY_ROUTE: Record<string, PageMetadata> = {
+  "/": HOME_META,
+  "/about": ABOUT_META,
+  "/methodology": METHODOLOGY_META,
+  "/whats-new": WHATS_NEW_META,
+  "/contact": CONTACT_META,
+  "/organisations": ORGANISATIONS_META,
+  "/org/demo": ORG_DEMO_META,
+  "/pricing": PRICING_META,
+  "/org/register": ORG_REGISTER_META,
+  "/suggestions": SUGGESTIONS_META,
+  "/404": NOT_FOUND_META,
+};
+
+export const PRERENDER_PAGES: PrerenderPage[] = PUBLIC_ROUTES.map((path) => {
+  const metadata = METADATA_BY_ROUTE[path];
+  if (!metadata) {
+    throw new Error(`Missing page metadata for public route: ${path}`);
+  }
+  return { path, ...metadata };
+});

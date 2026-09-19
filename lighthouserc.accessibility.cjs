@@ -1,27 +1,14 @@
 /**
  * Automated WCAG accessibility gate for every public My Impact page.
  *
- * Keep PUBLIC_ROUTES aligned with PRERENDER_PAGES in
- * artifacts/my-impact/src/lib/page-metadata.ts whenever a public page is added.
+ * PUBLIC_ROUTES is the same source used to build PRERENDER_PAGES, so every
+ * prerendered public page enters this gate automatically.
  * A score of 1.0 requires every automated Lighthouse accessibility audit to
  * pass. Manual keyboard, screen-reader, zoom and content checks still apply.
  */
 
 const BASE_URL = process.env.LHCI_BASE_URL || "http://localhost:4173";
-
-const PUBLIC_ROUTES = [
-  "/",
-  "/about",
-  "/methodology",
-  "/whats-new",
-  "/contact",
-  "/organisations",
-  "/org/demo",
-  "/pricing",
-  "/org/register",
-  "/suggestions",
-  "/404",
-];
+const PUBLIC_ROUTES = require("./artifacts/my-impact/src/lib/public-routes.json");
 
 const ROUTES = process.env.A11Y_ROUTES
   ? process.env.A11Y_ROUTES.split(",").map((route) => route.trim()).filter(Boolean)

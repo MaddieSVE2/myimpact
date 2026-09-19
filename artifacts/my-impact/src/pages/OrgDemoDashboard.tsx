@@ -478,7 +478,13 @@ export default function OrgDemoDashboard({
                 <PieChart>
                   <Pie data={DEMO.sdgs} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={56} outerRadius={96} paddingAngle={2} isAnimationActive>
                     {DEMO.sdgs.map((s) => (
-                      <Cell key={s.number} fill={s.color} stroke="#fff" strokeWidth={2} />
+                      <Cell
+                        key={s.number}
+                        fill={s.color}
+                        stroke="#fff"
+                        strokeWidth={2}
+                        aria-label={`SDG ${s.number} ${s.label}: ${s.pct}%`}
+                      />
                     ))}
                   </Pie>
                   <RechartsTooltip
