@@ -20,7 +20,6 @@ import WhatsNew from "@/pages/WhatsNew";
 import Contact from "@/pages/Contact";
 import Organisations from "@/pages/Organisations";
 import OrgDemoPage from "@/pages/OrgDemoPage";
-import Pricing from "@/pages/Pricing";
 import OrgRegister from "@/pages/OrgRegister";
 import OrgTypeExplicitSubmission from "@/pages/OrgTypeExplicitSubmission";
 import OrgTypeConsentedLogging from "@/pages/OrgTypeConsentedLogging";
@@ -37,7 +36,6 @@ const PUBLIC_PAGES: Record<string, ComponentType> = {
   "/contact": Contact,
   "/organisations": Organisations,
   "/org/demo": OrgDemoPage,
-  "/pricing": Pricing,
   "/org/register": OrgRegister,
   "/org/types/explicit-submission": OrgTypeExplicitSubmission,
   "/org/types/consented-logging": OrgTypeConsentedLogging,

@@ -225,14 +225,6 @@ export const SUGGESTIONS_META: PageMetadata = {
   robots: "noindex, nofollow",
 };
 
-export const PRICING_META: PageMetadata = {
-  title: "Pricing — My Impact for Organisations",
-  description:
-    "Transparent pricing for My Impact's organisation dashboard. Free tier available. Upgrade to unlock regional analytics, branded PDF reports, funder share links, SSO, and more.",
-  canonical: "https://myimpact.uk/pricing",
-  robots: "index, follow",
-};
-
 export const ORGANISATIONS_META: PageMetadata = {
   title: "My Impact for Organisations",
   description:
@@ -280,7 +272,6 @@ const METADATA_BY_ROUTE: Record<string, PageMetadata> = {
   "/contact": CONTACT_META,
   "/organisations": ORGANISATIONS_META,
   "/org/demo": ORG_DEMO_META,
-  "/pricing": PRICING_META,
   "/org/register": ORG_REGISTER_META,
   "/org/types/explicit-submission": ORG_TYPE_EXPLICIT_SUBMISSION_META,
   "/org/types/consented-logging": ORG_TYPE_CONSENTED_LOGGING_META,

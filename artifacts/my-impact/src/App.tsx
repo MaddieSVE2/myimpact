@@ -91,7 +91,6 @@ const OrgTypeExplicitSubmission = lazyWithRetry(() => import("@/pages/OrgTypeExp
 const OrgTypeConsentedLogging = lazyWithRetry(() => import("@/pages/OrgTypeConsentedLogging"));
 const Organisations = lazyWithRetry(() => import("@/pages/Organisations"));
 const OrgDemoPage = lazyWithRetry(() => import("@/pages/OrgDemoPage"));
-const Pricing = lazyWithRetry(() => import("@/pages/Pricing"));
 const Login = lazyWithRetry(() => import("@/pages/Login"));
 const AuthConfirm = lazyWithRetry(() => import("@/pages/AuthConfirm"));
 const About = lazyWithRetry(() => import("@/pages/About"));
@@ -368,7 +367,6 @@ function AppRouter() {
               <Route path="/privacy" component={Privacy} />
               <Route path="/terms" component={Terms} />
               <Route path="/security" component={Security} />
-              <Route path="/pricing" component={Pricing} />
               <Route path="/unsubscribe" component={Unsubscribe} />
               <Route path="/organisations" component={Organisations} />
 

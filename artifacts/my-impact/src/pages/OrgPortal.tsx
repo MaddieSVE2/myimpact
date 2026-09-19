@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, Sparkles, BadgeCheck, CheckCircle2, XCircle } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, BadgeCheck, CheckCircle2, XCircle } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
 import { Link, useLocation } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
@@ -1642,10 +1642,8 @@ function MatchProgrammeSection({ from, to }: { from: string; to: string }) {
 
 
 // ── Billing & plan section ──────────────────────────────────────────────────
-// Shows the org's current tier, payment status, and entry points to
-// upgrade / manage / cancel via Stripe Checkout + Billing Portal. Hidden
-// behind the same `pricingPublic` flag as the public pricing page so it can
-// be staged before go-live without confusing existing customers.
+// Shows the org's current tier, payment status, and entry point to manage or
+// cancel an existing paid subscription via the Stripe Billing Portal.
 
 interface SubscriptionSnapshot {
   orgId: string;
@@ -1669,23 +1667,8 @@ interface SubscriptionSnapshot {
   };
 }
 
-interface TiersSummary {
-  pricingPublic: boolean;
-  stripeConfigured: boolean;
-}
-
 function BillingSection() {
   const [error, setError] = useState<string | null>(null);
-
-  const { data: tiersInfo } = useQuery<TiersSummary>({
-    queryKey: ["billing-tiers-summary"],
-    queryFn: async () => {
-      const res = await fetch(`${BASE}/api/billing/tiers`);
-      if (!res.ok) throw new Error("Failed to load");
-      const json = await res.json();
-      return { pricingPublic: json.pricingPublic, stripeConfigured: json.stripeConfigured };
-    },
-  });
 
   const { data: sub, isLoading } = useQuery<SubscriptionSnapshot>({
     queryKey: ["billing-subscription"],
@@ -1709,10 +1692,6 @@ function BillingSection() {
     onSuccess: (d) => { window.location.href = d.url; },
     onError: (e: Error) => setError(e.message),
   });
-
-  // Hide entirely until pricing is public OR an override is in effect (so
-  // design partners can preview without exposing the section to everyone).
-  if (!tiersInfo?.pricingPublic && sub?.source !== "override") return null;
 
   if (isLoading || !sub) {
     return (
@@ -1764,16 +1743,6 @@ function BillingSection() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!isPaid && (
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
-              data-testid="button-view-pricing"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              See plans
-            </Link>
-          )}
           {isPaid && (
             <button
               type="button"

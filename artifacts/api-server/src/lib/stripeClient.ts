@@ -34,7 +34,7 @@ export function getWebhookSecret(): string | null {
   return process.env.STRIPE_WEBHOOK_SECRET ?? null;
 }
 
-// Public flag controlling whether the /pricing page is visible to end-users.
+// Public flag retained for clients that stage tier-related subscription UI.
 // We keep this independent from STRIPE_SECRET_KEY so the team can stage
 // Stripe keys before flipping the marketing page live.
 export function isPricingPagePublic(): boolean {

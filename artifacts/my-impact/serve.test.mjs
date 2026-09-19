@@ -96,6 +96,12 @@ test("slug SSR remains complete beyond the public per-IP request limit", async (
 
   try {
     await waitForServer(`http://127.0.0.1:${WEB_PORT}/`);
+    const removedPricingResponse = await fetch(`http://127.0.0.1:${WEB_PORT}/pricing`);
+    assert.equal(removedPricingResponse.status, 404);
+    const removedPricingHtml = await removedPricingResponse.text();
+    assert.match(removedPricingHtml, /Page not found/i);
+    assert.doesNotMatch(removedPricingHtml, /Simple pricing for measurable impact/i);
+
     for (let requestNumber = 0; requestNumber < 35; requestNumber += 1) {
       const [profileResponse, orgResponse] = await Promise.all([
         fetch(`http://127.0.0.1:${WEB_PORT}/profile/jane`),

@@ -18,7 +18,6 @@ export const ROUTE_PATTERNS = [
   "/privacy",
   "/terms",
   "/security",
-  "/pricing",
   "/contact",
   "/feedback",
 

@@ -22,8 +22,8 @@ import { createRateLimiter } from "../lib/rateLimiter.js";
 const router: IRouter = Router();
 
 // ── Public tier catalogue ───────────────────────────────────────────────────
-// Used by the marketing /pricing page. Flag visibility is the client's
-// responsibility — we still expose the catalogue so previews work in dev.
+// Public tier catalogue retained for subscription features that consume tier
+// capabilities. Flag visibility remains the client's responsibility.
 router.get("/tiers", (_req: Request, res: Response) => {
   const tiers = (Object.keys(TIERS) as TierKey[]).map((key) => {
     const t = TIERS[key];
@@ -152,7 +152,7 @@ router.post("/checkout", authenticate, checkoutRateLimit, async (req: Authentica
 
   const appUrl = process.env.APP_URL ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
   const successUrl = `${appUrl}/org?billing=success`;
-  const cancelUrl = `${appUrl}/pricing?billing=cancelled`;
+  const cancelUrl = `${appUrl}/org?billing=cancelled`;
 
   try {
     const session = await stripe.checkout.sessions.create({
