@@ -47,6 +47,7 @@ export function PageMeta({
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content="My Impact" />
+      <meta property="og:locale" content="en_GB" />
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />
