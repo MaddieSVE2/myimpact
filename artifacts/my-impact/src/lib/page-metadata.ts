@@ -136,6 +136,18 @@ export const METHODOLOGY_META: PageMetadata = {
   jsonLd: [
     {
       "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#september-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#september-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — September 2026",
+      "description": "Running-record, photo logging, local ideas, organisation sharing, sign-in, reliability, and accessibility improvements shipped by My Impact through September 2026.",
+      "datePublished": "2026-09",
+      "dateModified": "2026-09",
+      "publisher": PUBLISHER,
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "Article",
       "@id": `${SITE_ORIGIN}/methodology#article`,
       "url": `${SITE_ORIGIN}/methodology`,

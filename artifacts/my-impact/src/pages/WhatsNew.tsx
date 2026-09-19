@@ -23,7 +23,7 @@ import {
   Mail, Contrast, Lightbulb, Zap, Monitor, PoundSterling, RefreshCw, Pencil,
   Heart, ToggleRight, ScanSearch, Share2, History, Award, UserPlus, NotebookPen,
   ShieldCheck, MessageSquare, Map, Activity, Globe, Lock, Wrench,
-  Languages, Mic, Film,
+  Languages, Mic, Film, Camera,
   CalendarRange, ThumbsUp, MapPin, LineChart, FileSpreadsheet, Search,
   ChevronUp, ChevronDown,
 } from "lucide-react";
@@ -65,6 +65,107 @@ const BADGE_COLORS = {
 };
 
 const RELEASES: Release[] = [
+  {
+    id: "september-2026",
+    date: "September 2026",
+    title: "What's new",
+    intro: "Your impact is now easier to follow, photo logging and organisation sharing are clearer, local ideas work harder for you, and we've improved reliability, accessibility and public sharing across My Impact.",
+    groups: [
+      {
+        heading: "Your impact, all in one place",
+        badge: "For you",
+        badgeColor: BADGE_COLORS.forYou,
+        items: [
+          {
+            icon: <LayoutDashboard className="w-5 h-5" />,
+            title: "Your full running record",
+            desc: "My Impact now shows your whole current year in one place, with every activity underneath the total it helped create.",
+          },
+          {
+            icon: <NotebookPen className="w-5 h-5" />,
+            title: "A richer journal",
+            desc: "The journal calendar is easier to use and photo entries now get the space they deserve in your feed.",
+          },
+          {
+            icon: <Award className="w-5 h-5" />,
+            title: "Milestones worth celebrating",
+            desc: "Newly earned milestones now appear as soon as you save an activity, with an accessible celebration when you unlock one.",
+          },
+        ],
+      },
+      {
+        heading: "Faster, clearer logging",
+        badge: "For you",
+        badgeColor: BADGE_COLORS.forYou,
+        items: [
+          {
+            icon: <Camera className="w-5 h-5" />,
+            title: "Quick Log + photo",
+            desc: "The organisation shortcut now makes it clear that you can log an activity with photo evidence and exactly when it will be shared.",
+          },
+          {
+            icon: <ShieldCheck className="w-5 h-5" />,
+            title: "Photos protected across updates",
+            desc: "Activity, journal and evidence photos are now better protected when My Impact is updated or republished.",
+          },
+          {
+            icon: <ScanSearch className="w-5 h-5" />,
+            title: "Preview before you save",
+            desc: "Photo Quick Log lets you check or retake your picture before attaching it to your activity.",
+          },
+        ],
+      },
+      {
+        heading: "Ideas and ways to help",
+        badge: "Tools",
+        badgeColor: BADGE_COLORS.tools,
+        items: [
+          {
+            icon: <Lightbulb className="w-5 h-5" />,
+            title: "Ideas shaped around you",
+            desc: "Go straight to Give me ideas and we'll use your saved interests to make the suggestions more relevant from the start.",
+          },
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            title: "Better Volunteer Scotland links",
+            desc: "Scottish searches now pass your postcode and location into Volunteer Scotland, taking you closer to useful local opportunities.",
+          },
+          {
+            icon: <Search className="w-5 h-5" />,
+            title: "More dependable local searches",
+            desc: "Local charity searches now keep useful routes available even when a location lookup cannot return everything we expect.",
+          },
+        ],
+      },
+      {
+        heading: "Sharing, access and organisations",
+        badge: "All users",
+        badgeColor: BADGE_COLORS.all,
+        items: [
+          {
+            icon: <Building2 className="w-5 h-5" />,
+            title: "Clearer organisation actions",
+            desc: "Organisation members now get plainer guidance on recording for themselves, sharing evidence, answering pulses and joining challenges.",
+          },
+          {
+            icon: <Share2 className="w-5 h-5" />,
+            title: "More reliable public sharing",
+            desc: "Public profiles and organisation share pages now load as complete pages, making shared links faster and more dependable.",
+          },
+          {
+            icon: <Lock className="w-5 h-5" />,
+            title: "Simpler, safer sign-in",
+            desc: "Personal accounts can now use Google sign-in securely while organisation sign-in rules remain protected.",
+          },
+          {
+            icon: <Contrast className="w-5 h-5" />,
+            title: "Stronger mobile accessibility",
+            desc: "Public pages now pass stricter mobile accessibility checks, with clearer labels, focus states and navigation throughout.",
+          },
+        ],
+      },
+    ],
+  },
   {
     id: "july-2026",
     date: "July 2026",
