@@ -338,7 +338,7 @@ function MemberSubmissionsPanel() {
           <BadgeCheck className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm font-medium text-foreground">No member submissions yet</p>
           <p className="text-xs text-muted-foreground">
-            Your members can submit activities to your organisation from their organisation page.
+            Members can share saved personal records or create new organisation submissions from their organisation page.
           </p>
         </div>
       ) : (

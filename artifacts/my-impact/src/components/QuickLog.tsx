@@ -176,7 +176,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
       });
       toast({
         title: `Logged "${template.label}"`,
-        description: `Added one entry for ${when} — ${result.record.totalHours} ${result.record.totalHours === 1 ? "hour" : "hours"} of actual impact.`,
+        description: `Added one entry for ${when} to your current impact record — ${result.record.totalHours} ${result.record.totalHours === 1 ? "hour" : "hours"} of actual impact.`,
       });
     } catch (err) {
       const apiErr = err as { status?: number; data?: { error?: string } };
@@ -215,7 +215,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
         <div className="flex items-center gap-2">
           <Repeat className="w-3.5 h-3.5" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
-            {onlyDue ? "Quick log: due now" : "Your regular activities"}
+            {onlyDue ? "Quick Log shortcut due" : "Your saved Quick Log shortcuts"}
           </p>
         </div>
         {showManageLink && (
@@ -292,7 +292,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                     <div className="px-4 py-3">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm text-foreground font-medium">
-                          Did you do your {template.label.toLowerCase()} {cadencePeriodWord(template.cadence)}?
+                          Use your {template.label.toLowerCase()} shortcut for {cadencePeriodWord(template.cadence)}?
                         </p>
                         <button
                           onClick={closePrompt}
@@ -397,7 +397,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                       )}
 
                       <p className="text-[10px] text-muted-foreground mt-2">
-                        Logging adds one entry dated to the occurrence. Skipping logs nothing.
+                        Logging adds one entry to your current impact record. Skipping logs nothing.
                       </p>
                     </div>
                   </motion.div>

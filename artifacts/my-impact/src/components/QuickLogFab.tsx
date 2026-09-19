@@ -30,11 +30,11 @@ export function QuickLogFab() {
       href={href}
       className="lg:hidden fixed bottom-20 right-5 z-40 inline-flex items-center gap-2 pl-4 pr-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg transition-transform active:scale-95"
       style={{ background: "var(--brand-orange-bright)", boxShadow: "0 6px 20px color-mix(in srgb, var(--brand-orange-bright) 45%, transparent)" }}
-      aria-label="Log activity"
+      aria-label="Open Quick Log"
       data-testid="fab-log-activity"
     >
       <PlusCircle className="w-5 h-5" aria-hidden="true" />
-      Log activity
+      Quick Log
     </Link>
   );
 }

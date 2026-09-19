@@ -49,11 +49,11 @@ export function RecurringTemplateDialog({
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--brand-orange-bright) 9%, transparent)" }}>
             <Repeat className="w-4 h-4" style={{ color: "var(--brand-orange-bright)" }} aria-hidden="true" />
           </div>
-          <h2 className="text-base font-semibold text-foreground">Make this a regular activity?</h2>
+          <h2 className="text-base font-semibold text-foreground">Save as a Quick Log shortcut?</h2>
         </div>
         <p className="text-xs text-muted-foreground mb-5">
-          We'll remind you on your home and history pages each time it's due — you confirm (or skip)
-          each occurrence, and only confirmed occurrences count toward your impact.
+          We'll remind you on your home and history pages when it's due — you confirm (or skip)
+          to use the shortcut, and only confirmed ones are added to your current impact record.
         </p>
 
         <label className="block text-xs font-medium text-foreground mb-1.5">Label</label>
@@ -156,7 +156,7 @@ export function RecurringTemplateDialog({
             style={{ background: "var(--brand-orange-bright)" }}
             data-testid="recurring-template-save-button"
           >
-            {isSaving ? "Saving…" : "Make it regular"}
+            {isSaving ? "Saving…" : "Save shortcut"}
           </button>
         </div>
       </motion.div>

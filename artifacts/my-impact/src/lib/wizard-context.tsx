@@ -98,7 +98,7 @@ interface WizardState {
   editRecordId: string | null;
   editPeriod: string | null;
   // Optional loose activity location (town / postcode area / online /
-  // multiple) attached to the whole report. Never mandatory and never
+  // multiple) attached to the impact record. Never mandatory and never
   // inferred from the user's home postcode.
   activityLocation: ActivityLocationValue | null;
 }

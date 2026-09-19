@@ -543,7 +543,7 @@ function PlaceCard({
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
                   data-testid={`place-log-${place.name}`}
                 >
-                  <PlusCircle className="w-3 h-3" /> Log activity with this charity
+                  <PlusCircle className="w-3 h-3" /> Record an activity with this charity
                 </button>
               </div>
 

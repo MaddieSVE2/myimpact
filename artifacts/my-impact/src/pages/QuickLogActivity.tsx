@@ -638,12 +638,12 @@ export default function QuickLogActivity() {
             <PartyPopper className="w-6 h-6 text-white" aria-hidden="true" />
           </div>
           <h1 className="text-xl font-display font-bold text-foreground mb-1">
-            {savedYear != null ? `Added to My Impact ${savedYear}` : "Activity saved"}
+            Added to your current impact record
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
             {savedYear != null
-              ? `Your entry for ${formatDisplayDate(entryDate)} has been added to your impact record: My Impact ${savedYear}${sharedOrgName ? `, and shared with ${sharedOrgName}` : ""}. Great job!`
-              : `Your entry has been saved to your history${sharedOrgName ? ` and shared with ${sharedOrgName}` : ""}.`}
+              ? `Your Quick Log entry for ${formatDisplayDate(entryDate)} has been added to your current impact record: My Impact ${savedYear}${sharedOrgName ? `, and shared with ${sharedOrgName}` : ""}. Great job!`
+              : `Your Quick Log entry has been added to your current impact record${sharedOrgName ? ` and shared with ${sharedOrgName}` : ""}.`}
           </p>
           {shareFailed && savedRecordId != null && (
             <div
@@ -709,10 +709,10 @@ export default function QuickLogActivity() {
       </button>
 
       <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">
-        Log an activity
+        Quick Log
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Just did something? Record what you did, how much, when and where.
+        Just did something? Quick Log what you did, how much, when and where.
       </p>
 
       {challenge && (
@@ -944,7 +944,7 @@ export default function QuickLogActivity() {
               <p className="text-sm font-semibold text-foreground">This activity may already have been logged</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {duplicate.kind === "habit_entry_conflict"
-                  ? "One of your regular activities already covers this — it looks like the same occurrence."
+                  ? "One of your saved Quick Log shortcuts already covers this — it looks like the same occurrence."
                   : `You already have an entry with this activity on ${formatDisplayDate(entryDate)}.`}
               </p>
               <div className="flex items-center gap-2 mt-3 flex-wrap">

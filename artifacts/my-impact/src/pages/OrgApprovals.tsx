@@ -57,7 +57,7 @@ export default function OrgApprovals() {
     <div className="max-w-6xl mx-auto px-4 py-8" data-testid="org-approvals-page">
       <div className="mb-6">
         <h1 className="text-2xl font-display font-semibold text-foreground inline-flex items-center gap-2">
-          <ClipboardCheck className="w-6 h-6 text-primary" /> Approvals
+          <ClipboardCheck className="w-6 h-6 text-primary" /> Organisation approvals
         </h1>
         <p className="text-sm text-muted-foreground">{orgData.org.name}</p>
       </div>

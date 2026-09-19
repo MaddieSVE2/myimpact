@@ -1077,7 +1077,7 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
       <div className="bg-white border border-border rounded-xl p-5 space-y-3">
         <h3 className="text-sm font-semibold">Activity approval mode</h3>
         <p className="text-[13px] text-muted-foreground">
-          Choose what happens when members log or submit activities to your organisation. Changing this only affects new submissions — activities already approved stay approved.
+          Choose what happens when members share a saved personal record or create a new organisation submission. Changing this only affects new submissions — activities already approved stay approved.
         </p>
         <div className="space-y-2" role="radiogroup" aria-label="Activity approval mode">
           {APPROVAL_MODE_OPTIONS.map(opt => {
@@ -1109,7 +1109,7 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
       <div className="bg-white border border-border rounded-xl p-5 space-y-3">
         <h3 className="text-sm font-semibold">Evidence policy</h3>
         <p className="text-[13px] text-muted-foreground">
-          Decide whether members need to attach evidence (like a photo) when they submit activities. This never affects activities that were already submitted.
+          Decide whether members need to attach evidence, such as a photo, when they send an organisation submission. This never affects activities that were already submitted.
         </p>
         <div className="space-y-2" role="radiogroup" aria-label="Evidence policy">
           {EVIDENCE_POLICY_OPTIONS.map(opt => {

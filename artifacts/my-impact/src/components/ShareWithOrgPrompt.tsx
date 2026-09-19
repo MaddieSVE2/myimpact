@@ -90,12 +90,9 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
           <Eye className="w-4 h-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-foreground">
-            This activity will be visible to <span className="font-semibold">{org.name}</span>.
-          </p>
+          <p className="text-sm font-semibold text-foreground">Automatically shared</p>
           <p className="text-xs text-muted-foreground">
-            You share your logged activity with your organisation automatically. Manage this in the{" "}
-            <Link href="/org" className="text-primary hover:underline">Org Portal</Link>.
+            This activity is in your personal history and has been automatically shared with <span className="font-semibold">{org.name}</span>. No separate approval is needed.
           </p>
         </div>
         <button
@@ -126,10 +123,9 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
         <Building2 className="w-4 h-4 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">Share this with {org.name}?</p>
+        <p className="text-sm font-semibold text-foreground">Review this saved record for {org.name}?</p>
         <p className="text-xs text-muted-foreground">
-          Review what you just logged and choose what to share — no re-typing.
-          Your personal record keeps everything either way.
+          This activity is already in your personal history. Choose what to send without entering it again. Your personal record stays unchanged.
         </p>
       </div>
       <div className="flex items-center gap-2 ml-auto">
@@ -139,7 +135,7 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
           className="text-xs font-medium text-muted-foreground hover:text-foreground"
           data-testid="share-with-org-not-now"
         >
-          Not now
+          Keep personal only
         </button>
         <Link
           href={`/org/share-report/${savedRecordId}`}

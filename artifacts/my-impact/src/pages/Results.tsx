@@ -1158,8 +1158,8 @@ export default function Results() {
       if (editRecordId) setEditRecordId(null);
       toast(
         wasEdit
-          ? { title: "Entry updated!", description: "Your changes have been saved and the value recalculated." }
-          : { title: `Saved as ${period || reportPeriod.label}`, description: "Your impact report has been added to your history." }
+          ? { title: "Activity updated", description: "Impact record updated." }
+          : { title: `Added to ${period || reportPeriod.label}`, description: "Your impact record now includes this activity." }
       );
 
       // If the user came from an org-challenge "Contribute" prompt, refresh
@@ -1668,10 +1668,10 @@ export default function Results() {
           >
             {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
             {saveMutation.isPending
-              ? (editRecordId ? "Updating…" : "Saving…")
+              ? "Saving…"
               : saved
-                ? (savedWasEdit ? "Updated!" : "Saved!")
-                : (editRecordId ? "Update entry" : "Save progress")}
+                ? "Saved"
+                : (editRecordId ? "Save changes" : "Save")}
           </button>
 
           {/* Divider */}
@@ -1767,12 +1767,11 @@ export default function Results() {
             onClick={e => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-foreground mb-1">
-              {conflictInfo.period} is already covered
+              Potential already-logged activity
             </h2>
             <p className="text-xs text-muted-foreground mb-5">
-              One of your recurring habits already created an entry for this
-              month with overlapping activities. To avoid double-counting,
-              choose what to do with this new entry.
+              One of your recurring habits already created an activity for this
+              date. To avoid double-counting, choose what to do.
             </p>
             <div className="flex flex-col gap-2.5">
               <button
@@ -1786,7 +1785,7 @@ export default function Results() {
                 style={{ background: "#213547" }}
                 data-testid="conflict-replace"
               >
-                {saveMutation.isPending ? "Updating…" : "Update the existing entry"}
+                {saveMutation.isPending ? "Updating…" : "Update the existing activity"}
               </button>
               <button
                 onClick={() => {
@@ -1797,7 +1796,7 @@ export default function Results() {
                 className="w-full px-4 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition-colors"
                 data-testid="conflict-open-history"
               >
-                Open in history to edit
+                Review and update
               </button>
               <button
                 onClick={async () => {
@@ -1809,7 +1808,7 @@ export default function Results() {
                 className="w-full px-4 py-3 min-h-[44px] rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 transition-colors disabled:opacity-60"
                 data-testid="conflict-force"
               >
-                Log this as an additional entry anyway
+                Add as a separate activity
               </button>
               <button
                 onClick={() => setConflictInfo(null)}

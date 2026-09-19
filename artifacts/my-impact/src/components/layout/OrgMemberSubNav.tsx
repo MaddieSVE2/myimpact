@@ -8,7 +8,7 @@ const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const ORG_SUBNAV_BG = "#1a3a4a";
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string; role?: string } | null }>({
+  return useQuery<{ org: { id: string; name: string; type: string; role?: string; dataSharingMode?: string } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -37,7 +37,9 @@ export function OrgMemberSubNav() {
   const items = [
     { href: "/org/member/pulse", label: "Pulse", icon: ClipboardList, testId: "member-subnav-pulse", active: pulseActive },
     { href: "/org/member/challenges", label: "Challenges", icon: Trophy, testId: "member-subnav-challenges", active: location === "/org/member/challenges" || location.startsWith("/org/member/challenges/") },
-    { href: "/org/submit/history", label: "My submissions", icon: History, testId: "member-subnav-submissions", active: location === "/org/submit/history" || location.startsWith("/org/submit/history/") },
+    ...(orgData?.org?.dataSharingMode === "explicit_submission"
+      ? [{ href: "/org/submit/history", label: "Organisation submissions", icon: History, testId: "member-subnav-submissions", active: location === "/org/submit/history" || location.startsWith("/org/submit/history/") }]
+      : []),
   ];
 
   return (

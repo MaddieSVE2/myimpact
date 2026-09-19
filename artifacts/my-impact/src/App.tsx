@@ -412,11 +412,10 @@ function AppRouter() {
               <Route path="/org/submit/history">
                 {() => <PrivateRoute component={OrgMemberSubmitHistory} />}
               </Route>
-              {/* The manual submit flow is retired: sharing now happens as part
-                  of logging (Quick Log / Results share prompt). Old links land
-                  on Quick Log. */}
+              {/* The manual submit flow is retired. Old links open History so
+                  members can review and share an activity they already recorded. */}
               <Route path="/org/submit">
-                {() => <Redirect to="/quick-log" />}
+                {() => <Redirect to="/history" />}
               </Route>
               <Route path="/org/share-report/:recordId">
                 {() => <PrivateRoute component={OrgShareReport} />}

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { cn } from "@/lib/utils";
 import {
-  Sparkles, History, Lightbulb, BookOpen, Award,
+  Sparkles, History, Lightbulb, BookOpen, Award, PlusCircle,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
   MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
   Users as UsersIcon, Flag, ClipboardList, ClipboardCheck, Download,
@@ -266,6 +266,7 @@ export function Navbar() {
         { href: "/org/settings",   label: "Settings",   icon: Settings },
       ]
     : [
+        { href: "/log", label: t("navbar.quickLog"), icon: PlusCircle },
         { href: "/results", label: t("navbar.myImpact"), icon: Sparkles },
         { href: "/history", label: t("navbar.history"), icon: History },
         ...(gamificationEnabled

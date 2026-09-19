@@ -1341,12 +1341,12 @@ export default function History() {
                                 if (!vt) return null;
                                 return (
                                   <span
-                                    title={`Automatically visible to ${vt.orgName} because you've consented to share your activity`}
+                                    title={`Automatically shared with ${vt.orgName} because you've consented to share your activity`}
                                     className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200"
                                     data-testid={`badge-visible-to-${record.id}`}
                                   >
                                     <Building2 className="w-3 h-3" aria-hidden="true" />
-                                    Visible to {vt.orgName}
+                                    Automatically shared with {vt.orgName}
                                   </span>
                                 );
                               })()}
@@ -1385,11 +1385,11 @@ export default function History() {
                                     href={`/org/share-report/${record.id}`}
                                     onClick={(e) => e.stopPropagation()}
                                     className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
-                                    title="Share the activities in this report with your organisation — nothing is re-entered"
+                                    title="Send selected activities to your organisation — your personal record stays unchanged"
                                     data-testid={`link-share-report-${record.id}`}
                                   >
                                     <Building2 className="w-3 h-3" aria-hidden="true" />
-                                    Review &amp; share
+                                    Review &amp; share saved record
                                   </Link>
                                 );
                               })()}

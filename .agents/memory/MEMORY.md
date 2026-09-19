@@ -38,3 +38,4 @@
 - [SVE audience claims](sve-audience-claims.md) — SVE serves broad sectors and is accredited by Social Value International; avoid narrow audiences or UK-exclusivity wording.
 - [Decorative Recharts pie charts](recharts-decorative-pie.md) — aria-hidden alone fails when Pie keeps its focusable root; disable chart accessibility and set Pie rootTabIndex=-1.
 - [Git pane stale subrepl refs](git-pane-subrefs.md) — hundreds of stale subrepl remotes/branches can trigger Replit’s generic Unknown Git Error despite healthy fetch and push.
+- [Unified recording language](recording-language.md) — Quick Log records activity; shortcuts speed it up; organisation sharing reuses saved records and stays distinct from approval.

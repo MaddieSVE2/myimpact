@@ -88,14 +88,14 @@ function VerificationBadge({ status, recordId }: { status?: "pending" | "approve
   if (status === "approved") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200" data-testid={`submission-status-${recordId}`}>
-        <ShieldCheck className="w-3 h-3" /> Verified
+        <ShieldCheck className="w-3 h-3" /> Approved
       </span>
     );
   }
   if (status === "rejected") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" data-testid={`submission-status-${recordId}`}>
-        Not approved
+        Declined
       </span>
     );
   }
@@ -479,7 +479,7 @@ export default function OrgMemberSubmit() {
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-base font-semibold mb-2">Please log in to submit activities to your organisation.</p>
+        <p className="text-base font-semibold mb-2">Please log in to create an organisation submission.</p>
         <Link href="/login" className="text-primary underline">Log in</Link>
       </div>
     );
@@ -489,7 +489,7 @@ export default function OrgMemberSubmit() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-base font-semibold mb-2">You're not connected to an organisation yet.</p>
-        <p className="text-sm text-muted-foreground mb-4">Join your organisation first to submit activities to it.</p>
+        <p className="text-sm text-muted-foreground mb-4">Join your organisation first to create or share an organisation submission.</p>
         <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
       </div>
     );
@@ -506,10 +506,32 @@ export default function OrgMemberSubmit() {
           <Building2 className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground">Submit activities to {orgName}</h1>
+          <h1 className="text-2xl font-display font-semibold text-foreground">Create a new organisation submission</h1>
           <p className="text-sm text-muted-foreground">
-            Choose the activities you've completed for {orgName}. They'll be added straight to your organisation's totals.
+            Only use this for activities you haven't recorded yet. To avoid duplicate entry, if the activity is already in your personal history, use "Review & share a saved record" instead.
           </p>
+        </div>
+      </div>
+
+      <div className="mb-6 mt-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">What would you like to do?</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/log" className="block p-4 border border-border rounded-xl hover:border-primary/50 transition-colors bg-white">
+            <p className="text-sm font-semibold text-foreground mb-1">Record for yourself</p>
+            <p className="text-xs text-muted-foreground">Record an activity in your personal history first.</p>
+          </Link>
+          <Link href="/history" className="block p-4 border border-border rounded-xl hover:border-primary/50 transition-colors bg-white">
+            <p className="text-sm font-semibold text-foreground mb-1">Review & share a saved record</p>
+            <p className="text-xs text-muted-foreground">Send activities you've already recorded to {orgName}.</p>
+          </Link>
+          <div className="block p-4 border-2 border-primary rounded-xl bg-primary/5 relative">
+            <div className="absolute top-2 right-2 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </div>
+            <p className="text-sm font-semibold text-primary mb-1">Create a new organisation submission</p>
+            <p className="text-xs text-primary/80">Submit directly to {orgName} (only for new activities).</p>
+          </div>
         </div>
       </div>
 
@@ -522,11 +544,11 @@ export default function OrgMemberSubmit() {
       </div>
 
       <div className="flex items-center gap-2 mb-6 text-xs text-muted-foreground" data-testid="member-submit-stepper">
-        <span className={step === "select" ? "font-semibold text-foreground" : ""}>1. Pick activities</span>
+        <span className={step === "select" ? "font-semibold text-foreground" : ""}>1. Choose activities</span>
         <ArrowRight className="w-3 h-3" />
-        <span className={step === "details" ? "font-semibold text-foreground" : ""}>2. Add details</span>
+        <span className={step === "details" ? "font-semibold text-foreground" : ""}>2. Add submission details</span>
         <ArrowRight className="w-3 h-3" />
-        <span className={step === "review" || step === "done" ? "font-semibold text-foreground" : ""}>3. Review &amp; submit</span>
+        <span className={step === "review" || step === "done" ? "font-semibold text-foreground" : ""}>3. Review &amp; send</span>
       </div>
 
       {step === "select" && mySubs && mySubs.length > 0 && (
@@ -1069,7 +1091,7 @@ export default function OrgMemberSubmit() {
             </div>
           )}
 
-          {/* Save to personal checkbox */}
+          {/* Add to personal checkbox */}
           <div className="bg-white border border-border rounded-xl p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -1079,7 +1101,7 @@ export default function OrgMemberSubmit() {
                 className="mt-0.5 w-4 h-4 rounded border-border text-primary cursor-pointer"
                 data-testid="member-submit-save-to-personal"
               />
-              <span className="text-sm text-foreground">Also save this to my personal impact report</span>
+              <span className="text-sm text-foreground">Record for yourself as well</span>
             </label>
           </div>
 
@@ -1216,7 +1238,7 @@ export default function OrgMemberSubmit() {
               {saveToPersonal && (
                 <p className="mt-3 text-[11px] text-muted-foreground flex items-center gap-1.5">
                   <Check className="w-3 h-3 text-green-600 shrink-0" />
-                  This will also be saved to your personal impact report.
+                  A separate copy will be saved to your personal history.
                 </p>
               )}
             </div>
@@ -1473,19 +1495,19 @@ export default function OrgMemberSubmit() {
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${submittedStatus === "pending" ? "bg-amber-100" : "bg-green-100"}`}>
                 {submittedStatus === "pending" ? <Clock className="w-6 h-6 text-amber-600" /> : <Check className="w-6 h-6 text-green-600" />}
               </div>
-              <h2 className="text-lg font-display font-semibold text-foreground mb-1">Sent to {orgName}</h2>
+              <h2 className="text-lg font-display font-semibold text-foreground mb-1">New organisation submission sent</h2>
               {submittedStatus === "pending" ? (
                 <p className="text-sm text-muted-foreground mb-1" data-testid="member-submit-status-pending">
-                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are awaiting your manager's approval. They'll count toward {orgName}'s verified totals once approved.
+                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} are awaiting organisation approval.
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground mb-1" data-testid="member-submit-status-verified">
-                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} were automatically verified and are now part of your organisation's totals.
+                  Your {orderedSelected.length} activit{orderedSelected.length === 1 ? "y" : "ies"} ({formatGBP(totals.value)} est. value) {createdRecordId ? `(record #${createdRecordId})` : ""} were automatically approved.
                 </p>
               )}
               <p className="text-xs text-muted-foreground mb-4">
                 {submittedStatus === "pending"
-                  ? "Your organisation manager will review them in their pending approvals queue."
+                  ? "They're now in the pending approvals queue."
                   : "Your organisation manager can see them flagged as member-submitted."}{" "}
                 <Link
                   href="/org/submit/history"
@@ -1499,7 +1521,7 @@ export default function OrgMemberSubmit() {
                 <div className="flex items-center justify-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4" data-testid="member-submit-personal-confirmation">
                   <Check className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    Also saved to your personal impact report.{" "}
+                    A separate copy has been saved to your personal history.{" "}
                     <a
                       href="/history"
                       className="underline font-medium hover:text-green-800"

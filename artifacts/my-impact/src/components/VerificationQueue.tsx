@@ -218,7 +218,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <BadgeCheck className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Pending verification</h3>
+            <h3 className="text-sm font-semibold text-foreground">Organisation approvals</h3>
             {pending.length > 0 && (
               <span
                 className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold tabular-nums"
@@ -229,7 +229,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Review and confirm hours logged by {orgName} members. Approved hours appear with a chip on members&apos; profiles and feed into funder reports.
+            Review and confirm submissions by {orgName} members. Approved submissions appear with a chip on members&apos; profiles and feed into funder reports.
           </p>
         </div>
         {selected.size > 0 && (
@@ -240,7 +240,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {bulkApproveMutation.isPending ? "Approving…" : `Approve ${selected.size} selected`}
+            {bulkApproveMutation.isPending ? "Approving…" : `Approve ${selected.size} selected submissions`}
           </button>
         )}
       </div>
@@ -312,7 +312,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors disabled:opacity-60"
                     data-testid={`approve-record-${p.recordId}`}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve submission
                   </button>
                   <button
                     type="button"
@@ -321,7 +321,7 @@ export function VerificationQueue({ orgName }: { orgName: string }) {
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition-colors disabled:opacity-60"
                     data-testid={`reject-record-${p.recordId}`}
                   >
-                    <XCircle className="w-3.5 h-3.5" /> Reject
+                    <XCircle className="w-3.5 h-3.5" /> Decline submission
                   </button>
                 </div>
               );

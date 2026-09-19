@@ -35,14 +35,14 @@ function StatusBadge({ status, recordId }: { status?: "pending" | "approved" | "
   if (status === "approved") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200" data-testid={`history-status-${recordId}`}>
-        <ShieldCheck className="w-3 h-3" /> Verified
+        <ShieldCheck className="w-3 h-3" /> Approved
       </span>
     );
   }
   if (status === "rejected") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" data-testid={`history-status-${recordId}`}>
-        Not approved
+        Declined
       </span>
     );
   }
@@ -107,7 +107,7 @@ export default function OrgMemberSubmitHistory() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-base font-semibold mb-2">You're not connected to an organisation yet.</p>
-        <p className="text-sm text-muted-foreground mb-4">Join your organisation first to submit activities to it.</p>
+        <p className="text-sm text-muted-foreground mb-4">Join your organisation first to create or share an organisation submission.</p>
         <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
       </div>
     );
@@ -132,9 +132,9 @@ export default function OrgMemberSubmitHistory() {
           <History className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground">My submissions to {orgName}</h1>
+          <h1 className="text-2xl font-display font-semibold text-foreground">Organisation submissions</h1>
           <p className="text-sm text-muted-foreground">
-            Everything you've sent to {orgName} through the submission flow, and how it counted toward their totals.
+            Everything you've sent to {orgName}, and its organisation approval status.
           </p>
         </div>
       </div>
@@ -156,15 +156,20 @@ export default function OrgMemberSubmitHistory() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-border rounded-xl p-10 text-center" data-testid="submit-history-empty">
           <p className="text-sm font-semibold text-foreground mb-1">Nothing submitted yet</p>
           <p className="text-sm text-muted-foreground mb-5">
-            When you submit activities to {orgName}, they'll show up here so you always have a record.
+            New submissions and saved personal records you send to {orgName} will appear here with their approval status.
           </p>
           <Link
-            href="/quick-log"
+            href="/log"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
             data-testid="submit-history-empty-cta"
           >
-            <Plus className="w-4 h-4" /> Log an activity
+            <Plus className="w-4 h-4" /> Record for yourself
           </Link>
+          <div className="mt-3">
+            <Link href="/history" className="text-sm font-semibold text-primary hover:underline">
+              Review &amp; share a saved record
+            </Link>
+          </div>
         </motion.div>
       )}
 
@@ -201,6 +206,15 @@ export default function OrgMemberSubmitHistory() {
                   <tr key={s.recordId} data-testid={`submit-history-row-${s.recordId}`}>
                     <td className="py-2.5 px-4">
                       <p className="font-medium text-foreground">{s.period || s.name}</p>
+                      {s.sourceReportId ? (
+                        <span className="inline-block my-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-medium">
+                          From saved personal record
+                        </span>
+                      ) : (
+                        <span className="inline-block my-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-medium">
+                          New organisation submission
+                        </span>
+                      )}
                       {s.reportPeriod && (
                         <p className="text-[11px] text-muted-foreground" data-testid={`submit-history-period-${s.recordId}`}>
                           Reporting period {formatDate(s.reportPeriod.start)} – {formatDate(s.reportPeriod.end)}

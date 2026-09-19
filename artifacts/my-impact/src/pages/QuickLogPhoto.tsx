@@ -461,9 +461,9 @@ export default function QuickLogPhoto() {
     <div className="max-w-lg mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-display font-bold text-foreground">Quick log + photo</h1>
+          <h1 className="text-xl font-display font-bold text-foreground">Quick Log with photo</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Snap a photo, then choose a regular activity or describe what you did.
+            Snap a photo, then choose a saved shortcut or describe what you did.
           </p>
         </div>
         <Link
@@ -568,11 +568,11 @@ export default function QuickLogPhoto() {
                   <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary text-white flex items-center justify-center">
                     <Check className="w-5 h-5" aria-hidden="true" />
                   </div>
-                  <p className="text-base font-semibold text-foreground">Activity saved with your photo</p>
+                  <p className="text-base font-semibold text-foreground">Quick Log with photo saved</p>
                   <p className="text-xs text-muted-foreground mt-1 mb-4">
                     {savedDescription
-                      ? "It is now in your history. Would you like a shortcut for this description next time?"
-                      : "Your regular activity and photo are now in your history."}
+                      ? "It has been added to your current impact record. Would you like a shortcut for this description next time?"
+                      : "Your shortcut and photo have been added to your current impact record."}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     {savedDescription && (
@@ -676,7 +676,7 @@ export default function QuickLogPhoto() {
               ) : (
                 <>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Tap an activity to save with this photo
+                  Tap a shortcut to save with this photo
                 </p>
                 <ul className="grid gap-2">
                   {templates.map((t) => (

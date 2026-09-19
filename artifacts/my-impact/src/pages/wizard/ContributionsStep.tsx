@@ -83,8 +83,8 @@ export default function ContributionsStep() {
       queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
       setShowRecurring(false);
       toast({
-        title: "Saved as a regular activity",
-        description: "You'll see a quick-log card on your home and history pages when it's due.",
+        title: "Shortcut saved",
+        description: "You'll see a Quick Log shortcut on your home and history pages when it's due.",
       });
       setLocation("/");
     } catch {
@@ -220,7 +220,7 @@ export default function ContributionsStep() {
           data-testid="wizard-ongoing-link"
         >
           <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
-          Do this regularly? Set it up as a recurring activity instead
+          Do this regularly? Save as a Quick Log shortcut
         </button>
 
       </motion.div>

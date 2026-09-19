@@ -314,10 +314,10 @@ export default function ActionsStep() {
         transition={{ duration: 0.4 }}
       >
         <label className="block text-sm font-medium text-foreground mb-1">
-          What period will this report cover?
+          Which impact record should this activity contribute to?
         </label>
         <p className="text-xs text-muted-foreground mb-3">
-          Your whole report counts toward this period. You won't be asked again — you can rename the saved report later.
+          Activities automatically contribute to the selected impact record. Choose a calendar or academic year.
         </p>
         <ReportPeriodPicker value={reportPeriod} onChange={setReportPeriod} />
       </motion.div>

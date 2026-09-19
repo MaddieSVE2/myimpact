@@ -277,13 +277,16 @@ export default function OrgShareReport() {
         </div>
         <h1 className="text-xl font-display font-semibold text-foreground mb-2">Shared with {org.name}</h1>
         <p className="text-sm text-muted-foreground mb-1">
-          {selectedLines.length} {selectedLines.length === 1 ? "activity" : "activities"} from your report
-          {periodStart && periodEnd ? ` (${formatDate(periodStart)} – ${formatDate(periodEnd)})` : ""} were shared.
+          {selectedLines.length} {selectedLines.length === 1 ? "activity" : "activities"} from your saved record
+          {periodStart && periodEnd ? ` (${formatDate(periodStart)} – ${formatDate(periodEnd)})` : ""} were sent to {org.name}.
+        </p>
+        <p className="text-sm text-muted-foreground mb-1">
+          Your personal record remains unchanged.
         </p>
         <p className="text-sm text-muted-foreground mb-6" data-testid="share-report-done-status">
           {done.status === "pending"
-            ? `They're awaiting review by a manager at ${org.name}.`
-            : `${org.name} accepts member submissions automatically, so they already count towards its totals.`}
+            ? `They are awaiting organisation approval.`
+            : `They have been automatically approved.`}
         </p>
         <div className="flex items-center justify-center gap-4 text-sm">
           <Link href="/org/submit/history" className="text-primary underline" data-testid="share-report-view-submissions">View my submissions</Link>
@@ -309,11 +312,9 @@ export default function OrgShareReport() {
           <Building2 className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground">Review &amp; share with {org.name}</h1>
+          <h1 className="text-2xl font-display font-semibold text-foreground">Review &amp; share saved record</h1>
           <p className="text-sm text-muted-foreground">
-            {report!.kind === "quick_log"
-              ? "These activities come straight from what you logged — nothing to re-enter. Untick anything you don't want to share."
-              : "These activities come straight from your report — nothing to re-enter. Untick anything you don't want to share."}
+            Send activities to {org.name}. Nothing is re-entered or removed, and your personal record remains unchanged. Untick anything you don't want to send.
           </p>
         </div>
       </div>
