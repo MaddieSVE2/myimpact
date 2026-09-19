@@ -304,6 +304,69 @@ export default function Organisations() {
         </div>
       </section>
 
+      {/* ── DATA SHARING APPROACHES ── */}
+      <section style={{ padding: "clamp(60px, 9vw, 88px) 5%", background: "white" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 40px" }}>
+              <p className="mi-section-label" style={{ color: C.orange }}>Privacy and control</p>
+              <h2 style={{
+                fontSize: "clamp(28px, 4vw, 42px)",
+                color: C.dark,
+                fontWeight: 700,
+                letterSpacing: -1,
+                lineHeight: 1.15,
+                fontFamily: "'Outfit', sans-serif",
+                marginBottom: 16,
+              }}>
+                Choose how members share their activities.
+              </h2>
+              <p style={{ fontSize: 17, color: "var(--brand-muted-text)", lineHeight: 1.6 }}>
+                My Impact supports two clear data-sharing approaches. Each keeps personal journals and reflections private.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
+            <FadeIn>
+              <article style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, padding: 32, height: "100%" }}>
+                <Shield size={28} color={C.orange} style={{ marginBottom: 18 }} />
+                <h3 style={{ fontSize: 21, fontWeight: 700, color: C.dark, marginBottom: 10, fontFamily: "'Outfit', sans-serif" }}>
+                  Explicit submission
+                </h3>
+                <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.6, marginBottom: 20 }}>
+                  Members decide which individual activities to submit and can review the details before their organisation receives them.
+                </p>
+                <Link
+                  href="/org/types/explicit-submission"
+                  style={{ color: "var(--brand-orange-text)", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  Learn about explicit submission <ArrowRight size={16} />
+                </Link>
+              </article>
+            </FadeIn>
+
+            <FadeIn delay={0.1}>
+              <article style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, padding: 32, height: "100%" }}>
+                <Shield size={28} color={C.lightBlue} style={{ marginBottom: 18 }} />
+                <h3 style={{ fontSize: 21, fontWeight: 700, color: C.dark, marginBottom: 10, fontFamily: "'Outfit', sans-serif" }}>
+                  Consented logging
+                </h3>
+                <p style={{ fontSize: 15, color: "var(--brand-muted-text)", lineHeight: 1.6, marginBottom: 20 }}>
+                  Activities are shared automatically only after a member gives explicit, recorded consent, which they can withdraw at any time.
+                </p>
+                <Link
+                  href="/org/types/consented-logging"
+                  style={{ color: "var(--brand-orange-text)", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  Learn about consented logging <ArrowRight size={16} />
+                </Link>
+              </article>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
       {/* ── OFFER LEVELS ── */}
       <section id="how-we-work-together" style={{ background: C.dark, padding: "clamp(80px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>

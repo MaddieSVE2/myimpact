@@ -9,8 +9,8 @@ export default function OrgTypeExplicitSubmission() {
       <PageMeta
         {...ORG_TYPE_EXPLICIT_SUBMISSION_META}
       />
-      <Link href="/org" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-6">
-        <ArrowLeft className="w-4 h-4" /> Back to organisation portal
+      <Link href="/organisations" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-6">
+        <ArrowLeft className="w-4 h-4" /> Back to My Impact for organisations
       </Link>
 
       <div className="flex items-center gap-3 mb-2">
