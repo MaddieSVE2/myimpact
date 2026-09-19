@@ -90,6 +90,10 @@ The window selector at the top of the section is `7d / 30d / 90d`.
 3. Fire it:
    - From the browser: `track(ANALYTICS_EVENTS.MY_NEW_EVENT, { ... })`
    - From the server: `await trackServerEvent({ eventName: "my_new_event", userId, surface, props })`
+
+Authentication events:
+- `signup_complete` — first registration completed; `props.method` is `magic_link` or `google`.
+- `login_complete` — a session was established; `props.method` is `magic_link` or `google`.
 4. Choose props carefully — short scalars only, no PII.
 5. Add a row to the table in this file.
 6. (Optional) If it's part of a new funnel, extend

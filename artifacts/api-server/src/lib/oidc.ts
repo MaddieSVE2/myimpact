@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify, decodeJwt } from "jose";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHmac, timingSafeEqual } from "crypto";
 
 /**
  * Multi-tenant OIDC sign-in helpers for Google Workspace and Microsoft Entra.
@@ -80,12 +80,14 @@ export function configuredProviders(): SsoProvider[] {
 // State signing — HMAC over a JSON payload so we can detect tampering
 // ────────────────────────────────────────────────────────────────────
 
-interface StatePayload {
+export interface StatePayload {
   provider: SsoProvider;
-  orgId: string;
-  domain: string;
+  flow: "consumer" | "organisation";
+  orgId?: string | null;
+  domain?: string | null;
   tenantId?: string | null;
   returnTo?: string | null;
+  marketingOptIn?: boolean;
   nonce: string;
   issuedAt: number;
   mode: "signin" | "test";
@@ -102,7 +104,7 @@ export function signState(payload: Omit<StatePayload, "nonce" | "issuedAt">): { 
   const full: StatePayload = { ...payload, nonce, issuedAt: Date.now() };
   const json = JSON.stringify(full);
   const b64 = Buffer.from(json).toString("base64url");
-  const sig = createHash("sha256").update(b64 + getStateSecret()).digest("base64url");
+  const sig = createHmac("sha256", getStateSecret()).update(b64).digest("base64url");
   return { state: `${b64}.${sig}`, nonce };
 }
 
@@ -110,11 +112,18 @@ export function verifyState(state: string): StatePayload | null {
   const parts = state.split(".");
   if (parts.length !== 2) return null;
   const [b64, sig] = parts;
-  const expected = createHash("sha256").update(b64 + getStateSecret()).digest("base64url");
-  if (sig !== expected) return null;
+  const expected = createHmac("sha256", getStateSecret()).update(b64).digest("base64url");
+  const actualBytes = Buffer.from(sig);
+  const expectedBytes = Buffer.from(expected);
+  if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) return null;
   try {
     const json = Buffer.from(b64, "base64url").toString("utf-8");
     const payload = JSON.parse(json) as StatePayload;
+    if (
+      (payload.flow !== "consumer" && payload.flow !== "organisation") ||
+      (payload.flow === "consumer" && payload.provider !== "google") ||
+      (payload.flow === "organisation" && (!payload.orgId || !payload.domain))
+    ) return null;
     // 10-minute window
     if (Date.now() - payload.issuedAt > 10 * 60 * 1000) return null;
     return payload;
@@ -131,7 +140,7 @@ export function buildAuthorizeUrl(
   provider: SsoProvider,
   state: string,
   redirectUri: string,
-  opts: { domain: string; tenantId?: string | null },
+  opts: { domain?: string | null; tenantId?: string | null } = {},
 ): string {
   const cfg = getProviderConfig(provider);
   if (!cfg) throw new Error(`Provider not configured: ${provider}`);
@@ -145,7 +154,7 @@ export function buildAuthorizeUrl(
     prompt: "select_account",
   });
 
-  if (provider === "google") {
+  if (provider === "google" && opts.domain) {
     // hd hints (and on Google Workspace, restricts) the allowed hosted domain
     params.set("hd", opts.domain);
     return `${cfg.authorizeUrl}?${params.toString()}`;
@@ -158,7 +167,7 @@ export function buildAuthorizeUrl(
     : "common";
   const url = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`;
   // domain_hint speeds the user past the tenant picker
-  params.set("domain_hint", opts.domain);
+  if (opts.domain) params.set("domain_hint", opts.domain);
   return `${url}?${params.toString()}`;
 }
 
@@ -189,7 +198,7 @@ export async function exchangeCodeAndVerify(
   provider: SsoProvider,
   code: string,
   redirectUri: string,
-  expected: { domain: string; tenantId?: string | null },
+  expected: { domain?: string | null; tenantId?: string | null } = {},
 ): Promise<VerifiedIdentity> {
   const cfg = getProviderConfig(provider);
   if (!cfg) throw new Error(`Provider not configured: ${provider}`);
@@ -251,14 +260,14 @@ export async function exchangeCodeAndVerify(
   // Domain enforcement: the email must be on the configured domain. For
   // Google Workspace we additionally check the `hd` claim.
   const emailDomain = email.split("@")[1] ?? "";
-  if (emailDomain.toLowerCase() !== expected.domain.toLowerCase()) {
+  if (expected.domain && emailDomain.toLowerCase() !== expected.domain.toLowerCase()) {
     throw new Error(`Email domain ${emailDomain} does not match configured domain ${expected.domain}`);
   }
 
   let hostedDomain: string | null = null;
   if (provider === "google") {
     hostedDomain = typeof payload.hd === "string" ? payload.hd : null;
-    if (!hostedDomain || hostedDomain.toLowerCase() !== expected.domain.toLowerCase()) {
+    if (expected.domain && (!hostedDomain || hostedDomain.toLowerCase() !== expected.domain.toLowerCase())) {
       throw new Error(`Google hosted-domain mismatch (got ${hostedDomain ?? "none"})`);
     }
   }
@@ -304,4 +313,8 @@ export function normalizeDomain(input: string): string | null {
     return null;
   }
   return host;
+}
+
+export function isSafeReturnPath(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
 }

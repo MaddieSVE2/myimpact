@@ -41,6 +41,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [undeliverable, setUndeliverable] = useState(false);
+  const [consumerGoogleAvailable, setConsumerGoogleAvailable] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -57,6 +59,18 @@ export default function Login() {
     : null;
 
   const isOrgLogin = typeof nextParam === "string" && nextParam.startsWith("/org");
+
+  useEffect(() => {
+    fetch(`${BASE}/api/auth/sso/providers`, { credentials: "include" })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => setConsumerGoogleAvailable(data.consumerGoogle === true))
+      .catch(() => setConsumerGoogleAvailable(false));
+  }, []);
+
+  useEffect(() => {
+    const authError = params.get("authError");
+    if (authError === "google_unavailable") setError(t("login.googleUnavailable"));
+  }, [search, t]);
 
   // Look up the email's SSO config (debounced) so we can show the right
   // sign-in option(s) for an organisation that has set up enterprise SSO.
@@ -132,6 +146,15 @@ export default function Login() {
     window.location.href = `${BASE}/api/auth/sso/${provider}/start?${params.toString()}`;
   }
 
+  function handleGoogleClick() {
+    setGoogleLoading(true);
+    setError(null);
+    const googleParams = new URLSearchParams();
+    if (postLoginTo) googleParams.set("returnTo", postLoginTo);
+    if (marketingOptIn) googleParams.set("marketingOptIn", "true");
+    window.location.href = `${BASE}/api/auth/sso/consumer/google/start?${googleParams.toString()}`;
+  }
+
   const showSsoButton = ssoLookup?.available;
   const enforced = ssoLookup?.enforce; // independent of platform-availability
   const enforcedUnavailable = ssoLookup?.enforce && !ssoLookup?.available;
@@ -200,6 +223,25 @@ export default function Login() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {consumerGoogleAvailable && !enforced && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleGoogleClick}
+                      disabled={googleLoading}
+                      aria-busy={googleLoading}
+                      className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg border border-border bg-white text-sm font-semibold text-foreground hover:bg-secondary transition-colors disabled:opacity-60"
+                    >
+                      <GoogleIcon className="w-4 h-4" />
+                      {googleLoading ? t("login.openingGoogle") : t("login.continueWithGoogle")}
+                    </button>
+                    <div className="flex items-center gap-3" aria-hidden="true">
+                      <span className="h-px flex-1 bg-border" />
+                      <span className="text-xs text-muted-foreground">{t("login.orUseEmail")}</span>
+                      <span className="h-px flex-1 bg-border" />
+                    </div>
+                  </>
+                )}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
                     {t("login.emailAddress")}
@@ -223,7 +265,7 @@ export default function Login() {
                     {enforced && (
                       <p className="text-xs text-blue-900 flex items-start gap-1.5">
                         <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-                        <span><strong>{ssoLookup!.domain}</strong> requires single sign-on. Use your work account to continue.</span>
+                        <span>{t("login.ssoRequired", { domain: ssoLookup!.domain })}</span>
                       </p>
                     )}
                     <button
@@ -232,8 +274,8 @@ export default function Login() {
                       className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg border border-border bg-white text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
                     >
                       {ssoLookup!.provider === "google"
-                        ? <><GoogleIcon className="w-4 h-4" /> Continue with Google</>
-                        : <><MicrosoftIcon className="w-4 h-4" /> Continue with Microsoft</>}
+                        ? <><GoogleIcon className="w-4 h-4" /> {t("login.continueWithGoogle")}</>
+                        : <><MicrosoftIcon className="w-4 h-4" /> {t("login.continueWithMicrosoft")}</>}
                     </button>
                   </div>
                 )}
@@ -243,7 +285,7 @@ export default function Login() {
                     <p className="text-xs text-amber-900 flex items-start gap-1.5">
                       <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
                       <span>
-                        <strong>{ssoLookup!.domain}</strong> requires single sign-on, but it isn't available right now. Please contact your organisation admin.
+                        {t("login.ssoUnavailable", { domain: ssoLookup!.domain })}
                       </span>
                     </p>
                   </div>
@@ -278,18 +320,17 @@ export default function Login() {
                       data-testid="checkbox-marketing-opt-in"
                     />
                     <span>
-                      Send me occasional onboarding tips and updates from My Impact. You can
-                      unsubscribe any time.
+                      {t("login.marketingOptIn")}
                     </span>
                   </label>
                 )}
 
                 {!enforced && !isOrgLogin && (
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    By continuing you agree to our{" "}
-                    <Link href="/terms" className="underline hover:text-foreground">Terms</Link>{" "}
-                    and{" "}
-                    <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+                    {t("login.termsPrefix")}{" "}
+                    <Link href="/terms" className="underline hover:text-foreground">{t("login.terms")}</Link>{" "}
+                    {t("login.and")}{" "}
+                    <Link href="/privacy" className="underline hover:text-foreground">{t("login.privacy")}</Link>.
                   </p>
                 )}
 
@@ -306,12 +347,12 @@ export default function Login() {
 
                 {showSsoButton && !enforced && (
                   <p className="text-[11px] text-muted-foreground text-center">
-                    Or sign in with your <strong>{ssoLookup!.domain}</strong> account using the button above.
+                    {t("login.orgSsoAlternative", { domain: ssoLookup!.domain })}
                   </p>
                 )}
 
                 {ssoLooking && !ssoLookup && (
-                  <p className="text-[11px] text-muted-foreground text-center">Checking sign-in options…</p>
+                  <p className="text-[11px] text-muted-foreground text-center">{t("login.checkingOptions")}</p>
                 )}
               </form>
 

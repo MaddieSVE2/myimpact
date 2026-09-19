@@ -8,6 +8,7 @@ import { db, analyticsEventsTable } from "@workspace/db";
 export const ANALYTICS_EVENTS = [
   "page_view",
   "signup_complete",
+  "login_complete",
   "wizard_step_complete",
   "first_record_logged",
   "milestone_earned",

@@ -419,6 +419,12 @@ router.post("/confirm", async (req, res) => {
         props: { method: "magic_link" },
       });
     }
+    trackServerEvent({
+      eventName: "login_complete",
+      userId: user.id,
+      surface: "member",
+      props: { method: "magic_link" },
+    });
 
     issueSession(res, user);
     res.json({

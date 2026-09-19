@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, organisationsTable, orgMembersTable, orgSsoConfigsTable } from "@workspace/db";
+import { db, usersTable, organisationsTable, orgMembersTable, orgSsoConfigsTable, userProfilesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
@@ -11,9 +11,12 @@ import {
   verifyState,
   configuredProviders,
   isProviderConfigured,
+  isSafeReturnPath,
 } from "../lib/oidc.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { checkAgeGate } from "./auth.js";
+import { trackServerEvent } from "../lib/analytics.js";
+import { recordAuditEvent } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
@@ -35,6 +38,10 @@ function getRedirectUri(provider: SsoProvider): string {
   return `${getAppUrl()}/api/auth/sso/${provider}/callback`;
 }
 
+function getConsumerGoogleRedirectUri(): string {
+  return `${getAppUrl()}/api/auth/sso/google/callback`;
+}
+
 function issueSession(res: Response, user: { id: string; email: string }) {
   const secret = process.env.SESSION_SECRET!;
   const token = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: "30d" });
@@ -52,7 +59,7 @@ function isValidProvider(p: string): p is SsoProvider {
 }
 
 function isSafePath(p: string | null | undefined): p is string {
-  return typeof p === "string" && p.startsWith("/") && !p.startsWith("//");
+  return isSafeReturnPath(p);
 }
 
 /**
@@ -61,7 +68,33 @@ function isSafePath(p: string | null | undefined): p is string {
  * buttons at all.
  */
 router.get("/providers", (_req, res) => {
-  res.json({ providers: configuredProviders() });
+  res.json({
+    providers: configuredProviders(),
+    consumerGoogle: isProviderConfigured("google"),
+  });
+});
+
+router.get("/consumer/google/start", ssoStartRateLimit, (req, res) => {
+  if (!isProviderConfigured("google")) {
+    res.redirect("/login?authError=google_unavailable");
+    return;
+  }
+  const returnToRaw = req.query.returnTo;
+  const returnTo = isSafePath(typeof returnToRaw === "string" ? returnToRaw : null) ? String(returnToRaw) : null;
+  const { state, nonce } = signState({
+    provider: "google",
+    flow: "consumer",
+    orgId: null,
+    domain: null,
+    tenantId: null,
+    returnTo,
+    marketingOptIn: req.query.marketingOptIn === "true",
+    mode: "signin",
+  });
+  res.cookie("mi_sso_state", nonce, {
+    httpOnly: true, secure: true, sameSite: "lax", maxAge: 10 * 60 * 1000, path: "/",
+  });
+  res.redirect(buildAuthorizeUrl("google", state, getConsumerGoogleRedirectUri()));
 });
 
 /**
@@ -164,6 +197,7 @@ router.get("/:provider/start", ssoStartRateLimit, async (req, res) => {
 
   const { state, nonce } = signState({
     provider,
+    flow: "organisation",
     orgId: cfg.orgId,
     domain: cfg.domain,
     tenantId: cfg.tenantId,
@@ -239,6 +273,7 @@ router.get("/test/start", ssoStartRateLimit, async (req, res) => {
 
   const { state, nonce } = signState({
     provider,
+    flow: "organisation",
     orgId: cfg.orgId,
     domain: cfg.domain,
     tenantId: cfg.tenantId,
@@ -435,14 +470,15 @@ router.get("/:provider/callback", async (req, res) => {
     return;
   }
 
-  // Re-load org config in case it was changed between start and callback
-  const cfg = await db.query.orgSsoConfigsTable.findFirst({
-    where: and(
-      eq(orgSsoConfigsTable.orgId, payload.orgId),
-      eq(orgSsoConfigsTable.provider, provider),
-    ),
-  });
-  if (!cfg || cfg.domain.toLowerCase() !== payload.domain.toLowerCase()) {
+  const cfg = payload.flow === "organisation" && payload.orgId && payload.domain
+    ? await db.query.orgSsoConfigsTable.findFirst({
+        where: and(
+          eq(orgSsoConfigsTable.orgId, payload.orgId),
+          eq(orgSsoConfigsTable.provider, provider),
+        ),
+      })
+    : null;
+  if (payload.flow === "organisation" && (!cfg || cfg.domain.toLowerCase() !== payload.domain?.toLowerCase())) {
     renderResultPage(res, { ok: false, title: "Sign-in failed", message: "Your organisation's SSO config has changed. Please ask your admin." });
     return;
   }
@@ -450,13 +486,13 @@ router.get("/:provider/callback", async (req, res) => {
   let identity;
   try {
     identity = await exchangeCodeAndVerify(provider, code, getRedirectUri(provider), {
-      domain: cfg.domain,
-      tenantId: cfg.tenantId,
+      domain: payload.flow === "organisation" ? cfg?.domain : null,
+      tenantId: payload.flow === "organisation" ? cfg?.tenantId : null,
     });
   } catch (err) {
     console.error("SSO exchange/verify failed:", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
-    if (payload.mode === "test") {
+    if (payload.mode === "test" && cfg) {
       // Persist failure on the config so the admin can see what went wrong
       await db
         .update(orgSsoConfigsTable)
@@ -477,10 +513,73 @@ router.get("/:provider/callback", async (req, res) => {
     return;
   }
 
+  if (payload.flow === "consumer") {
+    if (provider !== "google" || payload.mode !== "signin") {
+      renderResultPage(res, { ok: false, title: "Sign-in failed", message: "This sign-in flow is not supported.", redirectTo: "/login" });
+      return;
+    }
+    const emailDomain = identity.email.split("@")[1] ?? "";
+    const enforcedConfig = emailDomain
+      ? await db.query.orgSsoConfigsTable.findFirst({
+          where: and(
+            eq(orgSsoConfigsTable.domain, emailDomain),
+            eq(orgSsoConfigsTable.status, "verified"),
+            eq(orgSsoConfigsTable.enforceSSO, true),
+          ),
+        })
+      : null;
+    if (enforcedConfig) {
+      const enforcedProvider = enforcedConfig.provider as SsoProvider;
+      if (!isValidProvider(enforcedProvider) || !isProviderConfigured(enforcedProvider)) {
+        renderResultPage(res, {
+          ok: false,
+          title: "Organisation sign-in unavailable",
+          message: "Your organisation requires single sign-on, but its provider isn't available right now. Please contact your organisation admin.",
+          redirectTo: "/login",
+        });
+        return;
+      }
+      const enforcedParams = new URLSearchParams({ email: identity.email });
+      if (payload.returnTo) enforcedParams.set("returnTo", payload.returnTo);
+      renderResultPage(res, {
+        ok: false,
+        title: "Use your organisation sign-in",
+        message: `Your organisation requires ${enforcedProvider === "google" ? "Google" : "Microsoft"} single sign-on. Taking you to the correct sign-in…`,
+        redirectTo: `/api/auth/sso/${enforcedProvider}/start?${enforcedParams.toString()}`,
+      });
+      return;
+    }
+    let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
+    if (!user) {
+      const pendingToken = jwt.sign({
+        purpose: "google_pending_signup",
+        email: identity.email,
+        name: identity.name ?? null,
+        returnTo: payload.returnTo ?? null,
+        marketingOptIn: payload.marketingOptIn === true,
+      }, process.env.SESSION_SECRET!, { expiresIn: "15m" });
+      res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
+      renderAgeGatePage(res, { token: pendingToken, email: identity.email });
+      return;
+    }
+    if (!user.displayName && identity.name) {
+      await db.update(usersTable).set({ displayName: identity.name }).where(eq(usersTable.id, user.id));
+    }
+    await persistMarketingConsent(req, user, payload.marketingOptIn === true);
+    trackServerEvent({ eventName: "login_complete", userId: user.id, surface: "member", props: { method: "google" } });
+    issueSession(res, user);
+    res.clearCookie("mi_sso_state", { path: "/", secure: true, sameSite: "lax" });
+    renderResultPage(res, {
+      ok: true, title: "Signed in", message: `Welcome, ${identity.name ?? identity.email}.`,
+      redirectTo: payload.returnTo ?? "/",
+    });
+    return;
+  }
+
   // ── Test mode: confirm IdP handshake works but do NOT mark verified.
   // Domain ownership is proved separately via DNS TXT challenge
   // (POST /api/org/sso/config/:id/verify-domain). ──
-  if (payload.mode === "test") {
+  if (payload.mode === "test" && cfg) {
     await db
       .update(orgSsoConfigsTable)
       .set({ lastTestAt: new Date(), updatedAt: new Date() })
@@ -498,7 +597,7 @@ router.get("/:provider/callback", async (req, res) => {
   // ── Sign-in mode: find or create user, link to org, issue session ──
   // Re-check verified status here to close any TOCTOU window between
   // /start and /callback (e.g. admin reverts verification mid-flow).
-  if (cfg.status !== "verified") {
+  if (!cfg || cfg.status !== "verified") {
     renderResultPage(res, {
       ok: false,
       title: "SSO not ready",
@@ -657,14 +756,16 @@ router.post("/complete-signup", async (req, res) => {
     return;
   }
 
-  let pending: { purpose?: string; email?: string; name?: string | null; orgId?: string; returnTo?: string | null };
+  let pending: { purpose?: string; email?: string; name?: string | null; orgId?: string | null; returnTo?: string | null; marketingOptIn?: boolean };
   try {
     pending = jwt.verify(token, process.env.SESSION_SECRET!) as typeof pending;
   } catch {
     renderResultPage(res, { ok: false, title: "Sign-in expired", message: "Your sign-in session expired. Please sign in again.", redirectTo: "/login" });
     return;
   }
-  if (pending.purpose !== "sso_pending_signup" || !pending.email || !pending.orgId) {
+  const isOrgSignup = pending.purpose === "sso_pending_signup" && !!pending.orgId;
+  const isGoogleSignup = pending.purpose === "google_pending_signup" && !pending.orgId;
+  if (!pending.email || (!isOrgSignup && !isGoogleSignup)) {
     renderResultPage(res, { ok: false, title: "Sign-in failed", message: "Your sign-in session was invalid. Please start again.", redirectTo: "/login" });
     return;
   }
@@ -689,10 +790,45 @@ router.post("/complete-signup", async (req, res) => {
     return;
   }
 
+  if (isGoogleSignup) {
+    const emailDomain = pending.email.split("@")[1] ?? "";
+    const enforcedConfig = emailDomain
+      ? await db.query.orgSsoConfigsTable.findFirst({
+          where: and(
+            eq(orgSsoConfigsTable.domain, emailDomain),
+            eq(orgSsoConfigsTable.status, "verified"),
+            eq(orgSsoConfigsTable.enforceSSO, true),
+          ),
+        })
+      : null;
+    if (enforcedConfig) {
+      const enforcedProvider = enforcedConfig.provider as SsoProvider;
+      if (!isValidProvider(enforcedProvider) || !isProviderConfigured(enforcedProvider)) {
+        renderResultPage(res, {
+          ok: false,
+          title: "Organisation sign-in unavailable",
+          message: "Your organisation now requires single sign-on, but its provider isn't available right now. Please contact your organisation admin.",
+          redirectTo: "/login",
+        });
+        return;
+      }
+      const enforcedParams = new URLSearchParams({ email: pending.email });
+      if (isSafePath(pending.returnTo)) enforcedParams.set("returnTo", pending.returnTo);
+      renderResultPage(res, {
+        ok: false,
+        title: "Use your organisation sign-in",
+        message: `Your organisation now requires ${enforcedProvider === "google" ? "Google" : "Microsoft"} single sign-on. Taking you to the correct sign-in…`,
+        redirectTo: `/api/auth/sso/${enforcedProvider}/start?${enforcedParams.toString()}`,
+      });
+      return;
+    }
+  }
+
   // The user may have been created between callback and now (e.g. a
   // parallel magic-link sign-up). Reuse the existing row in that case
   // rather than failing.
   let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, pending.email) });
+  let createdNow = false;
   if (!user) {
     const [created] = await db
       .insert(usersTable)
@@ -706,19 +842,53 @@ router.post("/complete-signup", async (req, res) => {
       })
       .returning();
     user = created;
+    createdNow = true;
   }
 
-  const linked = await linkUserToOrg(res, user, pending.orgId);
-  if (!linked) return;
+  const linked = pending.orgId ? await linkUserToOrg(res, user, pending.orgId) : null;
+  if (pending.orgId && !linked) return;
 
+  await persistMarketingConsent(req, user, pending.marketingOptIn === true);
+  if (isGoogleSignup && createdNow) {
+    trackServerEvent({ eventName: "signup_complete", userId: user.id, surface: "member", props: { method: "google" } });
+  }
+  if (isGoogleSignup) {
+    trackServerEvent({ eventName: "login_complete", userId: user.id, surface: "member", props: { method: "google" } });
+  }
   issueSession(res, user);
 
   renderResultPage(res, {
     ok: true,
     title: "Signed in",
-    message: `Welcome, ${pending.name ?? pending.email}. Taking you to ${linked.name}…`,
+    message: linked
+      ? `Welcome, ${pending.name ?? pending.email}. Taking you to ${linked.name}…`
+      : `Welcome, ${pending.name ?? pending.email}.`,
     redirectTo: (isSafePath(pending.returnTo) ? pending.returnTo : null) ?? "/",
   });
 });
+
+async function persistMarketingConsent(req: Request, user: { id: string; email: string }, optedIn: boolean) {
+  const profile = await db.query.userProfilesTable.findFirst({ where: eq(userProfilesTable.userId, user.id) });
+  if (!profile) {
+    await db.insert(userProfilesTable).values({
+      userId: user.id,
+      emailOptIn: optedIn,
+      marketingConsentAt: optedIn ? new Date() : null,
+      marketingConsentSource: optedIn ? "signup" : null,
+    }).onConflictDoNothing();
+  } else if (optedIn && !profile.emailOptIn) {
+    await db.update(userProfilesTable).set({
+      emailOptIn: true,
+      marketingConsentAt: new Date(),
+      marketingConsentSource: "login",
+    }).where(eq(userProfilesTable.userId, user.id));
+  }
+  if (optedIn && !profile?.emailOptIn) {
+    await recordAuditEvent({
+      userId: user.id, userEmail: user.email, action: "consent_recorded", req,
+      metadata: { kind: "onboarding_emails", source: profile ? "login" : "signup" },
+    });
+  }
+}
 
 export default router;
