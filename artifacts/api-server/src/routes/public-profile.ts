@@ -8,6 +8,7 @@ import {
   computeEstimateActualReconciliation,
   type ReconciliationResult,
 } from "../lib/contributionModel.js";
+import { isTrustedInternalSsrRequest } from "../lib/internalSsrRequest.js";
 
 const router: IRouter = Router();
 
@@ -127,6 +128,10 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 
 function publicRateLimit(req: Request, res: Response, next: NextFunction) {
+  if (isTrustedInternalSsrRequest(req)) {
+    next();
+    return;
+  }
   // Use req.ip which respects the "trust proxy" setting in app.ts, preventing header spoofing
   const key = req.ip ?? req.socket.remoteAddress ?? "unknown";
   const now = Date.now();

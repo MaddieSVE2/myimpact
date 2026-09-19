@@ -4,6 +4,7 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
+import { isTrustedInternalSsrRequest } from "../lib/internalSsrRequest.js";
 
 const router: IRouter = Router();
 
@@ -13,6 +14,7 @@ const sharePublicRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
   max: 30,
   message: "Too many requests. Please slow down.",
+  skip: isTrustedInternalSsrRequest,
 });
 
 interface StoredActivityBreakdown {

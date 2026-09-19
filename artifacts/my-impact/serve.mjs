@@ -3,6 +3,7 @@ import { createReadStream, statSync, readFileSync, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 import { isKnownRoute } from "./valid-routes.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -59,10 +60,9 @@ function isHashedAsset(pathname) {
 // the static SPA shell carries no slug-specific metadata.  Non-JS crawlers and
 // social preview bots therefore only see the generic app shell.
 //
-// At request-time we fetch the slug's data from the API, inject the correct
-// <title>, <meta name="description">, robots, canonical, and Open Graph tags
-// into the SPA shell HTML, and return the patched HTML.  React then hydrates
-// normally on the client.  Callers receive no extra latency on static assets.
+// At request-time we fetch the slug's data from the API, render the complete
+// route through the production SSR bundle, and inject both the route markup
+// and its metadata into the SPA shell.
 //
 // Falls back gracefully to the unpatched shell if the API is unreachable.
 
@@ -74,6 +74,16 @@ const API_BASE = APP_URL
 const PROFILE_RE = /^\/profile\/([^/?#]+)/;
 const SHARE_RE   = /^\/org\/share\/([^/?#]+)/;
 const OG_IMAGE   = "https://myimpact.uk/opengraph.jpg";
+const INTERNAL_SSR_TOKEN = process.env.SESSION_SECRET ?? "";
+const SSR_ENTRY = resolve(__dirname, "dist", "server", "entry-server.js");
+let ssrModulePromise;
+
+function getSsrModule() {
+  if (!ssrModulePromise) {
+    ssrModulePromise = import(pathToFileURL(SSR_ENTRY).href);
+  }
+  return ssrModulePromise;
+}
 
 function escHtml(str) {
   return String(str)
@@ -90,6 +100,7 @@ function injectSlugMeta(shell, { title, description, canonical, robots }) {
     canonical ? `  <link rel="canonical" href="${escHtml(canonical)}" />` : null,
     `  <meta property="og:title" content="${escHtml(title)}" />`,
     `  <meta property="og:description" content="${escHtml(description)}" />`,
+    `  <meta property="og:type" content="website" />`,
     canonical ? `  <meta property="og:url" content="${escHtml(canonical)}" />` : null,
     `  <meta property="og:image" content="${escHtml(OG_IMAGE)}" />`,
     `  <meta property="og:image:width" content="1200" />`,
@@ -108,16 +119,50 @@ function injectSlugMeta(shell, { title, description, canonical, robots }) {
     .replace(/<meta\s+name="description"[^>]*>/gi, "")
     .replace(/<meta\s+name="robots"[^>]*>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "")
+    .replace(/<meta\s+property="og:[^"]+"[^>]*>/gi, "")
+    .replace(/<meta\s+name="twitter:[^"]+"[^>]*>/gi, "")
     .replace(/<head>/, `<head>\n${tags}`);
+}
+
+function serializeInitialData(payload) {
+  return JSON.stringify(payload)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function injectRootMarkup(html, body, initialData) {
+  const rootOpen = '<div id="root">';
+  const rootStart = html.indexOf(rootOpen);
+  if (rootStart < 0) return html;
+
+  const tagPattern = /<div\b[^>]*>|<\/div>/gi;
+  tagPattern.lastIndex = rootStart + rootOpen.length;
+  let depth = 1;
+  let match;
+  while ((match = tagPattern.exec(html))) {
+    depth += match[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) {
+      const dataScript = `<script>window.__MY_IMPACT_SSR_DATA__=${serializeInitialData(initialData)};</script>`;
+      return `${html.slice(0, rootStart)}${rootOpen}${body}</div>${dataScript}${html.slice(tagPattern.lastIndex)}`;
+    }
+  }
+  return html;
 }
 
 async function fetchJson(url) {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return null;
-    return res.json();
+    const headers = INTERNAL_SSR_TOKEN
+      ? { "x-my-impact-ssr-token": INTERNAL_SSR_TOKEN }
+      : undefined;
+    const res = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return { status: res.status, data: null };
+    return { status: res.status, data: await res.json() };
   } catch {
-    return null;
+    return { status: 503, data: null };
   }
 }
 
@@ -197,17 +242,41 @@ async function trySlugSsr(pathname, indexPath) {
   const shell = readFileSync(indexPath, "utf-8");
 
   let meta;
+  let result;
+  let kind;
+  let slug;
   if (profileMatch) {
-    const slug = decodeURIComponent(profileMatch[1]);
-    const data = await fetchJson(`${API_BASE}/public-profile/${encodeURIComponent(slug)}`);
-    meta = buildProfileMeta(slug, data);
+    try {
+      slug = decodeURIComponent(profileMatch[1]);
+    } catch {
+      return null;
+    }
+    result = await fetchJson(`${API_BASE}/public-profile/${encodeURIComponent(slug)}`);
+    meta = buildProfileMeta(slug, result.data);
+    kind = "profile";
   } else {
-    const slug = decodeURIComponent(shareMatch[1]);
-    const data = await fetchJson(`${API_BASE}/org-share/${encodeURIComponent(slug)}`);
-    meta = buildShareMeta(slug, data);
+    try {
+      slug = decodeURIComponent(shareMatch[1]);
+    } catch {
+      return null;
+    }
+    result = await fetchJson(`${API_BASE}/org-share/${encodeURIComponent(slug)}`);
+    meta = buildShareMeta(slug, result.data);
+    kind = "org-share";
   }
 
-  return injectSlugMeta(shell, meta);
+  let html = injectSlugMeta(shell, meta);
+  if (result.data && existsSync(SSR_ENTRY)) {
+    try {
+      const { renderSlugPage } = await getSsrModule();
+      const body = renderSlugPage(pathname, kind, result.data);
+      html = injectRootMarkup(html, body, { kind, slug, data: result.data });
+    } catch (error) {
+      console.error("[slug-ssr] failed to render route", error);
+    }
+  }
+
+  return { html, status: result.status === 404 ? 404 : result.status === 410 ? 410 : 200 };
 }
 
 function safeJoin(root, pathname) {
@@ -279,9 +348,9 @@ const server = createServer(async (req, res) => {
     for (const [k, v] of Object.entries(NO_CACHE_HEADERS)) res.setHeader(k, v);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.statusCode = 200;
+    res.statusCode = ssrHtml.status;
     if (req.method === "HEAD") { res.end(); return; }
-    res.end(ssrHtml);
+    res.end(ssrHtml.html);
     return;
   }
 

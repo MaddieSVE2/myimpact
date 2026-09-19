@@ -6,6 +6,7 @@ import { createRateLimiter } from "./lib/rateLimiter.js";
 import { billingWebhookHandler, billingWebhookRawParser } from "./routes/billing.js";
 import { resendWebhookHandler, resendWebhookRawParser } from "./routes/resend-webhook.js";
 import { Sentry, isSentryEnabled } from "./lib/sentry.js";
+import { isTrustedInternalSsrRequest } from "./lib/internalSsrRequest.js";
 
 const app: Express = express();
 
@@ -59,6 +60,7 @@ const globalApiRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
   max: isE2ETestMode ? 10_000 : 200,
   message: "Too many requests. Please slow down.",
+  skip: isTrustedInternalSsrRequest,
 });
 
 app.use("/api", globalApiRateLimit, router);

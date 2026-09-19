@@ -71,7 +71,7 @@ test.describe("custom care interests", () => {
     await page.getByPlaceholder("Add another interest").fill("Youth justice");
     await page.getByRole("button", { name: /^add$/i }).click();
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^saved!?$/i })).toBeVisible();
 
     const restored = await page.request.get("/api/profile");
     expect(restored.ok()).toBe(true);

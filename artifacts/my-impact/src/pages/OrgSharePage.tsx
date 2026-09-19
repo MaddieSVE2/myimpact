@@ -41,7 +41,7 @@ interface SummarySection {
 
 interface CategoryEntry { category: string; value: number; }
 
-interface ShareResponse {
+export interface ShareResponse {
   share: ShareInfo;
   sections: {
     summary: SummarySection | null;
@@ -81,15 +81,34 @@ function CostBreakdownTable({ breakdown }: { breakdown: CostBreakdown | null }) 
   );
 }
 
-export default function OrgSharePage() {
+interface OrgSharePageProps {
+  initialData?: ShareResponse | null;
+  params?: Record<string, string | undefined>;
+}
+
+function getServerData(slug: string): ShareResponse | null {
+  if (typeof window === "undefined") return null;
+  const payload = (window as typeof window & {
+    __MY_IMPACT_SSR_DATA__?: {
+      kind: string;
+      slug: string;
+      data: ShareResponse;
+    };
+  }).__MY_IMPACT_SSR_DATA__;
+  return payload?.kind === "org-share" && payload.slug === slug ? payload.data : null;
+}
+
+export default function OrgSharePage({ initialData = null }: OrgSharePageProps) {
   const [, params] = useRoute("/org/share/:slug");
   const slug = params?.slug ?? "";
+  const resolvedInitialData = initialData ?? getServerData(slug);
 
-  const [data, setData] = useState<ShareResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ShareResponse | null>(resolvedInitialData);
+  const [loading, setLoading] = useState(resolvedInitialData === null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (resolvedInitialData) return;
     if (!slug) return;
     setLoading(true);
     setErrorMsg(null);
@@ -112,7 +131,7 @@ export default function OrgSharePage() {
       })
       .catch(() => setErrorMsg("Could not load this share link. Please try again later."))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [resolvedInitialData, slug]);
 
   const orgName = data?.share.orgName ?? null;
   const metaSummary = data?.sections.summary ?? null;

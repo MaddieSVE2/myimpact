@@ -9,6 +9,7 @@ interface RateLimiterOptions {
   windowMs: number;
   max: number;
   message?: string;
+  skip?: (req: Request) => boolean;
 }
 
 /**
@@ -17,7 +18,7 @@ interface RateLimiterOptions {
  * X-Forwarded-For spoofing.
  */
 export function createRateLimiter(options: RateLimiterOptions) {
-  const { windowMs, max, message = "Too many requests. Please try again later." } = options;
+  const { windowMs, max, message = "Too many requests. Please try again later.", skip } = options;
   const store = new Map<string, RateLimitEntry>();
 
   const cleanup = setInterval(() => {
@@ -38,6 +39,10 @@ export function createRateLimiter(options: RateLimiterOptions) {
     // IP (localhost), so per-IP limits trip constantly and fail tests with
     // spurious 429s. Test mode is never enabled in production.
     if (process.env.E2E_TEST_MODE === "1") {
+      next();
+      return;
+    }
+    if (skip?.(req)) {
       next();
       return;
     }

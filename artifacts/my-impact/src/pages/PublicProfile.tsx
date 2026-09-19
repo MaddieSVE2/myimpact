@@ -27,7 +27,7 @@ interface JournalHighlight {
   createdAt: string;
 }
 
-interface PublicProfileResponse {
+export interface PublicProfileResponse {
   profile: ProfileData;
   stats: Stats;
   journalHighlights: JournalHighlight[];
@@ -43,16 +43,35 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 }
 
-export default function PublicProfile() {
+interface PublicProfileProps {
+  initialData?: PublicProfileResponse | null;
+  params?: Record<string, string | undefined>;
+}
+
+function getServerData(slug: string): PublicProfileResponse | null {
+  if (typeof window === "undefined") return null;
+  const payload = (window as typeof window & {
+    __MY_IMPACT_SSR_DATA__?: {
+      kind: string;
+      slug: string;
+      data: PublicProfileResponse;
+    };
+  }).__MY_IMPACT_SSR_DATA__;
+  return payload?.kind === "profile" && payload.slug === slug ? payload.data : null;
+}
+
+export default function PublicProfile({ initialData = null }: PublicProfileProps) {
   const [, params] = useRoute("/profile/:slug");
   const slug = params?.slug ?? "";
+  const resolvedInitialData = initialData ?? getServerData(slug);
 
-  const [data, setData] = useState<PublicProfileResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PublicProfileResponse | null>(resolvedInitialData);
+  const [loading, setLoading] = useState(resolvedInitialData === null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (resolvedInitialData) return;
     if (!slug) return;
     setLoading(true);
     setNotFound(false);
@@ -68,7 +87,7 @@ export default function PublicProfile() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [resolvedInitialData, slug]);
 
   const resolvedName = data?.profile.displayName ?? null;
   const metaTitle = resolvedName

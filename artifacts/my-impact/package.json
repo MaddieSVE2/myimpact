@@ -9,6 +9,7 @@
     "postbuild": "tsx prerender.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "start": "node serve.mjs",
+    "test:ssr": "node --test serve.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
