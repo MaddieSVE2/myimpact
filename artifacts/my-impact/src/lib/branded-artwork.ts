@@ -76,3 +76,10 @@ export const ORGANISATION_FEATURE_ARTWORK = {
   privacy: "shield-lock-security-icon.webp",
   engagement: "community-chat-icon.webp",
 } as const;
+
+export const ORG_MEMBER_ACTION_ARTWORK = {
+  quickLog: "heartfelt-handshake-icon.webp",
+  pulse: "community-chat-icon.webp",
+  challenges: "champion-trophy-icon.webp",
+  impactRecord: "achievement-growth-chart-icon.webp",
+} as const;

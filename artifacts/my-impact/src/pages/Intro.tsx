@@ -2,7 +2,7 @@ import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
 import { HOME_META, FAQ_ITEMS, HOMEPAGE_JSON_LD } from "@/lib/page-metadata";
 import { useWizard } from "@/lib/wizard-context";
@@ -18,11 +18,18 @@ import { useListRecurringTemplates, getListRecurringTemplatesQueryKey } from "@w
 import { useQuery } from "@tanstack/react-query";
 import { HOME_CATEGORY_ARTWORK } from "@/lib/branded-artwork";
 import { BrandedArtwork } from "@/components/BrandedArtwork";
+import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface MyOrgResponse {
-  org: { id: string; name: string; type: string; role: string } | null;
+  org: {
+    id: string;
+    name: string;
+    type: string;
+    role: string;
+    dataSharingMode: "explicit_submission" | "consented_logging";
+  } | null;
 }
 
 interface ActiveSurveyLite {
@@ -494,7 +501,6 @@ export default function Intro() {
   const activeSurveys = orgPromptsQuery.data?.surveys ?? [];
   const activeChallenges = orgPromptsQuery.data?.challenges ?? [];
   const hasActivePulse = isOrgMember && activeSurveys.length > 0;
-  const hasActiveChallenge = isOrgMember && activeChallenges.length > 0;
   const challengeHref = `/challenges`;
 
   // While auth is resolving, or, for a logged-in user, while we're still
@@ -792,140 +798,34 @@ export default function Intro() {
       {isLoggedIn && isOrgMember && myOrgQuery.data?.org && (
         <section
           data-testid="home-org-jobs"
-          style={{ background: "white", padding: "32px 5% 16px" }}
+          style={{ background: C.cream, padding: "48px 5%" }}
         >
           <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
             <h2
               className="mi-fraunces"
-              style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 700, color: "#0E1922", marginBottom: 6 }}
+              style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 700, color: "#0E1922", marginBottom: 8 }}
             >
               Your organisation
             </h2>
-            <p style={{ fontSize: 14, color: "#5b6770", lineHeight: 1.5, marginBottom: 18, maxWidth: 720 }}>
-              You're a member of <strong style={{ color: "#0E1922" }}>{myOrgQuery.data.org.name}</strong>. Here are the four things you can do from here. Your manager runs the analytics, reports, and the join link separately.
+            <p style={{ fontSize: 14, color: "#5b6770", lineHeight: 1.6, marginBottom: 28, maxWidth: 720 }}>
+              You're a member of <strong style={{ color: "#0E1922" }}>{myOrgQuery.data.org.name}</strong>. Record your activity for yourself first, then share it with your organisation when prompted or through your agreed automatic-sharing settings.
             </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                gap: 12,
+            <OrgMemberActionCards
+              orgName={myOrgQuery.data.org.name}
+              sharingMode={myOrgQuery.data.org.dataSharingMode}
+              pulseCount={activeSurveys.length}
+              challengeCount={activeChallenges.length}
+              pulseHref="#org-prompts-section"
+              challengeHref={challengeHref}
+              testIdPrefix="home"
+              onPulseClick={(event) => {
+                const target = document.getElementById("org-prompts-section");
+                if (target) {
+                  event.preventDefault();
+                  target.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
               }}
-            >
-              <div
-                data-testid="home-job-share"
-                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <BadgeCheck className="w-4 h-4" style={{ color: C.orange }} />
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Share volunteering with {myOrgQuery.data.org.name}</p>
-                </div>
-                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
-                  Log your volunteering and you'll be offered the chance to share it with your organisation — no re-typing, and your personal record keeps everything either way.
-                </p>
-                <Link
-                  href="/quick-log"
-                  data-testid="home-link-org-submit"
-                  style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                >
-                  Start a submission
-                </Link>
-              </div>
-
-              <div
-                data-testid="home-job-pulse"
-                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <ClipboardList className="w-4 h-4" style={{ color: C.orange }} />
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Open a pulse</p>
-                </div>
-                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
-                  {hasActivePulse
-                    ? `${activeSurveys.length} open ${activeSurveys.length === 1 ? "pulse" : "pulses"} from ${myOrgQuery.data.org.name}. Around 30 seconds each. Anonymous unless the question says otherwise. Your manager only sees the totals.`
-                    : `No open pulse from ${myOrgQuery.data.org.name} right now. We'll surface them here as soon as one is live.`}
-                </p>
-                {hasActivePulse ? (
-                  <a
-                    href="#org-prompts-section"
-                    data-testid="home-link-pulse"
-                    onClick={(e) => {
-                      const target = document.getElementById("org-prompts-section");
-                      if (target) {
-                        e.preventDefault();
-                        target.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }
-                    }}
-                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                  >
-                    Open a pulse
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    aria-disabled="true"
-                    onClick={(e) => e.preventDefault()}
-                    data-testid="home-link-pulse"
-                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, border: "none", opacity: 0.55, cursor: "not-allowed" }}
-                  >
-                    No open pulse
-                  </button>
-                )}
-              </div>
-
-              <div
-                data-testid="home-job-challenges"
-                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <Trophy className="w-4 h-4" style={{ color: C.orange }} />
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Active challenges</p>
-                </div>
-                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
-                  {hasActiveChallenge
-                    ? `${activeChallenges.length} active ${activeChallenges.length === 1 ? "challenge" : "challenges"} from ${myOrgQuery.data.org.name}. Your activity counts towards the team total and the leaderboard. Your name is shown to other members on the leaderboard.`
-                    : `No active challenge from ${myOrgQuery.data.org.name} right now. We'll surface them here as soon as one is live.`}
-                </p>
-                {hasActiveChallenge ? (
-                  <Link
-                    href={challengeHref}
-                    data-testid="home-link-challenges"
-                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                  >
-                    See challenges
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    aria-disabled="true"
-                    onClick={(e) => e.preventDefault()}
-                    data-testid="home-link-challenges"
-                    style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, border: "none", opacity: 0.55, cursor: "not-allowed" }}
-                  >
-                    No active challenge
-                  </button>
-                )}
-              </div>
-
-              <div
-                data-testid="home-job-calculate"
-                style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <Sparkles className="w-4 h-4" style={{ color: C.orange }} />
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0E1922", margin: 0 }}>Calculate or update my impact</p>
-                </div>
-                <p style={{ fontSize: 12, color: "#5b6770", lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
-                  Run the personal wizard to turn what you've done into hours and a social value figure. Stays private to you unless you choose to share it with {myOrgQuery.data.org.name}.
-                </p>
-                <Link
-                  href="/wizard/actions"
-                  data-testid="home-link-calculate"
-                  style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, background: C.orange, color: "white", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                >
-                  Start the wizard
-                </Link>
-              </div>
-            </div>
+            />
           </div>
         </section>
       )}

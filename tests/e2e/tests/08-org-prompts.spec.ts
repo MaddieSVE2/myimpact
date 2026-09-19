@@ -32,7 +32,7 @@ test.describe.configure({ mode: "serial" });
 test.describe("Spec 8 — org prompts", () => {
   let api: TestApi;
   const memberEmail = uniqueEmail("op-member");
-  const managerEmail = uniqueEmail("op-manager");
+  const approverEmail = uniqueEmail("op-approver");
   const guestEmail = uniqueEmail("op-guest");
   let orgId: string | undefined;
   let orgName: string | undefined;
@@ -41,7 +41,7 @@ test.describe("Spec 8 — org prompts", () => {
   test.beforeAll(async ({ baseURL }) => {
     api = await TestApi.create({ baseURL: baseURL! });
     await api.resetUser(memberEmail);
-    await api.resetUser(managerEmail);
+    await api.resetUser(approverEmail);
     await api.resetUser(guestEmail);
 
     const created = await api.createOrg(`E2E Prompts Org ${Date.now()}`, "charity");
@@ -52,13 +52,26 @@ test.describe("Spec 8 — org prompts", () => {
 
   test.afterAll(async () => {
     await api.resetUser(memberEmail);
-    await api.resetUser(managerEmail);
+    await api.resetUser(approverEmail);
     await api.resetUser(guestEmail);
     if (orgId) await api.deleteOrg(orgId);
     await api.dispose();
   });
 
   test("member sees prompts on Home; snooze persists; Contribute deep-links to wizard", async ({ browser }) => {
+    await api.seedApprovedRegistration({
+      orgName: orgName!,
+      contactEmail: approverEmail,
+      inviteCode: inviteCode!,
+    });
+    const approverCtx = await browser.newContext();
+    const approverPage = await approverCtx.newPage();
+    await signInWithMagicLink(approverPage, api, approverEmail);
+    const approverJoin = await approverPage.request.post("/api/org/join", {
+      data: { inviteCode, orgId },
+    });
+    expect(approverJoin.ok()).toBe(true);
+
     const memberCtx = await browser.newContext();
     const memberPage = await memberCtx.newPage();
     await signInWithMagicLink(memberPage, api, memberEmail);
@@ -67,6 +80,13 @@ test.describe("Spec 8 — org prompts", () => {
       data: { inviteCode, orgId },
     });
     expect(join.ok()).toBe(true);
+
+    const meRes = await memberPage.request.get("/api/auth/me");
+    const meBody = (await meRes.json()) as { user: { id: string } | null };
+    const approveRes = await approverPage.request.post(
+      `/api/org/my/members/${meBody.user!.id}/approve`,
+    );
+    expect(approveRes.ok()).toBe(true);
 
     const myJson = (await (await memberPage.request.get("/api/org/my")).json()) as {
       org: { role: string } | null;
@@ -83,6 +103,51 @@ test.describe("Spec 8 — org prompts", () => {
     await expect(memberPage.getByTestId("org-prompt-survey").first()).toBeVisible();
     await expect(memberPage.getByTestId("org-prompt-challenge").first()).toBeVisible();
     await expect(memberPage.getByTestId(`button-contribute-${challengeId}`)).toBeVisible();
+
+    // The Home and /org member action blocks share one canonical component.
+    // Lock in the action order, labels and destinations so the two entry
+    // points cannot quietly drift apart.
+    const actionKeys = ["share", "pulse", "challenges", "calculate"] as const;
+    const expectedTitles = [
+      "Quick Log an activity",
+      "Open a pulse",
+      "Active challenges",
+      "Build or update my impact record",
+    ] as const;
+    const expectedCtas = ["Quick Log", "Open a pulse", "See challenges", "Open the impact wizard"] as const;
+
+    for (const [index, key] of actionKeys.entries()) {
+      await expect(memberPage.getByTestId(`home-job-${key}`).locator("h3")).toHaveText(expectedTitles[index]!);
+      await expect(memberPage.getByTestId(`home-job-${key}`).locator("a,button")).toHaveText(expectedCtas[index]!);
+    }
+
+    const homeDestinations = await Promise.all(
+      actionKeys.map((key) =>
+        memberPage
+          .getByTestId(`home-job-${key}`)
+          .locator("a")
+          .evaluate((link) => `${new URL((link as HTMLAnchorElement).href).pathname}${new URL((link as HTMLAnchorElement).href).hash}`),
+      ),
+    );
+
+    await memberPage.goto("/org");
+    await expect(memberPage.getByTestId("org-member-jobs")).toBeVisible({ timeout: 15_000 });
+    for (const [index, key] of actionKeys.entries()) {
+      await expect(memberPage.getByTestId(`member-job-${key}`).locator("h3")).toHaveText(expectedTitles[index]!);
+      await expect(memberPage.getByTestId(`member-job-${key}`).locator("a,button")).toHaveText(expectedCtas[index]!);
+    }
+    const orgDestinations = await Promise.all(
+      actionKeys.map((key) =>
+        memberPage
+          .getByTestId(`member-job-${key}`)
+          .locator("a")
+          .evaluate((link) => `${new URL((link as HTMLAnchorElement).href).pathname}${new URL((link as HTMLAnchorElement).href).hash}`),
+      ),
+    );
+    expect(orgDestinations).toEqual(homeDestinations);
+
+    await memberPage.goto("/");
+    await expect(memberPage.getByTestId("org-prompts-full")).toBeVisible({ timeout: 15_000 });
 
     // ── Snooze the challenge from Home ──────────────────────────────────
     await memberPage.getByTestId(`button-snooze-challenge-${challengeId}`).click();
@@ -106,26 +171,13 @@ test.describe("Spec 8 — org prompts", () => {
     await expect(memberPage.getByTestId("challenge-context-banner")).toContainText(/E2E Org Challenge Two/);
 
     await memberCtx.close();
+    await approverCtx.close();
   });
 
   test("manager of the same org does NOT see the prompts section", async ({ browser }) => {
-    // Promote the manager by inserting an approved registration row whose
-    // contact_email matches their address — /api/org/join then promotes
-    // them to manager on join.
-    await api.seedApprovedRegistration({
-      orgName: orgName!,
-      contactEmail: managerEmail,
-      inviteCode: inviteCode!,
-    });
-
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
-    await signInWithMagicLink(page, api, managerEmail);
-
-    const mJoin = await page.request.post("/api/org/join", {
-      data: { inviteCode, orgId },
-    });
-    expect(mJoin.ok()).toBe(true);
+    await signInWithMagicLink(page, api, approverEmail);
 
     const mMyJson = (await (await page.request.get("/api/org/my")).json()) as {
       org: { role: string } | null;

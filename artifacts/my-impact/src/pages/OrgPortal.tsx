@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, Sparkles, BadgeCheck, CheckCircle2, XCircle, Trophy, ClipboardList } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, Sparkles, BadgeCheck, CheckCircle2, XCircle } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
 import { Link, useLocation } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
@@ -19,6 +19,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
 import { VerificationQueue } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
+import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -34,6 +35,7 @@ interface OrgInfo {
   type: string;
   role: string;
   membershipStatus?: string;
+  dataSharingMode: "explicit_submission" | "consented_logging";
   fullTierEnabled?: boolean;
   dashboardSections?: Record<string, boolean>;
   branding?: OrgBranding;
@@ -1940,8 +1942,6 @@ export default function OrgPortal() {
   });
   const memberActiveSurveys = orgPromptsQuery.data?.surveys ?? [];
   const memberActiveChallenges = orgPromptsQuery.data?.challenges ?? [];
-  const memberHasActivePulse = isMemberView && memberActiveSurveys.length > 0;
-  const memberHasActiveChallenge = isMemberView && memberActiveChallenges.length > 0;
   const memberChallengeHref = `/challenges`;
 
   function handlePresetChange(key: PresetKey) {
@@ -2038,139 +2038,29 @@ export default function OrgPortal() {
           <p className="text-xs text-muted-foreground">Check back later — this page will show your organisation once your request has been approved.</p>
         </motion.div>
       ) : !isManager ? (
-        <div className="space-y-4" data-testid="org-member-jobs">
+        <div className="space-y-6 rounded-2xl bg-[var(--brand-cream)] p-4 sm:p-6 lg:p-8" data-testid="org-member-jobs">
           <motion.div
-            className="bg-white border border-border rounded-xl p-5"
+            className="bg-white border border-border rounded-2xl p-5 sm:p-6 shadow-sm"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-base font-display font-semibold text-foreground mb-1">
               Your organisation
             </p>
-            <p className="text-sm text-muted-foreground">
-              You're a member of <span className="font-semibold text-foreground">{orgData!.org!.name}</span>. Here are the four things you can do from here. Your manager runs the analytics, reports, and join link separately.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              You're a member of <span className="font-semibold text-foreground">{orgData!.org!.name}</span>. Record your activity for yourself first, then share it with your organisation when prompted or through your agreed automatic-sharing settings.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <motion.div
-              className="bg-white border border-border rounded-xl p-5 flex flex-col"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              data-testid="member-job-share"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <BadgeCheck className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Share your hours with {orgData!.org!.name}</p>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4 flex-1">
-                Log your hours and you'll be offered the chance to share them with {orgData!.org!.name} — no re-typing, and your personal record keeps everything either way.
-              </p>
-              <Link
-                href="/quick-log"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors self-start"
-                data-testid="link-org-submit"
-              >
-                Start a submission
-              </Link>
-            </motion.div>
-
-            <motion.div
-              className="bg-white border border-border rounded-xl p-5 flex flex-col"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              data-testid="member-job-pulse"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <ClipboardList className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Open a pulse</p>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4 flex-1">
-                {memberHasActivePulse
-                  ? `${memberActiveSurveys.length} open ${memberActiveSurveys.length === 1 ? "pulse" : "pulses"} from ${orgData!.org!.name}. Around 30 seconds each. Anonymous unless the question says otherwise. Your manager only sees the totals.`
-                  : `No pulse open right now from ${orgData!.org!.name}. We'll surface one here as soon as your manager opens it.`}
-              </p>
-              {memberHasActivePulse ? (
-                <Link
-                  href="/#org-prompts-section"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors self-start"
-                  data-testid="link-pulse"
-                >
-                  Open a pulse
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  aria-disabled="true"
-                  onClick={(e) => e.preventDefault()}
-                  data-testid="link-pulse"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold self-start opacity-55 cursor-not-allowed"
-                  style={{ opacity: 0.55, cursor: "not-allowed" }}
-                >
-                  No pulse open
-                </button>
-              )}
-            </motion.div>
-
-            <motion.div
-              className="bg-white border border-border rounded-xl p-5 flex flex-col"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              data-testid="member-job-challenges"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Active challenges</p>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4 flex-1">
-                {memberHasActiveChallenge
-                  ? `${memberActiveChallenges.length} active ${memberActiveChallenges.length === 1 ? "challenge" : "challenges"} from ${orgData!.org!.name}. Your activity counts towards the team total and the leaderboard. Your name is shown to other members on the leaderboard.`
-                  : `No challenges right now from ${orgData!.org!.name}. We'll surface them here as soon as your manager opens one.`}
-              </p>
-              {memberHasActiveChallenge ? (
-                <Link
-                  href={memberChallengeHref}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors self-start"
-                  data-testid="link-challenges"
-                >
-                  See challenges
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  aria-disabled="true"
-                  onClick={(e) => e.preventDefault()}
-                  data-testid="link-challenges"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold self-start"
-                  style={{ opacity: 0.55, cursor: "not-allowed" }}
-                >
-                  No active challenge
-                </button>
-              )}
-            </motion.div>
-
-            <motion.div
-              className="bg-white border border-border rounded-xl p-5 flex flex-col"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              data-testid="member-job-calculate"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Calculate or update my impact</p>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4 flex-1">
-                Run the personal wizard to turn what you've done into hours and a social value figure. Stays private to you unless you choose to share it with {orgData!.org!.name}.
-              </p>
-              <Link
-                href="/wizard/actions"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors self-start"
-                data-testid="link-calculate-impact"
-              >
-                Start the wizard
-              </Link>
-            </motion.div>
-          </div>
+          <OrgMemberActionCards
+            orgName={orgData!.org!.name}
+            sharingMode={orgData!.org!.dataSharingMode}
+            pulseCount={memberActiveSurveys.length}
+            challengeCount={memberActiveChallenges.length}
+            pulseHref="/#org-prompts-section"
+            challengeHref={memberChallengeHref}
+            testIdPrefix="member"
+          />
 
           <MemberConsentCard orgName={orgData!.org!.name} />
         </div>
