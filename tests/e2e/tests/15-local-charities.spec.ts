@@ -10,6 +10,7 @@ import { signInWithMagicLink } from "../helpers/auth";
  *   - ZZ1 1ZZ → "Testford"   — seeded READY with suggestions for every main category
  *   - ZZ2 2ZZ → "Pendington" — seeded with no suggestions, so the API reports
  *     "pending" without kicking off real background AI generation
+ *   - KY11 8LD → "Fife"       — Scottish pending area with fixed coordinates
  */
 
 const READY_POSTCODE = "ZZ1 1ZZ";
@@ -17,6 +18,10 @@ const READY_AUTHORITY = "Testford";
 const PENDING_POSTCODE = "ZZ2 2ZZ";
 const PENDING_AUTHORITY = "Pendington";
 const FAILED_AUTHORITY = "Failtown";
+const SCOTTISH_POSTCODE = "KY11 8LD";
+const SCOTTISH_AUTHORITY = "Fife";
+const SCOTTISH_LAT = 56.045;
+const SCOTTISH_LON = -3.412;
 
 // Must mirror MAIN_CATEGORIES on the server (all catalogue categories except
 // "Custom") so whichever categories the suggestion tiles land on have places.
@@ -66,12 +71,14 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
   const readyEmail = uniqueEmail("localcharities-ready");
   const pendingEmail = uniqueEmail("localcharities-pending");
   const failedEmail = uniqueEmail("localcharities-failed");
+  const scottishEmail = uniqueEmail("localcharities-scottish");
 
   test.beforeAll(async ({ baseURL }) => {
     api = await TestApi.create({ baseURL: baseURL! });
     await api.resetUser(readyEmail);
     await api.resetUser(pendingEmail);
     await api.resetUser(failedEmail);
+    await api.resetUser(scottishEmail);
     // Ready area: every main category has the same two seeded places.
     await api.seedLocalCharities({
       localAuthority: READY_AUTHORITY,
@@ -87,14 +94,22 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
       status: "ready",
       categories: [],
     });
+    await api.seedLocalCharities({
+      localAuthority: SCOTTISH_AUTHORITY,
+      country: "Scotland",
+      status: "ready",
+      categories: [],
+    });
   });
 
   test.afterAll(async () => {
     await api.resetUser(readyEmail);
     await api.resetUser(pendingEmail);
     await api.resetUser(failedEmail);
+    await api.resetUser(scottishEmail);
     await api.resetLocalCharities(READY_AUTHORITY);
     await api.resetLocalCharities(PENDING_AUTHORITY);
+    await api.resetLocalCharities(SCOTTISH_AUTHORITY);
     await api.dispose();
   });
 
@@ -184,6 +199,41 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
     }
   });
 
+  test("Scottish pending area uses location-specific Volunteer Scotland links", async ({
+    page,
+  }) => {
+    await signInWithMagicLink(page, api, scottishEmail);
+    await setProfilePostcode(page, SCOTTISH_POSTCODE);
+
+    await page.goto("/suggestions");
+
+    const toggles = page.getByRole("button", { name: /see what's near you/i });
+    await expect(toggles.first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(`Live listings near ${SCOTTISH_AUTHORITY}`)).toBeVisible({
+      timeout: 15_000,
+    });
+    await toggles.first().click();
+    await expect(
+      page.getByText(/finding local charities for your area — check back soon/i),
+    ).toBeVisible({ timeout: 10_000 });
+
+    const volunteerScotlandCards = page.locator('a[href*="volunteer.scot/search"]');
+    await expect(volunteerScotlandCards).toHaveCount(2);
+    for (const href of await volunteerScotlandCards.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("href")),
+    )) {
+      const url = new URL(href!);
+      expect(url.origin + url.pathname).toBe("https://volunteer.scot/search");
+      expect(url.search).toContain("keywords=");
+      expect(url.search).toContain("location=KY11+8LD");
+      expect(url.searchParams.get("location")).toBe(SCOTTISH_POSTCODE);
+      expect(url.searchParams.get("distance")).toBe("10mi");
+      expect(url.searchParams.get("lat")).toBe(String(SCOTTISH_LAT));
+      expect(url.searchParams.get("lon")).toBe(String(SCOTTISH_LON));
+      expect(url.searchParams.get("sort")).toBe("distance");
+    }
+  });
+
   test("failed area shows the error copy with fallback search cards", async ({ page }) => {
     // Seeding a "failed" status row directly would make ensureAuthority
     // re-queue real background AI generation, so intercept the premapped
@@ -198,6 +248,8 @@ test.describe("Spec 15 — instant pre-mapped local charity suggestions", () => 
             postcode: READY_POSTCODE,
             localAuthority: FAILED_AUTHORITY,
             country: "England",
+            lat: 53.48,
+            lon: -2.24,
           },
           categories: [],
         }),

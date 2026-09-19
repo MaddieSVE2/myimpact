@@ -28,7 +28,13 @@ interface LocalPlace {
 
 interface PremappedResponse {
   status: "ready" | "pending" | "failed";
-  location: { postcode: string; localAuthority: string; country: string };
+  location: {
+    postcode: string;
+    localAuthority: string;
+    country: string;
+    lat: number;
+    lon: number;
+  };
   categories: Array<{ category: string; places: LocalPlace[] }>;
 }
 
@@ -51,10 +57,27 @@ function GoVoSearchCard({ postcode }: { postcode: string }) {
   );
 }
 
-function VolunteerScotlandSearchCard() {
+function VolunteerScotlandSearchCard({
+  postcode,
+  lat,
+  lon,
+}: {
+  postcode: string;
+  lat: number;
+  lon: number;
+}) {
+  const params = new URLSearchParams({
+    keywords: "",
+    location: postcode,
+    distance: "10mi",
+    lat: String(lat),
+    lon: String(lon),
+    sort: "distance",
+  });
+
   return (
     <a
-      href="https://www.volunteerscotland.net/volunteer/"
+      href={`https://volunteer.scot/search?${params.toString()}`}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center justify-between gap-3 bg-white border border-border rounded-lg px-4 py-3 hover:border-foreground/30 transition-colors"
@@ -62,7 +85,7 @@ function VolunteerScotlandSearchCard() {
       <div className="min-w-0">
         <p className="text-sm font-semibold text-primary">Search Volunteer Scotland</p>
         <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-          Browse volunteering opportunities across Scotland
+          Browse live volunteering opportunities near {postcode}
         </p>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -735,6 +758,7 @@ export default function Suggestions() {
   }, [premapped.data]);
 
   const localAuthority = premapped.data?.location.localAuthority ?? "";
+  const volunteerScotlandLocation = premapped.data?.location;
 
   const handleToggleLocal = useCallback((activityId: string) => {
     setOpenTiles(prev => ({ ...prev, [activityId]: !prev[activityId] }));
@@ -805,7 +829,13 @@ export default function Suggestions() {
             </div>
             <div className="space-y-2">
               <GoVoSearchCard postcode={profilePostcode} />
-              {isScottish && <VolunteerScotlandSearchCard />}
+              {isScottish && volunteerScotlandLocation && (
+                <VolunteerScotlandSearchCard
+                  postcode={volunteerScotlandLocation.postcode}
+                  lat={volunteerScotlandLocation.lat}
+                  lon={volunteerScotlandLocation.lon}
+                />
+              )}
             </div>
           </div>
         )
@@ -925,7 +955,13 @@ export default function Suggestions() {
                               Couldn't load local suggestions right now. Try the live searches instead:
                             </div>
                             <GoVoSearchCard postcode={profilePostcode} />
-                            {isScottish && <VolunteerScotlandSearchCard />}
+                            {isScottish && volunteerScotlandLocation && (
+                              <VolunteerScotlandSearchCard
+                                postcode={volunteerScotlandLocation.postcode}
+                                lat={volunteerScotlandLocation.lat}
+                                lon={volunteerScotlandLocation.lon}
+                              />
+                            )}
                           </div>
                         ) : premapped.data?.status === "pending" ? (
                           <div className="space-y-2 py-1">
@@ -934,7 +970,13 @@ export default function Suggestions() {
                               Finding local charities for your area — check back soon. Meanwhile, try the live searches:
                             </div>
                             <GoVoSearchCard postcode={profilePostcode} />
-                            {isScottish && <VolunteerScotlandSearchCard />}
+                            {isScottish && volunteerScotlandLocation && (
+                              <VolunteerScotlandSearchCard
+                                postcode={volunteerScotlandLocation.postcode}
+                                lat={volunteerScotlandLocation.lat}
+                                lon={volunteerScotlandLocation.lon}
+                              />
+                            )}
                           </div>
                         ) : !places || places.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">

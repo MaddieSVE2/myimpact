@@ -153,6 +153,8 @@ router.get("/premapped", authenticate, localCharitiesRateLimit, async (req, res)
         postcode: postcode.toUpperCase(),
         localAuthority: geo.adminDistrict,
         country: geo.country,
+        lat: geo.lat,
+        lon: geo.lng,
       },
       categories: categoriesWithVotes,
     });

@@ -91,6 +91,7 @@ function writeNegative(key: string) {
 const E2E_STUB_LOOKUPS: Record<string, PostcodeLookup> = {
   ZZ11ZZ: { lat: 53.48, lng: -2.24, adminDistrict: "Testford", region: "Test Region", country: "England" },
   ZZ22ZZ: { lat: 53.5, lng: -2.3, adminDistrict: "Pendington", region: "Test Region", country: "England" },
+  KY118LD: { lat: 56.045, lng: -3.412, adminDistrict: "Fife", region: "Scotland", country: "Scotland" },
 };
 
 export async function geocodePostcode(raw: string): Promise<PostcodeLookup | null> {
