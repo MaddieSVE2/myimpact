@@ -271,6 +271,12 @@ export default function QuickLogPhoto() {
     };
   }, [snapshot]);
 
+  useEffect(() => {
+    if (stage === "done") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [stage]);
+
   const handleCapture = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -425,7 +431,6 @@ export default function QuickLogPhoto() {
         description: `Saved "${template.label}" and attached your photo.`,
       });
       setStage("done");
-      setTimeout(() => navigate("/history"), 600);
     } catch (err) {
       toast({
         title: "Couldn't save",
@@ -532,8 +537,9 @@ export default function QuickLogPhoto() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
+            className={stage === "done" ? "flex flex-col" : undefined}
           >
-            <div className="bg-black rounded-2xl overflow-hidden relative aspect-[3/4]">
+            <div className={`bg-black rounded-2xl overflow-hidden relative ${stage === "done" ? "order-2 mt-4 aspect-video" : "aspect-[3/4]"}`}>
               <img
                 src={snapshot.objectUrl}
                 alt="Captured snapshot"
@@ -556,29 +562,35 @@ export default function QuickLogPhoto() {
               )}
             </div>
 
-            <div className="mt-5">
+            <div className={stage === "done" ? "order-1" : "mt-5"}>
               {stage === "done" ? (
-                <div className="rounded-xl border border-border bg-white px-5 py-5 text-center" data-testid="quick-log-photo-done">
-                  <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-primary text-white flex items-center justify-center">
+                <div className="rounded-xl border-2 border-primary/30 bg-white px-5 py-6 text-center shadow-sm" role="status" aria-live="polite" data-testid="quick-log-photo-done">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary text-white flex items-center justify-center">
                     <Check className="w-5 h-5" aria-hidden="true" />
                   </div>
                   <p className="text-base font-semibold text-foreground">Activity saved with your photo</p>
-                  <p className="text-xs text-muted-foreground mt-1 mb-4">Would you like a shortcut for this description next time?</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">
+                    {savedDescription
+                      ? "It is now in your history. Would you like a shortcut for this description next time?"
+                      : "Your regular activity and photo are now in your history."}
+                  </p>
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <button
-                      type="button"
-                      onClick={rememberDescription}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold"
-                      data-testid="quick-log-photo-remember"
-                    >
-                      <Bookmark className="w-4 h-4" aria-hidden="true" /> Save for next time
-                    </button>
+                    {savedDescription && (
+                      <button
+                        type="button"
+                        onClick={rememberDescription}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold"
+                        data-testid="quick-log-photo-remember"
+                      >
+                        <Bookmark className="w-4 h-4" aria-hidden="true" /> Save for next time
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => navigate("/history")}
                       className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium"
                     >
-                      Not now
+                      View history
                     </button>
                   </div>
                 </div>
