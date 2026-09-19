@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
   ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
-  BookOpen, Award, ChevronDown, ChevronUp, FlaskConical,
+  BookOpen, Award, ChevronDown, ChevronUp, FlaskConical, CalendarDays,
   MessageSquare, FileText, Mountain
 } from "lucide-react";
 import CopyField from "@/components/CopyField";
@@ -995,7 +995,11 @@ export default function Results() {
     return Number.isFinite(y) && y > 2000 ? y : new Date().getFullYear();
   })();
   const recapQuery = useGetAnnualRecap(heroYear, {
-    query: { queryKey: getGetAnnualRecapQueryKey(heroYear), enabled: isLoggedIn },
+    query: {
+      queryKey: getGetAnnualRecapQueryKey(heroYear),
+      enabled: isLoggedIn,
+      retry: isSavedDashboardRoute ? false : undefined,
+    },
   });
   const annualBase = isLoggedIn && recapQuery.data ? recapQuery.data.totalValue : null;
   // Until this calculation is saved it isn't in the server total yet; edits of
@@ -1004,7 +1008,11 @@ export default function Results() {
     ? annualBase + (viewingSavedDashboard || saved || editRecordId ? 0 : result?.totalValue ?? 0)
     : null;
 
-  if ((isSavedDashboardRoute || !wizardResult) && isLoggedIn && historyQuery.isLoading) {
+  if (
+    (isSavedDashboardRoute || !wizardResult)
+    && isLoggedIn
+    && (historyQuery.isLoading || (latestRecord != null && recapQuery.isLoading))
+  ) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
         <p className="text-sm text-muted-foreground">Loading your impact…</p>
@@ -1012,12 +1020,51 @@ export default function Results() {
     );
   }
 
-  if (!result) {
+  if (isSavedDashboardRoute && historyQuery.isError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <p className="text-xl font-semibold text-foreground">No result to display yet</p>
+        <p className="text-xl font-semibold text-foreground">We couldn’t load your impact</p>
         <p className="text-sm text-muted-foreground max-w-xs">
-          Complete the calculator to see your personalised impact report.
+          Try again to see your current-year running record.
+        </p>
+        <button
+          onClick={() => historyQuery.refetch()}
+          className="px-5 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (isSavedDashboardRoute && latestRecord != null && recapQuery.isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <p className="text-xl font-semibold text-foreground">We couldn’t load your yearly total</p>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Your activity records are safe. Try again to load the reconciled total for {currentYear}.
+        </p>
+        <button
+          onClick={() => recapQuery.refetch()}
+          className="px-5 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!result) {
+    const isEmptySavedDashboard = isSavedDashboardRoute && isLoggedIn;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <p className="text-xl font-semibold text-foreground">
+          {isEmptySavedDashboard ? `No ${currentYear} activity recorded yet` : "No result to display yet"}
+        </p>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          {isEmptySavedDashboard
+            ? "Log an activity to start your current-year running record."
+            : "Complete the calculator to see your personalised impact report."}
         </p>
         <div className="flex flex-wrap gap-3 justify-center mt-2">
           <button
@@ -1340,6 +1387,136 @@ export default function Results() {
   const trackResultsShare = (channel: "twitter" | "linkedin") => {
     track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel });
   };
+
+  if (viewingSavedDashboard) {
+    const records = [...(historyQuery.data?.records ?? [])].sort((a, b) => {
+      const dateOrder = b.entryDate.localeCompare(a.entryDate);
+      return dateOrder !== 0 ? dateOrder : b.createdAt.localeCompare(a.createdAt);
+    });
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-10 pb-20">
+        <motion.div
+          className="text-center mb-10"
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+            Your {heroYear} social value so far
+          </p>
+          <h1
+            className="text-6xl md:text-7xl font-display font-bold text-foreground tracking-tight mb-3"
+            data-testid="results-hero-value"
+          >
+            {formatCurrency(annualTotal ?? 0)}
+          </h1>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+            Your reconciled running total for {heroYear}, calculated using globally recognised Social Value Engine proxies.
+          </p>
+        </motion.div>
+
+        <section aria-labelledby="running-record-heading" data-testid="impact-running-record">
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <h2 id="running-record-heading" className="text-xl font-display font-bold text-foreground">
+                Your {heroYear} running record
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {records.length === 1 ? "1 activity entry" : `${records.length} activity entries`}, newest first
+              </p>
+            </div>
+            <Link
+              href="/history"
+              className="shrink-0 text-sm font-semibold text-primary hover:underline underline-offset-4"
+            >
+              Manage in History
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {records.map((record, index) => {
+              const activities = record.impactResult.activityBreakdowns ?? [];
+              const activityNames = activities.map(activity => activity.activityName).filter(Boolean);
+              const title = activityNames.length > 0
+                ? activityNames.slice(0, 2).join(", ")
+                : record.name || record.period || "Activity entry";
+              const extraActivities = Math.max(0, activityNames.length - 2);
+              const entryDate = new Date(`${record.entryDate}T00:00:00`);
+              const formattedDate = Number.isNaN(entryDate.getTime())
+                ? record.entryDate
+                : new Intl.DateTimeFormat("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }).format(entryDate);
+
+              return (
+                <motion.article
+                  key={record.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.3) }}
+                  className="bg-white border border-border rounded-xl p-4 sm:p-5"
+                  data-testid={`impact-record-${record.id}`}
+                  data-entry-date={record.entryDate}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
+                        <CalendarDays className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        <time dateTime={record.entryDate}>{formattedDate}</time>
+                      </div>
+                      <h3 className="text-sm font-semibold text-foreground leading-snug">
+                        {title}{extraActivities > 0 ? ` +${extraActivities} more` : ""}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {Math.round(record.impactResult.totalHours)} hours
+                        {(record.impactResult.donationsValue ?? 0) > 0
+                          ? ` · ${formatCurrency(record.impactResult.donationsValue)} donated`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-4 sm:min-w-[220px]">
+                      <div className="sm:text-right">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Entry value</p>
+                        <p className="text-xl font-display font-bold text-foreground">
+                          {formatCurrency(record.impactResult.totalValue)}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/history?edit=${encodeURIComponent(record.id)}`}
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted/30 transition-colors"
+                        aria-label={`Manage ${title} from ${formattedDate} in History`}
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/wizard/actions"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white"
+              style={{ background: "var(--brand-orange-bright)" }}
+            >
+              Log another activity <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/history"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/30"
+            >
+              Open full History
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   const gamificationEnabled = user?.gamificationEnabled ?? true;
   const earnedBadges = computeBadges(

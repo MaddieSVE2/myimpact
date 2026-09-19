@@ -109,12 +109,12 @@ test.describe("Spec 8 — org prompts", () => {
     // points cannot quietly drift apart.
     const actionKeys = ["share", "pulse", "challenges", "calculate"] as const;
     const expectedTitles = [
-      "Quick Log an activity",
+      "Quick Log + photo",
       "Open a pulse",
       "Active challenges",
       "Build or update my impact record",
     ] as const;
-    const expectedCtas = ["Quick Log", "Open a pulse", "See challenges", "Open the impact wizard"] as const;
+    const expectedCtas = ["Quick Log + photo", "Open a pulse", "See challenges", "Open the impact wizard"] as const;
 
     for (const [index, key] of actionKeys.entries()) {
       await expect(memberPage.getByTestId(`home-job-${key}`).locator("h3")).toHaveText(expectedTitles[index]!);
