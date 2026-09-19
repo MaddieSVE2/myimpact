@@ -687,7 +687,7 @@ export default function Intro() {
                 className="mi-btn-ghost-hero"
                 data-testid="welcome-cta-inspire"
               >
-                Inspire me
+                Give me ideas
               </Link>
             </div>
           </div>
@@ -741,7 +741,7 @@ export default function Intro() {
               href="/suggestions"
               className="mi-btn-ghost-hero"
             >
-              Inspire me
+              Give me ideas
             </Link>
           </div>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
