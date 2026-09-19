@@ -181,7 +181,7 @@ export default function Organisations() {
               Powered by accredited methodology
             </p>
             <p style={{ fontSize: 16, color: "var(--brand-subtle-text)", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
-              Every monetary value is grounded in the Social Value Engine, the UK's leading platform used by local authorities and housing associations, fully aligned with HM Treasury Green Book principles.
+              Every monetary value is grounded in the Social Value Engine, used by more than 250 organisations across the UK and globally, and fully aligned with HM Treasury Green Book principles.
             </p>
           </FadeIn>
         </div>
