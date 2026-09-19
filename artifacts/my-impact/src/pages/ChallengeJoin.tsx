@@ -111,8 +111,9 @@ export default function ChallengeJoin() {
           <h1 className="text-lg font-display font-semibold text-foreground">Join a challenge</h1>
         </div>
 
-        <label className="block text-xs font-medium text-foreground mb-1.5">Invite code</label>
+        <label htmlFor="challenge-invite-code" className="block text-xs font-medium text-foreground mb-1.5">Invite code</label>
         <input
+          id="challenge-invite-code"
           type="text"
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}

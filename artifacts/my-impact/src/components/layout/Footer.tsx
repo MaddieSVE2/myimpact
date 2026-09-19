@@ -80,8 +80,8 @@ export function Footer() {
 
         {/* Explore */}
         <div>
-          <p style={headingStyle}>Explore</p>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 id="footer-explore-heading" style={headingStyle}>Explore</h2>
+          <ul aria-labelledby="footer-explore-heading" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             {EXPLORE_LINKS.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="mi-footer-link" style={linkStyle}>{l.label}</Link>
@@ -92,8 +92,8 @@ export function Footer() {
 
         {/* Organisations */}
         <div>
-          <p style={headingStyle}>Organisations</p>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 id="footer-organisations-heading" style={headingStyle}>Organisations</h2>
+          <ul aria-labelledby="footer-organisations-heading" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             {ORG_LINKS.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="mi-footer-link" style={linkStyle}>{l.label}</Link>
@@ -104,8 +104,8 @@ export function Footer() {
 
         {/* SVE family */}
         <div>
-          <p style={{ ...headingStyle, color: "#F47C4D" }}>Part of the SVE family</p>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 id="footer-sve-family-heading" style={{ ...headingStyle, color: "#F47C4D" }}>Part of the SVE family</h2>
+          <ul aria-labelledby="footer-sve-family-heading" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             {SVE_FAMILY_LINKS.map((l) => (
               <li key={l.href}>
                 <a
