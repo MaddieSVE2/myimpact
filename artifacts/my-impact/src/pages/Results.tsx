@@ -1155,6 +1155,13 @@ export default function Results() {
       // so any later save on this page creates a fresh entry rather than
       // silently overwriting the one we just updated.
       const wasEdit = !!targetRecordId;
+      track(ANALYTICS_EVENTS.IMPACT_RECORD_SAVED, {
+        entry_mode: "full_record",
+        capture_mode: "form",
+        operation: wasEdit ? "update" : "create",
+        activity_count: result.activityBreakdowns.length,
+        has_donation: (input.donationsGBP ?? 0) > 0,
+      });
       setSavedWasEdit(wasEdit);
       if (editRecordId) setEditRecordId(null);
       toast(

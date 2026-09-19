@@ -10,7 +10,7 @@ import { signInWithMagicLink } from "../helpers/auth";
  *   2. Open History, expand the record, click "Edit activities".
  *   3. The wizard re-opens pre-filled: the activity is already selected and
  *      the contributions step shows the original donation/extra-hours values.
- *   4. Change the donation, reveal, and click "Update entry" on Results.
+ *   4. Change the donation, reveal, and click "Save changes" on Results.
  *   5. The SAME record is updated in place: no new row, the period label is
  *      preserved, and the total value reflects the new donation.
  */
@@ -59,12 +59,12 @@ test.describe("Spec 13 — edit a saved record in place from History", () => {
     await page.getByRole("button", { name: /reveal my impact/i }).click();
 
     await page.waitForURL(/\/results/, { timeout: 30_000 });
-    const saveProgress = page.getByRole("button", { name: /^save progress$/i });
+    const saveProgress = page.getByRole("button", { name: /^save$/i });
     await expect(saveProgress).toBeVisible({ timeout: 15_000 });
     // Saves go straight against the report period chosen at journey start —
     // there is no save-time period dialog any more.
     await saveProgress.click();
-    await expect(page.getByRole("button", { name: /^saved!$/i })).toBeVisible({
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -105,11 +105,11 @@ test.describe("Spec 13 — edit a saved record in place from History", () => {
     await page.getByRole("button", { name: /reveal my impact/i }).click();
 
     await page.waitForURL(/\/results/, { timeout: 30_000 });
-    // Edit mode: the CTA reads "Update entry" and skips the period dialog.
-    const updateBtn = page.getByRole("button", { name: /^update entry$/i });
+    // Edit mode: the CTA reads "Save changes" and skips the period dialog.
+    const updateBtn = page.getByRole("button", { name: /^save changes$/i });
     await expect(updateBtn).toBeVisible({ timeout: 15_000 });
     await updateBtn.click();
-    await expect(page.getByRole("button", { name: /^updated!$/i })).toBeVisible({
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -225,10 +225,10 @@ test.describe("Spec 13b — editing a record with custom activities preserves it
     // ---- 4. Save without changing anything --------------------------------
     await page.getByRole("button", { name: /reveal my impact/i }).click();
     await page.waitForURL(/\/results/, { timeout: 30_000 });
-    const updateBtn = page.getByRole("button", { name: /^update entry$/i });
+    const updateBtn = page.getByRole("button", { name: /^save changes$/i });
     await expect(updateBtn).toBeVisible({ timeout: 15_000 });
     await updateBtn.click();
-    await expect(page.getByRole("button", { name: /^updated!$/i })).toBeVisible({
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({
       timeout: 15_000,
     });
 

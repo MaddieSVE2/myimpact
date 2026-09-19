@@ -97,8 +97,8 @@ test.describe("Spec 17 — cross-year report edit keeps annual totals aligned", 
     await expect(heroHeadline).toBeVisible({ timeout: 20_000 });
 
     // Save the edit and check the POST-SAVE render keeps the bucketed year.
-    await page.getByRole("button", { name: /^update entry$/i }).click();
-    await expect(page.getByRole("button", { name: /^updated!$/i })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^save changes$/i }).click();
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({ timeout: 15_000 });
     await expect(heroHeadline).toBeVisible();
 
     // The hero total must equal the reconciled recap total for the bucketed

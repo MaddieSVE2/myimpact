@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { describeCadence } from "@/components/QuickLog";
 import { NumberInput } from "@/components/ui/number-input";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -388,6 +389,13 @@ export default function QuickLogPhoto() {
       const numericId = parseInt(saved.id, 10);
       if (!Number.isFinite(numericId)) throw new Error("Invalid record id returned");
       await uploadPhoto(snapshot.blob, numericId);
+      track(ANALYTICS_EVENTS.IMPACT_RECORD_SAVED, {
+        entry_mode: "quick_log",
+        capture_mode: "photo",
+        activity_type: "custom",
+        activity_count: 1,
+        used_shortcut: false,
+      });
       setSavedDescription(description.trim());
       setStage("done");
       toast({ title: "Logged with photo", description: "Your activity and photo are now in your history." });
@@ -426,6 +434,13 @@ export default function QuickLogPhoto() {
       const numericId = parseInt(saved.id, 10);
       if (!Number.isFinite(numericId)) throw new Error("Invalid record id returned");
       await uploadPhoto(snapshot.blob, numericId);
+      track(ANALYTICS_EVENTS.IMPACT_RECORD_SAVED, {
+        entry_mode: "quick_log",
+        capture_mode: "photo",
+        activity_type: "shortcut",
+        activity_count: activities.length,
+        used_shortcut: true,
+      });
       toast({
         title: "Logged with photo",
         description: `Saved "${template.label}" and attached your photo.`,

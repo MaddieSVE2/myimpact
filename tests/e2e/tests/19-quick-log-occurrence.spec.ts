@@ -8,7 +8,7 @@ import { signInWithMagicLink } from "../helpers/auth";
  * Covers the rebuilt /log page:
  *   1. Happy path: pick an activity, enter a per-occurrence quantity, keep
  *      today's date, choose "Online / remote", save, and see the
- *      "Added to My Impact <year>" confirmation.
+ *      current-impact-record confirmation.
  *   2. Log again: after the first save the activity appears under "Recent
  *      activities"; tapping it pre-fills the usual amount and location.
  *   3. Duplicate prompt: saving the same activity on the same date surfaces
@@ -59,7 +59,7 @@ test.describe("Spec 19 — Quick Log occurrence-first UX", () => {
     await page.getByTestId("quick-log-submit").click();
     const confirmation = page.getByTestId("quick-log-saved-confirmation");
     await expect(confirmation).toBeVisible({ timeout: 20_000 });
-    await expect(confirmation).toContainText(/Added to My Impact \d{4}/);
+    await expect(confirmation).toContainText(/Added to your current impact record/i);
 
     // ---- 2. Log again pre-fills ----------------------------------------
     await page.getByTestId("quick-log-saved-log-another").click();

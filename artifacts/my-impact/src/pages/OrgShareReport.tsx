@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useGetActivities } from "@workspace/api-client-react";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
 
@@ -258,9 +259,16 @@ export default function OrgShareReport() {
         }
         throw new Error((data as { error?: string }).error ?? "Sharing failed.");
       }
+      const approvalMode = data?.record?.verificationStatus === "pending" ? "pending" : "automatic";
+      track(ANALYTICS_EVENTS.ORGANISATION_RECORD_SHARED, {
+        activity_count: selectedLines.length,
+        approval_mode: approvalMode,
+        has_evidence: evidence.length > 0,
+        share_surface: "saved_record_review",
+      });
       setDone({
         recordId: data?.record?.id,
-        status: data?.record?.verificationStatus === "pending" ? "pending" : "approved",
+        status: approvalMode === "pending" ? "pending" : "approved",
       });
     } catch (err) {
       setSubmitError((err as Error).message);

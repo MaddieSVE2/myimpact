@@ -60,19 +60,19 @@ export async function completeWizardWithExtraHours(
 
   // Land on /results. The hero renders the total as a large currency
   // heading; the exact headline copy varies by user situation, so assert
-  // on the stable pieces: the £-value h1 and the "Save progress" CTA.
+  // on the stable pieces: the £-value h1 and the "Save" CTA.
   await page.waitForURL(/\/results/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: "£" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^save progress$|^saved!$/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^save$|^saved$/i })).toBeVisible();
 
   // Persist the calculated impact to the user's history. The Results page
-  // does NOT auto-save: it shows a "Save progress" CTA that saves directly
+  // does NOT auto-save: it shows a "Save" CTA that saves directly
   // against the authoritative report period chosen at the start of the
   // journey — there is no save-time period dialog any more.
   if (opts.save !== false) {
-    await page.getByRole("button", { name: /^save progress$/i }).click();
-    // After save the primary CTA flips to "Saved!".
-    await expect(page.getByRole("button", { name: /^saved!$/i })).toBeVisible({
+    await page.getByRole("button", { name: /^save$/i }).click();
+    // After save the primary CTA flips to "Saved".
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({
       timeout: 15_000,
     });
   }

@@ -1,10 +1,10 @@
 # Funnel analytics
 
 My Impact ships a small, privacy-first analytics layer used to power the
-internal funnel and retention dashboards on the `/admin` page. It is
-deliberately self-hosted: no third-party SaaS receives event data, and **no
-PII is ever stored beyond the optional `users.id` foreign key** that already
-identifies the row's owner internally.
+internal funnel and retention dashboards on the `/admin` page. Published
+website builds also send the same scalar-only custom events to Replit-hosted
+analytics when it is enabled in Publishing settings. **No PII is stored beyond
+the optional `users.id` foreign key** used by the internal event row.
 
 This document is the source of truth for what we track, where it fires, and
 how to extend it.
@@ -55,6 +55,9 @@ sync; the server validates the name on every ingest.
 | `share_click`           | member        | `Results` share menu and `MilestoneShareModal` buttons                      | `props.channel` is `twitter` \| `linkedin` \| `facebook` \| `native`  |
 | `public_profile_view`   | member        | `GET /api/public-profile/:slug`                                            | Logs only the slug — viewer is anonymous by design                    |
 | `org_invite_accepted`   | org           | `POST /api/org/join` when not already a member                             | `props.role`, `props.orgType`                                         |
+| `impact_record_saved`   | member        | Successful Quick Log, photo Quick Log, or full impact-record save          | Entry/capture mode, create/update operation, bounded counts and booleans |
+| `organisation_record_shared` | member   | Successful Review & share submission from a saved personal record          | Activity count, approval mode, evidence boolean and share surface      |
+| `organisation_registration_completed` | org | Successful public organisation registration request                    | Organisation type and registration surface                            |
 
 ### What we DON'T put in `props`
 

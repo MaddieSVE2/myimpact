@@ -40,6 +40,7 @@ import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/
 import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
 import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
 import { useMyOrg } from "@/lib/org-export";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import type { ImpactResult } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -511,6 +512,13 @@ export default function QuickLogActivity() {
       // Honour challenge attribution: clear context and refresh org/challenge
       // caches so updated progress is visible.
       const challengeContext = consumeChallengeContextForSave();
+      track(ANALYTICS_EVENTS.IMPACT_RECORD_SAVED, {
+        entry_mode: "quick_log",
+        capture_mode: "form",
+        activity_type: customActivities.length > 0 ? "custom" : "catalogue",
+        activity_count: activities.length + customActivities.length,
+        has_challenge_context: Boolean(challengeContext),
+      });
       if (challengeContext) {
         queryClient.invalidateQueries({ queryKey: ["org-prompts"] });
         queryClient.invalidateQueries({ queryKey: ["challenges-mine"] });

@@ -20,6 +20,9 @@ export const ANALYTICS_EVENTS = [
   "org_member_submit_completed",
   "org_member_submit_edited",
   "org_member_submit_withdrawn",
+  "impact_record_saved",
+  "organisation_record_shared",
+  "organisation_registration_completed",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

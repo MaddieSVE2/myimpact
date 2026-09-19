@@ -15,7 +15,7 @@ import { signInWithMagicLink } from "../helpers/auth";
  *      `habit_entry_conflict`.
  *   3. Assert the conflict prompt dialog appears with its three options.
  *   4. Click "Update the existing entry" and assert it resolves cleanly:
- *        - the post-save "Saved!" CTA appears, and
+ *        - the post-save "Saved" CTA appears, and
  *        - the user's record count is unchanged (no silent double-count).
  *
  * A regression here would silently double-count or strand the user, so this
@@ -108,11 +108,11 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     await page.waitForURL(/\/wizard\/contributions/);
     await page.getByRole("button", { name: /reveal my impact/i }).click();
 
-    // Land on /results. Use the Save Progress CTA as the readiness signal —
+    // Land on /results. Use the Save CTA as the readiness signal —
     // the page renders heavy charts asynchronously, but the action button
     // appears as soon as the impact result is available.
     await page.waitForURL(/\/results/, { timeout: 30_000 });
-    const saveProgress = page.getByRole("button", { name: /^save progress$/i });
+    const saveProgress = page.getByRole("button", { name: /^save$/i });
     await expect(saveProgress).toBeVisible({ timeout: 15_000 });
 
     // ---- 3. Trigger the conflict ----------------------------------------
@@ -123,7 +123,7 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     // Conflict dialog appears with the three documented options.
     const conflictDialog = page.getByTestId("habit-conflict-dialog");
     await expect(conflictDialog).toBeVisible({ timeout: 10_000 });
-    await expect(conflictDialog.getByText(/already covered/i)).toBeVisible();
+    await expect(conflictDialog.getByText(/already-logged activity/i)).toBeVisible();
     await expect(page.getByTestId("conflict-replace")).toBeVisible();
     await expect(page.getByTestId("conflict-open-history")).toBeVisible();
     await expect(page.getByTestId("conflict-force")).toBeVisible();
@@ -131,11 +131,8 @@ test.describe("Spec 9 — habit-conflict 409 surfaces in QuickLog/wizard UI", ()
     // ---- 4. Resolve via the "edit existing" path ------------------------
     await page.getByTestId("conflict-replace").click();
 
-    // The Save CTA flips to "Updated!" once the targetRecordId update
-    // succeeds — that's our signal the conflict was resolved cleanly.
-    // (In-place updates read "Updated!" rather than "Saved!" so users can
-    // tell an edit apart from a fresh save.)
-    await expect(page.getByRole("button", { name: /^updated!$/i })).toBeVisible({
+    // The Save CTA flips to "Saved" once the targetRecordId update succeeds.
+    await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible({
       timeout: 15_000,
     });
 

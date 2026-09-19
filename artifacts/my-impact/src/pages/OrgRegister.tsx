@@ -4,6 +4,7 @@ import { Building2, Users, BarChart2, Shield, CheckCircle, ArrowLeft, FileText, 
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { PageMeta } from "@/components/PageMeta";
 import { ORG_REGISTER_META } from "@/lib/page-metadata";
+import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -236,6 +237,10 @@ export default function OrgRegister() {
         setError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
+      track(ANALYTICS_EVENTS.ORGANISATION_REGISTRATION_COMPLETED, {
+        organisation_type: form.type || "other",
+        registration_surface: "public_form",
+      });
       setStep("done");
     } catch {
       setError("Could not connect. Please check your connection and try again.");
