@@ -178,7 +178,7 @@ export default function Organisations() {
         <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
           <FadeIn>
             <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--brand-muted-text)", marginBottom: 16 }}>
-              Social Value Engine methodology
+              Accredited by Social Value International
             </p>
             <p style={{ fontSize: 16, color: "var(--brand-subtle-text)", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
               Each monetary value uses Social Value Engine data, informed by work with more than 250 public, private, and voluntary-sector organisations in the UK and globally, and aligned with HM Treasury Green Book principles.
