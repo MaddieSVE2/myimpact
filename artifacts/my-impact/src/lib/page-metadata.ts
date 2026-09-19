@@ -190,6 +190,24 @@ export const ORG_REGISTER_META: PageMetadata = {
   robots: "index, follow",
 };
 
+export const ORG_TYPE_EXPLICIT_SUBMISSION_META: PageMetadata = {
+  title: "Explicit submission organisations — My Impact",
+  description:
+    "How explicit submission organisations work on My Impact: members choose exactly which activities to submit, and nothing is shared automatically.",
+  canonical: "https://myimpact.uk/org/types/explicit-submission",
+  robots: "index, follow",
+  ogType: "article",
+};
+
+export const ORG_TYPE_CONSENTED_LOGGING_META: PageMetadata = {
+  title: "Consented logging organisations — My Impact",
+  description:
+    "How consented logging organisations work on My Impact: activities are shared automatically with your recorded consent, never journals or pulse answers.",
+  canonical: "https://myimpact.uk/org/types/consented-logging",
+  robots: "index, follow",
+  ogType: "article",
+};
+
 /**
  * All public pages to pre-render, in order.
  * Routes come from public-routes.json, which is also consumed by the
@@ -205,6 +223,8 @@ const METADATA_BY_ROUTE: Record<string, PageMetadata> = {
   "/org/demo": ORG_DEMO_META,
   "/pricing": PRICING_META,
   "/org/register": ORG_REGISTER_META,
+  "/org/types/explicit-submission": ORG_TYPE_EXPLICIT_SUBMISSION_META,
+  "/org/types/consented-logging": ORG_TYPE_CONSENTED_LOGGING_META,
   "/suggestions": SUGGESTIONS_META,
   "/404": NOT_FOUND_META,
 };

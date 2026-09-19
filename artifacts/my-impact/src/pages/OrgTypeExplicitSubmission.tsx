@@ -1,15 +1,13 @@
 import { Link } from "wouter";
 import { ShieldCheck, Lock, ArrowLeft } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { ORG_TYPE_EXPLICIT_SUBMISSION_META } from "@/lib/page-metadata";
 
 export default function OrgTypeExplicitSubmission() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10" data-testid="page-org-type-explicit">
       <PageMeta
-        title="Explicit submission organisations — My Impact"
-        description="How explicit submission organisations work on My Impact: members choose exactly which activities to submit, and nothing is shared automatically."
-        canonical="https://myimpact.uk/org/types/explicit-submission"
-        ogType="article"
+        {...ORG_TYPE_EXPLICIT_SUBMISSION_META}
       />
       <Link href="/org" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-6">
         <ArrowLeft className="w-4 h-4" /> Back to organisation portal
@@ -57,7 +55,7 @@ export default function OrgTypeExplicitSubmission() {
           <p className="text-xs text-muted-foreground">
             An organisation's data-sharing type is fixed when it is created and cannot be changed later. If your
             organisation instead shares activities automatically with member consent, see{" "}
-            <Link href="/org/types/consented-logging" className="text-primary hover:underline">consented logging organisations</Link>.
+            <Link href="/org/types/consented-logging" className="text-primary underline underline-offset-2">consented logging organisations</Link>.
           </p>
         </div>
       </div>

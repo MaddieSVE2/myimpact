@@ -73,7 +73,9 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // There is no session request during build-time rendering. Starting in the
+  // settled guest state lets public pages emit their complete guest content.
+  const [isLoading, setIsLoading] = useState(typeof window !== "undefined");
   const queryClient = useQueryClient();
 
   useEffect(() => {

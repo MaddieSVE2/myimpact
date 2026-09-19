@@ -1,15 +1,13 @@
 import { Link } from "wouter";
 import { ShieldCheck, Lock, ArrowLeft } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { ORG_TYPE_CONSENTED_LOGGING_META } from "@/lib/page-metadata";
 
 export default function OrgTypeConsentedLogging() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10" data-testid="page-org-type-consented">
       <PageMeta
-        title="Consented logging organisations — My Impact"
-        description="How consented logging organisations work on My Impact: activities are shared automatically with your recorded consent, never journals or pulse answers."
-        canonical="https://myimpact.uk/org/types/consented-logging"
-        ogType="article"
+        {...ORG_TYPE_CONSENTED_LOGGING_META}
       />
       <Link href="/org" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-6">
         <ArrowLeft className="w-4 h-4" /> Back to organisation portal
@@ -58,7 +56,7 @@ export default function OrgTypeConsentedLogging() {
           <p className="text-xs text-muted-foreground">
             An organisation's data-sharing type is fixed when it is created and cannot be changed later. If your
             organisation requires you to submit each activity yourself, see{" "}
-            <Link href="/org/types/explicit-submission" className="text-primary hover:underline">explicit submission organisations</Link>.
+            <Link href="/org/types/explicit-submission" className="text-primary underline underline-offset-2">explicit submission organisations</Link>.
           </p>
         </div>
       </div>

@@ -54,7 +54,13 @@ const NOINDEX_PATH_PREFIXES = [
 ];
 
 // Paths that must be indexable even though a prefix above would catch them.
-const NOINDEX_PATH_EXCLUSIONS = ["/org/demo", "/org/register", "/org/share"];
+const NOINDEX_PATH_EXCLUSIONS = [
+  "/org/demo",
+  "/org/register",
+  "/org/share",
+  "/org/types/explicit-submission",
+  "/org/types/consented-logging",
+];
 
 // Pages — lazy-loaded so each route becomes its own split chunk
 const Intro = lazyWithRetry(() => import("@/pages/Intro"));

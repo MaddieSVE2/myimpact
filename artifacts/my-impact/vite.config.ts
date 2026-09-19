@@ -119,6 +119,11 @@ export default defineConfig({
     // Rollup's default chunking is safe; do not reintroduce manual vendor
     // splitting without verifying the production build in a real browser.
   },
+  ssr: {
+    // react-helmet-async publishes CommonJS in this version. Bundling it into
+    // the SSR artifact avoids Node ESM named-export failures at prerender time.
+    noExternal: ["react-helmet-async"],
+  },
   // ESM worker output so the org PDF worker (which dynamically pulls in jspdf
   // chunks) can be code-split. Vite's default IIFE worker format errors when
   // a worker imports anything that triggers code-splitting.

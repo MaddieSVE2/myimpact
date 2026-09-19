@@ -1,13 +1,10 @@
 /**
  * prerender.ts — lightweight static pre-render for public pages.
  *
- * Reads the Vite-built dist/public/index.html shell, injects per-page
- * metadata (title, description, canonical, robots, Open Graph, Twitter Card,
- * and JSON-LD) and writes each page as dist/public/<path>/index.html so
- * crawlers receive the correct tags without executing JavaScript.
- *
- * No headless browser required — we use string injection because the app
- * already defines all metadata in PageMeta / Helmet component props.
+ * Reads the Vite-built HTML shell and server-rendered public route bundle,
+ * then injects both route metadata and the route's React markup. Each public
+ * page therefore exposes its headings, copy, navigation, and links before
+ * JavaScript runs. Authenticated routes remain client-rendered.
  *
  * Metadata is sourced from src/lib/page-metadata.ts, which is also
  * imported by each page component. Updating copy there automatically
@@ -18,6 +15,7 @@ import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync } from 
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PRERENDER_PAGES, DEFAULT_OG_IMAGE } from "./src/lib/page-metadata.ts";
+import { pathToFileURL } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const DIST = resolve(__dirname, "dist", "public");
@@ -28,7 +26,11 @@ function escape(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function injectMeta(html: string, page: (typeof PRERENDER_PAGES)[number]): string {
+function injectPage(
+  html: string,
+  page: (typeof PRERENDER_PAGES)[number],
+  body: string,
+): string {
   const { title, description, canonical, robots, ogType, ogImage, jsonLd } = page;
 
   const resolvedOgImage = ogImage ?? DEFAULT_OG_IMAGE;
@@ -78,10 +80,13 @@ function injectMeta(html: string, page: (typeof PRERENDER_PAGES)[number]): strin
 
   const injected = jsonLdBlocks ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
   result = result.replace(/<head>/, `<head>\n${injected}`);
+  result = result.replace(
+    /<div id="root"><\/div>/,
+    `<div id="root">${body}</div>`,
+  );
 
   return result;
 }
-
 function writeHtml(pagePath: string, html: string): void {
   const isRoot = pagePath === "/";
   // Root is already written as dist/public/index.html by Vite; skip the
@@ -123,7 +128,7 @@ function validateSitemap(): void {
   console.log(`[prerender] sitemap validated — ${sitemapUrls.size} indexable URLs`);
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const indexPath = join(DIST, "index.html");
   if (!existsSync(indexPath)) {
     console.error(`[prerender] dist/public/index.html not found — run 'pnpm build' first`);
@@ -153,12 +158,22 @@ function main(): void {
     }
   }
 
+  const serverEntry = join(__dirname, "dist", "server", "entry-server.js");
+  if (!existsSync(serverEntry)) {
+    console.error("[prerender] dist/server/entry-server.js not found — run the SSR build first");
+    process.exit(1);
+  }
+  const { render } = await import(pathToFileURL(serverEntry).href) as {
+    render: (path: string) => string;
+  };
+
   for (const page of PRERENDER_PAGES) {
-    const html = injectMeta(template, page);
+    const body = render(page.path);
+    const html = injectPage(template, page, body);
     writeHtml(page.path, html);
   }
 
   console.log(`[prerender] done — ${PRERENDER_PAGES.length} pages written`);
 }
 
-main();
+await main();
