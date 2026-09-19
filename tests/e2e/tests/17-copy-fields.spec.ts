@@ -57,19 +57,19 @@ test.describe("Spec 17 — CopyField buttons copy the right thing", () => {
     expect(await readClipboard(page)).toBe(inviteUrl);
     await page.getByRole("button", { name: "Close" }).click();
 
-    // ── 2. Results impact statement (multiline CopyField) ─────────────────
+    // ── 2. Results impact evidence (multiline CopyField) ──────────────────
     await completeWizardWithExtraHours(page, { hours: 6, save: false });
 
-    const statementField = page.getByLabel("impact statement", { exact: true });
-    await statementField.scrollIntoViewIfNeeded();
-    await expect(statementField).toBeVisible();
-    const statementText = await statementField.inputValue();
-    expect(statementText.length).toBeGreaterThan(50);
+    const evidenceField = page.getByLabel("impact evidence", { exact: true });
+    await evidenceField.scrollIntoViewIfNeeded();
+    await expect(evidenceField).toBeVisible();
+    const evidenceText = await evidenceField.inputValue();
+    expect(evidenceText.length).toBeGreaterThan(50);
 
-    const statementButton = page.getByRole("button", { name: "Copy impact statement" });
-    await statementButton.click();
-    await expect(statementButton).toHaveText(/Copied!/);
-    expect(await readClipboard(page)).toBe(statementText);
+    const evidenceButton = page.getByRole("button", { name: "Copy impact evidence" });
+    await evidenceButton.click();
+    await expect(evidenceButton).toHaveText(/Copied!/);
+    expect(await readClipboard(page)).toBe(evidenceText);
 
     // ── 3. Personal challenge invite link ─────────────────────────────────
     const now = Date.now();

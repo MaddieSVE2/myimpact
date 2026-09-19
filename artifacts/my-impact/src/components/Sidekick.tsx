@@ -79,18 +79,18 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
   "/results": [
     "What does my score actually mean?",
     "How can I increase my social value?",
-    "Help me write a UCAS paragraph about my impact",
+    "Which evidence could support my UCAS statement?",
     "Which SDGs am I contributing to?",
   ],
   "/suggestions": [
     "How do I find volunteering near me?",
     "What is DofE and how do I get involved?",
-    "Help me explain my impact on my CV",
+    "Which evidence could I use when writing my CV?",
     "Which causes might suit my interests?",
   ],
   "/history": [
     "How do I grow my impact over time?",
-    "Help me summarise my impact history for a job application",
+    "Help me choose evidence for a job application",
     "What trends should I look for in my history?",
     "How do I use this for a UCAS personal statement?",
   ],
@@ -129,7 +129,7 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
 const DEFAULT_QUICK_ACTIONS = [
   "What is social value?",
   "How can I increase my impact?",
-  "Help me write a UCAS paragraph about my impact",
+  "Which evidence could support my UCAS statement?",
   "What SDGs am I helping?",
 ];
 

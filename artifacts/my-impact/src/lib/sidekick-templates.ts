@@ -101,7 +101,7 @@ const HOURS_LINE = (ctx: SidekickUserContext) =>
 const NUMBERS_LINE = (ctx: SidekickUserContext) =>
   HAS_SCORE(ctx)
     ? `My current My Impact total social value is ${POUNDS(ctx.totalValue)}${HOURS_LINE(ctx)}.`
-    : `I have not generated a score yet, so please draft something I can adapt once I have my numbers.`;
+    : `I have not generated a score yet, so focus on the activity and ask me for any facts you need.`;
 
 const RECENT_LINE = (ctx: SidekickUserContext) => {
   const acts = ctx.recentActivities ?? [];
@@ -131,14 +131,14 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
   {
     id: "ucas_paragraph",
     category: "ucas",
-    label: "UCAS paragraph about my impact",
-    description: "A short paragraph for the wider-experience section.",
+    label: "Evidence for my UCAS statement",
+    description: "Choose facts and reflection questions, then write it in your own voice.",
     personaPrompts: {
-      default: `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider experience and the difference I've made through {activity}. {numbers}{recent} First person, British English, specific not generic, no clichés like "I have always been passionate about…".`,
-      veteran: `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about the wider contribution I've made through {activity}. {numbers}{recent} I'm a veteran / forces background applicant, frame the discipline, leadership and teamwork in plain civilian language an admissions tutor will recognise. Use British English, first person, no clichés.`,
-      carer: `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider contribution. {numbers}{recent} I'm an unpaid carer, so please weave in what caring has taught me, coordination, advocacy, resilience, alongside {activity}. Honest, first person, British English, no over-claiming.`,
-      career_break: `Please draft a UCAS personal statement paragraph (around 80 to 100 words) about my wider contribution. {numbers}{recent} I am a mature applicant returning to study after a career break. Frame {activity} as evidence of active contribution during that period. First person, British English, calm and honest tone.`,
-      apprenticeship: `Please draft a short supporting-statement paragraph (around 80 words) for my apprenticeship application about {activity}. {numbers}{recent} Pull out commitment, reliability and teamwork, what apprenticeship assessors actually look for. First person, British English, no waffle.`,
+      default: `Help me choose factual evidence and reflection points for a UCAS personal statement about {activity}. {numbers}{recent} Do not write the statement for me. Ask useful questions and give me a short outline so I can write it in my own voice.`,
+      veteran: `Help me identify factual evidence from {activity} for my UCAS personal statement. {numbers}{recent} I'm a veteran / forces background applicant, so suggest plain civilian descriptions of relevant skills, but do not write submission-ready wording. Ask questions and give me an outline to write in my own voice.`,
+      carer: `Help me identify factual evidence and reflection points from unpaid caring and {activity} for my UCAS personal statement. {numbers}{recent} Focus on coordination, advocacy and resilience without over-claiming. Do not write the statement for me; help me plan my own wording.`,
+      career_break: `Help me select factual evidence from {activity} for a UCAS personal statement as a mature applicant returning after a career break. {numbers}{recent} Give me questions and a short structure, not submission-ready wording.`,
+      apprenticeship: `Help me choose evidence from {activity} for an apprenticeship supporting statement. {numbers}{recent} Identify examples of commitment, reliability and teamwork, then give me questions and an outline so I can write it myself.`,
     },
   },
 
@@ -161,14 +161,14 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
   {
     id: "cv_bullets",
     category: "cv",
-    label: "CV bullets from my impact",
-    description: "Three CV bullet points an employer will actually read.",
+    label: "Evidence for my CV",
+    description: "Choose strong facts and outcomes to describe in your own words.",
     personaPrompts: {
-      default: `Please write 3 CV bullet points based on {activity}. {numbers}{recent} Each bullet: strong verb, specific action, outcome. No generic claims like "team player". British English.`,
-      veteran: `Please write 3 CV bullet points based on {activity}. {numbers}{recent} I'm ex-forces, translate any military framing into plain civilian language. Each bullet: action verb, specific contribution, measurable outcome where possible. British English. No fluff.`,
-      carer: `Please write 3 CV bullet points covering my unpaid caring responsibilities and {activity}. {numbers}{recent} Use professional language an HR reader will recognise, coordination, advocacy, multi-stakeholder management. Each bullet starts with a strong verb. British English.`,
-      career_break: `Please write 3 CV bullet points presenting my career-break period as active contribution, anchored on {activity}. {numbers}{recent} Confident, not apologetic. Strong action verbs. British English.`,
-      apprenticeship: `Please write 3 CV-style bullet points I can use in my apprenticeship application, drawn from {activity}. {numbers}{recent} Each one should evidence reliability, teamwork or initiative. Plain English. British English.`,
+      default: `Help me select three factual examples from {activity} that could support my CV. {numbers}{recent} For each, identify the action, skill and outcome, then ask me to write the final bullet in my own words.`,
+      veteran: `Help me select three factual examples from {activity} for my CV. {numbers}{recent} I'm ex-forces, so explain relevant skills in plain civilian terms, but do not produce finished CV bullets. Identify action, contribution and measurable outcome for me to verify and write.`,
+      carer: `Help me select three factual examples from unpaid caring and {activity} for my CV. {numbers}{recent} Identify evidence of coordination, advocacy or multi-stakeholder management without producing submission-ready bullets.`,
+      career_break: `Help me select three factual examples from {activity} that evidence active contribution during my career break. {numbers}{recent} Identify action, skill and outcome so I can write accurate CV bullets in my own words.`,
+      apprenticeship: `Help me select evidence from {activity} for an apprenticeship CV. {numbers}{recent} Identify examples of reliability, teamwork or initiative and questions I should answer before writing the final bullets myself.`,
     },
   },
 
@@ -176,14 +176,14 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
   {
     id: "cover_letter_line",
     category: "cover_letter",
-    label: "Cover letter line about impact",
-    description: "Two or three sentences to drop into a cover letter.",
+    label: "Plan a cover-letter example",
+    description: "Choose evidence and structure it before writing your own wording.",
     personaPrompts: {
-      default: `Please draft 2 to 3 sentences for a cover letter that reference my contribution through {activity}. {numbers} Specific, not generic. British English, first person.`,
-      veteran: `Please draft 2 to 3 sentences for a cover letter that reference my contribution through {activity}. {numbers} I'm a veteran, keep it civilian-friendly, no acronyms, focus on what I'd bring to a workplace. British English, first person, no clichés.`,
-      carer: `Please draft 2 to 3 sentences for a cover letter that show how my unpaid caring and {activity} make me a strong candidate. {numbers} Honest, specific, not over-explained. British English, first person.`,
-      career_break: `Please draft 2 to 3 sentences for a cover letter that acknowledge my career break and present {activity} as evidence of what I've been doing during that time. {numbers} Calm, confident, not defensive. British English, first person.`,
-      apprenticeship: `Please draft 2 to 3 sentences for an apprenticeship covering letter that reference {activity} as evidence of commitment and teamwork. {numbers} Plain English, first person, British English.`,
+      default: `Help me plan a cover-letter example using factual evidence from {activity}. {numbers} Identify the action, outcome and job-relevant skill, then give me a structure to complete in my own words. Do not write finished application text.`,
+      veteran: `Help me plan a cover-letter example using {activity}. {numbers} I'm a veteran, so suggest civilian-friendly skill descriptions without acronyms, but leave the final wording for me to write.`,
+      carer: `Help me plan a cover-letter example using unpaid caring and {activity}. {numbers} Identify honest, specific evidence and a structure, not finished application sentences.`,
+      career_break: `Help me plan how to discuss my career break and {activity} in a cover letter. {numbers} Identify evidence and questions I should answer, then let me write the final wording myself.`,
+      apprenticeship: `Help me plan a cover-letter example using {activity} as evidence of commitment and teamwork. {numbers} Give me a structure and questions, not submission-ready wording.`,
     },
   },
 
@@ -240,6 +240,12 @@ export function applyTemplateOverrides(
   if (!overrides || overrides.length === 0) return templates;
   const byId = new Map(overrides.map((o) => [o.templateId, o]));
   return templates.map((t) => {
+    // Application-writing templates are safety-controlled product copy.
+    // Stored admin overrides may pre-date the own-words policy, so they must
+    // never replace these labels, descriptions, or prompts.
+    if (t.category === "ucas" || t.category === "cv" || t.category === "cover_letter") {
+      return t;
+    }
     const o = byId.get(t.id);
     if (!o) return t;
     const mergedPrompts: SidekickPersonaPrompts = { ...t.personaPrompts };

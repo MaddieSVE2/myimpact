@@ -1554,22 +1554,22 @@ export default function Results() {
       >
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Use your impact</p>
 
-        {/* Impact Statement */}
+        {/* Impact evidence summary */}
         <div className="bg-white border border-border rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-4">
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="w-4 h-4 shrink-0" style={{ color: "#C5192D" }} aria-hidden="true" />
-              <p className="text-sm font-semibold text-foreground">Your Impact Statement</p>
+              <p className="text-sm font-semibold text-foreground">Your impact evidence</p>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Use this in your UCAS personal statement, CV, or job application. Copy and adapt it to fit your context. It gives you a verified, specific number to stand behind.
+              Use this summary to check your logged hours, activities, skills, and estimated social value. Write and verify any application in your own words. UCAS prohibits submitting AI-written personal-statement text, and employers may have their own AI policies.
             </p>
             <CopyField
               value={generateCVText(result, interests, careerBreak, situation)}
               multiline
-              copyLabel="Copy statement"
+              copyLabel="Copy evidence"
               copiedLabel="Copied!"
-              ariaLabel="impact statement"
+              ariaLabel="impact evidence"
               onCopyError={() => toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" })}
             />
           </div>
