@@ -15,6 +15,9 @@ const C = {
   offBlack: "var(--brand-off-black)",
 };
 
+const CALENDLY_URL =
+  "https://calendly.com/hello-myimpact/30min?hide_event_type_details=1&hide_gdpr_banner=1&primary_color=d45105";
+
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -49,9 +52,57 @@ function FadeIn({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
+function CalendlyBooking() {
+  return (
+    <section
+      id="book-demo"
+      aria-labelledby="book-demo-title"
+      style={{ background: "white", padding: "clamp(60px, 8vw, 96px) 5%", scrollMarginTop: 80 }}
+    >
+      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <h2
+            id="book-demo-title"
+            style={{
+              color: C.dark,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: "clamp(30px, 5vw, 46px)",
+              fontWeight: 700,
+              letterSpacing: -1,
+              marginBottom: 12,
+            }}
+          >
+            Book a 30-minute demo
+          </h2>
+          <p style={{ color: "var(--brand-muted-text)", fontSize: 17 }}>
+            Choose a time with the My Impact team.
+          </p>
+        </div>
+        <iframe
+          src={CALENDLY_URL}
+          title="Book a 30-minute My Impact demo"
+          style={{ display: "block", width: "100%", minWidth: 320, height: 700, border: 0 }}
+        />
+        <p style={{ textAlign: "center", marginTop: 16, color: "var(--brand-muted-text)", fontSize: 14 }}>
+          If the calendar does not load,{" "}
+          <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-orange-text)", fontWeight: 700 }}>
+            book directly on Calendly
+          </a>
+          .
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function Organisations() {
   useEffect(() => {
-    scrollContentToTop();
+    const hash = window.location.hash;
+    if (hash) {
+      requestAnimationFrame(() => document.querySelector(hash)?.scrollIntoView());
+    } else {
+      scrollContentToTop();
+    }
   }, []);
 
   return (
@@ -118,8 +169,8 @@ export default function Organisations() {
             </p>
             
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "center" }}>
-              <Link
-                href="/contact?topic=demo"
+              <a
+                href="#book-demo"
                 data-testid="orgs-hero-cta-book-demo"
                 style={{
                   background: "var(--brand-orange-solid)",
@@ -139,7 +190,7 @@ export default function Organisations() {
                 onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
               >
                 Book a demo <ArrowRight size={18} />
-              </Link>
+              </a>
               <Link
                 href="/org/demo"
                 data-testid="orgs-hero-cta-demo"
@@ -556,6 +607,8 @@ export default function Organisations() {
           </FadeIn>
         </div>
       </section>
+
+      <CalendlyBooking />
 
       {/* ── FINAL CTA ── */}
       <section style={{ background: C.orange, padding: "clamp(60px, 8vw, 100px) 5%", textAlign: "center", position: "relative", overflow: "hidden" }}>
