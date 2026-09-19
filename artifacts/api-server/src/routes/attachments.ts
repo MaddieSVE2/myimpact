@@ -15,7 +15,6 @@ import {
   deleteAttachment,
   streamAttachment,
   getObjectMetadata,
-  purgeUnregisteredAttachments,
   getUserPrefixBytes,
 } from "../lib/objectStorage.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
@@ -121,16 +120,13 @@ async function releasePendingReservation(storageKey: string): Promise<void> {
     .where(eq(attachmentPendingReservationsTable.storageKey, storageKey));
 }
 
-// Periodically sweep expired reservation rows so the table stays small.
-// Also sweeps abandoned org-evidence attachments: rows registered before a
-// member submission but never linked to a record (recordId AND journalId
-// null) that are older than 24h — the user gave up mid-submission.
+// Periodically sweep abandoned org-evidence attachments: rows registered
+// before a member submission but never linked to a record (recordId AND
+// journalId null) that are older than 24h — the user gave up mid-submission.
+// Expired pending-upload reservations are handled by attachmentGC together
+// with their corresponding objects, so reservation rows must not be removed
+// independently here.
 const reservationSweepTimer = setInterval(async () => {
-  try {
-    await db
-      .delete(attachmentPendingReservationsTable)
-      .where(sql`expires_at < NOW()`);
-  } catch { /* best-effort */ }
   try {
     const stale = await db
       .select({ id: attachmentsTable.id, storageKey: attachmentsTable.storageKey })
@@ -407,17 +403,6 @@ router.post("/upload-url", authenticate, uploadUrlRateLimit, async (req: Authent
     return;
   }
 
-  // Garbage-collect any objects the user uploaded but never registered.
-  // Unregistered objects escape DB quota accounting, so we clean them up
-  // before issuing a new signed URL. This runs synchronously so that quota
-  // and orphan state are current before we generate the next URL.
-  const registeredRows = await db
-    .select({ storageKey: attachmentsTable.storageKey })
-    .from(attachmentsTable)
-    .where(eq(attachmentsTable.userId, userId));
-  const registeredKeys = new Set(registeredRows.map((r) => r.storageKey));
-  await purgeUnregisteredAttachments(userId, registeredKeys);
-
   let uploadUrl: string;
   try {
     uploadUrl = await getUploadURL(storageKey, mimeType, MAX_FILE_SIZE_BYTES);
@@ -467,20 +452,6 @@ router.post("/register", authenticate, async (req: AuthenticatedRequest, res) =>
     res.status(403).json({ error: "Storage key does not belong to this user." });
     return;
   }
-
-  // Purge orphaned objects (uploaded but never registered) before quota check.
-  // Running this deterministically on BOTH /upload-url and /register ensures
-  // that unregistered storage is cleaned up regardless of which endpoint the
-  // user hits next, closing the window where a user could skip /register and
-  // leave objects outside quota accounting indefinitely.
-  const registeredRows = await db
-    .select({ storageKey: attachmentsTable.storageKey })
-    .from(attachmentsTable)
-    .where(eq(attachmentsTable.userId, userId));
-  const registeredKeys = new Set(registeredRows.map((r) => r.storageKey));
-  // Treat the key being registered as already-registered so we don't delete it.
-  registeredKeys.add(storageKey);
-  await purgeUnregisteredAttachments(userId, registeredKeys);
 
   // Read actual file metadata from GCS — never trust client-supplied values.
   const objectMeta = await getObjectMetadata(storageKey);

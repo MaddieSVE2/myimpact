@@ -207,51 +207,6 @@ export async function getObjectMetadata(
 }
 
 /**
- * Delete any objects in the user's attachment prefix that are NOT recorded in
- * `registeredKeys` and were created more than `maxAgeMs` ago.
- *
- * This garbage-collects objects that were uploaded via a signed URL but were
- * never registered (e.g. the client uploaded a file and then skipped the
- * /register call). Unregistered objects are invisible to the quota calculator
- * and bypass storage controls unless cleaned up here.
- *
- * Call this before issuing a new signed upload URL so that orphaned objects
- * don't accumulate silently.
- */
-export async function purgeUnregisteredAttachments(
-  userId: string,
-  registeredKeys: Set<string>,
-  maxAgeMs = 15 * 60 * 1000,
-): Promise<void> {
-  const safeUserId = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const dir = getPrivateObjectDir();
-  const fullPrefix = `${dir.replace(/\/$/, "")}/attachments/${safeUserId}/`;
-  const { bucketName, objectName: objectPrefix } = parseObjectPath(fullPrefix);
-
-  try {
-    const bucket = objectStorageClient.bucket(bucketName);
-    const [files] = await bucket.getFiles({ prefix: objectPrefix });
-
-    const cutoff = Date.now() - maxAgeMs;
-    for (const file of files) {
-      const objectName = file.name;
-      const storageKey = `attachments/${safeUserId}/${objectName.slice(objectPrefix.length)}`;
-
-      if (registeredKeys.has(storageKey)) continue;
-
-      const created = file.metadata.timeCreated
-        ? new Date(file.metadata.timeCreated as string).getTime()
-        : 0;
-      if (created > cutoff) continue;
-
-      await file.delete({ ignoreNotFound: true }).catch(() => {});
-    }
-  } catch {
-    // best-effort: listing or deletion errors must not block the upload flow
-  }
-}
-
-/**
  * Sum the actual storage bytes consumed by ALL objects in the user's GCS
  * attachment prefix — including unregistered (orphaned) objects.
  *
@@ -293,57 +248,6 @@ export async function streamAttachment(storageKey: string): Promise<{ stream: No
   } catch {
     return null;
   }
-}
-
-/**
- * Sweep ALL user attachment prefixes and delete any unregistered objects
- * older than `maxAgeMs`. This is the server-side scheduled GC that operates
- * independent of user activity.
- *
- * `registeredKeysByUser` maps safeUserId → Set<storageKey> of DB-registered keys.
- * Objects whose storageKey is not in the set for their owner are treated as
- * orphans. Objects younger than maxAgeMs are left in place (active upload window).
- *
- * Returns the number of objects deleted.
- */
-export async function sweepOrphanedAttachments(
-  registeredKeysByUser: Map<string, Set<string>>,
-  maxAgeMs = 15 * 60 * 1000,
-): Promise<number> {
-  const dir = getPrivateObjectDir();
-  const attachmentsPrefix = `${dir.replace(/\/$/, "")}/attachments/`;
-  const { bucketName, objectName: objectPrefix } = parseObjectPath(attachmentsPrefix);
-
-  let deleted = 0;
-  try {
-    const bucket = objectStorageClient.bucket(bucketName);
-    const [files] = await bucket.getFiles({ prefix: objectPrefix });
-
-    const cutoff = Date.now() - maxAgeMs;
-    for (const file of files) {
-      // objectName looks like: <objectPrefix><safeUserId>/<uuid>
-      const relativePath = file.name.slice(objectPrefix.length);
-      const slashIdx = relativePath.indexOf("/");
-      if (slashIdx === -1) continue;
-
-      const safeUserId = relativePath.slice(0, slashIdx);
-      const storageKey = `attachments/${safeUserId}/${relativePath.slice(slashIdx + 1)}`;
-
-      const userKeys = registeredKeysByUser.get(safeUserId);
-      if (userKeys?.has(storageKey)) continue;
-
-      const created = file.metadata.timeCreated
-        ? new Date(file.metadata.timeCreated as string).getTime()
-        : 0;
-      if (created > cutoff) continue;
-
-      await file.delete({ ignoreNotFound: true }).catch(() => {});
-      deleted++;
-    }
-  } catch {
-    // best-effort: GC errors must not crash the server
-  }
-  return deleted;
 }
 
 // Re-exports kept for completeness (some other code may import these)

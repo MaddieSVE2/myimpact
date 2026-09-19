@@ -40,3 +40,4 @@
 - [Git pane stale subrepl refs](git-pane-subrefs.md) — hundreds of stale subrepl remotes/branches can trigger Replit’s generic Unknown Git Error despite healthy fetch and push.
 - [Unified recording language](recording-language.md) — Quick Log records activity; shortcuts speed it up; organisation sharing reuses saved records and stays distinct from approval.
 - [Vite public-route SSG](vite-public-route-ssg.md) — public pages use a Vite SSR bundle at build time; Helmet needs bundling and its inline server tags must not remain in the body.
+- [Attachment cleanup safety](attachment-cleanup-safety.md) — never infer orphaned user files from a bucket-vs-DB snapshot; only delete objects tied to expired upload reservations.
