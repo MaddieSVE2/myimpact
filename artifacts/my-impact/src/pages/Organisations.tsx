@@ -100,12 +100,12 @@ export default function Organisations() {
               <Building2 size={14} /> My Impact for Organisations
             </div>
             <h1 
+              className="mi-fraunces"
               data-testid="orgs-hero-title"
               style={{
-                fontSize: "clamp(42px, 6vw, 72px)",
+                fontSize: "clamp(42px, 7vw, 78px)",
                 fontWeight: 900, color: "white",
                 lineHeight: 1.05, marginBottom: 24, letterSpacing: -2,
-                fontFamily: "'Outfit', sans-serif"
               }}
             >
               Measure the social value your people create.
