@@ -110,10 +110,11 @@ export default function Contact() {
 
         <form onSubmit={handleSubmit} className="bg-white border border-border rounded-xl p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
+            <label htmlFor="contact-name" className="block text-sm font-medium text-foreground mb-1.5">
               Your name <span className="text-red-500">*</span>
             </label>
             <input
+              id="contact-name"
               name="name"
               data-testid="input-contact-name"
               value={form.name}
@@ -125,10 +126,11 @@ export default function Contact() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
+            <label htmlFor="contact-email" className="block text-sm font-medium text-foreground mb-1.5">
               Your email <span className="text-red-500">*</span>
             </label>
             <input
+              id="contact-email"
               name="email"
               data-testid="input-contact-email"
               type="email"
@@ -141,10 +143,11 @@ export default function Contact() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
+            <label htmlFor="contact-message" className="block text-sm font-medium text-foreground mb-1.5">
               Message <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="contact-message"
               name="message"
               data-testid="input-contact-message"
               value={form.message}

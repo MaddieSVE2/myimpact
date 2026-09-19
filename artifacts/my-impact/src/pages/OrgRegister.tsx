@@ -390,8 +390,9 @@ export default function OrgRegister() {
 
             <form onSubmit={handleSubmit} className="bg-white border border-border rounded-xl p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Organisation name <span className="text-red-500">*</span></label>
+                <label htmlFor="organisation-name" className="block text-sm font-medium text-foreground mb-1.5">Organisation name <span className="text-red-500">*</span></label>
                 <input
+                  id="organisation-name"
                   name="orgName"
                   value={form.orgName}
                   onChange={handleChange}
@@ -422,8 +423,9 @@ export default function OrgRegister() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Your name <span className="text-red-500">*</span></label>
+                  <label htmlFor="organisation-contact-name" className="block text-sm font-medium text-foreground mb-1.5">Your name <span className="text-red-500">*</span></label>
                   <input
+                    id="organisation-contact-name"
                     name="contactName"
                     value={form.contactName}
                     onChange={handleChange}
@@ -433,8 +435,9 @@ export default function OrgRegister() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Your email <span className="text-red-500">*</span></label>
+                  <label htmlFor="organisation-contact-email" className="block text-sm font-medium text-foreground mb-1.5">Your email <span className="text-red-500">*</span></label>
                   <input
+                    id="organisation-contact-email"
                     name="contactEmail"
                     type="email"
                     value={form.contactEmail}
@@ -465,8 +468,9 @@ export default function OrgRegister() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">How do you plan to use My Impact?</label>
+                <label htmlFor="organisation-purpose" className="block text-sm font-medium text-foreground mb-1.5">How do you plan to use My Impact?</label>
                 <textarea
+                  id="organisation-purpose"
                   name="purpose"
                   value={form.purpose}
                   onChange={handleChange}
