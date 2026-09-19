@@ -252,7 +252,7 @@ export default function Organisations() {
       </section>
 
       {/* ── OFFER LEVELS ── */}
-      <section style={{ background: C.dark, padding: "clamp(80px, 10vw, 120px) 5%" }}>
+      <section id="how-we-work-together" style={{ background: C.dark, padding: "clamp(80px, 10vw, 120px) 5%" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 64 }}>
