@@ -20,6 +20,7 @@ import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
 import {
   useSaveImpact,
   useGetAnnualRecap,
+  useGetImpactHistory,
   getGetAnnualRecapQueryKey,
   getGetImpactHistoryQueryKey,
 } from "@workspace/api-client-react";
@@ -914,7 +915,7 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { result, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, reportPeriod, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
+  const { result: wizardResult, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, reportPeriod, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
   const situation = situations[0] ?? null;
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
   const saveMutation = useSaveImpact();
@@ -944,6 +945,29 @@ export default function Results() {
   } | null>(null);
 
   const queryClient = useQueryClient();
+  const isSavedDashboardRoute =
+    typeof window !== "undefined" && window.location.pathname.endsWith("/impact");
+  const currentYear = new Date().getFullYear();
+  const historyParams = { userId: user?.id ?? "", year: currentYear };
+  const historyQuery = useGetImpactHistory(historyParams, {
+    query: {
+      enabled: isLoggedIn && !!user?.id,
+      queryKey: getGetImpactHistoryQueryKey(historyParams),
+    },
+  });
+  const latestRecord = historyQuery.data?.records?.[0] ?? null;
+  const viewingSavedDashboard =
+    latestRecord != null && (isSavedDashboardRoute || !wizardResult);
+  const result = isSavedDashboardRoute
+    ? latestRecord?.impactResult ?? null
+    : wizardResult ?? latestRecord?.impactResult ?? null;
+  const latestRecordId = latestRecord
+    ? Number.isFinite(Number(latestRecord.id)) ? Number(latestRecord.id) : null
+    : null;
+  const displayedRecordId = savedRecordId ?? (viewingSavedDashboard ? latestRecordId : null);
+  const displayedEntryDate = viewingSavedDashboard
+    ? (typeof latestRecord?.entryDate === "string" ? latestRecord.entryDate : null)
+    : entryDate || null;
 
   // "My impact" is annual wherever possible: the hero shows the calendar-year
   // running total (reconciled server-side), with this entry called out
@@ -953,7 +977,7 @@ export default function Results() {
   // recap/History group by that entryDate's calendar year. Mirroring the
   // clamp here keeps the hero aligned with History for cross-year periods
   // (e.g. an academic year starting in the prior calendar year).
-  const heroYear = (() => {
+  const heroYear = viewingSavedDashboard ? currentYear : (() => {
     const start = reportPeriod.startDate ?? "";
     const end = reportPeriod.endDate ?? "";
     const isIso = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -977,8 +1001,16 @@ export default function Results() {
   // Until this calculation is saved it isn't in the server total yet; edits of
   // an existing record are already counted (at their pre-edit value).
   const annualTotal = annualBase != null
-    ? annualBase + (saved || editRecordId ? 0 : result?.totalValue ?? 0)
+    ? annualBase + (viewingSavedDashboard || saved || editRecordId ? 0 : result?.totalValue ?? 0)
     : null;
+
+  if ((isSavedDashboardRoute || !wizardResult) && isLoggedIn && historyQuery.isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
+        <p className="text-sm text-muted-foreground">Loading your impact…</p>
+      </div>
+    );
+  }
 
   if (!result) {
     return (
@@ -1323,7 +1355,12 @@ export default function Results() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 pb-28">
       <OrgPromptsSection variant="compact" />
-      <ShareWithOrgPrompt result={result} saved={saved || savedRecordId != null} entryDate={entryDate || null} savedRecordId={savedRecordId} />
+      <ShareWithOrgPrompt
+        result={result}
+        saved={viewingSavedDashboard || saved || displayedRecordId != null}
+        entryDate={displayedEntryDate}
+        savedRecordId={displayedRecordId}
+      />
 
       {/* Hero */}
       <motion.div
@@ -1333,14 +1370,16 @@ export default function Results() {
         transition={{ duration: 0.4 }}
       >
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
-          {annualTotal != null ? `Your ${heroYear} social value` : situationCopy.headline}
+          {annualTotal != null
+            ? `Your ${heroYear} social value${viewingSavedDashboard ? " so far" : ""}`
+            : situationCopy.headline}
         </p>
         <h1 className="text-6xl md:text-7xl font-display font-bold text-foreground tracking-tight mb-3" data-testid="results-hero-value">
           {formatCurrency(annualTotal ?? result.totalValue)}
         </h1>
         {annualTotal != null && (
           <p className="text-sm font-semibold text-foreground mb-2" data-testid="results-entry-value">
-            This entry: {formatCurrency(result.totalValue)}
+            {viewingSavedDashboard ? "Latest entry" : "This entry"}: {formatCurrency(result.totalValue)}
           </p>
         )}
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
@@ -1348,7 +1387,7 @@ export default function Results() {
             ? `Your running total for ${heroYear}, calculated using globally recognised Social Value Engine proxies.`
             : situationCopy.intro}
         </p>
-        {!editRecordId && !saved && (
+        {!viewingSavedDashboard && !editRecordId && !saved && (
           <p className="text-xs text-muted-foreground mt-3" data-testid="results-period-line">
             Counts toward <strong className="text-foreground">{reportPeriod.label}</strong> ({formatPeriodRange(reportPeriod)}) · rename it any time in History
           </p>
@@ -1610,7 +1649,7 @@ export default function Results() {
       {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
 
       {/* Photo & receipt attachments, only after the record is saved */}
-      {savedRecordId != null && (
+      {displayedRecordId != null && (
         <motion.div
           className="mb-6 bg-white border border-border rounded-xl p-5"
           initial={{ opacity: 0, y: 10 }}
@@ -1627,8 +1666,8 @@ export default function Results() {
             Files are stored privately and only visible to you.
           </p>
           <Attachments
-            recordId={savedRecordId}
-            allowReceipt={(input.donationsGBP ?? 0) > 0}
+            recordId={displayedRecordId}
+            allowReceipt={viewingSavedDashboard ? result.donationsValue > 0 : (input.donationsGBP ?? 0) > 0}
             compact
           />
         </motion.div>
@@ -1674,35 +1713,38 @@ export default function Results() {
       >
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
 
-          {/* Save, primary action, always prominent */}
-          <button
-            onClick={() => {
-              if (saved) return;
-              // In edit mode we already know which entry and period this maps
-              // to, so update it directly. New saves go straight against the
-              // authoritative period chosen at the start of the journey —
-              // there is no save-time period dialog any more.
-              if (editRecordId) handleSave(editPeriod ?? "");
-              else handleSave(reportPeriod.label);
-            }}
-            disabled={saveMutation.isPending || saved}
-            className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
-            style={{
-              background: saved ? "#22c55e" : "#213547",
-              boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
-            }}
-            data-testid="results-save-button"
-          >
-            {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
-            {saveMutation.isPending
-              ? "Saving…"
-              : saved
-                ? "Saved"
-                : (editRecordId ? "Save changes" : "Save")}
-          </button>
+          {!viewingSavedDashboard && (
+            <>
+              {/* Save, primary action, always prominent for a new calculation or edit */}
+              <button
+                onClick={() => {
+                  if (saved) return;
+                  // In edit mode we already know which entry and period this maps
+                  // to, so update it directly. New saves go straight against the
+                  // authoritative period chosen at the start of the journey —
+                  // there is no save-time period dialog any more.
+                  if (editRecordId) handleSave(editPeriod ?? "");
+                  else handleSave(reportPeriod.label);
+                }}
+                disabled={saveMutation.isPending || saved}
+                className="flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 shrink-0 hover:-translate-y-px"
+                style={{
+                  background: saved ? "#22c55e" : "#213547",
+                  boxShadow: saved ? "0 2px 12px #22c55e40" : "0 2px 12px #21354740",
+                }}
+                data-testid="results-save-button"
+              >
+                {saved ? <Check className="w-4 h-4" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
+                {saveMutation.isPending
+                  ? "Saving…"
+                  : saved
+                    ? "Saved"
+                    : (editRecordId ? "Save changes" : "Save")}
+              </button>
 
-          {/* Divider */}
-          <div className="hidden sm:block w-px h-6 bg-border shrink-0" />
+              <div className="hidden sm:block w-px h-6 bg-border shrink-0" />
+            </>
+          )}
 
           {/* Secondary actions */}
           <button

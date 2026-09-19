@@ -267,7 +267,7 @@ export function Navbar() {
       ]
     : [
         { href: "/log", label: t("navbar.quickLog"), icon: PlusCircle },
-        { href: "/recap", label: t("navbar.myImpact"), icon: Sparkles },
+        { href: "/impact", label: t("navbar.myImpact"), icon: Sparkles },
         { href: "/history", label: t("navbar.history"), icon: History },
         ...(gamificationEnabled
           ? [{ href: "/milestones", label: t("navbar.milestones"), icon: Award }]

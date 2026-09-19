@@ -32,6 +32,7 @@ import { MilestoneUnlockNotice } from "@/components/MilestoneFireworks";
 const NOINDEX_PATH_PREFIXES = [
   "/login",
   "/auth/confirm",
+  "/impact",
   "/results",
   "/wizard",
   "/privacy",
@@ -304,6 +305,7 @@ const NO_FOOTER_PATHS = [
   "/login",
   "/auth/confirm",
   "/wizard",
+  "/impact",
   "/results",
   "/recap",
   "/quick-log",
@@ -391,6 +393,9 @@ function AppRouter() {
               </Route>
               <Route path="/history">
                 {() => <PrivateRoute component={History} />}
+              </Route>
+              <Route path="/impact">
+                {() => <PrivateRoute component={Results} />}
               </Route>
               <Route path="/journal">
                 {() => <PrivateRoute component={Journal} />}
