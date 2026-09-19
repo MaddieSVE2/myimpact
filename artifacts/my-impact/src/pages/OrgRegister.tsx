@@ -24,6 +24,14 @@ function getTypeFromUrl(): OrgType {
   return "";
 }
 
+function getStepFromUrl(): "info" | "form" {
+  try {
+    return new URLSearchParams(window.location.search).get("step") === "form" ? "form" : "info";
+  } catch {
+    return "info";
+  }
+}
+
 function getFeatureCards(type: OrgType) {
   if (isEducation(type)) {
     return [
@@ -176,7 +184,7 @@ export default function OrgRegister() {
     scrollContentToTop();
   }, []);
 
-  const [step, setStep] = useState<"info" | "form" | "done">("info");
+  const [step, setStep] = useState<"info" | "form" | "done">(getStepFromUrl);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

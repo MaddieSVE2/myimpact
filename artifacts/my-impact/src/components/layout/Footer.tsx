@@ -24,7 +24,7 @@ const ORG_LINKS = [
   { label: "For organisations", href: "/organisations" },
   { label: "How we work together", href: "/organisations#how-we-work-together" },
   { label: "Example dashboard", href: "/org/demo" },
-  { label: "Register your organisation", href: "/org/register" },
+  { label: "Register your organisation", href: "/org/register?step=form" },
   { label: "Organisation dashboard", href: "/login?next=%2Forg" },
 ];
 
