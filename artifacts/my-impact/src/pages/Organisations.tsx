@@ -114,7 +114,7 @@ export default function Organisations() {
               fontSize: "clamp(18px, 2vw, 22px)", color: "rgba(255,255,255,0.7)", 
               lineHeight: 1.6, maxWidth: 720, margin: "0 auto 48px" 
             }}>
-              We help organisations turn thousands of individual actions into credible, aggregated social value evidence.
+              Turn individual actions into credible, aggregated social value evidence.
             </p>
             
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "center" }}>
@@ -178,10 +178,10 @@ export default function Organisations() {
         <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
           <FadeIn>
             <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--brand-muted-text)", marginBottom: 16 }}>
-              Powered by accredited methodology
+              Social Value Engine methodology
             </p>
             <p style={{ fontSize: 16, color: "var(--brand-subtle-text)", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
-              Every monetary value is grounded in the Social Value Engine, used by more than 250 organisations across the UK and globally, and fully aligned with HM Treasury Green Book principles.
+              Each monetary value uses Social Value Engine data, informed by work with more than 250 public, private, and voluntary-sector organisations in the UK and globally, and aligned with HM Treasury Green Book principles.
             </p>
           </FadeIn>
         </div>
@@ -196,7 +196,7 @@ export default function Organisations() {
               letterSpacing: -1, maxWidth: 600, lineHeight: 1.15, 
               fontFamily: "'Outfit', sans-serif", marginBottom: 60 
             }}>
-              Data that satisfies commissioners. An experience that respects your people.
+              Report collective impact without exposing personal data.
             </h2>
           </FadeIn>
 
@@ -205,7 +205,7 @@ export default function Organisations() {
               {
                 icon: BarChart3,
                 title: "Aggregated reporting",
-                desc: "No more chasing spreadsheets. See live totals of hours, activities, and calculated social value across your entire cohort. Export directly for funders and annual reports."
+                desc: "See live totals of hours, activities, and calculated social value across your cohort. Export the data for funders and annual reports."
               },
               {
                 icon: Shield,
@@ -215,7 +215,7 @@ export default function Organisations() {
               {
                 icon: Users,
                 title: "Engage your community",
-                desc: "Set group challenges, issue pulse surveys, and understand the causes your people care about. Keep your volunteers or students motivated and aligned with your mission."
+                desc: "Set group challenges and pulse surveys. Track the causes your people support."
               }
             ].map((feature, i) => (
               <FadeIn key={feature.title} delay={i * 0.1}>
@@ -262,10 +262,10 @@ export default function Organisations() {
                 letterSpacing: -1, maxWidth: 700, margin: "0 auto", lineHeight: 1.15, 
                 fontFamily: "'Outfit', sans-serif" 
               }}>
-                A model tailored to your needs.
+                Choose how you use My Impact.
               </h2>
               <p style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", maxWidth: 600, margin: "24px auto 0", lineHeight: 1.6 }}>
-                Every organisation is different. We offer three flexible ways to deploy My Impact for your team, from immediate self-serve to a fully managed partnership.
+                Choose self-serve, engagement support, or a branded managed service.
               </p>
             </div>
           </FadeIn>
@@ -287,7 +287,7 @@ export default function Organisations() {
                   Self serve
                 </h3>
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24, minHeight: 90 }}>
-                  Get up and running immediately. Perfect for smaller organisations or independent projects that need a ready-to-go dashboard.
+                  Launch a ready-to-use dashboard for a smaller organisation or independent project.
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px 0", gap: 12, display: "flex", flexDirection: "column", flex: 1 }}>
                   {[
@@ -340,7 +340,7 @@ export default function Organisations() {
                   Collaborative partnership with engagement support
                 </h3>
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24, minHeight: 90 }}>
-                  We work closely with your team to drive engagement, launch custom challenges, and integrate My Impact into your culture.
+                  Add engagement support, custom challenges, onboarding workshops, and quarterly reviews.
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px 0", gap: 12, display: "flex", flexDirection: "column", flex: 1 }}>
                   {[
@@ -389,7 +389,7 @@ export default function Organisations() {
                   Branded portal and companion mobile app
                 </h3>
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24, minHeight: 90 }}>
-                  For large institutions wanting a fully white-labelled experience. Your logo, your colours, your unique methodology.
+                  Use your own branding, domain, companion app, data integrations, and proxy mappings.
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px 0", gap: 12, display: "flex", flexDirection: "column", flex: 1 }}>
                   {[
@@ -425,7 +425,7 @@ export default function Organisations() {
           
           <FadeIn delay={0.3}>
             <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 32 }}>
-              Pricing is tailored to your organisation's size and needs. Speak with us to find the right approach.
+              Pricing depends on your organisation's size and support level.
             </p>
           </FadeIn>
         </div>
@@ -442,7 +442,7 @@ export default function Organisations() {
               See what your data could look like
             </h2>
             <p style={{ fontSize: 18, color: "var(--brand-muted-text)", marginBottom: 48, lineHeight: 1.6 }}>
-              Explore our interactive demonstration dashboards. We've populated them with example data so you can see exactly how the reporting works.
+              Explore four dashboards with example data.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
               <Link
@@ -563,10 +563,10 @@ export default function Organisations() {
         <FadeIn>
           <div style={{ maxWidth: 600, margin: "0 auto", position: "relative", zIndex: 2 }}>
             <h2 style={{ fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
-              Ready to start measuring?
+              Start measuring your organisation's social value
             </h2>
             <p style={{ fontSize: 18, color: "rgba(255,255,255,0.9)", marginBottom: 36, lineHeight: 1.6 }}>
-              Whether you need a simple dashboard today or a fully integrated partnership, we're here to help you evidence your impact.
+              Choose a self-serve dashboard or a managed partnership.
             </p>
             <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
               <Link 

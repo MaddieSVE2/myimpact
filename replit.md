@@ -10,6 +10,8 @@ I prefer iterative development and welcome early feedback. Please use clear and 
 
 **Copy style:** No em dashes (`—`) in any user-facing copy (UI strings, locale catalogues, emails, modals, tooltips). Use commas, full stops, or parentheses instead. Em dashes are fine in code comments and internal docs. Member-facing copy should be plain English: state what is being submitted, when it goes, who sees it, and what value it has.
 
+**Public-page maintenance:** Keep copy concise and remove generic introductory or filler sentences. When adding, renaming, or removing a public page, review the shared footer links and update them in the same change.
+
 # System Architecture
 
 The project is structured as a pnpm monorepo using TypeScript (v5.9). The backend is an Express 5 API server, utilizing PostgreSQL with Drizzle ORM for data persistence and Zod for validation. API client code is generated from an OpenAPI spec using Orval. The frontend is built with React, Vite, Tailwind CSS, framer-motion, and recharts, featuring a 3-step wizard UI.

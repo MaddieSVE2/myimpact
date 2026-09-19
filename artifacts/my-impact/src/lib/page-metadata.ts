@@ -173,7 +173,7 @@ export const PRICING_META: PageMetadata = {
 export const ORGANISATIONS_META: PageMetadata = {
   title: "My Impact for Organisations",
   description:
-    "Measure and report the collective social value created by your people. Trusted by schools, charities, and local authorities.",
+    "Measure and report the collective social value created by your people across public, private, education, and voluntary-sector organisations.",
   canonical: "https://myimpact.uk/organisations",
   robots: "index, follow",
 };

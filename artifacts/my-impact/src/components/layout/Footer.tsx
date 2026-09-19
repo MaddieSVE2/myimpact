@@ -21,6 +21,9 @@ const EXPLORE_LINKS = [
 ];
 
 const ORG_LINKS = [
+  { label: "For organisations", href: "/organisations" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Example dashboard", href: "/org/demo" },
   { label: "Register your organisation", href: "/org/register" },
   { label: "Organisation dashboard", href: "/login?next=%2Forg" },
 ];
