@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
 import { ORGANISATIONS_META } from "@/lib/page-metadata";
 import { scrollContentToTop } from "@/lib/scroll-utils";
-import { Building2, Heart, Award, ArrowRight, BarChart3, Users, Shield, Sparkles, Handshake, MonitorSmartphone, Target, MessageCircle } from "lucide-react";
+import { Building2, Heart, Award, ArrowRight, BarChart3, Users, Shield, Sparkles, Handshake, MonitorSmartphone, Target, MessageCircle, Landmark } from "lucide-react";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -108,14 +108,13 @@ export default function Organisations() {
                 fontFamily: "'Outfit', sans-serif"
               }}
             >
-              Measure the social value<br />
-              <span style={{ color: C.orange, fontStyle: "italic" }}>your people create.</span>
+              Measure the social value your people create.
             </h1>
             <p style={{ 
               fontSize: "clamp(18px, 2vw, 22px)", color: "rgba(255,255,255,0.7)", 
               lineHeight: 1.6, maxWidth: 720, margin: "0 auto 48px" 
             }}>
-              We help charities, schools, universities, and public bodies turn thousands of individual actions into credible, aggregated social value evidence.
+              We help organisations turn thousands of individual actions into credible, aggregated social value evidence.
             </p>
             
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "center" }}>
@@ -288,7 +287,7 @@ export default function Organisations() {
                   Self serve
                 </h3>
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24, minHeight: 90 }}>
-                  Get up and running immediately. Perfect for smaller charities or independent projects that need a ready-to-go dashboard.
+                  Get up and running immediately. Perfect for smaller organisations or independent projects that need a ready-to-go dashboard.
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px 0", gap: 12, display: "flex", flexDirection: "column", flex: 1 }}>
                   {[
@@ -498,6 +497,60 @@ export default function Organisations() {
                   <Heart size={20} />
                 </div>
                 Charity example
+              </Link>
+
+              <Link
+                href="/org/demo?type=corporate"
+                data-testid="demo-corporate"
+                style={{
+                  background: "white",
+                  color: C.dark,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  padding: "16px 32px",
+                  borderRadius: 16,
+                  fontWeight: 600,
+                  fontSize: 16,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 12,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)"; }}
+              >
+                <div style={{ background: C.cream, padding: 8, borderRadius: 8, color: C.orange }}>
+                  <Building2 size={20} />
+                </div>
+                Corporate example
+              </Link>
+
+              <Link
+                href="/org/demo?type=public"
+                data-testid="demo-public-sector"
+                style={{
+                  background: "white",
+                  color: C.dark,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  padding: "16px 32px",
+                  borderRadius: 16,
+                  fontWeight: 600,
+                  fontSize: 16,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 12,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)"; }}
+              >
+                <div style={{ background: C.cream, padding: 8, borderRadius: 8, color: C.orange }}>
+                  <Landmark size={20} />
+                </div>
+                Public sector example
               </Link>
             </div>
           </FadeIn>
