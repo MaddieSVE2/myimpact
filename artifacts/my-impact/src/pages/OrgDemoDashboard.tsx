@@ -13,7 +13,7 @@ import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { DEMO_PULSE_SURVEYS } from "@/lib/org-demo-mock";
 
-const DEMO = {
+const BASE_DEMO = {
   org: { name: "Demo Organisation", type: "Corporate", location: "North West, England" },
   headline: {
     totalSocialValue: 73700,
@@ -125,6 +125,121 @@ const DEMO = {
   ] satisfies MonthlyDataPoint[],
 };
 
+type SharedDemoType = "charity" | "corporate" | "public";
+
+const DEMO_VARIANTS: Record<SharedDemoType, {
+  org: { name: string; type: string; location: string };
+  headline: typeof BASE_DEMO.headline;
+  scale: number;
+  insights: string[];
+}> = {
+  charity: {
+    org: { name: "Community Action Network", type: "Charity", location: "UK-wide" },
+    headline: {
+      totalSocialValue: 684200,
+      members: 486,
+      activeMembers: 438,
+      totalHours: 10240,
+      avgPerPerson: 1562,
+      avgHoursPerPerson: 23,
+    },
+    scale: 9.2,
+    insights: [
+      "438 people have logged activity this year, with food support and community outreach attracting the broadest participation.",
+      "Youth mentoring produces the highest social value per hour, making it a strong candidate for further volunteer investment.",
+      "Environmental projects are growing fastest, with participation up 24% since January.",
+      "Regular activity across seven UK regions gives the charity strong evidence for funders and annual reporting.",
+    ],
+  },
+  corporate: {
+    org: { name: "Northstar Group", type: "Corporate", location: "UK offices" },
+    headline: {
+      totalSocialValue: 912300,
+      members: 612,
+      activeMembers: 527,
+      totalHours: 14680,
+      avgPerPerson: 1731,
+      avgHoursPerPerson: 28,
+    },
+    scale: 11.4,
+    insights: [
+      "527 employees have participated this year, with team volunteering days driving the strongest uptake.",
+      "Skills-based mentoring creates the highest social value per hour across the programme.",
+      "Participation is strongest in the North West and London offices, highlighting an opportunity to expand regional campaigns.",
+      "Employee engagement has risen 19% since the spring community challenge launched.",
+    ],
+  },
+  public: {
+    org: { name: "Rivermere Council", type: "Public Sector", location: "Rivermere, England" },
+    headline: {
+      totalSocialValue: 526400,
+      members: 384,
+      activeMembers: 316,
+      totalHours: 8940,
+      avgPerPerson: 1666,
+      avgHoursPerPerson: 28,
+    },
+    scale: 7.4,
+    insights: [
+      "316 staff and community partners have logged activity across neighbourhood programmes this year.",
+      "Food support and youth mentoring deliver the strongest measured social value.",
+      "Environmental participation is spread across every district, supporting place-based reporting.",
+      "Community challenge participation is highest where local teams coordinate shared activity days.",
+    ],
+  },
+};
+
+function getDemoData(type: SharedDemoType) {
+  const variant = DEMO_VARIANTS[type];
+  const scaleCount = (value: number) => Math.max(1, Math.round(value * variant.scale));
+  const scaleValue = (value: number) => Math.round(value * variant.scale);
+
+  return {
+    ...BASE_DEMO,
+    org: variant.org,
+    headline: variant.headline,
+    valueByCategory: BASE_DEMO.valueByCategory.map(item => ({
+      ...item,
+      value: scaleValue(item.value),
+      members: scaleCount(item.members),
+      activities: scaleCount(item.activities),
+      hours: scaleCount(item.hours),
+    })),
+    activities: BASE_DEMO.activities.map(item => ({
+      ...item,
+      participants: scaleCount(item.participants),
+      hours: scaleCount(item.hours),
+      value: scaleValue(item.value),
+    })),
+    sdgs: BASE_DEMO.sdgs.map(item => ({
+      ...item,
+      members: scaleCount(item.members),
+      activities: scaleCount(item.activities),
+      value: scaleValue(item.value),
+    })),
+    regions: BASE_DEMO.regions.map(item => ({
+      ...item,
+      members: scaleCount(item.members),
+      hours: scaleCount(item.hours),
+      value: scaleValue(item.value),
+    })),
+    insights: variant.insights,
+    volunteerProgression: {
+      ...BASE_DEMO.volunteerProgression,
+      membersWithEmployabilitySkills: Math.round(variant.headline.activeMembers * 0.72),
+      membersWithMultipleRoles: Math.round(variant.headline.activeMembers * 0.38),
+    },
+    challenges: BASE_DEMO.challenges.map(item => ({
+      ...item,
+      participantCount: scaleCount(item.participantCount),
+    })),
+    monthlyTimeline: BASE_DEMO.monthlyTimeline.map((item, index, rows) => ({
+      ...item,
+      value: Math.round(variant.headline.totalSocialValue * ((index + 1) / rows.length)),
+    })),
+  };
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary mb-3">{children}</p>
@@ -186,8 +301,15 @@ function StatCard({ icon: Icon, label, value, rawValue, decimals, prefix, sub, h
   );
 }
 
-export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean } = {}) {
+export default function OrgDemoDashboard({
+  hideBanner,
+  demoType = "charity",
+}: {
+  hideBanner?: boolean;
+  demoType?: SharedDemoType;
+} = {}) {
   useEffect(() => { scrollContentToTop(); }, []);
+  const DEMO = getDemoData(demoType);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
   const socialValuePerHour = Math.round(DEMO.headline.totalSocialValue / DEMO.headline.totalHours);
   const socialValuePerHourFormatted = `£${socialValuePerHour.toLocaleString("en-GB")}`;
@@ -268,7 +390,7 @@ export default function OrgDemoDashboard({ hideBanner }: { hideBanner?: boolean 
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For Demo Organisation, the estimated organisational investment (covering member recruitment, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per member</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
+                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For {DEMO.org.name}, the estimated organisational investment (covering member recruitment, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per member</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Demo Organisation invested in its members, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.

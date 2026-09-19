@@ -13,7 +13,7 @@ import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 
 const DEMO = {
-  org: { name: "Northfield University, Student Services", type: "University", location: "Midlands, England" },
+  org: { name: "Northfield University, Student Services", type: "Education", location: "Midlands, England" },
   headline: {
     totalSocialValue: 218650,
     members: 312,

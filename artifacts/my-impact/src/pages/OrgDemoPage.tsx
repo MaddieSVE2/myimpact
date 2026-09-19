@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { Building2, GraduationCap, Heart, Landmark } from "lucide-react";
@@ -18,31 +17,6 @@ const ORG_TYPES: { type: OrgType; label: string; icon: React.FC<{ className?: st
 
 function isValidOrgType(type: string | null): type is OrgType {
   return !!type && ORG_TYPES.some(o => o.type === type);
-}
-
-function ComingSoonDashboard({ typeName }: { typeName: string }) {
-  useEffect(() => { scrollContentToTop(); }, []);
-  return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center px-4">
-      <div className="max-w-md text-center py-24">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ background: "rgba(232,99,58,0.10)" }}>
-          <Building2 className="w-8 h-8 text-primary" />
-        </div>
-        <h1 className="text-2xl font-display font-bold text-foreground mb-3">
-          {typeName} example coming soon
-        </h1>
-        <p className="text-muted-foreground leading-relaxed mb-8">
-          We're building a tailored demo for {typeName.toLowerCase()} organisations. In the meantime, the Charity example shows the same core features.
-        </p>
-        <Link
-          href="/org/demo?type=charity"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
-        >
-          View Charity example instead
-        </Link>
-      </div>
-    </div>
-  );
 }
 
 export default function OrgDemoPage() {
@@ -95,10 +69,10 @@ export default function OrgDemoPage() {
         </div>
       </div>
 
-      {selectedType === "charity" && <OrgDemoDashboard hideBanner />}
+      {selectedType === "charity" && <OrgDemoDashboard hideBanner demoType="charity" />}
       {selectedType === "education" && <OrgDemoEducationDashboard hideBanner />}
-      {selectedType === "corporate" && <ComingSoonDashboard typeName="Corporate" />}
-      {selectedType === "public" && <ComingSoonDashboard typeName="Public Sector" />}
+      {selectedType === "corporate" && <OrgDemoDashboard hideBanner demoType="corporate" />}
+      {selectedType === "public" && <OrgDemoDashboard hideBanner demoType="public" />}
     </div>
   );
 }
