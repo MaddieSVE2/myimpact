@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, serial, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, serial, integer, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -34,6 +34,7 @@ export const userProfilesTable = pgTable("user_profiles", {
   situation: text("situation").array(),
   interests: text("interests").array(),
   customInterests: text("custom_interests").array(),
+  customInterestCategories: jsonb("custom_interest_categories").$type<Record<string, string | null>>(),
   postcode: text("postcode"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   inviteCode: text("invite_code").unique(),

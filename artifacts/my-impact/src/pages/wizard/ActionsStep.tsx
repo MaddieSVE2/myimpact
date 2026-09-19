@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useWizard, INTEREST_OPTIONS } from "@/lib/wizard-context";
+import { useWizard, INTEREST_OPTIONS, CUSTOM_INTEREST_CATEGORIES, type CustomInterestCategoryMap } from "@/lib/wizard-context";
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { ReportPeriodPicker } from "@/components/wizard/ReportPeriodPicker";
 import { motion } from "framer-motion";
@@ -101,9 +101,9 @@ function ChallengeContextBanner() {
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterests, careerBreak, situations,
+    location, interests, customInterests, customInterestCategories, careerBreak, situations,
     setLocation: setWizardLocation, toggleInterest,
-    addCustomInterest, updateCustomInterest, removeCustomInterest, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
+    addCustomInterest, updateCustomInterest, removeCustomInterest, setCustomInterestCategory, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
     hasDraft, clearDraft, reportPeriod, setReportPeriod,
   } = useWizard();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
@@ -135,6 +135,10 @@ export default function ActionsStep() {
         const loadedCustomInterests: string[] = Array.isArray(data.profile.customInterests)
           ? data.profile.customInterests.filter((value: unknown): value is string => typeof value === "string" && !!value.trim())
           : [];
+        const loadedCustomInterestCategories: CustomInterestCategoryMap =
+          data.profile.customInterestCategories && typeof data.profile.customInterestCategories === "object"
+            ? data.profile.customInterestCategories
+            : {};
         const hasAnyData = data.profile.postcode
           || (data.profile.interests ?? []).length > 0
           || loadedCustomInterests.length > 0
@@ -147,6 +151,7 @@ export default function ActionsStep() {
             postcode: data.profile.postcode ?? null,
             interests: data.profile.interests ?? [],
             customInterests: loadedCustomInterests,
+            customInterestCategories: loadedCustomInterestCategories,
             situations: loadedSituations,
           });
           setProfileLoaded(true);
@@ -235,6 +240,7 @@ export default function ActionsStep() {
             situation: situationsToSave,
             interests,
             customInterests,
+            customInterestCategories,
             postcode,
           }),
         });
@@ -443,8 +449,19 @@ export default function ActionsStep() {
           {customInterests.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3" data-testid="custom-interest-list">
               {customInterests.map(value => (
-                <span key={value} className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
-                  {value}
+                <span key={value} className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
+                  <span>{value}</span>
+                  <select
+                    value={customInterestCategories[value] ?? ""}
+                    onChange={event => setCustomInterestCategory(value, (event.target.value || null) as typeof customInterestCategories[string])}
+                    className="min-h-[36px] rounded-md border border-primary/30 bg-white px-2 text-xs text-foreground"
+                    aria-label={`Activity category for ${value}`}
+                  >
+                    <option value="">No category</option>
+                    {CUSTOM_INTEREST_CATEGORIES.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                   <button type="button" onClick={() => startEditingCustomInterest(value)} className="p-1.5 rounded-full hover:bg-primary/15" aria-label={`${t("common.edit")} ${value}`}>
                     <Pencil className="w-3.5 h-3.5" />
                   </button>

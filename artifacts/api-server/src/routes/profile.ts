@@ -18,6 +18,7 @@ const router: IRouter = Router();
 
 const MAX_CUSTOM_INTERESTS = 20;
 const MAX_CUSTOM_INTEREST_LENGTH = 100;
+const CUSTOM_INTEREST_CATEGORIES = new Set(["Environment", "Health", "Education", "Community"]);
 
 export function normalizeCustomInterests(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -31,6 +32,23 @@ export function normalizeCustomInterests(value: unknown): string[] {
     seen.add(key);
     normalized.push(label);
     if (normalized.length >= MAX_CUSTOM_INTERESTS) break;
+  }
+  return normalized;
+}
+
+export function normalizeCustomInterestCategories(
+  value: unknown,
+  customInterests: string[],
+): Record<string, string | null> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as Record<string, unknown>;
+  const normalized: Record<string, string | null> = {};
+  for (const interest of customInterests) {
+    if (!Object.prototype.hasOwnProperty.call(input, interest)) continue;
+    const category = input[interest];
+    if (category === null || (typeof category === "string" && CUSTOM_INTEREST_CATEGORIES.has(category))) {
+      normalized[interest] = category;
+    }
   }
   return normalized;
 }
@@ -135,6 +153,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
       situation: profile.situation ?? [],
       interests: profile.interests ?? [],
       customInterests: profile.customInterests ?? [],
+      customInterestCategories: profile.customInterestCategories ?? {},
       postcode: profile.postcode ?? null,
       emailOptIn: profile.emailOptIn,
       updatedAt: profile.updatedAt.toISOString(),
@@ -161,6 +180,9 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const customInterests = Object.prototype.hasOwnProperty.call(body, "customInterests")
     ? normalizeCustomInterests(body.customInterests)
     : (existingProfile?.customInterests ?? []);
+  const customInterestCategories = Object.prototype.hasOwnProperty.call(body, "customInterestCategories")
+    ? normalizeCustomInterestCategories(body.customInterestCategories, customInterests)
+    : normalizeCustomInterestCategories(existingProfile?.customInterestCategories, customInterests);
   const postcode = typeof body.postcode === "string" ? body.postcode.trim() : null;
 
   const [upserted] = await db
@@ -170,6 +192,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       situation,
       interests,
       customInterests,
+      customInterestCategories,
       postcode,
       updatedAt: new Date(),
     })
@@ -179,6 +202,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
         situation,
         interests,
         customInterests,
+        customInterestCategories,
         postcode,
         updatedAt: new Date(),
       },
@@ -192,6 +216,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       situation: upserted.situation ?? [],
       interests: upserted.interests ?? [],
       customInterests: upserted.customInterests ?? [],
+      customInterestCategories: upserted.customInterestCategories ?? {},
       postcode: upserted.postcode ?? null,
       emailOptIn: upserted.emailOptIn,
       updatedAt: upserted.updatedAt.toISOString(),

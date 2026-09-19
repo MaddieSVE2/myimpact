@@ -1182,6 +1182,12 @@ components:
           type: array
           items:
             type: string
+        customInterestCategories:
+          type: object
+          additionalProperties:
+            type:
+              - string
+              - "null"
         postcode:
           type: string
           nullable: true
@@ -1235,6 +1241,12 @@ components:
           type: array
           items:
             type: string
+        customInterestCategories:
+          type: object
+          additionalProperties:
+            type:
+              - string
+              - "null"
         postcode:
           type: string
           nullable: true

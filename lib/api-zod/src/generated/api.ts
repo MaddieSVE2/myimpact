@@ -1338,6 +1338,9 @@ export const GetProfileResponse = zod.object({
       situation: zod.array(zod.string()).optional(),
       interests: zod.array(zod.string()).optional(),
       customInterests: zod.array(zod.string()).optional(),
+      customInterestCategories: zod
+        .record(zod.string(), zod.string().nullable())
+        .optional(),
       postcode: zod.string().nullish(),
       updatedAt: zod.string().optional(),
     }),
@@ -1362,6 +1365,9 @@ export const UpdateProfileBody = zod.object({
   situation: zod.array(zod.string()).optional(),
   interests: zod.array(zod.string()).optional(),
   customInterests: zod.array(zod.string()).optional(),
+  customInterestCategories: zod
+    .record(zod.string(), zod.string().nullable())
+    .optional(),
   postcode: zod.string().nullish(),
 });
 
@@ -1371,6 +1377,9 @@ export const UpdateProfileResponse = zod.object({
       situation: zod.array(zod.string()).optional(),
       interests: zod.array(zod.string()).optional(),
       customInterests: zod.array(zod.string()).optional(),
+      customInterestCategories: zod
+        .record(zod.string(), zod.string().nullable())
+        .optional(),
       postcode: zod.string().nullish(),
       updatedAt: zod.string().optional(),
     }),

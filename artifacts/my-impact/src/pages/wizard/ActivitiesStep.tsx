@@ -64,7 +64,7 @@ type Phase = "select" | "quantify";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, customInterests, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
+  const { input, interests, customInterests, customInterestCategories, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -181,13 +181,13 @@ export default function ActivitiesStep() {
     const categories = new Set(
       interests.map(id => INTEREST_OPTIONS.find(o => o.id === id)?.category).filter(Boolean) as string[]
     );
-    inferCustomInterestCategories(customInterests).forEach(category => categories.add(category));
+    inferCustomInterestCategories(customInterests, customInterestCategories).forEach(category => categories.add(category));
     return categories;
-  }, [interests, customInterests]);
+  }, [interests, customInterests, customInterestCategories]);
 
   const inferredCustomCategories = useMemo(
-    () => inferCustomInterestCategories(customInterests),
-    [customInterests],
+    () => inferCustomInterestCategories(customInterests, customInterestCategories),
+    [customInterests, customInterestCategories],
   );
 
   // Boost specific activities based on the user's selected interests only.

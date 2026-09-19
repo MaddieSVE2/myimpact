@@ -333,10 +333,14 @@ export interface SuggestionsResponse {
   suggestions: SuggestionItem[];
 }
 
+export type UserProfileDataCustomInterestCategories = {
+  [key: string]: string | null;
+};
 export interface UserProfileData {
   situation?: string[];
   interests?: string[];
   customInterests?: string[];
+  customInterestCategories?: UserProfileDataCustomInterestCategories;
   postcode?: string | null;
   updatedAt?: string;
 }
@@ -346,10 +350,14 @@ export interface ProfileResponse {
   streak?: StreakInfo;
 }
 
+export type ProfileInputCustomInterestCategories = {
+  [key: string]: string | null;
+};
 export interface ProfileInput {
   situation?: string[];
   interests?: string[];
   customInterests?: string[];
+  customInterestCategories?: ProfileInputCustomInterestCategories;
   postcode?: string | null;
 }
 

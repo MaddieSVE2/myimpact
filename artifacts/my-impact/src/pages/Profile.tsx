@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { useGetProfile, useUpdateProfile, useAckStreakMilestone } from "@workspace/api-client-react";
-import { INTEREST_OPTIONS, hasCustomInterest, normalizeCustomInterest } from "@/lib/wizard-context";
+import {
+  INTEREST_OPTIONS,
+  CUSTOM_INTEREST_CATEGORIES,
+  buildCustomInterestCategoryMap,
+  hasCustomInterest,
+  inferCustomInterestCategory,
+  normalizeCustomInterest,
+  type CustomInterestCategory,
+  type CustomInterestCategoryMap,
+} from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, Check, AlertCircle, Plus, X } from "lucide-react";
 import RecapBanner from "@/components/RecapBanner";
 import StreakChip from "@/components/StreakChip";
@@ -32,6 +41,7 @@ export default function Profile() {
   const [situation, setSituation] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterests, setCustomInterests] = useState<string[]>([]);
+  const [customInterestCategories, setCustomInterestCategories] = useState<CustomInterestCategoryMap>({});
   const [customInterestInput, setCustomInterestInput] = useState("");
   const [customInterestError, setCustomInterestError] = useState<string | null>(null);
   const [postcode, setPostcode] = useState("");
@@ -43,6 +53,7 @@ export default function Profile() {
   const [savedSituation, setSavedSituation] = useState<string[]>([]);
   const [savedInterests, setSavedInterests] = useState<string[]>([]);
   const [savedCustomInterests, setSavedCustomInterests] = useState<string[]>([]);
+  const [savedCustomInterestCategories, setSavedCustomInterestCategories] = useState<CustomInterestCategoryMap>({});
   const [savedPostcode, setSavedPostcode] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -66,14 +77,17 @@ export default function Profile() {
       const sit = p?.situation ?? [];
       const ints = p?.interests ?? [];
       const customInts = p?.customInterests ?? [];
+      const categoryMap = buildCustomInterestCategoryMap(customInts, p?.customInterestCategories as CustomInterestCategoryMap | undefined);
       const pc = p?.postcode ?? "";
       setSituation(sit);
       setInterests(ints);
       setCustomInterests(customInts);
+      setCustomInterestCategories(categoryMap);
       setPostcode(pc);
       setSavedSituation(sit);
       setSavedInterests(ints);
       setSavedCustomInterests(customInts);
+      setSavedCustomInterestCategories(categoryMap);
       setSavedPostcode(pc);
       setDirty(false);
     }
@@ -102,6 +116,7 @@ export default function Profile() {
       return;
     }
     setCustomInterests(prev => [...prev, value]);
+    setCustomInterestCategories(prev => ({ ...prev, [value]: inferCustomInterestCategory(value) }));
     setCustomInterestInput("");
     setCustomInterestError(null);
     setSaveError(null);
@@ -111,6 +126,10 @@ export default function Profile() {
 
   const removeCustomInterest = (value: string) => {
     setCustomInterests(prev => prev.filter(item => item !== value));
+    setCustomInterestCategories(prev => {
+      const { [value]: _removed, ...rest } = prev;
+      return rest;
+    });
     setCustomInterestError(null);
     setSaveError(null);
     setDirty(true);
@@ -137,13 +156,14 @@ export default function Profile() {
     setSaving(true);
     setSaveError(null);
     try {
-      await updateProfile({ data: { situation, interests, customInterests, postcode: trimmed || null } });
+      await updateProfile({ data: { situation, interests, customInterests, customInterestCategories, postcode: trimmed || null } });
       await refetch();
       setSaved(true);
       setDirty(false);
       setSavedSituation(situation);
       setSavedInterests(interests);
       setSavedCustomInterests(customInterests);
+      setSavedCustomInterestCategories(customInterestCategories);
       setSavedPostcode(trimmed || "");
     } catch {
       setSaved(false);
@@ -157,6 +177,7 @@ export default function Profile() {
     setSituation(savedSituation);
     setInterests(savedInterests);
     setCustomInterests(savedCustomInterests);
+    setCustomInterestCategories(savedCustomInterestCategories);
     setCustomInterestInput("");
     setPostcode(savedPostcode);
     setPostcodeError(null);
@@ -266,8 +287,26 @@ export default function Profile() {
           {customInterests.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3" data-testid="profile-custom-interests">
               {customInterests.map(value => (
-                <span key={value} className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
-                  {value}
+                <span key={value} className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-primary bg-primary/10 pl-3 pr-1 py-1 text-sm text-foreground">
+                  <span>{value}</span>
+                  <select
+                    value={customInterestCategories[value] ?? ""}
+                    onChange={event => {
+                      setCustomInterestCategories(prev => ({
+                        ...prev,
+                        [value]: (event.target.value || null) as CustomInterestCategory | null,
+                      }));
+                      setDirty(true);
+                      setSaved(false);
+                    }}
+                    className="min-h-[36px] rounded-md border border-primary/30 bg-white px-2 text-xs text-foreground"
+                    aria-label={`Activity category for ${value}`}
+                  >
+                    <option value="">No category</option>
+                    {CUSTOM_INTEREST_CATEGORIES.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                   <button type="button" onClick={() => removeCustomInterest(value)} className="p-1.5 rounded-full hover:bg-primary/15" aria-label={`Remove ${value}`}>
                     <X className="w-3.5 h-3.5" />
                   </button>
