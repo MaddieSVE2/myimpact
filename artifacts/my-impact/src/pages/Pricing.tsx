@@ -86,7 +86,7 @@ function TierCard({ tier, highlight, onPick, busyKey }: {
         </div>
       )}
       <div className="mb-4">
-        <h3 className="text-lg font-display font-bold text-foreground">{tier.name}</h3>
+        <h2 className="text-lg font-display font-bold text-foreground">{tier.name}</h2>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{tier.tagline}</p>
       </div>
       <div className="mb-5">

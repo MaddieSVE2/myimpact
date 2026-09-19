@@ -303,8 +303,9 @@ export default function OrgRegister() {
             </div>
 
             <div className="mb-5">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Select your organisation type to see relevant information</label>
+              <label htmlFor="organisation-type-preview" className="block text-xs font-medium text-muted-foreground mb-1.5">Select your organisation type to see relevant information</label>
               <select
+                id="organisation-type-preview"
                 value={form.type}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value as OrgType }))}
                 className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:border-primary bg-white"
@@ -396,8 +397,9 @@ export default function OrgRegister() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Organisation type <span className="text-red-500">*</span></label>
+                <label htmlFor="organisation-type" className="block text-sm font-medium text-foreground mb-1.5">Organisation type <span className="text-red-500">*</span></label>
                 <select
+                  id="organisation-type"
                   name="type"
                   value={form.type}
                   onChange={handleChange}
@@ -440,8 +442,9 @@ export default function OrgRegister() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Approximate number of {memberLabel}</label>
+                <label htmlFor="organisation-size" className="block text-sm font-medium text-foreground mb-1.5">Approximate number of {memberLabel}</label>
                 <select
+                  id="organisation-size"
                   name="size"
                   value={form.size}
                   onChange={handleChange}

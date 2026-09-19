@@ -39,13 +39,13 @@ const headingStyle: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "rgba(255,255,255,0.60)",
+  color: "rgba(255,255,255,0.75)",
   marginBottom: 14,
 };
 
 const linkStyle: React.CSSProperties = {
   fontSize: 13,
-  color: "rgba(255,255,255,0.7)",
+  color: "rgba(255,255,255,0.82)",
   textDecoration: "none",
   lineHeight: 1.4,
 };
@@ -70,10 +70,10 @@ export function Footer() {
             alt="My Impact"
             style={{ height: 36, marginBottom: 12, display: "block" }}
           />
-          <p className="mi-footer-tagline" style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 12 }}>
+          <p className="mi-footer-tagline" style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", marginBottom: 12 }}>
             The difference I make.
           </p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.60)", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
             Powered by Social Value Engine methodology
           </p>
         </div>
@@ -104,7 +104,7 @@ export function Footer() {
 
         {/* SVE family */}
         <div>
-          <p style={{ ...headingStyle, color: "var(--brand-orange-bright, #F06127)" }}>Part of the SVE family</p>
+          <p style={{ ...headingStyle, color: "#F47C4D" }}>Part of the SVE family</p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             {SVE_FAMILY_LINKS.map((l) => (
               <li key={l.href}>
@@ -138,7 +138,7 @@ export function Footer() {
           flexWrap: "wrap",
         }}
       >
-        <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.60)", margin: 0 }}>
+        <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", margin: 0 }}>
           © {new Date().getFullYear()} My Impact
         </p>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>

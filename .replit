@@ -77,7 +77,7 @@ isValidation = true
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun && rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun --config=lighthouserc.mobile.cjs"
+args = "flock /tmp/my-impact-lighthouse-ci.lock bash -lc 'rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun && rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm exec lhci autorun --config=lighthouserc.mobile.cjs'"
 
 [[workflows.workflow]]
 name = "typecheck"
@@ -94,23 +94,23 @@ args = "pnpm exec tsc -b lib/db lib/api-zod lib/api-client-react lib/integration
 name = "typecheck-api"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/api-server run typecheck"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm exec tsc -b lib/db && pnpm --filter @workspace/api-server run typecheck"
 
 [[workflows.workflow]]
 name = "accessibility"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm a11y"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flock /tmp/my-impact-lighthouse-ci.lock bash -lc 'rm -rf .lighthouseci && CHROME_PATH=/home/runner/workspace/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome pnpm a11y'"
 
 [agent]
 stack = "PNPM_WORKSPACE"
@@ -147,14 +147,6 @@ externalPort = 3001
 [[ports]]
 localPort = 3002
 externalPort = 3000
-
-[[ports]]
-localPort = 4173
-externalPort = 6800
-
-[[ports]]
-localPort = 4174
-externalPort = 3003
 
 [[ports]]
 localPort = 5000

@@ -477,18 +477,18 @@ function ReleaseGroups({ groups }: { groups: ReleaseGroup[] }) {
               padding: "5px 14px", borderRadius: 100,
               fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
               background: `${group.badgeColor}22`,
-              color: group.badgeColor,
+              color: C.dark,
               border: `1px solid ${group.badgeColor}44`,
             }}>
               {group.badge}
             </span>
-            <h3 style={{
+            <h2 style={{
               fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700,
               color: C.dark, letterSpacing: -0.5,
               fontFamily: "'Outfit', sans-serif", margin: 0,
             }}>
               {group.heading}
-            </h3>
+            </h2>
           </div>
 
           <div style={{
@@ -651,7 +651,7 @@ export default function WhatsNew() {
                             fontSize: 11, fontWeight: 700, letterSpacing: 1,
                             textTransform: "uppercase",
                             background: `${C.orange}1f`,
-                            color: C.orange,
+                            color: C.dark,
                             border: `1px solid ${C.orange}3a`,
                           }}>
                             {rel.date}
@@ -681,12 +681,12 @@ export default function WhatsNew() {
       )}
 
       {/* ── CTA ── */}
-      <section style={{ background: C.orange, padding: "clamp(60px, 10vw, 100px) 5%", textAlign: "center" }}>
+      <section style={{ background: "var(--brand-orange-solid)", padding: "clamp(60px, 10vw, 100px) 5%", textAlign: "center" }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
           <h2 style={{ fontSize: "clamp(26px, 4.5vw, 44px)", fontWeight: 900, color: "white", letterSpacing: -1, marginBottom: 16, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
             Ready to explore everything?
           </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", marginBottom: 36, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 17, color: "white", marginBottom: 36, lineHeight: 1.6 }}>
             Everything above is live and waiting for you. It takes about three minutes to calculate your impact.
           </p>
           <Link href="/wizard/actions" className="mi-btn-white">

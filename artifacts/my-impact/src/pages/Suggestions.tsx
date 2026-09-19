@@ -520,7 +520,7 @@ function PlaceCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: "var(--brand-orange-bright)" }}
+                    style={{ backgroundColor: "var(--brand-orange-solid)" }}
                     data-testid={`place-website-${place.name}`}
                   >
                     <Globe className="w-3 h-3" /> Visit website <ExternalLink className="w-2.5 h-2.5" />
@@ -531,7 +531,7 @@ function PlaceCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: "var(--brand-orange-bright)" }}
+                    style={{ backgroundColor: "var(--brand-orange-solid)" }}
                   >
                     <Globe className="w-3 h-3" /> Find their website <ExternalLink className="w-2.5 h-2.5" />
                   </a>
@@ -829,9 +829,9 @@ export default function Suggestions() {
                           {sug.category}
                         </span>
                       </div>
-                      <h3 className="text-sm font-semibold text-foreground leading-snug mb-1">
+                      <h2 className="text-sm font-semibold text-foreground leading-snug mb-1">
                         {sug.activityName}
-                      </h3>
+                      </h2>
                       <p className="text-xs text-muted-foreground leading-relaxed">{sug.reason}</p>
 
                       {/* "See what's near you" toggle — results are pre-mapped, so opening is instant */}

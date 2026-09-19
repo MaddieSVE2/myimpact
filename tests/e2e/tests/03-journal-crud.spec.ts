@@ -63,7 +63,7 @@ test.describe("Spec 3 — journal entry create, edit, delete", () => {
     expect(listBody.entries[0]?.prompt).toBe(chosenPrompt);
     expect(listBody.entries[0]?.tags).toEqual(["community-work"]);
 
-    const entryCard = page.locator("div.group", { has: renderedEntry }).first();
+    const entryCard = page.locator(`#entry-${listBody.entries[0]?.id}`);
     await entryCard.getByRole("button", { name: /^tag$/i }).click();
     await entryCard.getByPlaceholder("Add tag…").fill("After Save");
     await entryCard.getByPlaceholder("Add tag…").press("Enter");

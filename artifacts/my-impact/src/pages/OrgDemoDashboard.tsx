@@ -146,7 +146,7 @@ const DEMO_VARIANTS: Record<SharedDemoType, {
     scale: 9.2,
     insights: [
       "438 people have logged activity this year, with food support and community outreach attracting the broadest participation.",
-      "Youth mentoring produces the highest social value per hour, making it a strong candidate for further volunteer investment.",
+      "Youth mentoring produces the highest social value per hour, making it a strong candidate for further programme investment.",
       "Environmental projects are growing fastest, with participation up 24% since January.",
       "Regular activity across seven UK regions gives the charity strong evidence for funders and annual reporting.",
     ],
@@ -288,15 +288,15 @@ function StatCard({ icon: Icon, label, value, rawValue, decimals, prefix, sub, h
   return (
     <div className={`rounded-xl p-5 border ${highlight ? "bg-primary text-white border-primary" : "bg-white border-border"}`}>
       <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${highlight ? "text-white/70" : "text-primary"}`} />
-        <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/70" : "text-muted-foreground"}`}>{label}</p>
+        <Icon className={`w-4 h-4 ${highlight ? "text-white/90" : "text-primary"}`} />
+        <p className={`text-[11px] font-semibold uppercase tracking-wider ${highlight ? "text-white/90" : "text-muted-foreground"}`}>{label}</p>
       </div>
       <p className={`text-2xl font-display font-bold ${highlight ? "text-white" : "text-foreground"}`}>
         {rawValue !== undefined ? (
           <>{prefix}<AnimatedNumber value={rawValue} decimals={decimals ?? 0} formatter={decimals ? undefined : (v => value.replace(/[\d,]+/, v.toLocaleString("en-GB")))} /></>
         ) : value}
       </p>
-      {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/60" : "text-muted-foreground"}`}>{sub}</p>}
+      {sub && <p className={`text-xs mt-1 ${highlight ? "text-white/90" : "text-muted-foreground"}`}>{sub}</p>}
     </div>
   );
 }
@@ -355,8 +355,8 @@ export default function OrgDemoDashboard({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="rounded-xl p-5 border bg-primary text-white border-primary">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-white/70" />
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Total social value</p>
+              <TrendingUp className="w-4 h-4 text-white/90" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-white/90">Total social value</p>
             </div>
             <p className="text-2xl font-display font-bold text-white">
               £<AnimatedNumber value={DEMO.headline.totalSocialValue} formatter={v => v.toLocaleString("en-GB")} />
@@ -419,7 +419,7 @@ export default function OrgDemoDashboard({
               <div className="bg-primary/10 rounded-xl p-4 text-center">
                 <p className="text-[11px] text-primary uppercase tracking-wide font-semibold mb-1">SROI</p>
                 <p className="text-3xl font-display font-bold text-primary">£{sroiRatio}</p>
-                <p className="text-xs text-primary/70 mt-1">for every £1 invested</p>
+                <p className="text-xs text-primary mt-1">for every £1 invested</p>
               </div>
             </div>
           </div>
@@ -494,7 +494,12 @@ export default function OrgDemoDashboard({
             <ol className="space-y-2.5">
               {DEMO.sdgs.map((s, idx) => (
                 <li key={s.number} className="flex items-center gap-3">
-                  <span className="shrink-0 w-7 h-7 rounded-md text-white text-xs font-bold inline-flex items-center justify-center" style={{ backgroundColor: s.color }}>{s.number}</span>
+                  <span
+                    className={`shrink-0 w-7 h-7 rounded-md text-xs font-bold inline-flex items-center justify-center ${s.number === 11 ? "text-foreground" : "text-white"}`}
+                    style={{ backgroundColor: s.color }}
+                  >
+                    {s.number}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-foreground truncate">{s.label}</p>
@@ -758,7 +763,7 @@ export default function OrgDemoDashboard({
         <div className="bg-primary rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-white">
           <div>
             <p className="text-lg font-display font-bold mb-1">Ready to see your real dashboard?</p>
-            <p className="text-sm text-white/70 max-w-sm">Register your organisation, share the invite code with your members, and your dashboard populates automatically.</p>
+            <p className="text-sm text-white/90 max-w-sm">Register your organisation, share the invite code with your members, and your dashboard populates automatically.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             <Link
