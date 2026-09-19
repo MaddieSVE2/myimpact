@@ -170,6 +170,14 @@ export const PRICING_META: PageMetadata = {
   robots: "index, follow",
 };
 
+export const ORGANISATIONS_META: PageMetadata = {
+  title: "My Impact for Organisations",
+  description:
+    "Measure and report the collective social value created by your people. Trusted by schools, charities, and local authorities.",
+  canonical: "https://myimpact.uk/organisations",
+  robots: "index, follow",
+};
+
 export const ORG_REGISTER_META: PageMetadata = {
   title: "Register your Organisation — My Impact",
   description:
@@ -188,6 +196,7 @@ export const PRERENDER_PAGES: PrerenderPage[] = [
   { path: "/methodology", ...METHODOLOGY_META },
   { path: "/whats-new", ...WHATS_NEW_META },
   { path: "/contact", ...CONTACT_META },
+  { path: "/organisations", ...ORGANISATIONS_META },
   { path: "/org/demo", ...ORG_DEMO_META },
   { path: "/pricing", ...PRICING_META },
   { path: "/org/register", ...ORG_REGISTER_META },

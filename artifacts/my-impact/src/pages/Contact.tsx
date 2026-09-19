@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { ArrowLeft, CheckCircle, Mail } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
 import { CONTACT_META } from "@/lib/page-metadata";
@@ -7,11 +7,19 @@ import { CONTACT_META } from "@/lib/page-metadata";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Contact() {
+  const search = useSearch();
+  const isDemoRequest = new URLSearchParams(search).get("topic") === "demo";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    message: isDemoRequest
+      ? "I'd like to book a demo of My Impact for my organisation."
+      : "",
+  });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
@@ -90,9 +98,13 @@ export default function Contact() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
             <Mail className="w-3.5 h-3.5" /> Get in touch
           </div>
-          <h1 className="text-3xl font-display font-bold text-foreground mb-3 leading-tight">Contact us</h1>
+          <h1 className="text-3xl font-display font-bold text-foreground mb-3 leading-tight" data-testid="contact-heading">
+            {isDemoRequest ? "Book a demo" : "Contact us"}
+          </h1>
           <p className="text-base text-muted-foreground leading-relaxed">
-            Have a question or want to learn more? Send us a message and we'll get back to you within 1–2 working days.
+            {isDemoRequest
+              ? "Tell us a little about your organisation and we'll arrange a time to show you how My Impact could work for your people."
+              : "Have a question or want to learn more? Send us a message and we'll get back to you within 1–2 working days."}
           </p>
         </div>
 
@@ -103,6 +115,7 @@ export default function Contact() {
             </label>
             <input
               name="name"
+              data-testid="input-contact-name"
               value={form.name}
               onChange={handleChange}
               required
@@ -117,6 +130,7 @@ export default function Contact() {
             </label>
             <input
               name="email"
+              data-testid="input-contact-email"
               type="email"
               value={form.email}
               onChange={handleChange}
@@ -132,6 +146,7 @@ export default function Contact() {
             </label>
             <textarea
               name="message"
+              data-testid="input-contact-message"
               value={form.message}
               onChange={handleChange}
               required
@@ -147,6 +162,7 @@ export default function Contact() {
 
           <button
             type="submit"
+            data-testid="button-contact-submit"
             disabled={submitting}
             className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
           >

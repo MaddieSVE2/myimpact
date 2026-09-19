@@ -1,7 +1,6 @@
 import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { OrgDemoButton } from "@/components/OrgDemoModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, ClipboardList, Trophy, Sparkles } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
@@ -747,12 +746,12 @@ export default function Intro() {
           </div>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
             Measuring the impact of a group or programme?{" "}
-            <a
-              href="/#for-organisations"
+            <Link
+              href="/organisations"
               style={{ color: "rgba(255,255,255,0.75)", textDecoration: "underline", textUnderlineOffset: 3 }}
             >
               See the organisation dashboard →
-            </a>
+            </Link>
           </p>
         </div>
 
@@ -1065,80 +1064,43 @@ export default function Intro() {
           </FadeIn>
         </div>
       </section>
-      {/* ── FOR ORGANISATIONS ── */}
-      <section id="for-organisations" style={{ background: C.dark, padding: "clamp(60px, 10vw, 100px) 5%" }}>
-        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
+      {/* ── FOR ORGANISATIONS (SIGNPOST) ── */}
+      <section style={{ background: C.dark, padding: "80px 5%" }}>
+        <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto", textAlign: "center" }}>
           <FadeIn>
-            <p className="mi-section-label" style={{ color: C.orange }}>For organisations</p>
-            <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", color: "white", fontWeight: 700, letterSpacing: -1, maxWidth: 500, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif" }}>
-              See the value your people create.
+            <h2 style={{ fontSize: "clamp(24px, 4vw, 36px)", color: "white", fontWeight: 700, letterSpacing: -1, lineHeight: 1.15, fontFamily: "'Outfit', sans-serif", marginBottom: 16 }}>
+              Represent an organisation?
             </h2>
-            <p className="mi-orgs-intro-text" style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 560, lineHeight: 1.65, marginTop: 16, marginBottom: 40 }}>
-              Schools, youth organisations, charities, and local authorities get a companion dashboard with aggregated, anonymised data, ready for reporting, funding bids, and programme evaluation.
+            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", maxWidth: 600, margin: "0 auto 32px", lineHeight: 1.65 }}>
+              Schools, charities, and local authorities use My Impact to measure and report the collective social value created by their people.
             </p>
-          </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, alignItems: "stretch" }}>
-            {[
-              { title: "Evidence outcomes", desc: "Credible social value data from the same methodology used by councils and housing associations.", comingSoon: false },
-              { title: "Set challenges", desc: "Create group challenges and track collective impact across a cohort, school, or programme.", comingSoon: false },
-              { title: "Export and report", desc: "Download data for commissioners, trustees, or Ofsted. Uses the same Social Value Engine methodology trusted by local authorities.", comingSoon: false },
-              { title: "Track in real time", desc: "See how your whole programme is progressing at a glance. No chasing spreadsheets, no waiting for reports.", comingSoon: false },
-            ].map((c, i) => (
-              <FadeIn key={c.title} delay={i * 0.08}>
-                <div className="mi-org-card">
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                    <h3 style={{ color: C.orange, fontSize: 17, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>{c.title}</h3>
-                    {c.comingSoon && (
-                      <span style={{
-                        flexShrink: 0,
-                        fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
-                        background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-                        color: "rgba(255,255,255,0.45)", borderRadius: 100, padding: "3px 9px", whiteSpace: "nowrap",
-                      }}>
-                        Coming soon
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{c.desc}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-          <FadeIn delay={0.2}>
-            <div style={{ marginTop: 40, display: "flex", gap: 16, flexWrap: "wrap" as const, alignItems: "center" }}>
-              <Link
-                href="/org/register"
-                style={{
-                  background: C.orange,
-                  color: "white",
-                  padding: "14px 28px",
-                  borderRadius: 100,
-                  fontWeight: 700,
-                  fontSize: 15,
-                  textDecoration: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  transition: "all 0.25s",
-                }}
-              >
-                Register your organisation →
-              </Link>
-              <OrgDemoButton className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: "rgba(255,255,255,0.7)" } as React.CSSProperties} />
-              <Link
-                href="/login?next=%2Forg"
-                style={{
-                  color: "rgba(255,255,255,0.4)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.15)",
-                  paddingBottom: 2,
-                }}
-              >
-                Already registered?
-              </Link>
-            </div>
+            <Link
+              href="/organisations"
+              style={{
+                background: "transparent",
+                color: "white",
+                border: "1.5px solid rgba(255,255,255,0.3)",
+                padding: "12px 28px",
+                borderRadius: 100,
+                fontWeight: 600,
+                fontSize: 15,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "white";
+                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              Explore for organisations →
+            </Link>
           </FadeIn>
         </div>
       </section>
