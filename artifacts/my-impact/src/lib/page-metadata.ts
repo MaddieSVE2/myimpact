@@ -17,6 +17,13 @@ import publicRoutes from "./public-routes.json";
 export const SITE_ORIGIN = "https://myimpact.uk";
 export const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/opengraph.jpg`;
 
+const PUBLISHER = {
+  "@type": "Organization",
+  "@id": `${SITE_ORIGIN}/#organization`,
+  "name": "My Impact",
+  "url": `${SITE_ORIGIN}/`,
+};
+
 export interface PageMetadata {
   title: string;
   description: string;
@@ -126,6 +133,19 @@ export const METHODOLOGY_META: PageMetadata = {
   canonical: "https://myimpact.uk/methodology",
   robots: "index, follow",
   ogType: "article",
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "@id": `${SITE_ORIGIN}/methodology#article`,
+      "url": `${SITE_ORIGIN}/methodology`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/methodology`,
+      "headline": "Methodology & Evidence — How My Impact calculates social value",
+      "description": "How My Impact calculates social value: SROI methodology, Social Value Engine proxies, UN SDG mapping, verification approach, and the citations behind every number.",
+      "dateModified": "2026-05-02",
+      "publisher": PUBLISHER,
+    },
+  ],
 };
 
 export const WHATS_NEW_META: PageMetadata = {
@@ -134,6 +154,45 @@ export const WHATS_NEW_META: PageMetadata = {
     "The latest features, improvements, and updates to My Impact. See what's been shipped for individuals and organisations.",
   canonical: "https://myimpact.uk/whats-new",
   robots: "index, follow",
+  ogType: "article",
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#july-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#july-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — July 2026",
+      "description": "Logging, local charity, history, organisation, safety, and accessibility improvements shipped by My Impact through July 2026.",
+      "datePublished": "2026-07",
+      "dateModified": "2026-07",
+      "publisher": PUBLISHER,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#may-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#may-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — May 2026",
+      "description": "Personalisation, public profiles, milestones, organisation tools, and accessibility improvements shipped by My Impact through May 2026.",
+      "datePublished": "2026-05",
+      "dateModified": "2026-05",
+      "publisher": PUBLISHER,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#march-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#march-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — March 2026",
+      "description": "Sidekick, history, organisation dashboard, accessibility, and mobile improvements shipped by My Impact through March 2026.",
+      "datePublished": "2026-03",
+      "dateModified": "2026-03",
+      "publisher": PUBLISHER,
+    },
+  ],
 };
 
 export const CONTACT_META: PageMetadata = {

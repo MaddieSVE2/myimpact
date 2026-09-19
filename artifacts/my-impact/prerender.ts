@@ -81,9 +81,17 @@ function injectPage(
 
   const injected = jsonLdBlocks ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
   result = result.replace(/<head>/, `<head>\n${injected}`);
+  // react-helmet-async leaves JSON-LD scripts inline in the SSR body when
+  // renderToString is used without extracting Helmet state. The same schemas
+  // are injected into <head> above, so remove the body copies to avoid
+  // duplicate structured data in the generated page.
+  const bodyWithoutInlineJsonLd = body.replace(
+    /<script type="application\/ld\+json">[\s\S]*?<\/script>/g,
+    "",
+  );
   result = result.replace(
     /<div id="root"><\/div>/,
-    `<div id="root">${body}</div>`,
+    `<div id="root">${bodyWithoutInlineJsonLd}</div>`,
   );
 
   return result;

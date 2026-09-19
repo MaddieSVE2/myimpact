@@ -248,7 +248,8 @@ export default function Methodology() {
         title={METHODOLOGY_META.title}
         description={METHODOLOGY_META.description}
         canonical={METHODOLOGY_META.canonical}
-        ogType="article"
+        ogType={METHODOLOGY_META.ogType}
+        jsonLd={METHODOLOGY_META.jsonLd}
       />
 
       {/* ── HERO ── */}

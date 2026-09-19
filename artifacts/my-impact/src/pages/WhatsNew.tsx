@@ -553,6 +553,8 @@ export default function WhatsNew() {
         title={WHATS_NEW_META.title}
         description={WHATS_NEW_META.description}
         canonical={WHATS_NEW_META.canonical}
+        ogType={WHATS_NEW_META.ogType}
+        jsonLd={WHATS_NEW_META.jsonLd}
       />
 
       {/* ── HERO ── */}
