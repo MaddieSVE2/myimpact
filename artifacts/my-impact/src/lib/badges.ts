@@ -1,3 +1,5 @@
+import { MILESTONE_ARTWORK, VALUE_MILESTONE_ARTWORK } from "@/lib/branded-artwork";
+
 export interface Badge {
   id: string;
   name: string;
@@ -6,21 +8,23 @@ export interface Badge {
   colour: string;
   earned: boolean;
   secret?: boolean;
+  artwork?: string;
 }
 
 export interface Milestone {
   label: string;
   threshold: number;
   emoji: string;
+  artwork?: string;
 }
 
 export const MILESTONES: Milestone[] = [
-  { label: "Rising Star", threshold: 100, emoji: "⭐" },
-  { label: "Century Club", threshold: 100, emoji: "💰" },
-  { label: "Five Hundred", threshold: 500, emoji: "🎯" },
-  { label: "Impact Maker", threshold: 1000, emoji: "🏆" },
-  { label: "Champion", threshold: 5000, emoji: "🥇" },
-  { label: "Legend", threshold: 10000, emoji: "🌟" },
+  { label: "Rising Star", threshold: 100, emoji: "⭐", artwork: MILESTONE_ARTWORK.rising_star },
+  { label: "Century Club", threshold: 100, emoji: "💰", artwork: VALUE_MILESTONE_ARTWORK[100] },
+  { label: "Five Hundred", threshold: 500, emoji: "🎯", artwork: VALUE_MILESTONE_ARTWORK[500] },
+  { label: "Impact Maker", threshold: 1000, emoji: "🏆", artwork: VALUE_MILESTONE_ARTWORK[1000] },
+  { label: "Champion", threshold: 5000, emoji: "🥇", artwork: VALUE_MILESTONE_ARTWORK[5000] },
+  { label: "Legend", threshold: 10000, emoji: "🌟", artwork: VALUE_MILESTONE_ARTWORK[10000] },
 ];
 
 export interface ComputeBadgesInput {
@@ -418,7 +422,10 @@ export function computeBadges(
     },
   ];
 
-  return [...nonSecretBadges, ...secretBadges];
+  return [...nonSecretBadges, ...secretBadges].map((badge) => ({
+    ...badge,
+    artwork: MILESTONE_ARTWORK[badge.id],
+  }));
 }
 
 export function getNextMilestone(totalValue: number): { milestone: Milestone; progress: number } | null {
@@ -436,7 +443,12 @@ export function getNextMilestone(totalValue: number): { milestone: Milestone; pr
       const prev = ordered[ordered.indexOf(threshold) - 1] ?? 0;
       const progress = Math.min(100, ((totalValue - prev) / (threshold - prev)) * 100);
       return {
-        milestone: { threshold, emoji: labels[threshold].emoji, label: labels[threshold].label },
+        milestone: {
+          threshold,
+          emoji: labels[threshold].emoji,
+          label: labels[threshold].label,
+          artwork: VALUE_MILESTONE_ARTWORK[threshold],
+        },
         progress,
       };
     }

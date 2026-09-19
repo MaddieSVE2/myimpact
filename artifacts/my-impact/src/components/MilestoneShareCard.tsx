@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { Badge } from "@/lib/badges";
 import { formatCurrency } from "@/lib/utils";
+import { BrandedArtwork } from "./BrandedArtwork";
 
 interface MilestoneShareCardProps {
   badge: Badge;
@@ -126,7 +127,7 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
             gap: format === "landscape" ? 20 : 28,
           }}
         >
-          {/* Milestone emoji in circle */}
+          {/* Milestone artwork in circle */}
           <div
             style={{
               width: format === "landscape" ? 140 : 180,
@@ -141,9 +142,14 @@ const MilestoneShareCard = forwardRef<HTMLDivElement, MilestoneShareCardProps>(
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: format === "landscape" ? 64 : 80 }}>
-              {badge.emoji}
-            </span>
+            <BrandedArtwork
+              file={badge.artwork}
+              fallback={badge.emoji}
+              size="export"
+              loading="eager"
+              className="flex items-center justify-center"
+              imageClassName="w-[78%] h-[78%] object-contain"
+            />
           </div>
 
           {/* Milestone name */}

@@ -16,6 +16,8 @@ import { ManagerHome } from "@/components/ManagerHome";
 import { isInRecapWindow, isRecapViewed, getRecapYear } from "@/lib/recap-utils";
 import { useListRecurringTemplates, getListRecurringTemplatesQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
+import { HOME_CATEGORY_ARTWORK } from "@/lib/branded-artwork";
+import { BrandedArtwork } from "@/components/BrandedArtwork";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -970,17 +972,22 @@ export default function Intro() {
           </FadeIn>
           <div className="mi-counts-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, alignItems: "stretch" }}>
             {[
-              { icon: "🤝", bg: "var(--brand-light-blue-chip)", title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
-              { icon: "💚", bg: "var(--brand-olive-chip)", title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
-              { icon: "🌱", bg: "var(--brand-olive-chip)", title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
-              { icon: "🏘️", bg: "var(--brand-orange-chip)", title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
-              { icon: "📢", bg: "var(--brand-light-blue-chip)", title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
-              { icon: "🎓", bg: "var(--brand-orange-chip)", title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
+              { icon: "🤝", artwork: HOME_CATEGORY_ARTWORK.volunteering, bg: "var(--brand-light-blue-chip)", title: "Volunteering", desc: "Giving your time to a charity, club, food bank, or community project." },
+              { icon: "💚", artwork: HOME_CATEGORY_ARTWORK.caring, bg: "var(--brand-olive-chip)", title: "Caring", desc: "Looking after a family member, supporting a friend through a tough time, or mentoring someone younger." },
+              { icon: "🌱", artwork: HOME_CATEGORY_ARTWORK.environment, bg: "var(--brand-olive-chip)", title: "Environment", desc: "Litter picks, tree planting, cycling instead of driving, reducing waste." },
+              { icon: "🏘️", artwork: HOME_CATEGORY_ARTWORK.community, bg: "var(--brand-orange-chip)", title: "Community", desc: "Organising events, running a club, being a good neighbour, showing up for your area." },
+              { icon: "📢", artwork: HOME_CATEGORY_ARTWORK.campaigning, bg: "var(--brand-light-blue-chip)", title: "Campaigning", desc: "Raising awareness, standing up for what matters, driving change on issues you care about." },
+              { icon: "🎓", artwork: HOME_CATEGORY_ARTWORK.peerSupport, bg: "var(--brand-orange-chip)", title: "Peer support", desc: "Helping others learn, tutoring, leading a study group, sharing skills, supporting someone's wellbeing." },
             ].map((c, i) => (
               <FadeIn key={c.title} delay={i * 0.08}>
                 <div className="mi-count-card">
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>
-                    {c.icon}
+                  <div style={{ width: 68, height: 68, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, marginBottom: 14 }}>
+                    <BrandedArtwork
+                      file={c.artwork}
+                      fallback={c.icon}
+                      className="w-16 h-16 flex items-center justify-center"
+                      imageClassName="w-full h-full object-contain"
+                    />
                   </div>
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: C.dark, marginBottom: 8, fontFamily: "'Outfit', sans-serif" }}>{c.title}</h3>
                   <p style={{ fontSize: 15, color: "var(--brand-subtle-text)", lineHeight: 1.6 }}>{c.desc}</p>

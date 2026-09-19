@@ -5,6 +5,7 @@ import { paintMilestoneShareCard } from "@/lib/share-cards";
 import { X, Download, Linkedin, Twitter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { BrandedArtwork } from "./BrandedArtwork";
 
 interface MilestoneShareModalProps {
   badge: Badge;
@@ -87,11 +88,20 @@ export default function MilestoneShareModal({ badge, totalValue, onClose }: Mile
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-[#1a2e3a]">Share your milestone</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{badge.emoji} {badge.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+              <BrandedArtwork
+                file={badge.artwork}
+                fallback={badge.emoji}
+                className="w-5 h-5 inline-flex items-center justify-center"
+                imageClassName="w-full h-full object-contain"
+              />
+              {badge.name}
+            </p>
           </div>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            aria-label="Close share milestone dialog"
           >
             <X size={18} />
           </button>

@@ -4,6 +4,8 @@ import { Link } from "wouter";
 import { PageMeta } from "@/components/PageMeta";
 import { ABOUT_META } from "@/lib/page-metadata";
 import { scrollContentToTop } from "@/lib/scroll-utils";
+import { ABOUT_CATEGORY_ARTWORK } from "@/lib/branded-artwork";
+import { BrandedArtwork } from "@/components/BrandedArtwork";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -51,24 +53,28 @@ function FadeIn({ children, delay = 0, className = "" }: { children: React.React
 const IMPACT_CATEGORIES = [
   {
     icon: "🌿",
+    artwork: ABOUT_CATEGORY_ARTWORK.environment,
     title: "Environment",
     description: "Actions that reduce waste, lower carbon footprints, protect natural habitats, and promote sustainable living.",
     color: "#4a7c59",
   },
   {
     icon: "❤️",
+    artwork: ABOUT_CATEGORY_ARTWORK.health,
     title: "Health",
     description: "Activities that support physical and mental wellbeing, for yourself, your family, or others in your community.",
     color: "#c0392b",
   },
   {
     icon: "🤝",
+    artwork: ABOUT_CATEGORY_ARTWORK.community,
     title: "Community",
     description: "Volunteering, mentoring, local organising, and any effort that strengthens the social fabric where you live.",
     color: "#2980b9",
   },
   {
     icon: "📚",
+    artwork: ABOUT_CATEGORY_ARTWORK.education,
     title: "Education",
     description: "Teaching, tutoring, fundraising for schools, and anything that helps others learn and grow.",
     color: "#8e44ad",
@@ -275,7 +281,7 @@ export default function About() {
               My Impact recognises meaningful contributions across four domains of social value. If you do something good, chances are it fits.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 24 }}>
-              {IMPACT_CATEGORIES.map(({ icon, title, description, color }) => (
+              {IMPACT_CATEGORIES.map(({ icon, artwork, title, description, color }) => (
                 <FadeIn key={title} delay={0.1}>
                   <div style={{
                     background: "rgba(255,255,255,0.05)",
@@ -285,7 +291,12 @@ export default function About() {
                     height: "100%",
                     boxSizing: "border-box",
                   }}>
-                    <div style={{ fontSize: 32, marginBottom: 14 }}>{icon}</div>
+                    <BrandedArtwork
+                      file={artwork}
+                      fallback={icon}
+                      className="w-16 h-16 flex items-center justify-center text-3xl mb-3.5"
+                      imageClassName="w-full h-full object-contain"
+                    />
                     <p style={{ fontSize: 16, fontWeight: 700, color: "white", marginBottom: 10 }}>{title}</p>
                     <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.65 }}>{description}</p>
                   </div>

@@ -65,6 +65,7 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { BrandedArtwork } from "@/components/BrandedArtwork";
 
 // Metric tile, styled to match original My Impact design
 function MetricTile({
@@ -1509,7 +1510,12 @@ export default function Results() {
                 key={badge.id}
                 className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
               >
-                <span className="text-xl shrink-0 mt-0.5">{badge.emoji}</span>
+                <BrandedArtwork
+                  file={badge.artwork}
+                  fallback={badge.emoji}
+                  className="w-10 h-10 shrink-0 flex items-center justify-center text-xl"
+                  imageClassName="w-full h-full object-contain"
+                />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
@@ -1529,8 +1535,14 @@ export default function Results() {
           transition={{ delay: 0.1 }}
         >
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Next milestone: {nextMilestone.milestone.emoji} {nextMilestone.milestone.label}
+            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+              <BrandedArtwork
+                file={nextMilestone.milestone.artwork}
+                fallback={nextMilestone.milestone.emoji}
+                className="w-8 h-8 flex items-center justify-center text-base"
+                imageClassName="w-full h-full object-contain"
+              />
+              <span>Next milestone: {nextMilestone.milestone.label}</span>
             </p>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go

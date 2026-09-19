@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
+import { BrandedArtwork } from "@/components/BrandedArtwork";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -251,7 +252,12 @@ export default function Milestones() {
                     style={{ border: `2px solid ${badge.colour}` }}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-2xl shrink-0">{badge.emoji}</span>
+                      <BrandedArtwork
+                        file={badge.artwork}
+                        fallback={badge.emoji}
+                        className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl"
+                        imageClassName="w-full h-full object-contain"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-foreground">{badge.name}</p>
                         <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
@@ -273,7 +279,12 @@ export default function Milestones() {
                     key={badge.id}
                     className="bg-muted/30 border border-border rounded-xl p-4 flex items-start gap-3 opacity-60"
                   >
-                    <span className="text-2xl shrink-0 grayscale">{badge.emoji}</span>
+                    <BrandedArtwork
+                      file={badge.artwork}
+                      fallback={badge.emoji}
+                      className="w-11 h-11 shrink-0 flex items-center justify-center text-2xl grayscale"
+                      imageClassName="w-full h-full object-contain"
+                    />
                     <div>
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-muted-foreground">{badge.name}</p>
@@ -297,7 +308,7 @@ export default function Milestones() {
                     key={badge.id}
                     className="bg-muted/20 border border-dashed border-border rounded-xl p-4 flex items-start gap-3 opacity-50"
                   >
-                    <span className="text-2xl shrink-0 grayscale">❓</span>
+                    <span className="w-11 h-11 shrink-0 flex items-center justify-center text-2xl grayscale" aria-hidden="true">❓</span>
                     <div>
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-muted-foreground">???</p>

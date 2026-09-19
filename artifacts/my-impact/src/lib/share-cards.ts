@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
 import type { Badge } from "@/lib/badges";
+import { brandedArtworkUrl } from "@/lib/branded-artwork";
 
 const FONT_DISPLAY = "'Outfit', 'Inter', 'Helvetica Neue', Arial, sans-serif";
 const FONT_BODY = "'Inter', 'Helvetica Neue', Arial, sans-serif";
@@ -415,12 +416,26 @@ export async function paintMilestoneShareCard(
   ctx.arc(centreCx, circleCy, circleSize / 2 - 2, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Emoji
-  setFont(ctx, emojiSize, 400, FONT_BODY);
-  ctx.fillStyle = "#1a2e3a";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(data.badge.emoji, centreCx, circleCy + 2);
+  // Branded artwork, with the milestone emoji as a reliable fallback.
+  const artworkImg = data.badge.artwork
+    ? await loadImage(brandedArtworkUrl(data.badge.artwork, "export"))
+    : null;
+  if (artworkImg && artworkImg.naturalWidth > 0) {
+    const artworkSize = circleSize * 0.78;
+    ctx.drawImage(
+      artworkImg,
+      centreCx - artworkSize / 2,
+      circleCy - artworkSize / 2,
+      artworkSize,
+      artworkSize,
+    );
+  } else {
+    setFont(ctx, emojiSize, 400, FONT_BODY);
+    ctx.fillStyle = "#1a2e3a";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(data.badge.emoji, centreCx, circleCy + 2);
+  }
 
   cy += circleSize + gap;
 

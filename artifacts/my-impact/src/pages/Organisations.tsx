@@ -4,6 +4,8 @@ import { PageMeta } from "@/components/PageMeta";
 import { ORGANISATIONS_META } from "@/lib/page-metadata";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { Building2, Heart, Award, ArrowRight, BarChart3, Users, Shield, Sparkles, Handshake, MonitorSmartphone, Target, MessageCircle, Landmark } from "lucide-react";
+import { ORGANISATION_FEATURE_ARTWORK } from "@/lib/branded-artwork";
+import { BrandedArtwork } from "@/components/BrandedArtwork";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -255,16 +257,19 @@ export default function Organisations() {
             {[
               {
                 icon: BarChart3,
+                artwork: ORGANISATION_FEATURE_ARTWORK.reporting,
                 title: "Aggregated reporting",
                 desc: "See live totals of hours, activities, and calculated social value across your cohort. Export the data for funders and annual reports."
               },
               {
                 icon: Shield,
+                artwork: ORGANISATION_FEATURE_ARTWORK.privacy,
                 title: "Privacy by design",
                 desc: "Your dashboard shows the collective impact. Members retain ownership of their personal journals and reflections. We never share raw individual data without explicit consent."
               },
               {
                 icon: Users,
+                artwork: ORGANISATION_FEATURE_ARTWORK.engagement,
                 title: "Engage your community",
                 desc: "Set group challenges and pulse surveys. Track the causes your people support."
               }
@@ -280,15 +285,12 @@ export default function Organisations() {
                   display: "flex",
                   flexDirection: "column"
                 }}>
-                  <div style={{ 
-                    width: 48, height: 48, borderRadius: 12, 
-                    background: "var(--brand-orange-chip)", 
-                    color: C.orange,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    marginBottom: 24
-                  }}>
-                    <feature.icon size={24} />
-                  </div>
+                   <BrandedArtwork
+                     file={feature.artwork}
+                     fallback={<feature.icon size={28} color={C.orange} />}
+                     className="w-16 h-16 flex items-center justify-center mb-5"
+                     imageClassName="w-full h-full object-contain"
+                   />
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 12, fontFamily: "'Outfit', sans-serif" }}>
                     {feature.title}
                   </h3>
