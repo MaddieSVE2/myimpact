@@ -20,6 +20,10 @@ test.describe("earned milestone fireworks", () => {
   test("celebrates earned cards once per interaction, but not locked cards or reduced motion", async ({ page }) => {
     await signInWithMagicLink(page, api, email);
     await completeWizardWithExtraHours(page, { donationsGBP: 25, hours: 5 });
+    const unlockNotice = page.locator('[data-testid^="milestone-unlock-notice-"]');
+    await expect(unlockNotice).toBeVisible();
+    await page.reload();
+    await expect(unlockNotice).toHaveCount(0);
     await page.goto("/milestones");
 
     const earned = page.locator('[data-testid^="card-earned-milestone-"]').first();

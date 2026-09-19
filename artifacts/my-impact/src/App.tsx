@@ -27,6 +27,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { OrgMemberSubNav } from "@/components/layout/OrgMemberSubNav";
 import { Sidekick } from "@/components/Sidekick";
+import { MilestoneUnlockNotice } from "@/components/MilestoneFireworks";
 
 const NOINDEX_PATH_PREFIXES = [
   "/login",
@@ -509,6 +510,7 @@ function App() {
                       </WouterRouter>
                     </WizardProvider>
                   </SidekickProvider>
+                  <MilestoneUnlockNotice />
                 </FeedbackProvider>
                 <ServiceWorkerUpdatePrompt />
               </LocaleProvider>

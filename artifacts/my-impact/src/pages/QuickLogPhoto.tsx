@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { describeCadence } from "@/components/QuickLog";
 import { NumberInput } from "@/components/ui/number-input";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { useQueryClient } from "@tanstack/react-query";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -166,6 +167,7 @@ async function uploadPhoto(blob: Blob, recordIdNumeric: number): Promise<void> {
 
 export default function QuickLogPhoto() {
   const { user, isLoggedIn, isLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -398,6 +400,7 @@ export default function QuickLogPhoto() {
       });
       setSavedDescription(description.trim());
       setStage("done");
+      queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
       toast({ title: "Logged with photo", description: "Your activity and photo are now in your history." });
     } catch (err) {
       toast({
@@ -445,6 +448,7 @@ export default function QuickLogPhoto() {
         title: "Logged with photo",
         description: `Saved "${template.label}" and attached your photo.`,
       });
+      queryClient.invalidateQueries({ queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }) });
       setStage("done");
     } catch (err) {
       toast({

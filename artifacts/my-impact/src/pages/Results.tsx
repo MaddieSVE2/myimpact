@@ -17,7 +17,12 @@ import { useSidekick } from "@/lib/sidekick-context";
 import Attachments from "@/components/Attachments";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
-import { useSaveImpact, useGetAnnualRecap, getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
+import {
+  useSaveImpact,
+  useGetAnnualRecap,
+  getGetAnnualRecapQueryKey,
+  getGetImpactHistoryQueryKey,
+} from "@workspace/api-client-react";
 import type { SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -1139,6 +1144,9 @@ export default function Results() {
       // against the record's stored period).
       queryClient.invalidateQueries({
         predicate: q => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/impact/recap/"),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "" }),
       });
       const numericId = typeof savedRecord.id === "number" ? savedRecord.id : parseInt(String(savedRecord.id), 10);
       if (Number.isFinite(numericId)) setSavedRecordId(numericId);
