@@ -468,7 +468,7 @@ export default function QuickLogPhoto() {
   if (!isLoggedIn) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <p className="text-sm text-muted-foreground mb-4">Sign in to use Quick Log with a photo.</p>
+        <p className="text-sm text-muted-foreground mb-4">Sign in to use Quick Log + photo.</p>
         <Link href="/login" className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold">
           Log in
         </Link>
@@ -480,7 +480,7 @@ export default function QuickLogPhoto() {
     <div className="max-w-lg mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-display font-bold text-foreground">Quick Log with photo</h1>
+          <h1 className="text-xl font-display font-bold text-foreground">Quick Log + photo</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Snap a photo, then choose a saved shortcut or describe what you did.
           </p>
@@ -587,7 +587,7 @@ export default function QuickLogPhoto() {
                   <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary text-white flex items-center justify-center">
                     <Check className="w-5 h-5" aria-hidden="true" />
                   </div>
-                  <p className="text-base font-semibold text-foreground">Quick Log with photo saved</p>
+                  <p className="text-base font-semibold text-foreground">Quick Log + photo saved</p>
                   <p className="text-xs text-muted-foreground mt-1 mb-4">
                     {savedDescription
                       ? "It has been added to your current impact record. Would you like a shortcut for this description next time?"

@@ -64,21 +64,21 @@ export function OrgMemberActionCards({
             fallback={<BadgeCheck className="w-6 h-6 text-primary" />}
           />
           <div>
-            <h3 className="text-base font-semibold text-foreground">Quick Log an activity</h3>
-            <p className="text-xs font-semibold text-primary mt-0.5">Fast personal record</p>
+            <h3 className="text-base font-semibold text-foreground">Quick Log + photo</h3>
+            <p className="text-xs font-semibold text-primary mt-0.5">Photo evidence for {orgName}</p>
           </div>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
           {usesAutomaticSharing
-            ? `Quickly record an activity for yourself. After it is saved, it is shared automatically with ${orgName} according to your consent.`
-            : <>Quickly record an activity for yourself. After it is saved, use Review &amp; share when offered to share it with {orgName}.</>}
+            ? `Use this option to log an activity with a photo as evidence. It will be saved to your personal record and shared automatically with ${orgName} according to your consent.`
+            : <>Use this option to log an activity with a photo as evidence. It is saved to your personal record first; use Review &amp; share when offered to send it to {orgName}.</>}
         </p>
         <Link
           href="/quick-log"
           className={buttonClass}
           data-testid={testIdPrefix === "home" ? "home-link-org-submit" : "link-org-submit"}
         >
-          Quick Log
+          Quick Log + photo
         </Link>
       </article>
 
