@@ -35,3 +35,4 @@
 - [Revoked-org purge](org-purge.md) — daily job archives to org_purge_archives then deletes org-owned rows in FK-safe order; member source records and attested records are user-owned, never touched.
 - [Annual total bucketing](results-hero-year.md) — annual figures come from the server-bucketed entryDate (period-clamped) via the recap total on every surface; matched funding is History-only on top.
 - [Consent sharing dates](consent-sharing-dates.md) — date-only activity is visible from the whole day consent starts; manual-submission orgs still require deliberate submission.
+- [SVE audience claims](sve-audience-claims.md) — describe SVE as serving a broad range of organisations, including the private sector; avoid narrow or unsupported accreditation claims.
