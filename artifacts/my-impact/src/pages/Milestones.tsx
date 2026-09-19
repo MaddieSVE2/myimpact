@@ -3,7 +3,6 @@ import { useGetImpactHistory, useGetActivities, getGetImpactHistoryQueryKey, typ
 import { computeBadges } from "@/lib/badges";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowLeft, Lock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
 import { BrandedArtwork } from "@/components/BrandedArtwork";
+import { MilestoneFireworks } from "@/components/MilestoneFireworks";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -242,14 +242,11 @@ export default function Milestones() {
             <div className="mb-6">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">{t("milestones.earned")} ({earnedBadges.length})</p>
               <div className="grid grid-cols-2 gap-3">
-                {earnedBadges.map((badge, i) => (
-                  <motion.div
+                {earnedBadges.map((badge) => (
+                  <MilestoneFireworks
                     key={badge.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.07 }}
-                    className="bg-white rounded-xl p-4 flex flex-col gap-2"
-                    style={{ border: `2px solid ${badge.colour}` }}
+                    badgeId={badge.id}
+                    colour={badge.colour}
                   >
                     <div className="flex items-start gap-3">
                       <BrandedArtwork
@@ -263,7 +260,7 @@ export default function Milestones() {
                         <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
                       </div>
                     </div>
-                  </motion.div>
+                  </MilestoneFireworks>
                 ))}
               </div>
             </div>
@@ -278,6 +275,7 @@ export default function Milestones() {
                   <div
                     key={badge.id}
                     className="bg-muted/30 border border-border rounded-xl p-4 flex items-start gap-3 opacity-60"
+                    data-testid={`card-locked-milestone-${badge.id}`}
                   >
                     <BrandedArtwork
                       file={badge.artwork}
@@ -307,6 +305,7 @@ export default function Milestones() {
                   <div
                     key={badge.id}
                     className="bg-muted/20 border border-dashed border-border rounded-xl p-4 flex items-start gap-3 opacity-50"
+                    data-testid={`card-undiscovered-milestone-${badge.id}`}
                   >
                     <span className="w-11 h-11 shrink-0 flex items-center justify-center text-2xl grayscale" aria-hidden="true">❓</span>
                     <div>
