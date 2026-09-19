@@ -473,10 +473,10 @@ export default function OrgDemoDashboard({
           <SectionTitle>UN Sustainable Development Goals (SDGs)</SectionTitle>
           <p className="text-sm text-muted-foreground -mt-4 mb-6">Where your members' social value lands across the global goals. Sorted by share so you can see your leading contribution at a glance.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="h-64">
+            <div className="h-64" aria-hidden="true">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={DEMO.sdgs} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={56} outerRadius={96} paddingAngle={2} isAnimationActive>
+                <PieChart accessibilityLayer={false}>
+                  <Pie data={DEMO.sdgs} dataKey="pct" nameKey="label" cx="50%" cy="50%" innerRadius={56} outerRadius={96} paddingAngle={2} isAnimationActive rootTabIndex={-1}>
                     {DEMO.sdgs.map((s) => (
                       <Cell
                         key={s.number}

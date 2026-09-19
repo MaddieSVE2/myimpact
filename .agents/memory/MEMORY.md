@@ -36,3 +36,4 @@
 - [Annual total bucketing](results-hero-year.md) — annual figures come from the server-bucketed entryDate (period-clamped) via the recap total on every surface; matched funding is History-only on top.
 - [Consent sharing dates](consent-sharing-dates.md) — date-only activity is visible from the whole day consent starts; manual-submission orgs still require deliberate submission.
 - [SVE audience claims](sve-audience-claims.md) — SVE serves broad sectors and is accredited by Social Value International; avoid narrow audiences or UK-exclusivity wording.
+- [Decorative Recharts pie charts](recharts-decorative-pie.md) — aria-hidden alone fails when Pie keeps its focusable root; disable chart accessibility and set Pie rootTabIndex=-1.

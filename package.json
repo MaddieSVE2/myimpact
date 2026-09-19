@@ -11,7 +11,7 @@
     "size:check": "node scripts/check-bundle-size.mjs",
     "lhci": "pnpm --filter @workspace/my-impact run build && lhci autorun --config=lighthouserc.desktop.cjs",
     "lhci:mobile": "pnpm --filter @workspace/my-impact run build && lhci autorun --config=lighthouserc.mobile.cjs",
-    "a11y": "pnpm --filter @workspace/my-impact run build && lhci autorun --config=lighthouserc.accessibility.cjs",
+    "a11y": "pnpm --filter @workspace/my-impact run build && A11Y_FORM_FACTOR=desktop lhci autorun --config=lighthouserc.accessibility.cjs && A11Y_FORM_FACTOR=mobile lhci autorun --config=lighthouserc.accessibility.cjs",
     "lhci:collect": "pnpm --filter @workspace/my-impact run build && lhci collect --config=lighthouserc.desktop.cjs",
     "lhci:assert": "lhci assert --config=lighthouserc.desktop.cjs",
     "lhci:open": "lhci open",

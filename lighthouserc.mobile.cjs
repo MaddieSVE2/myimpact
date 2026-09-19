@@ -17,8 +17,9 @@
  * concurrently with the full Playwright e2e suite, and homepage scores dip
  * to ~0.46 purely from CPU contention (standalone runs stay ~0.54). 0.45
  * still catches real regressions while tolerating contended-runner noise.
- * Accessibility/best-practices/SEO are form-factor independent and keep
- * the same budgets as desktop.
+ * This broad performance profile keeps accessibility at 0.95. The dedicated
+ * public-page accessibility gate separately audits every public route with
+ * mobile emulation and requires a score of 1.0.
  */
 
 const { makeConfig } = require("./lighthouserc.base.cjs");
