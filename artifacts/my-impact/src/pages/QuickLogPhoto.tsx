@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, X, Loader2, ArrowRight, Image as ImageIcon, RefreshCw, Sparkles, Check, Bookmark } from "lucide-react";
 import {
   useListRecurringTemplates,
   getListRecurringTemplatesQueryKey,
+  useGetImpactHistory,
+  getGetImpactHistoryQueryKey,
   type RecurringTemplate,
   type SelectedActivity,
   type CustomActivityInput,
@@ -57,6 +59,23 @@ function sdgFromHint(hint: string): { sdg: string; sdgColor: string } {
   if (!match) return { sdg: hint || "Good Health and Well-Being", sdgColor: "#4C9F38" };
   const number = parseInt(match[1], 10);
   return { sdg: match[2].trim(), sdgColor: colours[number] ?? "#4C9F38" };
+}
+
+function explicitQuantityFromDescription(description: string, unit: string): number | null {
+  const number = "(\\d+(?:\\.\\d+)?)";
+  const patterns = unit === "hour"
+    ? [new RegExp(`${number}\\s*(?:hours?|hrs?)\\b`, "i")]
+    : unit === "pound"
+      ? [new RegExp(`£\\s*${number}`, "i"), new RegExp(`${number}\\s*(?:pounds?|gbp)\\b`, "i")]
+      : [new RegExp(`${number}\\s*${unit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i")];
+
+  for (const pattern of patterns) {
+    const match = description.match(pattern);
+    if (!match) continue;
+    const parsed = Number(match[1]);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return null;
 }
 
 async function calculateImpact(
@@ -145,7 +164,7 @@ async function uploadPhoto(blob: Blob, recordIdNumeric: number): Promise<void> {
 }
 
 export default function QuickLogPhoto() {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { user, isLoggedIn, isLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -177,6 +196,31 @@ export default function QuickLogPhoto() {
     query: { enabled: isLoggedIn, queryKey: getListRecurringTemplatesQueryKey() },
   });
   const templates: RecurringTemplate[] = templatesQuery.data?.templates ?? [];
+  const currentYear = new Date().getFullYear();
+  const historyQuery = useGetImpactHistory(
+    { userId: user?.id ?? "", year: currentYear },
+    {
+      query: {
+        enabled: isLoggedIn && !!user?.id,
+        queryKey: getGetImpactHistoryQueryKey({ userId: user?.id ?? "", year: currentYear }),
+      },
+    },
+  );
+
+  const previousHoursForActivity = useMemo(() => {
+    if (!analysed) return 0;
+    const proxyTitle = analysed.proxyMatch?.title.trim().toLowerCase();
+    const descriptionName = description.trim().toLowerCase();
+    return (historyQuery.data?.records ?? []).reduce((total, record) => {
+      if (record.kind === "annual_estimate") return total;
+      const matchingHours = record.impactResult.activityBreakdowns.reduce((sum, breakdown) => {
+        const sameProxy = !!proxyTitle && breakdown.proxy?.trim().toLowerCase() === proxyTitle;
+        const sameName = breakdown.activityName.trim().toLowerCase() === descriptionName;
+        return sameProxy || sameName ? sum + breakdown.hours : sum;
+      }, 0);
+      return total + matchingHours;
+    }, 0);
+  }, [analysed, description, historyQuery.data?.records]);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -295,7 +339,8 @@ export default function QuickLogPhoto() {
       }
       const result = (await res.json()) as AnalysedActivity;
       setAnalysed(result);
-      setQuantity(Math.max(1, result.defaultQuantity || 1));
+      const explicitQuantity = explicitQuantityFromDescription(name, result.unit);
+      setQuantity(explicitQuantity ?? Math.max(1, result.defaultQuantity || 1));
       setStage("details");
     } catch (err) {
       setDescribeError(
@@ -544,7 +589,11 @@ export default function QuickLogPhoto() {
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div>
                           <p className="text-sm font-semibold text-foreground">{description.trim()}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{analysed.friendlyQuestion}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5" data-testid="quick-log-photo-confirmation">
+                            {analysed.unit === "hour" && previousHoursForActivity > 0
+                              ? `This year you've logged ${previousHoursForActivity.toLocaleString("en-GB", { maximumFractionDigits: 1 })} ${previousHoursForActivity === 1 ? "hour" : "hours"} so far for similar activity. Shall we add this: ${quantity} ${quantity === 1 ? "hour" : "hours"}?`
+                              : `Shall we add this: ${quantity} ${analysed.unit === "hour" ? (quantity === 1 ? "hour" : "hours") : analysed.unitLabel}?`}
+                          </p>
                         </div>
                         <button
                           type="button"
