@@ -122,7 +122,7 @@ export default function Organisations() {
                 href="/contact?topic=demo"
                 data-testid="orgs-hero-cta-book-demo"
                 style={{
-                  background: C.orange,
+                  background: "var(--brand-orange-solid)",
                   color: "white",
                   padding: "16px 36px",
                   borderRadius: 100,

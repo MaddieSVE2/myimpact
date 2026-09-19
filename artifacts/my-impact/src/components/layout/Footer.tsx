@@ -36,7 +36,7 @@ const headingStyle: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "rgba(255,255,255,0.45)",
+  color: "rgba(255,255,255,0.60)",
   marginBottom: 14,
 };
 
@@ -70,7 +70,7 @@ export function Footer() {
           <p className="mi-footer-tagline" style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 12 }}>
             The difference I make.
           </p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.60)", lineHeight: 1.5 }}>
             Powered by Social Value Engine methodology
           </p>
         </div>
@@ -135,7 +135,7 @@ export function Footer() {
           flexWrap: "wrap",
         }}
       >
-        <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: 0 }}>
+        <p className="mi-footer-credit" style={{ fontSize: 12, color: "rgba(255,255,255,0.60)", margin: 0 }}>
           © {new Date().getFullYear()} My Impact
         </p>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
