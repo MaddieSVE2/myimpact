@@ -23,7 +23,8 @@ const router: IRouter = Router();
 
 // ── Public tier catalogue ───────────────────────────────────────────────────
 // Public tier catalogue retained for subscription features that consume tier
-// capabilities. Flag visibility remains the client's responsibility.
+// capabilities. Commercial prices are deliberately excluded: the catalogue is
+// unauthenticated and is not the source of truth for current plan pricing.
 router.get("/tiers", (_req: Request, res: Response) => {
   const tiers = (Object.keys(TIERS) as TierKey[]).map((key) => {
     const t = TIERS[key];
@@ -31,7 +32,6 @@ router.get("/tiers", (_req: Request, res: Response) => {
       key: t.key,
       name: t.name,
       tagline: t.tagline,
-      monthlyPriceGbp: t.monthlyPriceGbp,
       highlights: t.highlights,
       features: t.features,
       // Don't leak the actual price ID, just whether checkout is wired up.
