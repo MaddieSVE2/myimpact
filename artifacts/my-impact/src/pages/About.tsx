@@ -17,6 +17,9 @@ const C = {
   offBlack: "var(--brand-off-black)",
 };
 
+const VOLUNTEERING_VALUE_SOURCE =
+  "https://www.gov.uk/government/publications/estimating-the-economic-and-social-value-of-volunteering/estimating-the-economic-and-social-value-of-volunteering";
+
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -145,9 +148,9 @@ export default function About() {
             display: "flex", flexDirection: "column", gap: 24,
           }}>
             {[
-              { value: "£2,847", label: "Average social value created per volunteer per year", colour: C.orange },
-              { value: "900m", label: "Hours volunteered across the UK annually", colour: "rgba(255,255,255,0.85)" },
-              { value: "0%", label: "Of that value is currently tracked by the people who create it", colour: C.olive },
+              { value: "£24.69bn", label: "Estimated economic and social impact of formal volunteering in England in 2021/22", colour: C.orange },
+              { value: "12m", label: "People in England who formally volunteered at least once in 2021/22", colour: "rgba(255,255,255,0.85)" },
+              { value: "£2,012", label: "Average estimated economic and social impact per formal volunteer", colour: C.olive },
             ].map(stat => (
               <div key={stat.label}>
                 <p style={{ fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 900, color: stat.colour, margin: 0, lineHeight: 1.1, fontFamily: "'Outfit', sans-serif" }}>
@@ -158,6 +161,18 @@ export default function About() {
                 </p>
               </div>
             ))}
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.5, margin: 0, maxWidth: 220 }}>
+              Source:{" "}
+              <a
+                href={VOLUNTEERING_VALUE_SOURCE}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "rgba(255,255,255,0.9)", textDecoration: "underline", textUnderlineOffset: 2 }}
+              >
+                DCMS, Estimating the economic and social value of volunteering
+              </a>
+              . Estimates cover adult formal volunteering in England, 2021/22.
+            </p>
           </div>
         </div>
       </section>

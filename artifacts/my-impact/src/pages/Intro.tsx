@@ -913,20 +913,32 @@ export default function Intro() {
             style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, textAlign: "center" }}
           >
             {[
-              { prefix: "£", end: 2847, suffix: "", label: "Average social value created per regular volunteer per year" },
-              { prefix: "", end: 900, suffix: "m", label: "Hours volunteered across the UK each year" },
-              { prefix: "", end: 0, suffix: "%", label: "Of that value is currently tracked by the people who create it" },
+              { prefix: "£", end: 24.69, suffix: "bn", label: "Estimated economic and social impact of formal volunteering in England in 2021/22" },
+              { prefix: "", end: 12, suffix: "m", label: "People in England who formally volunteered at least once in 2021/22" },
+              { prefix: "£", end: 2012, suffix: "", label: "Average estimated economic and social impact per formal volunteer" },
             ].map((s, i) => (
               <FadeIn key={i} delay={i * 0.12}>
                 <div>
                   <div style={{ fontSize: "clamp(40px, 5.5vw, 68px)", fontWeight: 900, color: C.orange, letterSpacing: -2, fontFamily: "'Outfit', sans-serif" }}>
-                    {s.end === 0 ? `${s.prefix}0${s.suffix}` : <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />}
+                    <Counter prefix={s.prefix} end={s.end} suffix={s.suffix} />
                   </div>
                   <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.5, maxWidth: 220, margin: "10px auto 0" }}>{s.label}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, margin: "32px auto 0", maxWidth: 680, textAlign: "center" }}>
+            Source:{" "}
+            <a
+              href="https://www.gov.uk/government/publications/estimating-the-economic-and-social-value-of-volunteering/estimating-the-economic-and-social-value-of-volunteering"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "rgba(255,255,255,0.9)", textDecoration: "underline", textUnderlineOffset: 2 }}
+            >
+              Department for Culture, Media and Sport, Estimating the economic and social value of volunteering
+            </a>
+            . Estimates cover adult formal volunteering in England, 2021/22.
+          </p>
         </div>
       </section>
       {/* ── STORIES ── */}
