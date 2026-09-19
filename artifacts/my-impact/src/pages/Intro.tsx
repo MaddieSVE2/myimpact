@@ -126,6 +126,7 @@ const TESTIMONIALS = [
     quote: "After uni I felt like my efforts weren't being seen. I was running a community art project but had no way to show what it was actually worth. MyImpact changed that. I could finally put a number on the pride, engagement, and connection we were creating.",
     value: "£4,230",
     what: "Community art project, 6 months",
+    image: "community.webp",
   },
   {
     name: "Ben",
@@ -133,6 +134,7 @@ const TESTIMONIALS = [
     quote: "I'm not in work right now and people make assumptions. But I run a tech drop-in for older people every week. I'm reducing isolation, building digital skills, bringing people together. MyImpact shows that what I do has real, measurable worth.",
     value: "£7,860",
     what: "Weekly tech hub, 12 months",
+    image: "digital-mentoring.webp",
   },
   {
     name: "Chloe",
@@ -140,6 +142,7 @@ const TESTIMONIALS = [
     quote: "Call me a snowflake if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
     value: "£3,150",
     what: "River clean-up crew, 8 months",
+    image: "litter-picking.webp",
   },
   {
     name: "Marcus",
@@ -147,6 +150,7 @@ const TESTIMONIALS = [
     quote: "After 14 years in the infantry, I didn't know how to talk about what I'd done in a way civilians would get. My Impact's Sidekick helped me put it in plain language: not 'patrol commander' but 'led a team of 8 under operational pressure across 3 countries'. That reframe got me interviews I wasn't getting before.",
     value: "£11,240",
     what: "Forces leaver, 14 years' service",
+    image: "veteran.webp",
   },
   {
     name: "Priya",
@@ -154,6 +158,7 @@ const TESTIMONIALS = [
     quote: "Eight years out of the workforce, and every CV advice website told me to explain the gap. My Impact helped me reframe it entirely. I wasn't absent. I was coordinating care for two children and an elderly parent across multiple health and education systems. That's a full-time job. Now my CV says so.",
     value: "£9,610",
     what: "Career break returner, 8 years",
+    image: "caring.webp",
   },
 ];
 
@@ -163,6 +168,25 @@ function TestimonialCard({ s }: { s: typeof TESTIMONIALS[0] }) {
       borderRadius: 20, overflow: "hidden", border: "1px solid rgba(0,0,0,0.07)",
       display: "flex", flexDirection: "column", height: "100%",
     }}>
+      <div
+        aria-hidden="true"
+        style={{
+          height: 156,
+          background: C.cream,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src={`${import.meta.env.BASE_URL}images/social-value/${s.image}`}
+          alt=""
+          loading="lazy"
+          style={{ width: 154, height: 154, objectFit: "contain", display: "block" }}
+        />
+      </div>
       <div style={{ padding: "24px 24px 16px", flex: 1 }}>
         <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 700, color: C.dark, margin: 0 }}>{s.name}</p>
         <p style={{ fontSize: 12, color: "var(--brand-orange-text)", fontWeight: 600, marginTop: 2, marginBottom: 0 }}>{s.age}</p>
@@ -193,13 +217,13 @@ const RICH_FAQ_ITEMS: RichFAQItem[] = FAQ_ITEMS.map((item, i) => {
   if (i === 1) {
     return {
       ...item,
-      aNode: <>We use the {SVE_LINK}, the UK's accredited platform for measuring social value, combined with the SROI framework endorsed by Social Value International. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.</>,
+      aNode: <>We use the {SVE_LINK}, accredited by Social Value International, combined with the SROI framework. Each activity is matched to a peer-reviewed monetary value across four pillars: activity impact, time contributed, donations, and personal growth. Every value is sourced from peer-reviewed research and UK-specific datasets.</>,
     };
   }
   if (i === 4) {
     return {
       ...item,
-      aNode: <>The {SVE_LINK} (SVE) is the UK's accredited platform for measuring social value, used by local authorities, universities, housing associations, and charities. My Impact uses SVE proxy values to ensure every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.</>,
+      aNode: <>The {SVE_LINK} (SVE) is accredited by Social Value International and used across public, private, education, housing, charity, and voluntary-sector organisations. My Impact uses SVE proxy values so every monetary figure is grounded in evidence-based, peer-reviewed research aligned with HM Treasury Green Book methodology.</>,
     };
   }
   return item;
