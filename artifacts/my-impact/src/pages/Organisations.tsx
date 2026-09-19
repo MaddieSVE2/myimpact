@@ -72,7 +72,7 @@ function CalendlyBooking() {
               marginBottom: 12,
             }}
           >
-            Book a 30-minute demo
+            Book a demo
           </h2>
           <p style={{ color: "var(--brand-muted-text)", fontSize: 17 }}>
             Choose a time with the My Impact team.
@@ -80,7 +80,7 @@ function CalendlyBooking() {
         </div>
         <iframe
           src={CALENDLY_URL}
-          title="Book a 30-minute My Impact demo"
+          title="Book a My Impact demo"
           style={{ display: "block", width: "100%", minWidth: 320, height: 700, border: 0 }}
         />
         <p style={{ textAlign: "center", marginTop: 16, color: "var(--brand-muted-text)", fontSize: 14 }}>
