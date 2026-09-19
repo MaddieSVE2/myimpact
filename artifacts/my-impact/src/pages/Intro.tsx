@@ -139,7 +139,7 @@ const TESTIMONIALS = [
   {
     name: "Chloe",
     age: "17, Cardiff",
-    quote: "Call me a snowflake if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
+    quote: "Call me a NEET if you want. I call me someone who pulled 300kg of plastic out of a river. MyImpact tracked every hour, every kilo, and showed me the environmental and community value. That data got the council on board.",
     value: "£3,150",
     what: "River clean-up crew, 8 months",
     image: "litter-picking.webp",
