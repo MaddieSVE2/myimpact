@@ -79,4 +79,63 @@ test.describe("custom care interests", () => {
     expect(restoredBody.profile.interests).toEqual(["environment"]);
     expect(restoredBody.profile.customInterests).toEqual(["Justice reform", "Youth justice"]);
   });
+
+  test("direct Ideas visits use profile interests while an active draft takes precedence", async ({ page }) => {
+    await signInWithMagicLink(page, api, email);
+    const profileSave = await page.request.put("/api/profile", {
+      data: {
+        situation: [],
+        interests: ["environment"],
+        customInterests: ["Refugee support"],
+        postcode: null,
+      },
+    });
+    expect(profileSave.ok()).toBe(true);
+
+    const profileRequest = page.waitForRequest(request =>
+      request.url().includes("/api/impact/suggestions") && request.method() === "POST",
+    );
+    await page.goto("/suggestions");
+    expect((await profileRequest).postDataJSON().interests).toEqual([
+      "The environment",
+      "Refugee support",
+    ]);
+    expect(await page.evaluate(() => localStorage.getItem("wizard_draft_v1"))).toBeNull();
+
+    const updatedProfile = await page.request.put("/api/profile", {
+      data: {
+        situation: [],
+        interests: ["community"],
+        customInterests: ["Neighbour support"],
+        postcode: null,
+      },
+    });
+    expect(updatedProfile.ok()).toBe(true);
+
+    const updatedProfileRequest = page.waitForRequest(request =>
+      request.url().includes("/api/impact/suggestions") && request.method() === "POST",
+    );
+    await page.reload();
+    expect((await updatedProfileRequest).postDataJSON().interests).toEqual([
+      "My community",
+      "Neighbour support",
+    ]);
+    expect(await page.evaluate(() => localStorage.getItem("wizard_draft_v1"))).toBeNull();
+
+    await page.evaluate(() => {
+      localStorage.setItem("wizard_draft_v1", JSON.stringify({
+        interests: ["physical_health"],
+        customInterests: ["Youth wellbeing"],
+      }));
+    });
+
+    const draftRequest = page.waitForRequest(request =>
+      request.url().includes("/api/impact/suggestions") && request.method() === "POST",
+    );
+    await page.reload();
+    expect((await draftRequest).postDataJSON().interests).toEqual([
+      "Physical health",
+      "Youth wellbeing",
+    ]);
+  });
 });

@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useLocation as useWouterLocation } from "wouter";
 import { useWizard, INTEREST_OPTIONS, CHARITY_SEED_KEY } from "@/lib/wizard-context";
 import { PageMeta } from "@/components/PageMeta";
-import { useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
+import { getGetProfileQueryKey, useGetSuggestions, useGetProfile } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCircle, ChevronDown, Loader2, Home, Compass, Repeat, Globe, PlusCircle, ThumbsUp, Flag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/i18n";
+import { useAuth } from "@/lib/auth-context";
 
 interface LocalPlace {
   name: string;
@@ -637,10 +638,17 @@ function effortLabel(sug: { unit?: string; defaultQuantity?: number; recommended
 }
 
 export default function Suggestions() {
-  const { input, interests, customInterests, location, locationMeta, result } = useWizard();
+  const {
+    input, interests, customInterests, location, locationMeta, result,
+    hasDraft,
+  } = useWizard();
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
   const suggestionsMutation = useGetSuggestions();
-  const { data: profileData } = useGetProfile();
+  const { data: profileData, isLoading: profileLoading } = useGetProfile({
+    query: { enabled: isLoggedIn, queryKey: getGetProfileQueryKey() },
+  });
   const t = useT();
+  const lastSuggestionsKey = useRef<string | null>(null);
 
   // Which tiles have their local-places panel open
   const [openTiles, setOpenTiles] = useState<Record<string, boolean>>({});
@@ -662,12 +670,25 @@ export default function Suggestions() {
     ? premapped.data.location.country.toLowerCase() === "scotland"
     : Array.from(SCOTTISH_TERMS).some(term => adminDistrict.includes(term));
 
-  const interestLabels = interests
-    .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
-    .filter(Boolean) as string[];
-  interestLabels.push(...customInterests);
+  const profile = profileData?.profile;
+  const useProfileDefaults = isLoggedIn && !hasDraft && !!profile;
+  const resolvedInterestIds = useProfileDefaults ? (profile.interests ?? []) : interests;
+  const resolvedCustomInterests = useProfileDefaults ? (profile.customInterests ?? []) : customInterests;
+  const interestLabels = useMemo(() => [
+    ...resolvedInterestIds
+      .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
+      .filter((label): label is string => !!label),
+    ...resolvedCustomInterests,
+  ], [resolvedInterestIds, resolvedCustomInterests]);
 
   useEffect(() => {
+    if (authLoading || (isLoggedIn && profileLoading)) return;
+    const requestKey = JSON.stringify({
+      currentActivities: input.activities.map(a => a.activityId),
+      interests: interestLabels,
+    });
+    if (lastSuggestionsKey.current === requestKey) return;
+    lastSuggestionsKey.current = requestKey;
     suggestionsMutation.mutate({
       data: {
         currentActivities: input.activities.map(a => a.activityId),
@@ -675,8 +696,7 @@ export default function Suggestions() {
         interests: interestLabels,
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading, isLoggedIn, profileLoading, input.activities, interestLabels, suggestionsMutation]);
 
   // Load pre-mapped local charity results as soon as we know the postcode.
   // Results are generated ahead of time server-side, so this is instant when
