@@ -181,7 +181,7 @@ test.describe("GDPR self-service", () => {
     expect(recRes.ok()).toBe(true);
 
     const jRes = await context.request.post("/api/journal", {
-      data: { content: "test journal entry for wipe" },
+      data: { text: "test journal entry for wipe" },
     });
     expect(jRes.ok()).toBe(true);
 

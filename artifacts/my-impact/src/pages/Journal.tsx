@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn, Camera } from "lucide-react";
+import { BookOpen, Plus, Trash2, ArrowLeft, Sparkles, LogIn, Camera, Pencil, X, List, CalendarDays, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
@@ -10,6 +10,7 @@ import { ReflectionPrompts, seedReflection } from "@/components/ReflectionPrompt
 import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
+import { Calendar } from "@/components/ui/calendar";
 
 interface JournalEntry {
   id: string;
@@ -61,6 +62,19 @@ const PROMPTS = [
   "What would you like to do more of next year?",
   "How has your community benefited from your actions?",
   "What surprised you about getting involved?",
+  "What small moment from today do you want to remember?",
+  "What are you proud of, even if nobody else noticed?",
+  "What felt difficult, and what helped you through it?",
+  "What would you tell someone thinking about getting involved?",
+];
+
+const STARTING_PROMPTS = [
+  "What motivated you to get involved in this?",
+  "What difference do you think you've made?",
+  "What have you learned about yourself through this?",
+  "What surprised you about getting involved?",
+  "What small moment from today do you want to remember?",
+  "What felt difficult, and what helped you through it?",
 ];
 
 function randomPrompt() {
@@ -185,6 +199,44 @@ function PhotoBadge({ count }: { count: number }) {
   );
 }
 
+const IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"]);
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+};
+
+async function uploadJournalPhoto(BASE: string, journalId: number, file: File) {
+  const reportedType = file.type.toLowerCase().split(";")[0].trim();
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mimeType = reportedType || IMAGE_MIME_BY_EXTENSION[extension] || "";
+  if (!IMAGE_TYPES.has(mimeType)) throw new Error("Choose a JPEG, PNG, WebP, GIF, HEIC, or HEIF image.");
+  if (file.size > MAX_PHOTO_BYTES) throw new Error("The photo must be 10 MB or smaller.");
+  const urlRes = await fetch(`${BASE}/api/attachments/upload-url`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ journalId, kind: "photo", mimeType, byteSize: file.size }),
+  });
+  const urlBody = await urlRes.json().catch(() => ({})) as { uploadUrl?: string; storageKey?: string; error?: string };
+  if (!urlRes.ok || !urlBody.uploadUrl || !urlBody.storageKey) throw new Error(urlBody.error || "Could not prepare the photo upload.");
+  const putRes = await fetch(urlBody.uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: file });
+  if (!putRes.ok) throw new Error("The photo upload was interrupted.");
+  const registerRes = await fetch(`${BASE}/api/attachments/register`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ journalId, kind: "photo", storageKey: urlBody.storageKey }),
+  });
+  const registerBody = await registerRes.json().catch(() => ({})) as { error?: string };
+  if (!registerRes.ok) throw new Error(registerBody.error || "Could not attach the uploaded photo.");
+}
+
 function ActivityCardItem({
   card,
   onDelete,
@@ -193,20 +245,29 @@ function ActivityCardItem({
 }: {
   card: ActivityCard;
   onDelete: (id: string) => void;
-  onSaveReflection: (cardId: string, text: string) => void;
+  onSaveReflection: (cardId: string, text: string) => Promise<boolean>;
   onChangeTags: (cardId: string, tags: string[]) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(!!card.reflectionText);
   const [text, setText] = useState(card.reflectionText || "");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const cardDraftRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSaveReflection = () => {
+  const handleSaveReflection = async () => {
     if (!draft.trim()) return;
-    onSaveReflection(card.id, draft.trim());
+    setSaving(true);
+    const ok = await onSaveReflection(card.id, draft.trim());
+    if (!ok) {
+      setSaving(false);
+      return;
+    }
     setText(draft.trim());
     setSaved(true);
+    setEditing(false);
     setDraft("");
+    setSaving(false);
   };
 
   return (
@@ -228,10 +289,12 @@ function ActivityCardItem({
             <span className="text-xs font-semibold" style={{ color: "var(--brand-orange-bright)" }}>Activity recorded</span>
           </div>
           <button
+            type="button"
             onClick={() => onDelete(card.id)}
             className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
+            <span className="sr-only">Delete activity reflection</span>
           </button>
         </div>
 
@@ -249,8 +312,17 @@ function ActivityCardItem({
             "{card.reflectionPrompt}"
           </p>
 
-          {saved ? (
-            <p className="text-sm text-foreground leading-relaxed italic">{text}</p>
+          {saved && !editing ? (
+            <div>
+              <p className="text-sm text-foreground leading-relaxed italic whitespace-pre-wrap">{text}</p>
+              <button
+                type="button"
+                onClick={() => { setDraft(text); setEditing(true); }}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <Pencil className="w-3 h-3" aria-hidden="true" /> Edit reflection
+              </button>
+            </div>
           ) : (
             <>
               <textarea
@@ -277,14 +349,23 @@ function ActivityCardItem({
                   }, 0);
                 }}
               />
-              <div className="flex justify-end mt-2">
+              <div className="flex justify-end gap-2 mt-2">
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => { setDraft(""); setEditing(false); }}
+                    className="px-3 py-1.5 rounded-md border border-border text-xs"
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   onClick={handleSaveReflection}
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() || saving}
                   className="px-4 py-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-40"
                   style={{ background: "var(--brand-orange-bright)" }}
                 >
-                  Save reflection
+                  {saving ? "Saving…" : editing ? "Save changes" : "Save reflection"}
                 </button>
               </div>
             </>
@@ -306,13 +387,139 @@ function ActivityCardItem({
   );
 }
 
+function JournalEntryItem({
+  entry,
+  photoCount,
+  isLoggedIn,
+  onDelete,
+  onSave,
+  onChangeTags,
+  onPhotoCount,
+}: {
+  entry: JournalEntry;
+  photoCount: number;
+  isLoggedIn: boolean;
+  onDelete: (id: string) => void;
+  onSave: (id: string, changes: { text: string; prompt: string; tags: string[] }) => Promise<boolean>;
+  onChangeTags: (id: string, tags: string[]) => void | Promise<void>;
+  onPhotoCount: (id: string, count: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(entry.text);
+  const [prompt, setPrompt] = useState(entry.prompt);
+  const [tags, setTags] = useState(entry.tags);
+  const [saving, setSaving] = useState(false);
+  const numericId = parseInt(entry.id, 10);
+
+  const cancel = () => {
+    setText(entry.text);
+    setPrompt(entry.prompt);
+    setTags(entry.tags);
+    setEditing(false);
+  };
+
+  const beginEditing = () => {
+    setText(entry.text);
+    setPrompt(entry.prompt);
+    setTags(entry.tags);
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    const ok = await onSave(entry.id, { text: text.trim(), prompt: prompt.trim(), tags });
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  return (
+    <motion.div
+      id={`entry-${entry.id}`}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="bg-white border border-border rounded-xl p-5 group"
+    >
+      {editing ? (
+        <>
+          <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor={`prompt-${entry.id}`}>Reflection prompt</label>
+          <input
+            id={`prompt-${entry.id}`}
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            maxLength={500}
+            className="w-full rounded-md border border-border px-3 py-2 text-sm mb-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+          />
+          <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor={`text-${entry.id}`}>Journal entry</label>
+          <textarea
+            id={`text-${entry.id}`}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={6}
+            maxLength={20000}
+            className="w-full rounded-md border border-border p-3 text-sm resize-y focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+          />
+          <div className="mt-3"><TagEditor tags={tags} onChange={setTags} /></div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={cancel} disabled={saving} className="px-3 py-1.5 rounded-md border border-border text-xs">Cancel</button>
+            <button type="button" onClick={save} disabled={saving || !text.trim()} className="px-4 py-1.5 rounded-md bg-primary text-white text-xs font-medium disabled:opacity-40">
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="text-xs text-primary italic">"{entry.prompt}"</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <PhotoBadge count={photoCount} />
+              <button type="button" onClick={beginEditing} className="text-muted-foreground opacity-70 hover:text-primary transition-colors" aria-label="Edit journal entry">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={() => onDelete(entry.id)} className="text-muted-foreground opacity-70 hover:text-destructive transition-colors" aria-label="Delete journal entry">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
+          {isLoggedIn && Number.isFinite(numericId) && (
+            <Attachments
+              journalId={numericId}
+              maxImages={1}
+              label="Private photo"
+              onChange={(attachments) => onPhotoCount(entry.id, attachments.filter((attachment) => attachment.kind === "photo").length)}
+            />
+          )}
+          <div className="mt-3 pt-3 border-t border-border/40">
+            <TagEditor tags={entry.tags} onChange={(nextTags) => onChangeTags(entry.id, nextTags)} />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {new Date(entry.createdAt).toLocaleDateString("en-GB", {
+              weekday: "short", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+            })}
+          </p>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
 export default function Journal() {
   const { isLoggedIn, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [entries, setEntries] = useState<FeedItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState("");
-  const [prompt] = useState(randomPrompt);
+  const [prompt, setPrompt] = useState(randomPrompt);
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [draftPhoto, setDraftPhoto] = useState<File | null>(null);
+  const [draftPhotoUrl, setDraftPhotoUrl] = useState<string | null>(null);
+  const [savingEntry, setSavingEntry] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState("");
+  const [savedDraftEntryId, setSavedDraftEntryId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
@@ -321,6 +528,26 @@ export default function Journal() {
   const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
 
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  useEffect(() => {
+    if (!draftPhoto) {
+      setDraftPhotoUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(draftPhoto);
+    setDraftPhotoUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [draftPhoto]);
+
+  const resetComposer = () => {
+    setDraft("");
+    setDraftTags([]);
+    setDraftPhoto(null);
+    setPhotoUploadError("");
+    setSavedDraftEntryId(null);
+    setPrompt(randomPrompt());
+    setIsAdding(false);
+  };
 
   async function refreshPhotoCounts(items: FeedItem[]) {
     const ids: number[] = [];
@@ -428,38 +655,69 @@ export default function Journal() {
       type: "entry",
       text: draft.trim(),
       prompt,
-      tags: [],
+      tags: draftTags,
       createdAt: new Date().toISOString(),
     };
 
+    setSavingEntry(true);
     if (isLoggedIn) {
       try {
-        const res = await fetch(`${BASE}/api/journal`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "entry", text: draft.trim(), prompt }),
-        });
-        if (!res.ok) {
-          toast({ title: "Could not save entry", description: "Please try again.", variant: "destructive" });
-          return;
+        let entryId = savedDraftEntryId;
+        if (entryId == null) {
+          const res = await fetch(`${BASE}/api/journal`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "entry", text: draft.trim(), prompt, tags: draftTags }),
+          });
+          if (!res.ok) {
+            toast({ title: "Could not save entry", description: "Please try again.", variant: "destructive" });
+            return;
+          }
+          const saved = await res.json() as unknown;
+          if (!isApiEntry(saved)) throw new Error("Invalid saved entry");
+          entryId = parseInt(saved.id, 10);
+          setSavedDraftEntryId(entryId);
+          setEntries(prev => [apiEntryToFeedItem(saved), ...prev.filter(item => item.id !== saved.id)]);
+        } else {
+          const updateRes = await fetch(`${BASE}/api/journal/${entryId}`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: draft.trim(), prompt, tags: draftTags }),
+          });
+          if (!updateRes.ok) throw new Error("Could not update the saved entry before retrying");
+          const updated = await updateRes.json() as unknown;
+          if (isApiEntry(updated)) {
+            setEntries((current) => current.map((item) => item.id === updated.id ? apiEntryToFeedItem(updated) : item));
+          }
         }
-        const saved = await res.json() as unknown;
-        if (isApiEntry(saved)) {
-          setEntries(prev => [apiEntryToFeedItem(saved), ...prev]);
+        if (draftPhoto && Number.isFinite(entryId)) {
+          setPhotoUploadError("");
+          try {
+            await uploadJournalPhoto(BASE, entryId, draftPhoto);
+            setPhotoCounts(prev => ({ ...prev, [String(entryId)]: 1 }));
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Could not upload the photo.";
+            setPhotoUploadError(message);
+            toast({ title: "Entry saved, but the photo needs retrying", description: message, variant: "destructive" });
+            return;
+          }
         }
       } catch {
         toast({ title: "Could not save entry", description: "Check your connection and try again.", variant: "destructive" });
         return;
+      } finally {
+        setSavingEntry(false);
       }
     } else {
       const updated = [newEntry, ...entries];
       setEntries(updated);
       saveLocalEntries(updated);
+      setSavingEntry(false);
     }
 
-    setDraft("");
-    setIsAdding(false);
+    resetComposer();
   };
 
   const handleDelete = async (id: string) => {
@@ -512,7 +770,7 @@ export default function Journal() {
     }
   };
 
-  const handleSaveReflection = async (cardId: string, reflectionText: string) => {
+  const handleSaveReflection = async (cardId: string, reflectionText: string): Promise<boolean> => {
     if (isLoggedIn) {
       const snapshot = entries;
       setEntries(prev =>
@@ -528,10 +786,12 @@ export default function Journal() {
         if (!res.ok) {
           setEntries(snapshot);
           toast({ title: "Could not save reflection", description: "Please try again.", variant: "destructive" });
+          return false;
         }
       } catch {
         setEntries(snapshot);
         toast({ title: "Could not save reflection", description: "Check your connection and try again.", variant: "destructive" });
+        return false;
       }
     } else {
       const updated = entries.map(item =>
@@ -540,6 +800,36 @@ export default function Journal() {
       setEntries(updated);
       saveLocalEntries(updated);
     }
+    return true;
+  };
+
+  const handleSaveEntry = async (
+    entryId: string,
+    changes: { text: string; prompt: string; tags: string[] },
+  ): Promise<boolean> => {
+    if (isLoggedIn) {
+      try {
+        const res = await fetch(`${BASE}/api/journal/${entryId}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(changes),
+        });
+        if (!res.ok) throw new Error("save failed");
+        const updated = await res.json() as unknown;
+        if (!isApiEntry(updated)) throw new Error("invalid response");
+        setEntries((current) => current.map((item) => item.id === entryId ? apiEntryToFeedItem(updated) : item));
+        toast({ title: "Journal entry updated" });
+        return true;
+      } catch {
+        toast({ title: "Could not update entry", description: "Your original entry is unchanged. Please try again.", variant: "destructive" });
+        return false;
+      }
+    }
+    const updated = entries.map((item) => item.id === entryId && item.type === "entry" ? { ...item, ...changes } : item);
+    setEntries(updated);
+    saveLocalEntries(updated);
+    return true;
   };
 
   const hasFilter = !!filters.q || filters.tags.length > 0;
@@ -552,6 +842,17 @@ export default function Journal() {
     for (const t of filters.tags) set.add(t);
     return Array.from(set).sort();
   }, [entries, filters.tags]);
+
+  const dateKey = (value: string | Date) => {
+    const date = typeof value === "string" ? new Date(value) : value;
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  };
+  const journalDates = useMemo(() => entries.map((entry) => new Date(entry.createdAt)), [entries]);
+  const visibleEntries = useMemo(() => {
+    if (viewMode !== "calendar" || !selectedDate) return entries;
+    const selectedKey = dateKey(selectedDate);
+    return entries.filter((entry) => dateKey(entry.createdAt) === selectedKey);
+  }, [entries, viewMode, selectedDate]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -593,9 +894,28 @@ export default function Journal() {
             exit={{ opacity: 0, y: -10 }}
             className="bg-white border border-border rounded-xl p-5 mb-6"
           >
-            <p className="text-sm font-medium text-foreground mb-1">Reflect on this…</p>
+            <fieldset className="mb-4">
+              <legend className="text-sm font-medium text-foreground mb-2">Choose a starting point</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {STARTING_PROMPTS.map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    aria-pressed={prompt === choice}
+                    onClick={() => setPrompt(choice)}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs leading-snug transition-colors ${
+                      prompt === choice ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <label className="block text-sm font-medium text-foreground mb-1" htmlFor="new-journal-entry">Your reflection</label>
             <p className="text-sm text-primary italic mb-3">"{prompt}"</p>
             <textarea
+              id="new-journal-entry"
               ref={draftRef}
               value={draft}
               onChange={e => setDraft(e.target.value)}
@@ -619,21 +939,76 @@ export default function Journal() {
                 }, 0);
               }}
             />
+            <div className="mt-4 rounded-lg border border-border/70 p-3">
+              <p className="text-xs font-medium text-foreground mb-2">Tags</p>
+              <TagEditor tags={draftTags} onChange={setDraftTags} placeholder="Add context…" size="md" />
+            </div>
+            {isLoggedIn && (
+              <div className="mt-3 rounded-lg border border-border/70 p-3">
+                <p className="text-xs font-medium text-foreground mb-2">Private photo <span className="font-normal text-muted-foreground">(optional)</span></p>
+                {draftPhotoUrl ? (
+                  <div className="flex items-start gap-3">
+                    <img src={draftPhotoUrl} alt="Selected journal photo preview" className="h-24 w-24 rounded-lg border border-border object-cover" />
+                    <div className="flex flex-wrap gap-2">
+                      <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted/30">
+                        Replace photo
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                          className="sr-only"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] ?? null;
+                            setDraftPhoto(file);
+                            setPhotoUploadError("");
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button type="button" onClick={() => { setDraftPhoto(null); setPhotoUploadError(""); }} className="rounded-md border border-border px-3 py-2 text-xs text-destructive">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted/30">
+                    <Camera className="w-3.5 h-3.5" aria-hidden="true" /> Select photo
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                      className="sr-only"
+                      onChange={(event) => {
+                        setDraftPhoto(event.target.files?.[0] ?? null);
+                        setPhotoUploadError("");
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+                {photoUploadError && (
+                  <p role="alert" className="mt-2 flex items-start gap-1.5 text-xs text-destructive">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {photoUploadError} Your entry is saved; choose Save entry to retry.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-muted-foreground">{draft.length} characters</p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setIsAdding(false); setDraft(""); }}
+                  type="button"
+                  onClick={resetComposer}
+                  disabled={savingEntry}
                   className="px-3 py-1.5 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAdd}
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() || savingEntry}
                   className="px-4 py-1.5 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-40 transition-colors"
                 >
-                  Save entry
+                  {savingEntry ? <><Loader2 className="mr-1 inline h-3 w-3 animate-spin" />Saving…</> : photoUploadError ? "Retry photo" : "Save entry"}
                 </button>
               </div>
             </div>
@@ -642,15 +1017,56 @@ export default function Journal() {
       </AnimatePresence>
 
       {!isEmpty && (
-        <SearchTagFilter
-          searchValue={filters.q}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search entries, reflections, or tags…"
-          availableTags={availableTags}
-          selectedTags={filters.tags}
-          onToggleTag={toggleTag}
-          onClearAll={clearAll}
-        />
+        <>
+          <SearchTagFilter
+            searchValue={filters.q}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search entries, reflections, or tags…"
+            availableTags={availableTags}
+            selectedTags={filters.tags}
+            onToggleTag={toggleTag}
+            onClearAll={clearAll}
+          />
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex rounded-lg border border-border bg-white p-1" role="group" aria-label="Journal view">
+              <button
+                type="button"
+                onClick={() => { setViewMode("list"); setSelectedDate(undefined); }}
+                aria-pressed={viewMode === "list"}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <List className="h-3.5 w-3.5" aria-hidden="true" /> List
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("calendar")}
+                aria-pressed={viewMode === "calendar"}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "calendar" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /> Calendar
+              </button>
+            </div>
+            {viewMode === "calendar" && selectedDate && (
+              <button type="button" onClick={() => setSelectedDate(undefined)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                <X className="h-3 w-3" aria-hidden="true" /> Show all dates
+              </button>
+            )}
+          </div>
+          {viewMode === "calendar" && (
+            <div className="mb-6 rounded-xl border border-border bg-white p-2 sm:p-4">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                modifiers={{ hasEntry: journalDates }}
+                modifiersClassNames={{ hasEntry: "after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-primary" }}
+                className="mx-auto w-full [--cell-size:2.5rem] sm:w-fit"
+                aria-label="Browse journal entries by date"
+              />
+              <p className="mt-2 text-center text-xs text-muted-foreground">Dates with a dot contain journal entries.</p>
+            </div>
+          )}
+        </>
       )}
 
       {loadingEntries ? (
@@ -682,10 +1098,16 @@ export default function Journal() {
             Reset filters
           </button>
         </div>
+      ) : viewMode === "calendar" && selectedDate && visibleEntries.length === 0 ? (
+        <div className="bg-white border border-dashed border-border rounded-xl py-10 text-center">
+          <CalendarDays className="mx-auto mb-2 h-6 w-6 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-foreground">No journal items on this date</p>
+          <p className="mt-1 text-xs text-muted-foreground">{selectedDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+        </div>
       ) : (
         <div className="space-y-4">
           <AnimatePresence>
-            {entries.map((item, i) => {
+            {visibleEntries.map((item) => {
               if (item.type === "activity") {
                 return (
                   <div key={item.id} id={`entry-${item.id}`}>
@@ -699,57 +1121,17 @@ export default function Journal() {
                 );
               }
               const entry = item as JournalEntry;
-              const entryPhotoCount = photoCounts[entry.id] ?? 0;
               return (
-                <motion.div
+                <JournalEntryItem
                   key={entry.id}
-                  id={`entry-${entry.id}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="bg-white border border-border rounded-xl p-5 group"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <p className="text-xs text-primary italic">"{entry.prompt}"</p>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <PhotoBadge count={entryPhotoCount} />
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{entry.text}</p>
-                  {(() => {
-                    const numericId = parseInt(entry.id, 10);
-                    return Number.isFinite(numericId) ? (
-                      <Attachments
-                        journalId={numericId}
-                        maxImages={1}
-                        label="Photo"
-                        onChange={atts => {
-                          const next = atts.filter(a => a.kind === "photo").length;
-                          setPhotoCounts(prev => {
-                            if (prev[entry.id] === next) return prev;
-                            return { ...prev, [entry.id]: next };
-                          });
-                        }}
-                      />
-                    ) : null;
-                  })()}
-                  <div className="mt-3 pt-3 border-t border-border/40">
-                    <TagEditor tags={entry.tags} onChange={(t) => handleChangeTags(entry.id, t)} />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-3">
-                    {new Date(entry.createdAt).toLocaleDateString("en-GB", {
-                      weekday: "short", day: "numeric", month: "long", year: "numeric",
-                      hour: "2-digit", minute: "2-digit"
-                    })}
-                  </p>
-                </motion.div>
+                  entry={entry}
+                  photoCount={photoCounts[entry.id] ?? 0}
+                  isLoggedIn={isLoggedIn}
+                  onDelete={handleDelete}
+                  onSave={handleSaveEntry}
+                  onChangeTags={handleChangeTags}
+                  onPhotoCount={(id, count) => setPhotoCounts((current) => current[id] === count ? current : { ...current, [id]: count })}
+                />
               );
             })}
           </AnimatePresence>
