@@ -169,12 +169,100 @@ function OrgMembersPanel({ org, onOrgUpdated }: { org: AdminOrg; onOrgUpdated: (
   );
 }
 
+interface AdminOrgChallenge {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+function OrgChallengesAdminPanel({ org }: { org: AdminOrg }) {
+  const [open, setOpen] = useState(false);
+  const [challenges, setChallenges] = useState<AdminOrgChallenge[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadChallenges() {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/challenges`, { credentials: "include" });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to load challenges");
+      setChallenges(data.challenges);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load challenges");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeChallenge(challenge: AdminOrgChallenge) {
+    if (!window.confirm(
+      `Permanently delete "${challenge.name}" from ${org.name}?\n\nThis removes the challenge and its participant progress for everyone, including students. It cannot be undone. Personal activity records are not deleted.`
+    )) return;
+    setBusyId(challenge.id);
+    setError(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}/challenges/${challenge.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to delete challenge");
+      setChallenges(previous => previous.filter(c => c.id !== challenge.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete challenge");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <button type="button" onClick={() => { setOpen(!open); if (!open) void loadChallenges(); }}
+        className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/70 text-foreground text-xs font-semibold border border-border"
+        data-testid={`button-view-challenges-${org.id}`}>
+        {open ? "Hide challenges" : "Manage challenges"}
+      </button>
+      {open && (
+        <div className="mt-3 rounded-lg border border-border p-3" data-testid={`panel-challenges-${org.id}`}>
+          {loading ? <p className="text-xs text-muted-foreground">Loading challenges…</p> :
+            challenges.length === 0 ? <p className="text-xs text-muted-foreground">No challenges for this organisation.</p> :
+              <ul className="space-y-2">
+                {challenges.map(challenge => (
+                  <li key={challenge.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 text-sm">
+                    <div>
+                      <span className="font-medium text-foreground">{challenge.name}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {new Date(challenge.endDate).getTime() < Date.now() ? "Ended" : "Active"} · Ends {new Date(challenge.endDate).toLocaleDateString("en-GB")}
+                      </span>
+                    </div>
+                    <button type="button" onClick={() => void removeChallenge(challenge)}
+                      disabled={busyId !== null}
+                      className="text-xs font-semibold text-destructive hover:underline disabled:opacity-50"
+                      data-testid={`button-delete-challenge-${challenge.id}`}>
+                      {busyId === challenge.id ? "Deleting…" : "Delete challenge"}
+                    </button>
+                  </li>
+                ))}
+              </ul>}
+          {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOrganisations() {
   const [orgs, setOrgs] = useState<AdminOrg[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
@@ -258,6 +346,31 @@ export default function AdminOrganisations() {
       setOrgs(prev => prev.map(o => (o.id === org.id ? data.org : o)));
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to update tier");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function renameOrg(org: AdminOrg) {
+    const name = newName.trim();
+    if (!name || name.length > 200) {
+      alert("Enter an organisation name between 1 and 200 characters.");
+      return;
+    }
+    setBusy(org.id + "-rename");
+    try {
+      const r = await fetch(`${BASE}/api/admin/orgs/${org.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error ?? "Failed to rename organisation");
+      setOrgs(previous => previous.map(o => o.id === org.id ? data.org : o));
+      setRenamingId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to rename organisation");
     } finally {
       setBusy(null);
     }
@@ -455,7 +568,7 @@ export default function AdminOrganisations() {
         </button>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        Manage live organisations: create with a data-sharing type, control dashboard sections and revoke access.{" "}
+        Manage live organisations: create with a data-sharing type, rename, manage challenges, control dashboard sections and revoke access.{" "}
         <Link href="/org/types/explicit-submission" className="text-primary hover:underline">Explicit submission</Link>{" · "}
         <Link href="/org/types/consented-logging" className="text-primary hover:underline">Consented logging</Link>
       </p>
@@ -568,6 +681,30 @@ export default function AdminOrganisations() {
               </button>
               {expandedId === org.id && (
                 <div className="px-5 pb-4 border-t border-border pt-4">
+                  <div className="mb-4">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Organisation name</span>
+                    {renamingId === org.id ? (
+                      <form onSubmit={e => { e.preventDefault(); void renameOrg(org); }} className="mt-2 flex flex-wrap gap-2">
+                        <input autoFocus aria-label="Organisation name" maxLength={200} required value={newName}
+                          onChange={e => setNewName(e.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-white px-3 py-1.5 text-sm"
+                          data-testid={`input-rename-org-${org.id}`} />
+                        <button type="submit" disabled={busy === org.id + "-rename"}
+                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+                          {busy === org.id + "-rename" ? "Saving…" : "Save name"}
+                        </button>
+                        <button type="button" onClick={() => setRenamingId(null)} className="text-xs text-muted-foreground">Cancel</button>
+                      </form>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-3">
+                        <span className="text-sm text-foreground">{org.name}</span>
+                        {!org.revokedAt && <button type="button" onClick={() => { setNewName(org.name); setRenamingId(org.id); }}
+                          className="text-xs font-semibold text-primary hover:underline"
+                          data-testid={`button-rename-org-${org.id}`}>Rename</button>}
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">Renaming keeps the existing members, invite code and organisation history.</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-4">
                     <div>
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Contact</span>
@@ -620,6 +757,7 @@ export default function AdminOrganisations() {
                     org={org}
                     onOrgUpdated={updated => setOrgs(prev => prev.map(o => (o.id === updated.id ? updated : o)))}
                   />
+                  <OrgChallengesAdminPanel org={org} />
 
                   <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Dashboard sections</span>
                   <div className="flex flex-wrap gap-2 mt-2 mb-4">

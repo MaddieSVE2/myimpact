@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, orgMemberConsentsTable, orgAuditLogTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable, localCharitySubmissionsTable, localCharityOverridesTable, type StoredCharityPlace } from "@workspace/db";
+import { db, usersTable, pageViewsTable, orgRegistrationsTable, organisationsTable, orgMembersTable, orgMemberConsentsTable, orgAuditLogTable, challengesTable, voiceUsageTable, emailSuppressionsTable, sidekickTemplateOverridesTable, proxiesTable, localCharitySubmissionsTable, localCharityOverridesTable, type StoredCharityPlace } from "@workspace/db";
 import { eq, desc, and, inArray, sql, asc, ilike, count } from "drizzle-orm";
 import { invalidateProxyCache } from "../lib/proxyStore.js";
 import { normalizeDashboardSections, parseDashboardSectionsInput } from "../lib/orgSharing.js";
@@ -544,7 +544,7 @@ router.post("/orgs", authenticate, async (req: AuthenticatedRequest, res) => {
   res.json({ ok: true, org: serializeAdminOrg(created), ...(emailWarning ? { warning: emailWarning } : {}) });
 });
 
-// Edit contact details and dashboard sections. The data-sharing mode is
+// Edit name, contact details and dashboard sections. The data-sharing mode is
 // deliberately NOT editable after creation.
 router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   if (!isAdmin(req.user!.email)) {
@@ -554,7 +554,14 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
   const id = String(req.params.id);
   const body = (req.body ?? {}) as Record<string, unknown>;
 
-  const updates: Partial<{ contactName: string; contactEmail: string; dashboardSections: unknown; fullTierEnabled: boolean }> = {};
+  const updates: Partial<{ name: string; contactName: string; contactEmail: string; dashboardSections: unknown; fullTierEnabled: boolean }> = {};
+  if ("name" in body) {
+    if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 200) {
+      res.status(400).json({ error: "name must be between 1 and 200 characters" });
+      return;
+    }
+    updates.name = body.name.trim();
+  }
   if ("contactName" in body) {
     if (typeof body.contactName !== "string" || !body.contactName.trim()) {
       res.status(400).json({ error: "contactName must be a non-empty string" });
@@ -600,6 +607,61 @@ router.patch("/orgs/:id", authenticate, async (req: AuthenticatedRequest, res) =
     return;
   }
   res.json({ ok: true, org: await serializeAdminOrgWithStats(updated) });
+});
+
+// Superadmin cleanup of a single organisation's test challenges. The
+// org-scoped route never permits deleting a challenge from another org.
+router.get("/orgs/:id/challenges", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const orgId = String(req.params.id);
+  const [org] = await db.select({ id: organisationsTable.id }).from(organisationsTable)
+    .where(eq(organisationsTable.id, orgId)).limit(1);
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  const challenges = await db.select({
+    id: challengesTable.id,
+    name: challengesTable.name,
+    startDate: challengesTable.startDate,
+    endDate: challengesTable.endDate,
+  }).from(challengesTable)
+    .where(and(eq(challengesTable.orgId, orgId), eq(challengesTable.scope, "org")))
+    .orderBy(desc(challengesTable.createdAt));
+  res.json({ challenges });
+});
+
+router.delete("/orgs/:id/challenges/:challengeId", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdmin(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const orgId = String(req.params.id);
+  const challengeId = String(req.params.challengeId);
+  const removed = await db.transaction(async tx => {
+    const [challenge] = await tx.delete(challengesTable)
+      .where(and(eq(challengesTable.id, challengeId), eq(challengesTable.orgId, orgId), eq(challengesTable.scope, "org")))
+      .returning({ id: challengesTable.id, name: challengesTable.name });
+    if (challenge) {
+      await tx.insert(orgAuditLogTable).values({
+        orgId,
+        actorUserId: req.user!.id,
+        action: "challenge.deleted_by_admin",
+        targetType: "challenge",
+        targetId: challenge.id,
+        metadata: { name: challenge.name },
+      });
+    }
+    return challenge;
+  });
+  if (!removed) {
+    res.status(404).json({ error: "Challenge not found in this organisation" });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 // Superadmin: list an organisation's members (all statuses) with user details.
