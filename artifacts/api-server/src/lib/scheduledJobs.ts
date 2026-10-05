@@ -1,11 +1,13 @@
 /**
- * The background jobs that run outside the web server, and when each is due.
+ * The background jobs that must run on time, and when each is due.
  *
- * One Replit Scheduled Deployment runs scripts/run-scheduled-jobs.ts every
- * hour. Each run asks `isJobDue` about every job below, runs the due ones
- * and records when each last started and last succeeded, so a failed job is
- * retried on a later run instead of waiting for its next slot. All times are
- * UTC. See SCHEDULING.md for the Replit setup.
+ * The API is an autoscale deployment, so it sleeps when idle and cannot run
+ * timers. Instead a GitHub Actions workflow (.github/workflows/
+ * scheduled-jobs.yml) calls the API every hour: it asks which jobs are due,
+ * then asks the API to run each one (src/jobs/runner.ts). When each job
+ * last started and last succeeded is recorded, so a failed job is retried on
+ * a later run instead of waiting for its next slot. All times are UTC. See
+ * SCHEDULING.md.
  */
 
 export type JobSchedule =
@@ -14,59 +16,58 @@ export type JobSchedule =
   /** Once a day, on the first run at or after `hourUTC`. */
   | { kind: "daily"; hourUTC: number }
   /** Once a month, from the 1st at `hourUTC` until `lastDayOfMonth`. */
-  | { kind: "monthly"; hourUTC: number; lastDayOfMonth: number }
-  /** Once every 7 days. */
-  | { kind: "weekly" };
+  | { kind: "monthly"; hourUTC: number; lastDayOfMonth: number };
 
 export interface JobHistory {
   lastAttempt: Date | null;
   lastSuccess: Date | null;
 }
 
+export const SCHEDULED_JOB_IDS = [
+  "onboarding-emails",
+  "calendar-sync",
+  "approval-digest",
+  "push-reminders",
+  "monthly-digest",
+] as const;
+
+export type ScheduledJobId = (typeof SCHEDULED_JOB_IDS)[number];
+
 export interface JobSpec {
-  id: string;
-  /** File in src/scripts. */
-  script: string;
+  id: ScheduledJobId;
+  /** Flags passed to the job, as on its CLI script. */
   args: (env: NodeJS.ProcessEnv) => string[];
   schedule: JobSchedule;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 
 /**
- * After a failure, wait this long before retrying a weekly or monthly job.
- * Both email a failure notice, so retrying every hour would flood the inbox.
+ * After a failure, wait this long before retrying the monthly digest: it
+ * emails a failure notice, so retrying every hour would flood the inbox.
  */
 export const RETRY_BACKOFF_MS = 6 * HOUR_MS;
 
-// --notify makes the backup fail outright when no recipient is set, so only
-// pass it when there is one.
-const notify = (env: NodeJS.ProcessEnv) => (env.BACKUP_NOTIFY_EMAIL ? ["--notify"] : []);
-
 export const SCHEDULED_JOBS: readonly JobSpec[] = [
   // Each (user, step) is sent once, and missed days are caught up.
-  { id: "onboarding-emails", script: "onboarding-emails.ts", args: () => [], schedule: { kind: "everyRun" } },
-  // Idempotent upserts. The script recommends every 15 to 30 minutes.
-  { id: "calendar-sync", script: "sync-calendars.ts", args: () => ["--prune"], schedule: { kind: "everyRun" } },
+  { id: "onboarding-emails", args: () => [], schedule: { kind: "everyRun" } },
+  // Idempotent upserts. The job recommends every 15 to 30 minutes.
+  { id: "calendar-sync", args: () => ["--prune"], schedule: { kind: "everyRun" } },
   // Has its own 7-day cooldown per organisation.
-  { id: "approval-digest", script: "approval-digest.ts", args: () => [], schedule: { kind: "daily", hourUTC: 8 } },
+  { id: "approval-digest", args: () => [], schedule: { kind: "daily", hourUTC: 8 } },
   // The streak nudge only fires after 18:00 UTC, and neither push records a
   // send, so this must run once a day.
-  { id: "push-reminders", script: "send-push-reminders.ts", args: () => [], schedule: { kind: "daily", hourUTC: 18 } },
+  { id: "push-reminders", args: () => [], schedule: { kind: "daily", hourUTC: 18 } },
   {
     id: "monthly-digest",
-    script: "send-monthly-digest.ts",
-    args: (env) => ["--skip-recently-sent", ...notify(env)],
+    args: (env) => ["--skip-recently-sent", ...(env.BACKUP_NOTIFY_EMAIL ? ["--notify"] : [])],
     schedule: { kind: "monthly", hourUTC: 8, lastDayOfMonth: 3 },
   },
-  {
-    id: "database-backup",
-    script: "backup-db.ts",
-    args: (env) => ["--prune", "--keep", "12", ...notify(env)],
-    schedule: { kind: "weekly" },
-  },
 ];
+
+export function isScheduledJobId(value: string): value is ScheduledJobId {
+  return (SCHEDULED_JOB_IDS as readonly string[]).includes(value);
+}
 
 function atHourUTC(day: Date, hourUTC: number): Date {
   return new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hourUTC));
@@ -101,10 +102,6 @@ export function isJobDue(schedule: JobSchedule, history: JobHistory, now: Date):
         !succeededSince(history, slot) &&
         !inBackoff(history, now)
       );
-    }
-    case "weekly": {
-      const sinceSuccess = history.lastSuccess ? now.getTime() - history.lastSuccess.getTime() : Infinity;
-      return sinceSuccess >= 7 * DAY_MS && !inBackoff(history, now);
     }
   }
 }

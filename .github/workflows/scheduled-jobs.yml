@@ -1,0 +1,84 @@
+# Hourly trigger for the API's scheduled jobs (onboarding emails, calendar
+# sync, approval digest, push reminders, monthly digest). The API decides
+# which are due; see artifacts/api-server/SCHEDULING.md.
+#
+# Needs two repository secrets: APP_URL (the live site, e.g.
+# https://myimpact.example) and SCHEDULED_JOBS_TOKEN (the same value as the
+# Replit secret of that name).
+#
+# This repository is public, so its Actions logs are public: only job names
+# and outcomes are printed. Errors are in the Replit deployment logs.
+name: Scheduled jobs
+
+on:
+  schedule:
+    # Hourly, off the hour: GitHub delays runs queued for :00.
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run now even if it is not due (or 'due' for the normal run)"
+        type: choice
+        default: due
+        options:
+          - due
+          - onboarding-emails
+          - calendar-sync
+          - approval-digest
+          - push-reminders
+          - monthly-digest
+
+permissions: {}
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Run due jobs
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          TOKEN: ${{ secrets.SCHEDULED_JOBS_TOKEN }}
+          JOB: ${{ inputs.job || 'due' }}
+        run: |
+          set -euo pipefail
+          # Not set up yet: say so without failing every hour.
+          if [ -z "$APP_URL" ] || [ -z "$TOKEN" ]; then
+            echo "::warning::Scheduled jobs are off. Set the APP_URL and SCHEDULED_JOBS_TOKEN repository secrets."
+            exit 0
+          fi
+          api="${APP_URL%/}/api/internal/scheduled-jobs"
+          auth="Authorization: Bearer $TOKEN"
+
+          if [ "$JOB" = "due" ]; then
+            # Retries cover the autoscale instance waking up.
+            if ! due_json=$(curl -fsS --retry 3 --retry-all-errors --retry-delay 10 --max-time 60 \
+              -X POST -H "$auth" "$api/due"); then
+              echo "::error::Could not get the due jobs. Check the APP_URL and SCHEDULED_JOBS_TOKEN secrets."
+              exit 1
+            fi
+            jobs=$(echo "$due_json" | jq -r '.due[]')
+            force=""
+          else
+            jobs="$JOB"
+            force="?force=1"
+          fi
+          echo "Due: $(echo ${jobs:-none})"
+
+          failed=0
+          for id in $jobs; do
+            code=$(curl -sS --max-time 1500 -o result.json -w '%{http_code}' \
+              -X POST -H "$auth" "$api/run/$id$force") || code=000
+            summary=$(jq -c '{status, ok, ms}' result.json 2>/dev/null || echo '{}')
+            echo "$id: HTTP $code $summary"
+            case "$code" in
+              200) ;;
+              409) echo "::warning::$id skipped: another job was running" ;;
+              *) echo "::error::$id failed (HTTP $code). Details are in the Replit deployment logs."; failed=1 ;;
+            esac
+          done
+          exit $failed

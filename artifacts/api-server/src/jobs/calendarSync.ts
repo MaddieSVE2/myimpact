@@ -1,0 +1,41 @@
+/**
+ * Calendar sync job.
+ *
+ * Iterates every active `calendar_sources` row, pulls events in the window
+ * [-24h, +30 days] from the provider via the Replit Connectors proxy,
+ * applies the per-source filter, and upserts into `calendar_events`.
+ * `syncSource()` is idempotent, so the job is safe to run ad hoc.
+ *
+ * Flags:
+ *   --prune       Also delete cached events whose end time is more than
+ *                  60 days in the past.
+ */
+import { syncAllSources, pruneOldEvents } from "../lib/calendarSync.js";
+
+export async function runCalendarSync(args: string[]): Promise<boolean> {
+  const prune = args.includes("--prune");
+
+  console.log(`[calendar-sync] starting at ${new Date().toISOString()}`);
+  const summaries = await syncAllSources();
+
+  let totalFetched = 0;
+  let totalInserted = 0;
+  let totalUpdated = 0;
+  let totalRemoved = 0;
+  for (const s of summaries) {
+    totalFetched += s.fetched;
+    totalInserted += s.inserted;
+    totalUpdated += s.updated;
+    totalRemoved += s.removed;
+  }
+
+  console.log(
+    `[calendar-sync] sources=${summaries.length} fetched=${totalFetched} inserted=${totalInserted} updated=${totalUpdated} removed=${totalRemoved}`,
+  );
+
+  if (prune) {
+    const pruned = await pruneOldEvents();
+    console.log(`[calendar-sync] pruned ${pruned} old cached events`);
+  }
+  return true;
+}

@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   SCHEDULED_JOBS,
+  SCHEDULED_JOB_IDS,
   RETRY_BACKOFF_MS,
   isJobDue,
   type JobHistory,
@@ -11,6 +9,7 @@ import {
 } from "../src/lib/scheduledJobs.js";
 import { ONBOARDING_STEPS, ONBOARDING_CATCH_UP_DAYS, onboardingSignupWindow } from "../src/lib/onboardingEmails.js";
 import { dueOccurrence } from "../src/lib/recurringSchedule.js";
+import { JOB_RUNNERS } from "../src/jobs/index.js";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -64,39 +63,17 @@ describe("isJobDue", () => {
       expect(isJobDue(monthly, history, new Date(failedAt.getTime() + RETRY_BACKOFF_MS))).toBe(true);
     });
   });
-
-  describe("weekly", () => {
-    const weekly: JobSchedule = { kind: "weekly" };
-    it("runs straight away when it has never succeeded", () => {
-      expect(isJobDue(weekly, never, utc("2026-10-05T10:00:00"))).toBe(true);
-    });
-    it("runs again 7 days after the last success", () => {
-      const at = utc("2026-10-05T10:00:00");
-      expect(isJobDue(weekly, succeeded(at), new Date(at.getTime() + 6 * DAY))).toBe(false);
-      expect(isJobDue(weekly, succeeded(at), new Date(at.getTime() + 7 * DAY))).toBe(true);
-    });
-    it("backs off after a failure", () => {
-      const failedAt = utc("2026-10-05T10:00:00");
-      expect(isJobDue(weekly, failed(failedAt), new Date(failedAt.getTime() + HOUR))).toBe(false);
-      expect(isJobDue(weekly, failed(failedAt), new Date(failedAt.getTime() + RETRY_BACKOFF_MS))).toBe(true);
-    });
-  });
 });
 
 describe("SCHEDULED_JOBS", () => {
-  it("points every job at a script that exists", () => {
-    const scriptsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../src/scripts");
-    for (const job of SCHEDULED_JOBS) {
-      expect(fs.existsSync(path.join(scriptsDir, job.script)), job.script).toBe(true);
-    }
+  it("schedules every job exactly once, each with a function to run", () => {
+    expect(SCHEDULED_JOBS.map((j) => j.id).sort()).toEqual([...SCHEDULED_JOB_IDS].sort());
+    for (const id of SCHEDULED_JOB_IDS) expect(typeof JOB_RUNNERS[id], id).toBe("function");
   });
 
-  it("only asks the backup and digest to notify when a recipient is set", () => {
-    const backup = SCHEDULED_JOBS.find((j) => j.id === "database-backup")!;
+  it("only asks the digest to notify when a recipient is set", () => {
     const digest = SCHEDULED_JOBS.find((j) => j.id === "monthly-digest")!;
-    expect(backup.args({})).not.toContain("--notify");
     expect(digest.args({})).not.toContain("--notify");
-    expect(backup.args({ BACKUP_NOTIFY_EMAIL: "ops@example.org" })).toContain("--notify");
     expect(digest.args({ BACKUP_NOTIFY_EMAIL: "ops@example.org" })).toContain("--notify");
   });
 

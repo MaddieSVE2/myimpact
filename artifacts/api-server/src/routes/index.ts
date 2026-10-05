@@ -28,6 +28,7 @@ import billingRouter from "./billing";
 import analyticsRouter from "./analytics";
 import testOnlyRouter from "./test-only";
 import pushRouter from "./push";
+import scheduledJobsRouter from "./scheduled-jobs";
 
 const router: IRouter = Router();
 
@@ -59,6 +60,7 @@ router.use("/challenges", challengesRouter);
 router.use("/billing", billingRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/push", pushRouter);
+router.use(scheduledJobsRouter);
 
 // Test-only endpoints are mounted unconditionally; the router itself
 // returns 404 for every request unless E2E_TEST_MODE=1 is set.

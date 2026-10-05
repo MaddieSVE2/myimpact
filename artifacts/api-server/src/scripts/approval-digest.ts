@@ -1,17 +1,9 @@
 /**
- * Pending-approvals digest, run once a day by scripts/run-scheduled-jobs.ts.
- *
- * The API server also runs this check on startup (lib/approvalDigest.ts),
- * but an autoscale deployment sleeps when idle, so the server alone cannot
- * be relied on to run it daily. The per-organisation 7-day cooldown keeps
- * the two from emailing managers twice.
+ * Pending-approvals digest by hand. Normally run daily by the scheduler (see
+ * SCHEDULING.md); the API server also checks on startup. The per-organisation
+ * 7-day cooldown keeps managers from being emailed twice.
  */
-import { pool } from "@workspace/db";
-import { runApprovalDigestCheck } from "../lib/approvalDigest.js";
+import { JOB_RUNNERS } from "../jobs/index.js";
+import { runCli } from "./_cli.js";
 
-runApprovalDigestCheck()
-  .catch((err) => {
-    console.error("Approval digest failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end().catch(() => {}));
+runCli("approval-digest", JOB_RUNNERS["approval-digest"]);
