@@ -1,7 +1,8 @@
 /**
  * Onboarding email dispatcher.
  *
- * Designed to run once per day on a scheduled deployment.
+ * Run hourly by scripts/run-scheduled-jobs.ts. Re-runs are safe: each
+ * (user, step) is sent at most once.
  *
  * On each run we look for users who reached the Day 1, Day 7 or Day 30 marker
  * since signup, who:
@@ -35,6 +36,7 @@ import {
   buildDay7GentleEmail,
   buildDay30Email,
   sendOnboardingEmail,
+  onboardingSignupWindow,
 } from "../lib/onboardingEmails.js";
 import { ACTIVITIES } from "../lib/impactData.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
@@ -89,16 +91,13 @@ function getAppUrl(): string {
 }
 
 /**
- * Find users whose signup date falls in the Day-N window (i.e. they crossed
- * the N-day mark in the last 24 hours), are opted in, signed up via magic
- * link, are not a demo account, and have no existing send for this step.
+ * Find users who are owed the Day-N email (they crossed the N-day mark in
+ * the last few days, see onboardingSignupWindow), are opted in, signed up
+ * via magic link, are not a demo account, and have no existing send for
+ * this step.
  */
 async function findEligibleUsersForStep(step: OnboardingStep, now: Date): Promise<EligibleUser[]> {
-  // The window is the 24h preceding `now - step days`. A user signed up
-  // exactly N days ago lands inside this window. Slightly wider tolerance
-  // (24h) gives us a safe margin if a daily run is briefly delayed.
-  const windowEnd = new Date(now.getTime() - step * 24 * 60 * 60 * 1000);
-  const windowStart = new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000);
+  const { start: windowStart, end: windowEnd } = onboardingSignupWindow(step, now);
 
   // LEFT JOIN user_profiles: a user who signed up via magic link but has not
   // yet visited /settings or completed the onboarding wizard has no profile

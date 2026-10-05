@@ -4,6 +4,24 @@ export type OnboardingStep = 1 | 7 | 30;
 
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [1, 7, 30] as const;
 
+/**
+ * How many days after the Day-N mark a missed email can still go out, so a
+ * failed or skipped run does not lose it. Must stay under 6 so the Day 1 and
+ * Day 7 windows never overlap (nobody is owed two emails at once).
+ */
+export const ONBOARDING_CATCH_UP_DAYS = 3;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Signup times that are owed the Day-N email at `now`: from N +
+ * ONBOARDING_CATCH_UP_DAYS days ago up to exactly N days ago.
+ */
+export function onboardingSignupWindow(step: OnboardingStep, now: Date): { start: Date; end: Date } {
+  const end = new Date(now.getTime() - step * DAY_MS);
+  return { start: new Date(end.getTime() - ONBOARDING_CATCH_UP_DAYS * DAY_MS), end };
+}
+
 export type EmailLocale = "en" | "cy";
 
 export interface OnboardingContext {

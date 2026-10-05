@@ -18,7 +18,9 @@
     "onboarding:emails": "tsx ./src/scripts/onboarding-emails.ts",
     "calendar:sync": "tsx ./src/scripts/sync-calendars.ts",
     "seed:local-charities": "tsx ./src/scripts/seed-local-charities.ts",
-    "calendar:scheduled": "tsx ./src/scripts/sync-calendars.ts --prune"
+    "calendar:scheduled": "tsx ./src/scripts/sync-calendars.ts --prune",
+    "push:reminders": "tsx ./src/scripts/send-push-reminders.ts",
+    "jobs:scheduled": "tsx ./src/scripts/run-scheduled-jobs.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

@@ -6,10 +6,11 @@
  *
  *  - streak-at-risk:  user has logged on each of the last N consecutive days
  *                     (N >= 3), did NOT log today, and it is past 18:00 UTC.
- *  - recurringDue:    user has a recurring template currently `isDue` and we
- *                     haven't already pushed about it today.
+ *  - recurringDue:    a recurring template has a due occurrence dated today
+ *                     (not yet confirmed or skipped).
  *
- * Designed to be run as a Replit Scheduled Deployment, e.g. once per hour.
+ * Run once a day, after 18:00 UTC, by scripts/run-scheduled-jobs.ts. Running
+ * it more often would repeat the same pushes: neither trigger records a send.
  * Honours per-user push preferences (toggles + pause-until) automatically
  * because dispatch goes through `sendPushToUser`.
  *
@@ -20,6 +21,7 @@
 import { db, usersTable, impactRecordsTable, recurringTemplatesTable, pool } from "@workspace/db";
 import { eq, sql, isNotNull } from "drizzle-orm";
 import { sendPushToUser } from "../lib/push.js";
+import { dueOccurrence } from "../lib/recurringSchedule.js";
 
 interface Options {
   dryRun: boolean;
@@ -129,30 +131,13 @@ async function dispatchRecurringDue(userId: string, today: Date, opts: Options):
     .where(eq(recurringTemplatesTable.userId, userId));
   if (templates.length === 0) return false;
 
-  // Compute a tiny version of the same isDue logic the API uses: a template
-  // is due if its nextDueDate is today or earlier. We delegate to the DB
-  // helper field if present, otherwise fall back to the lastConfirmedAt /
-  // cadence logic. To keep this dispatcher resilient to schema drift, we
-  // approximate "due" as: lastConfirmedAt is null or older than the cadence
-  // window for the current day-of-period.
-  const dueLabels: string[] = [];
-  for (const t of templates) {
-    const lastConfirmed = t.lastConfirmedAt ? startOfDay(t.lastConfirmedAt) : null;
-    const todayStart = startOfDay(today);
-    const minDaysSinceConfirm =
-      t.cadence === "weekly" ? 6 : t.cadence === "fortnightly" ? 13 : 27;
-    const okOnDay =
-      t.cadence === "monthly"
-        ? todayStart.getDate() === t.dayOfPeriod
-        : todayStart.getDay() === t.dayOfPeriod;
-    if (!okOnDay) continue;
-    if (
-      !lastConfirmed ||
-      (todayStart.getTime() - lastConfirmed.getTime()) / 86_400_000 >= minDaysSinceConfirm
-    ) {
-      dueLabels.push(t.label);
-    }
-  }
+  // Same rule as the app (lib/recurringSchedule.ts), narrowed to occurrences
+  // that fall today: one nudge per occurrence, on its day. An occurrence the
+  // user has confirmed or skipped is not due.
+  const isoToday = today.toISOString().slice(0, 10);
+  const dueLabels = templates
+    .filter((t) => dueOccurrence(t, today)?.toISOString().slice(0, 10) === isoToday)
+    .map((t) => t.label);
 
   if (dueLabels.length === 0) return false;
 
