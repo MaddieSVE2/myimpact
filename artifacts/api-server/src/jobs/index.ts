@@ -1,6 +1,7 @@
 import { runApprovalDigestCheck } from "../lib/approvalDigest.js";
 import type { ScheduledJobId } from "../lib/scheduledJobs.js";
 import { runCalendarSync } from "./calendarSync.js";
+import { runDatabaseBackup } from "./databaseBackup.js";
 import { runMonthlyDigest } from "./monthlyDigest.js";
 import { runOnboardingEmails } from "./onboardingEmails.js";
 import { runPushReminders } from "./pushReminders.js";
@@ -20,4 +21,5 @@ export const JOB_RUNNERS: Record<ScheduledJobId, (args: string[]) => Promise<boo
   },
   "push-reminders": runPushReminders,
   "monthly-digest": runMonthlyDigest,
+  "database-backup": runDatabaseBackup,
 };

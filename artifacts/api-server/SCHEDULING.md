@@ -26,16 +26,38 @@ running at once.
 | `approval-digest` | `src/lib/approvalDigest.ts` | Daily from 08:00. Each organisation is emailed at most once a week. |
 | `push-reminders` | `src/jobs/pushReminders.ts` | Daily from 18:00. Streak at risk, and recurring activities due today. |
 | `monthly-digest` | `src/jobs/monthlyDigest.ts` | From 08:00 on the 1st, retried until the 3rd (after a failure, 6 hours apart). |
+| `database-backup` | `src/jobs/databaseBackup.ts` | Daily from 02:00 (after a failure, 6 hours apart). Keeps 30. |
 
-The database backup (`backup:scheduled`) is not one of these: it is written
-for the development database and runs from the Replit workspace. Replit
-keeps its own restore points for the production database.
+## Database backups
+
+`database-backup` runs `pg_dump` against the production database inside the
+published app, gzips it and streams it straight into App Storage at
+`<PRIVATE_OBJECT_DIR>/backups/prod-daily/myimpact-prod-<UTC time>.sql.gz`, so
+no copy of the data is written to the server's disk. The newest 30 are kept.
+It refuses to run outside the published app (`REPLIT_DEPLOYMENT=1`), where
+`DATABASE_URL` would be the development database. A failure is emailed to
+`BACKUP_NOTIFY_EMAIL` when that is set, and fails the GitHub run.
+
+To restore, from the workspace Shell:
+
+1. Download one:
+   `pnpm --filter @workspace/api-server run backup:fetch myimpact-prod-<time>.sql.gz`
+   (saved to `/tmp/myimpact-backups/`).
+2. Load it into a **new, empty** database first and check it:
+   `gunzip -c /tmp/myimpact-backups/<file> | psql "<that database url>"`.
+   The dump drops and recreates each table, so never point it at a database
+   you want to keep. For the live database, prefer Replit's own production
+   restore, and use this file when that cannot reach far enough back.
+
+`backup:db` and `backup:scheduled` are separate: they back up the development
+database from the workspace.
 
 ## Setting it up
 
 1. **Replit:** add a secret `SCHEDULED_JOBS_TOKEN` to the production app,
    a long random value (at least 32 characters), then republish.
-   `BACKUP_NOTIFY_EMAIL` (optional) gets a summary of each monthly digest.
+   `BACKUP_NOTIFY_EMAIL` (recommended) is told when a backup fails and gets a
+   summary of each monthly digest.
 2. **GitHub:** in the repository's Settings, Secrets and variables, Actions,
    add two repository secrets:
    - `APP_URL`: the live site, e.g. `https://myimpact.example`

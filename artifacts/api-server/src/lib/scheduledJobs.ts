@@ -13,8 +13,11 @@
 export type JobSchedule =
   /** Every hourly run. For jobs that are safe to repeat. */
   | { kind: "everyRun" }
-  /** Once a day, on the first run at or after `hourUTC`. */
-  | { kind: "daily"; hourUTC: number }
+  /**
+   * Once a day, on the first run at or after `hourUTC`. With `retryBackoff`,
+   * a failure waits RETRY_BACKOFF_MS before the next try.
+   */
+  | { kind: "daily"; hourUTC: number; retryBackoff?: boolean }
   /** Once a month, from the 1st at `hourUTC` until `lastDayOfMonth`. */
   | { kind: "monthly"; hourUTC: number; lastDayOfMonth: number };
 
@@ -29,6 +32,7 @@ export const SCHEDULED_JOB_IDS = [
   "approval-digest",
   "push-reminders",
   "monthly-digest",
+  "database-backup",
 ] as const;
 
 export type ScheduledJobId = (typeof SCHEDULED_JOB_IDS)[number];
@@ -43,8 +47,9 @@ export interface JobSpec {
 const HOUR_MS = 60 * 60 * 1000;
 
 /**
- * After a failure, wait this long before retrying the monthly digest: it
- * emails a failure notice, so retrying every hour would flood the inbox.
+ * After a failure, wait this long before retrying the monthly digest or the
+ * backup: both email a failure notice, so retrying every hour would flood
+ * the inbox.
  */
 export const RETRY_BACKOFF_MS = 6 * HOUR_MS;
 
@@ -63,6 +68,8 @@ export const SCHEDULED_JOBS: readonly JobSpec[] = [
     args: (env) => ["--skip-recently-sent", ...(env.BACKUP_NOTIFY_EMAIL ? ["--notify"] : [])],
     schedule: { kind: "monthly", hourUTC: 8, lastDayOfMonth: 3 },
   },
+  // Production database to App Storage; keeps 30 days.
+  { id: "database-backup", args: () => [], schedule: { kind: "daily", hourUTC: 2, retryBackoff: true } },
 ];
 
 export function isScheduledJobId(value: string): value is ScheduledJobId {
@@ -91,7 +98,11 @@ export function isJobDue(schedule: JobSchedule, history: JobHistory, now: Date):
       return true;
     case "daily": {
       const slot = atHourUTC(now, schedule.hourUTC);
-      return now.getTime() >= slot.getTime() && !succeededSince(history, slot);
+      return (
+        now.getTime() >= slot.getTime() &&
+        !succeededSince(history, slot) &&
+        !(schedule.retryBackoff && inBackoff(history, now))
+      );
     }
     case "monthly": {
       const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));

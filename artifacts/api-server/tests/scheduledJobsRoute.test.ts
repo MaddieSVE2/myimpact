@@ -80,7 +80,7 @@ describe("scheduled jobs trigger", () => {
   });
 
   it("returns 404 for an unknown job without running anything", async () => {
-    expect((await run("database-backup").set("Authorization", `Bearer ${TOKEN}`)).status).toBe(404);
+    expect((await run("no-such-job").set("Authorization", `Bearer ${TOKEN}`)).status).toBe(404);
     expect(runner.runScheduledJob).not.toHaveBeenCalled();
   });
 });

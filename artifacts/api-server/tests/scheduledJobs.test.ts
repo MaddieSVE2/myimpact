@@ -10,6 +10,7 @@ import {
 import { ONBOARDING_STEPS, ONBOARDING_CATCH_UP_DAYS, onboardingSignupWindow } from "../src/lib/onboardingEmails.js";
 import { dueOccurrence } from "../src/lib/recurringSchedule.js";
 import { JOB_RUNNERS } from "../src/jobs/index.js";
+import { backupsToPrune, runDatabaseBackup } from "../src/jobs/databaseBackup.js";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -145,5 +146,45 @@ describe("dueOccurrence", () => {
     const monthly = { ...weeklyFriday, cadence: "monthly", dayOfPeriod: 15, anchorDate: utc("2026-09-01T09:00:00") };
     expect(dueOccurrence(monthly, utc("2026-10-14T12:00:00"))?.toISOString()).toBe("2026-09-15T00:00:00.000Z");
     expect(dueOccurrence(monthly, utc("2026-10-15T12:00:00"))?.toISOString()).toBe("2026-10-15T00:00:00.000Z");
+  });
+});
+
+describe("daily jobs with retryBackoff", () => {
+  const backup: JobSchedule = { kind: "daily", hourUTC: 2, retryBackoff: true };
+  it("waits after a failure instead of retrying every hour", () => {
+    const failedAt = utc("2026-10-06T02:07:00");
+    const history = failed(failedAt, utc("2026-10-05T02:07:00"));
+    expect(isJobDue(backup, history, utc("2026-10-06T03:07:00"))).toBe(false);
+    expect(isJobDue(backup, history, new Date(failedAt.getTime() + RETRY_BACKOFF_MS))).toBe(true);
+  });
+  it("runs once a day after a success", () => {
+    const history = succeeded(utc("2026-10-06T02:07:00"));
+    expect(isJobDue(backup, history, utc("2026-10-06T23:07:00"))).toBe(false);
+    expect(isJobDue(backup, history, utc("2026-10-07T02:07:00"))).toBe(true);
+  });
+});
+
+describe("database backup", () => {
+  it("keeps the newest backups and never touches other files", () => {
+    const dir = ".private/backups/prod-daily/";
+    const names = [
+      `${dir}myimpact-prod-2026-10-03T0207.sql.gz`,
+      `${dir}myimpact-prod-2026-10-01T0207.sql.gz`,
+      `${dir}myimpact-prod-2026-10-02T0207.sql.gz`,
+      `${dir}notes.txt`,
+      `${dir}myimpact-db-backup-2026-01-01T0000.sql`,
+    ];
+    expect(backupsToPrune(names, 2)).toEqual([`${dir}myimpact-prod-2026-10-01T0207.sql.gz`]);
+    expect(backupsToPrune(names, 30)).toEqual([]);
+  });
+
+  it("refuses to run outside the published app", async () => {
+    const saved = process.env.REPLIT_DEPLOYMENT;
+    delete process.env.REPLIT_DEPLOYMENT;
+    try {
+      await expect(runDatabaseBackup([])).rejects.toThrow(/outside the published app/);
+    } finally {
+      if (saved !== undefined) process.env.REPLIT_DEPLOYMENT = saved;
+    }
   });
 });
