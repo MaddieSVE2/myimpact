@@ -53,11 +53,13 @@ jobs:
           fi
           api="${APP_URL%/}/api/internal/scheduled-jobs"
           auth="Authorization: Bearer $TOKEN"
+          # Empty bodies are sent explicitly: the hosting front end rejects a
+          # POST without a Content-Length (HTTP 411).
 
           if [ "$JOB" = "due" ]; then
             # Retries cover the autoscale instance waking up.
             if ! due_json=$(curl -fsS --retry 3 --retry-all-errors --retry-delay 10 --max-time 60 \
-              -X POST -H "$auth" "$api/due"); then
+              -X POST --data "" -H "$auth" "$api/due"); then
               echo "::error::Could not get the due jobs. Check the APP_URL and SCHEDULED_JOBS_TOKEN secrets."
               exit 1
             fi
@@ -72,7 +74,7 @@ jobs:
           failed=0
           for id in $jobs; do
             code=$(curl -sS --max-time 1500 -o result.json -w '%{http_code}' \
-              -X POST -H "$auth" "$api/run/$id$force") || code=000
+              -X POST --data "" -H "$auth" "$api/run/$id$force") || code=000
             summary=$(jq -c '{status, ok, ms}' result.json 2>/dev/null || echo '{}')
             echo "$id: HTTP $code $summary"
             case "$code" in
