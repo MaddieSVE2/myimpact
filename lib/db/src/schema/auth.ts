@@ -6,6 +6,9 @@ export const usersTable = pgTable("users", {
   displayName: text("display_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   emailDigestOptIn: boolean("email_digest_opt_in").default(true).notNull(),
+  // Email reminders on the day a regular activity is due (jobs/activityReminders.ts).
+  // A service email for something the member set up, so on by default.
+  emailRemindersOptIn: boolean("email_reminders_opt_in").default(true).notNull(),
   unsubscribeToken: text("unsubscribe_token").unique(),
   lastDigestSentAt: timestamp("last_digest_sent_at"),
   voiceEnabled: boolean("voice_enabled").default(false).notNull(),

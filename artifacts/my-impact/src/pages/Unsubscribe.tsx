@@ -7,6 +7,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export default function Unsubscribe() {
   const [status, setStatus] = useState<"working" | "done" | "error">("working");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [list, setList] = useState<string>("onboarding");
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
@@ -28,6 +29,7 @@ export default function Unsubscribe() {
           throw new Error("non-json");
         }
         if (data.ok) {
+          if (typeof data.list === "string") setList(data.list);
           setStatus("done");
         } else {
           setStatus("error");
@@ -63,7 +65,9 @@ export default function Unsubscribe() {
             You've been unsubscribed
           </h1>
           <p className="text-muted-foreground mb-2 leading-relaxed">
-            We won't send you any more onboarding or digest emails.
+            {list === "activity-reminders"
+              ? "We won't email you reminders about your regular activities any more."
+              : "We won't send you any more onboarding emails."}
           </p>
           <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
             Changed your mind? You can switch emails back on any time from your settings.

@@ -32,6 +32,9 @@ export const recurringTemplatesTable = pgTable("recurring_templates", {
   // Set when the user skips the current scheduled occurrence — silences the
   // due prompt until the next occurrence without creating any records.
   lastSkippedAt: timestamp("last_skipped_at"),
+  // The occurrence (UTC day) an email reminder was last sent for, so each
+  // occurrence is emailed at most once.
+  lastRemindedOccurrence: timestamp("last_reminded_occurrence"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userIdx: index("recurring_templates_user_idx").on(t.userId),
@@ -43,6 +46,7 @@ export const insertRecurringTemplateSchema = createInsertSchema(recurringTemplat
   anchorDate: true,
   lastConfirmedAt: true,
   lastSkippedAt: true,
+  lastRemindedOccurrence: true,
 });
 export type InsertRecurringTemplate = z.infer<typeof insertRecurringTemplateSchema>;
 export type RecurringTemplate = typeof recurringTemplatesTable.$inferSelect;

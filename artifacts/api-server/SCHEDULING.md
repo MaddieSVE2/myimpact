@@ -28,6 +28,7 @@ running at once.
 | `monthly-digest` | `src/jobs/monthlyDigest.ts` | From 08:00 on the 1st, retried until the 3rd (after a failure, 6 hours apart). |
 | `database-backup` | `src/jobs/databaseBackup.ts` | Daily from 02:00 (after a failure, 6 hours apart). Keeps 30. |
 | `retention-cleanup` | `src/lib/retentionCleanup.ts`, `src/lib/emailLog.ts` | Daily from 03:00. Analytics older than 90 days, email log entries older than a year. |
+| `activity-reminders` | `src/jobs/activityReminders.ts` | Every run; sends from 07:00 UK time on the day a regular activity is due, one email per occurrence. Members with push set up get push instead. |
 
 ## Database backups
 

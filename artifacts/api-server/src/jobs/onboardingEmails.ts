@@ -71,6 +71,11 @@ function isSyntheticSeedEmail(email: string): boolean {
   );
 }
 
+/** Demo personas and seeded accounts: never real inboxes, never emailed. */
+export function isDemoOrSyntheticEmail(email: string): boolean {
+  return PERSONA_EMAILS.has(email.toLowerCase()) || isSyntheticSeedEmail(email);
+}
+
 const ACTIVITY_BY_ID = new Map(ACTIVITIES.map((a) => [a.id, a]));
 
 interface EligibleUser {
@@ -133,9 +138,7 @@ async function findEligibleUsersForStep(step: OnboardingStep, now: Date): Promis
       )
     );
 
-  return rows.filter(
-    (r) => !PERSONA_EMAILS.has(r.email.toLowerCase()) && !isSyntheticSeedEmail(r.email)
-  );
+  return rows.filter((r) => !isDemoOrSyntheticEmail(r.email));
 }
 
 async function loadActivitySummary(userId: string): Promise<OnboardingActivity> {

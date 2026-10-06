@@ -42,14 +42,14 @@ export interface OnboardingActivity {
 
 const ORANGE = "#F06127";
 const TEXT = "#213547";
-const MUTED = "#6b7280";
-const BORDER = "#e5e7eb";
+export const MUTED = "#6b7280";
+export const BORDER = "#e5e7eb";
 
-function logoBlock(appUrl: string): string {
+export function logoBlock(appUrl: string): string {
   return `<img src="${appUrl}/images/myimpact.png" alt="My Impact" style="height:48px;margin-bottom:24px;" />`;
 }
 
-function shellOpen(): string {
+export function shellOpen(): string {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:${TEXT};">`;
 }
 
@@ -70,11 +70,11 @@ function shellClose(appUrl: string, locale: EmailLocale = "en", unsubscribeUrl?:
   </div>`;
 }
 
-function ctaButton(href: string, label: string): string {
+export function ctaButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;background:${ORANGE};color:white;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">${label}</a>`;
 }
 
-function greeting(displayName: string | null, locale: EmailLocale = "en"): string {
+export function greeting(displayName: string | null, locale: EmailLocale = "en"): string {
   const name = displayName?.trim();
   if (locale === "cy") {
     return name ? `Helo ${escapeHtml(name)},` : "Helo,";
@@ -82,7 +82,7 @@ function greeting(displayName: string | null, locale: EmailLocale = "en"): strin
   return name ? `Hi ${escapeHtml(name)},` : "Hi there,";
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

@@ -23,14 +23,21 @@ function getSecret(): string {
   return secret;
 }
 
-export function createUnsubscribeToken(userId: string): string {
-  return jwt.sign({ sub: userId, purpose: PURPOSE }, getSecret(), {
+/**
+ * Which emails a link turns off. Signed into the token so a link cannot be
+ * edited to switch off a different kind. Tokens without one (all issued
+ * before reminders existed) mean onboarding.
+ */
+export type UnsubscribeList = "onboarding" | "activity-reminders";
+
+export function createUnsubscribeToken(userId: string, list: UnsubscribeList = "onboarding"): string {
+  return jwt.sign({ sub: userId, purpose: PURPOSE, ...(list === "onboarding" ? {} : { list }) }, getSecret(), {
     expiresIn: EXPIRY,
   });
 }
 
 export type UnsubscribeTokenResult =
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; list: UnsubscribeList }
   | { ok: false; reason: "expired" | "invalid" };
 
 export function verifyUnsubscribeToken(token: string): UnsubscribeTokenResult {
@@ -44,7 +51,9 @@ export function verifyUnsubscribeToken(token: string): UnsubscribeTokenResult {
     ) {
       return { ok: false, reason: "invalid" };
     }
-    return { ok: true, userId: (payload as jwt.JwtPayload).sub as string };
+    const list = (payload as jwt.JwtPayload).list;
+    if (list !== undefined && list !== "activity-reminders") return { ok: false, reason: "invalid" };
+    return { ok: true, userId: (payload as jwt.JwtPayload).sub as string, list: list ?? "onboarding" };
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
       return { ok: false, reason: "expired" };
@@ -54,8 +63,8 @@ export function verifyUnsubscribeToken(token: string): UnsubscribeTokenResult {
 }
 
 /** Frontend confirmation-page URL embedded in email footers. */
-export function buildUnsubscribeUrl(appUrl: string, userId: string): string {
-  const token = createUnsubscribeToken(userId);
+export function buildUnsubscribeUrl(appUrl: string, userId: string, list?: UnsubscribeList): string {
+  const token = createUnsubscribeToken(userId, list);
   return `${appUrl}/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
@@ -63,7 +72,7 @@ export function buildUnsubscribeUrl(appUrl: string, userId: string): string {
  * Direct API URL used for RFC 8058 one-click List-Unsubscribe-Post.
  * Inbox providers POST to this URL with no cookies or body.
  */
-export function buildOneClickUnsubscribeUrl(appUrl: string, userId: string): string {
-  const token = createUnsubscribeToken(userId);
+export function buildOneClickUnsubscribeUrl(appUrl: string, userId: string, list?: UnsubscribeList): string {
+  const token = createUnsubscribeToken(userId, list);
   return `${appUrl}/api/profile/unsubscribe?token=${encodeURIComponent(token)}`;
 }

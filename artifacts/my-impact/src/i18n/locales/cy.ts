@@ -97,6 +97,13 @@ export const cy: Catalogue = {
     monthlyRecapOffToast: "Crynodeb misol i ffwrdd",
     monthlyRecapOnDesc: "Byddwn yn anfon crynodeb personol ar y 1af o bob mis.",
     monthlyRecapOffDesc: "Ni fyddwch yn derbyn e-byst crynodeb misol.",
+    activityReminders: "Nodiadau atgoffa am weithgareddau rheolaidd",
+    activityRemindersDesc:
+      "E-bost ar fore'r diwrnod pan fydd gweithgaredd rheolaidd yn ddyledus, fel y gallwch ei gofnodi gydag un tap. Ni chaiff ei anfon os ydych yn cael nodiadau atgoffa fel hysbysiadau.",
+    activityRemindersOnToast: "Nodiadau atgoffa ymlaen",
+    activityRemindersOffToast: "Nodiadau atgoffa i ffwrdd",
+    activityRemindersOnDesc: "Byddwn yn anfon e-bost atoch ar y diwrnod pan fydd gweithgaredd rheolaidd yn ddyledus.",
+    activityRemindersOffDesc: "Ni fyddwch yn derbyn e-byst atgoffa am weithgareddau.",
     couldNotUpdate: "Methu diweddaru'r dewis",
     emailsOnToast: "E-byst wedi'u troi ymlaen",
     emailsOffToast: "E-byst wedi'u troi i ffwrdd",

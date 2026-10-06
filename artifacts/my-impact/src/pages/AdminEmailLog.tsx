@@ -20,6 +20,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "sign-in": "Sign-in link",
   onboarding: "Onboarding",
   "monthly-digest": "Monthly recap",
+  "activity-reminder": "Activity reminder",
   "approval-digest": "Approval reminder",
   organisation: "Organisation",
   account: "Account",

@@ -13,6 +13,7 @@ export type EmailCategory =
   | "sign-in"
   | "onboarding"
   | "monthly-digest"
+  | "activity-reminder"
   | "approval-digest"
   | "organisation"
   | "account"

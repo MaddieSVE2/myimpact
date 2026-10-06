@@ -119,6 +119,51 @@ export default function Settings() {
     };
   }, []);
 
+  const [remindersOptIn, setRemindersOptIn] = useState<boolean | null>(null);
+  const [remindersSaving, setRemindersSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/profile/activity-reminder-emails`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
+      .then((data: { enabled: boolean }) => {
+        if (!cancelled) setRemindersOptIn(data.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setRemindersOptIn(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleToggleReminders = async () => {
+    if (remindersOptIn === null || remindersSaving) return;
+    const next = !remindersOptIn;
+    setRemindersSaving(true);
+    setRemindersOptIn(next);
+    try {
+      const res = await fetch(`${BASE}/api/profile/activity-reminder-emails`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data: { enabled: boolean } = await res.json();
+      setRemindersOptIn(data.enabled);
+      toast({
+        title: next ? t("settings.activityRemindersOnToast") : t("settings.activityRemindersOffToast"),
+        description: next ? t("settings.activityRemindersOnDesc") : t("settings.activityRemindersOffDesc"),
+      });
+    } catch {
+      setRemindersOptIn(!next);
+      toast({ title: t("settings.couldNotSave"), description: t("settings.pleaseTryAgain"), variant: "destructive" });
+    } finally {
+      setRemindersSaving(false);
+    }
+  };
+
   const handleToggleEmailOptIn = async () => {
     if (emailOptIn === null || emailToggleSaving) return;
     const next = !emailOptIn;
@@ -342,6 +387,27 @@ export default function Settings() {
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                 style={{ transform: digestOptIn ? "translateX(16px)" : "translateX(0)" }}
+              />
+            </div>
+          </button>
+          <button
+            onClick={handleToggleReminders}
+            aria-pressed={remindersOptIn === true}
+            disabled={remindersOptIn === null || remindersSaving}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+            data-testid="toggle-activity-reminder-emails"
+          >
+            <div className="pr-3">
+              <p className="text-sm font-medium text-foreground">{t("settings.activityReminders")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.activityRemindersDesc")}</p>
+            </div>
+            <div
+              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+              style={{ background: remindersOptIn ? "var(--brand-orange-bright)" : "#d1d5db" }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: remindersOptIn ? "translateX(16px)" : "translateX(0)" }}
               />
             </div>
           </button>

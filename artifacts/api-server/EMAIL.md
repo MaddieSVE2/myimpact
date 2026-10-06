@@ -56,3 +56,13 @@ const { client, fromEmail } = await getUncachableResendClient("organisation");
 ```
 
 Use `internal` for alerts to the team; those never get the reply inbox.
+
+## Activity reminders
+
+`activity-reminders` (see SCHEDULING.md) emails members on the morning a
+regular activity is due, one email per day listing everything due. It is a
+service email, on by default: `users.email_reminders_opt_in`, switched in
+Settings or by the signed one-click link in each email (unsubscribe token
+list `activity-reminders`). Members with push set up and on get push only.
+The button opens the app's due prompt; the email never logs anything,
+because mail scanners follow links.

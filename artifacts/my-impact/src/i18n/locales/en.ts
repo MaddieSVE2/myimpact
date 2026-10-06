@@ -95,6 +95,13 @@ export const en = {
     monthlyRecapOffToast: "Monthly recap off",
     monthlyRecapOnDesc: "We'll send a personalised summary on the 1st of each month.",
     monthlyRecapOffDesc: "You won't receive monthly recap emails.",
+    activityReminders: "Regular activity reminders",
+    activityRemindersDesc:
+      "An email on the morning a regular activity is due, so you can log it with one tap. Not sent if you get reminders as notifications.",
+    activityRemindersOnToast: "Activity reminders on",
+    activityRemindersOffToast: "Activity reminders off",
+    activityRemindersOnDesc: "We'll email you on the day a regular activity is due.",
+    activityRemindersOffDesc: "You won't receive activity reminder emails.",
     couldNotUpdate: "Could not update preference",
     emailsOnToast: "Emails turned on",
     emailsOffToast: "Emails turned off",
