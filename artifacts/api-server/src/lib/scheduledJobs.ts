@@ -33,6 +33,7 @@ export const SCHEDULED_JOB_IDS = [
   "push-reminders",
   "monthly-digest",
   "database-backup",
+  "retention-cleanup",
 ] as const;
 
 export type ScheduledJobId = (typeof SCHEDULED_JOB_IDS)[number];
@@ -70,6 +71,9 @@ export const SCHEDULED_JOBS: readonly JobSpec[] = [
   },
   // Production database to App Storage; keeps 30 days.
   { id: "database-backup", args: () => [], schedule: { kind: "daily", hourUTC: 2, retryBackoff: true } },
+  // 90-day analytics retention and the 12-month email log. The API also
+  // runs the analytics part on startup.
+  { id: "retention-cleanup", args: () => [], schedule: { kind: "daily", hourUTC: 3 } },
 ];
 
 export function isScheduledJobId(value: string): value is ScheduledJobId {

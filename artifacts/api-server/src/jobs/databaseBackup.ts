@@ -73,7 +73,7 @@ async function notifyFailure(error: unknown): Promise<void> {
   const to = process.env.BACKUP_NOTIFY_EMAIL;
   if (!to) return;
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const message = error instanceof Error ? error.message : String(error);
     await client.emails.send({
       from: fromEmail,

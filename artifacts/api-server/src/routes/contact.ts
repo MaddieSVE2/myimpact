@@ -40,7 +40,7 @@ router.post("/", contactRateLimit, async (req, res) => {
   const safeMessage = message.trim();
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
 
     const { error: notifyError } = await client.emails.send({
       from: fromEmail,

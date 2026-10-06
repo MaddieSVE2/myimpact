@@ -62,7 +62,7 @@ export async function runSpendAlertCheck(): Promise<void> {
       return;
     }
 
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const topRows = report.rows.slice(0, 10);
     const topRowsHtml = topRows
       .map((r) => `<tr><td style="padding:4px 12px 4px 0;">${escapeHtml(r.userKey)}</td><td style="padding:4px 0;text-align:right;">$${r.estimatedCostUsd.toFixed(2)}</td></tr>`) 

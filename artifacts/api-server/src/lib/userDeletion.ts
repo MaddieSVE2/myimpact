@@ -21,6 +21,7 @@ import {
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { deleteAllAttachmentsForUser } from "./attachmentCleanup.js";
+import { deleteEmailLogFor } from "./emailLog.js";
 
 /**
  * Erase every row in the database that is personal to the given user, then
@@ -90,6 +91,10 @@ export async function eraseUserData(userId: string): Promise<{
   await db.delete(journalEntriesTable).where(eq(journalEntriesTable.userId, userId));
   await db.delete(impactRecordsTable).where(eq(impactRecordsTable.userId, userId));
   await db.delete(recurringTemplatesTable).where(eq(recurringTemplatesTable.userId, userId));
+
+  // Emails sent to them. The log is keyed by address, not user id.
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
+  if (user?.email) await deleteEmailLogFor(user.email);
 
   // Finally: delete the user row. Org-side rows that still reference this
   // user have their FK column set to NULL via ON DELETE SET NULL.

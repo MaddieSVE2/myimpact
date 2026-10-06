@@ -2,6 +2,7 @@ import express, { type Request, type Response } from "express";
 import { createHmac, timingSafeEqual } from "crypto";
 import { db, emailSuppressionsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { applyEmailEvent } from "../lib/emailLog.js";
 
 // Resend signs webhooks with Svix. The signature is an HMAC-SHA256 over
 // `${svix-id}.${svix-timestamp}.${rawBody}` keyed with the base64-decoded
@@ -54,6 +55,7 @@ interface ResendWebhookPayload {
   type?: string;
   created_at?: string;
   data?: {
+    email_id?: string;
     to?: string[] | string;
     bounce?: { message?: string; type?: string; subType?: string };
     failed?: { reason?: string };
@@ -115,10 +117,22 @@ export async function resendWebhookHandler(req: Request, res: Response): Promise
   }
 
   const eventType = payload.type ?? "";
+  const eventAt = payload.created_at ? new Date(payload.created_at) : new Date();
+  const eventDate = Number.isNaN(eventAt.getTime()) ? new Date() : eventAt;
+
+  // Every email event moves its email_log entry on (delivered, opened, ...).
+  const emailId = payload.data?.email_id;
+  if (eventType.startsWith("email.") && emailId) {
+    try {
+      await applyEmailEvent(emailId, eventType, eventDate);
+    } catch (err) {
+      console.error("[resend-webhook] could not update the email log:", err);
+    }
+  }
+
   const mapped = SUPPRESSION_EVENTS[eventType];
   if (!mapped) {
-    // Delivery/open/click and other events are acknowledged but ignored.
-    res.json({ ok: true, ignored: true });
+    res.json({ ok: true });
     return;
   }
 
@@ -132,8 +146,6 @@ export async function resendWebhookHandler(req: Request, res: Response): Promise
   }
 
   const reason = extractReason(eventType, payload.data);
-  const eventAt = payload.created_at ? new Date(payload.created_at) : new Date();
-  const eventDate = Number.isNaN(eventAt.getTime()) ? new Date() : eventAt;
 
   try {
     for (const email of recipients) {

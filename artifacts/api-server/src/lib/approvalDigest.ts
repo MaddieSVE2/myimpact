@@ -129,7 +129,7 @@ async function sendDigestForOrg(summary: OrgPendingSummary): Promise<boolean> {
   const days = Math.floor((Date.now() - summary.oldestCreatedAt.getTime()) / (24 * 60 * 60 * 1000));
   const plural = summary.pendingCount === 1 ? "submission is" : "submissions are";
 
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("approval-digest");
   const result = await client.emails.send({
     from: fromEmail,
     to: recipients,

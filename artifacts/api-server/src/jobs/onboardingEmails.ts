@@ -199,7 +199,7 @@ async function processStep(step: OnboardingStep, now: Date): Promise<StepResult>
 
   if (users.length === 0) return result;
 
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("onboarding");
   const appUrl = getAppUrl();
 
   for (const user of users) {

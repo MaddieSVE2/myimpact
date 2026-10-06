@@ -28,6 +28,7 @@ on:
           - push-reminders
           - monthly-digest
           - database-backup
+          - retention-cleanup
 
 permissions: {}
 

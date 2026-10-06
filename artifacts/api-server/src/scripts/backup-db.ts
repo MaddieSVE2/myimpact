@@ -244,7 +244,7 @@ interface NotifyOptions {
 }
 
 async function sendNotification(opts: NotifyOptions): Promise<void> {
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("internal");
   const { error } = await client.emails.send({
     from: fromEmail,
     to: opts.to,

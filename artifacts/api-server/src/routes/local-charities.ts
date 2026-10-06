@@ -79,7 +79,7 @@ async function emailNeedsReview(details: {
   lines: Array<[string, string]>;
 }): Promise<void> {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const rows = details.lines
       .filter(([, v]) => v)
       .map(

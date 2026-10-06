@@ -365,7 +365,7 @@ router.post("/delete-account", authenticate, async (req: AuthenticatedRequest, r
   // roll back the deletion (the user has already exercised their right).
   if (process.env.E2E_TEST_MODE !== "1") {
     try {
-      const { client, fromEmail } = await getUncachableResendClient();
+      const { client, fromEmail } = await getUncachableResendClient("account");
       await client.emails.send({
         from: fromEmail,
         to: userEmail,

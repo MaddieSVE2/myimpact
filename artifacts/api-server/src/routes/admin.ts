@@ -213,7 +213,7 @@ router.post("/org-requests/:id/approve", authenticate, async (req: Authenticated
 
   let emailWarning: string | undefined;
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("organisation");
     await client.emails.send({
       from: fromEmail,
       to: registration.contactEmail,
@@ -430,7 +430,7 @@ async function serializeAdminOrgWithStats(org: typeof organisationsTable.$inferS
 }
 
 async function sendActivationEmail(opts: { name: string; contactName: string; contactEmail: string; inviteCode: string }) {
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("organisation");
   const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
   await client.emails.send({
     from: fromEmail,
@@ -779,7 +779,7 @@ router.post("/orgs/:id/revoke", authenticate, async (req: AuthenticatedRequest, 
     const deletionDate = new Date(revokedAt.getTime() + 180 * 24 * 60 * 60 * 1000);
     const deletionDateStr = deletionDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
     try {
-      const { client, fromEmail } = await getUncachableResendClient();
+      const { client, fromEmail } = await getUncachableResendClient("organisation");
       await client.emails.send({
         from: fromEmail,
         to: org.contactEmail,

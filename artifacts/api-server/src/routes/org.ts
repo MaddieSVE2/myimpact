@@ -84,7 +84,7 @@ router.post("/register", orgRegisterRateLimit, async (req, res) => {
   }
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const { error: sendError } = await client.emails.send({
       from: fromEmail,
       to: ADMIN_NOTIFICATION_EMAILS,
@@ -370,7 +370,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
           .then(rows => rows[0] ?? null);
 
         const requesterName = requesterUser?.displayName?.trim() || userEmail;
-        const { client, fromEmail } = await getUncachableResendClient();
+        const { client, fromEmail } = await getUncachableResendClient("organisation");
         const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
         const reviewUrl = `${appUrl}/org/settings`;
 
@@ -1954,7 +1954,7 @@ router.post("/my/members/:userId/approve", authenticate, async (req: Authenticat
       try {
         const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, membership.orgId) });
         const orgName = org?.name ?? "your organisation";
-        const { client, fromEmail } = await getUncachableResendClient();
+        const { client, fromEmail } = await getUncachableResendClient("organisation");
         const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
         const { error } = await client.emails.send({
           from: fromEmail,
@@ -2025,7 +2025,7 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
       ]);
       if (!targetUser?.email) return;
       const orgName = org?.name ?? "the organisation";
-      const { client, fromEmail } = await getUncachableResendClient();
+      const { client, fromEmail } = await getUncachableResendClient("organisation");
       const { error } = await client.emails.send({
         from: fromEmail,
         to: targetUser.email,
@@ -2136,7 +2136,7 @@ async function sendOrgInviteEmail(orgId: string, email: string): Promise<{ ok: b
   const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
   const joinUrl = `${appUrl}/org?invite=${encodeURIComponent(org.inviteCode)}`;
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("organisation");
     const { error } = await client.emails.send({
       from: fromEmail,
       to: email,

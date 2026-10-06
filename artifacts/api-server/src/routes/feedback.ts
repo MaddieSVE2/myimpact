@@ -51,7 +51,7 @@ router.post("/", feedbackRateLimit, attachUserIfPresent, async (req: Authenticat
     .returning();
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const displayName = name || email || (req.user?.email) || "a user";
     const subject = pageUrl
       ? `New feedback from ${displayName} on ${pageUrl}`

@@ -27,6 +27,7 @@ running at once.
 | `push-reminders` | `src/jobs/pushReminders.ts` | Daily from 18:00. Streak at risk, and recurring activities due today. |
 | `monthly-digest` | `src/jobs/monthlyDigest.ts` | From 08:00 on the 1st, retried until the 3rd (after a failure, 6 hours apart). |
 | `database-backup` | `src/jobs/databaseBackup.ts` | Daily from 02:00 (after a failure, 6 hours apart). Keeps 30. |
+| `retention-cleanup` | `src/lib/retentionCleanup.ts`, `src/lib/emailLog.ts` | Daily from 03:00. Analytics older than 90 days, email log entries older than a year. |
 
 ## Database backups
 

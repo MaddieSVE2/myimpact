@@ -1,4 +1,6 @@
+import { randomUUID } from "crypto";
 import { Resend } from "resend";
+import { withEmailLog, type EmailCategory } from "./emailLog.js";
 
 const FROM_EMAIL = "My Impact <enquiries@socialvalueengine.com>";
 
@@ -14,7 +16,7 @@ function makeTestModeStub() {
         console.log(
           `[resend:test-mode] suppressed email to ${to} — subject: ${(payload as { subject?: string }).subject ?? ""}`,
         );
-        return { data: { id: "test-mode-suppressed" }, error: null };
+        return { data: { id: `test-mode-${randomUUID()}` }, error: null };
       },
     },
   } as unknown as Resend;
@@ -61,16 +63,20 @@ export async function removeFromResendSuppressionList(
   }
 }
 
-export async function getUncachableResendClient() {
+/**
+ * A Resend client whose sends are recorded in the email log under
+ * `category` (lib/emailLog.ts).
+ */
+export async function getUncachableResendClient(category: EmailCategory) {
   if (process.env.E2E_TEST_MODE === "1") {
-    return { client: makeTestModeStub(), fromEmail: FROM_EMAIL };
+    return { client: withEmailLog(makeTestModeStub(), category), fromEmail: FROM_EMAIL };
   }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY environment variable is not set");
   }
   return {
-    client: new Resend(apiKey),
+    client: withEmailLog(new Resend(apiKey), category),
     fromEmail: FROM_EMAIL,
   };
 }

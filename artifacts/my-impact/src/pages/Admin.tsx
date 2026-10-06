@@ -380,6 +380,12 @@ export default function Admin() {
         >
           Manage financial proxies →
         </a>
+        <a
+          href="/admin/email-log"
+          className="ml-4 text-sm font-medium text-primary hover:underline"
+        >
+          Email log →
+        </a>
       </p>
 
       {error && (

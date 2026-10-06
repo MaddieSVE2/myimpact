@@ -288,7 +288,7 @@ router.post("/request", async (req, res) => {
   }
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("sign-in");
     const { error: sendError } = await client.emails.send({
       from: fromEmail,
       to: normalizedEmail,

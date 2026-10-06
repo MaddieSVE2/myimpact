@@ -257,7 +257,7 @@ async function dispatchDigests(opts: Options) {
     return { results, monthLabel };
   }
 
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("monthly-digest");
 
   for (let i = 0; i < dispatchable.length; i += opts.batchSize) {
     const batch = dispatchable.slice(i, i + opts.batchSize);
@@ -397,7 +397,7 @@ async function maybeNotifyOperator(
     return;
   }
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = await getUncachableResendClient("internal");
     const { sent, skipped, failed } = summariseResults(results);
     const subject = err
       ? `My Impact — monthly digest FAILED (${monthLabel})`

@@ -140,7 +140,7 @@ async function maybeSendAlert(dayCount: number): Promise<void> {
     )
     .join("");
 
-  const { client, fromEmail } = await getUncachableResendClient();
+  const { client, fromEmail } = await getUncachableResendClient("internal");
   await client.emails.send({
     from: fromEmail,
     to: recipients,

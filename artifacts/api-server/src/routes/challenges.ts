@@ -721,7 +721,7 @@ router.post("/:id/send-summary", authenticate, async (req: AuthenticatedRequest,
     let sentCount = 0;
     let errorCount = 0;
     try {
-      const { client, fromEmail } = await getUncachableResendClient();
+      const { client, fromEmail } = await getUncachableResendClient("challenge");
       for (const user of users) {
         try {
           const me = leaderboard.find((l) => l.userId === user.id);
