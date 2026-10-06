@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, index } from "drizzle-orm/pg-core";
 
 /**
  * One row per email sent through Resend (artifacts/api-server/src/lib/
@@ -32,3 +32,31 @@ export const emailLogTable = pgTable(
 );
 
 export type EmailLogEntry = typeof emailLogTable.$inferSelect;
+
+/**
+ * A reply to one of our emails, received by Resend at the reply address
+ * (EMAIL_REPLY_TO) and stored by artifacts/api-server/src/lib/emailReplies.ts.
+ * Linked to the latest email we sent that person. Deleted with the email log.
+ */
+export const emailRepliesTable = pgTable(
+  "email_replies",
+  {
+    id: serial("id").primaryKey(),
+    /** Resend's id for the received email; makes webhook retries harmless. */
+    resendReceivedId: text("resend_received_id").notNull().unique(),
+    emailLogId: integer("email_log_id").references(() => emailLogTable.id, { onDelete: "set null" }),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject").notNull(),
+    /** Plain text of the reply, truncated; null until fetched from Resend. */
+    textBody: text("text_body"),
+    /** Where the reply was forwarded, or why it was not. */
+    forwardStatus: text("forward_status"),
+    receivedAt: timestamp("received_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    receivedAtIdx: index("email_replies_received_at_idx").on(t.receivedAt),
+    fromIdx: index("email_replies_from_idx").on(t.fromAddress),
+  }),
+);
+
+export type EmailReply = typeof emailRepliesTable.$inferSelect;

@@ -6,7 +6,7 @@
  * delivered, opened, bounced and so on. Logging never blocks or fails a send.
  */
 import type { Resend } from "resend";
-import { db, emailLogTable } from "@workspace/db";
+import { db, emailLogTable, emailRepliesTable } from "@workspace/db";
 import { and, desc, eq, lt, sql, type SQL } from "drizzle-orm";
 
 export type EmailCategory =
@@ -55,11 +55,30 @@ async function recordSend(
   }
 }
 
+/** The reply inbox (EMAIL_REPLY_TO), or null when replies are not collected. */
+export function replyInboxAddress(env: NodeJS.ProcessEnv = process.env): string | null {
+  const address = (env.EMAIL_REPLY_TO ?? "").trim().toLowerCase();
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(address) ? address : null;
+}
+
+/**
+ * Member emails get the reply inbox as Reply-To so replies are collected
+ * (lib/emailReplies.ts). Internal alerts and emails that already set their
+ * own Reply-To are left alone.
+ */
+export function withReplyTo(payload: SendPayload, category: EmailCategory, env: NodeJS.ProcessEnv = process.env): SendPayload {
+  const inbox = replyInboxAddress(env);
+  const own = payload as { replyTo?: unknown; reply_to?: unknown };
+  if (!inbox || category === "internal" || own.replyTo || own.reply_to) return payload;
+  return { ...payload, replyTo: inbox } as SendPayload;
+}
+
 /** Returns `client` with emails.send() recording each send in email_log. */
 export function withEmailLog(client: Resend, category: EmailCategory): Resend {
   const send = client.emails.send.bind(client.emails);
   const emails = Object.create(client.emails) as Resend["emails"];
-  emails.send = async (payload: SendPayload, options?: SendOptions) => {
+  emails.send = async (original: SendPayload, options?: SendOptions) => {
+    const payload = withReplyTo(original, category);
     let result: SendResult;
     try {
       result = await send(payload, options);
@@ -118,16 +137,29 @@ export async function applyEmailEvent(resendId: string, eventType: string, at: D
     .where(eq(emailLogTable.id, row.id));
 }
 
-/** Deletes entries older than EMAIL_LOG_RETENTION_DAYS. */
+/** Deletes log entries and replies older than EMAIL_LOG_RETENTION_DAYS. */
 export async function pruneEmailLog(now = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - EMAIL_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  await db.delete(emailRepliesTable).where(lt(emailRepliesTable.receivedAt, cutoff));
   const deleted = await db.delete(emailLogTable).where(lt(emailLogTable.sentAt, cutoff)).returning({ id: emailLogTable.id });
   return deleted.length;
 }
 
-/** Erases every entry sent to `email` (account deletion). */
+/** Erases every entry sent to `email` and every reply from it (account deletion). */
 export async function deleteEmailLogFor(email: string): Promise<void> {
-  await db.delete(emailLogTable).where(sql`${email.trim().toLowerCase()} = ANY(${emailLogTable.toAddresses})`);
+  const address = email.trim().toLowerCase();
+  await db.delete(emailRepliesTable).where(eq(emailRepliesTable.fromAddress, address));
+  // Also team emails that name them, such as forwarded replies.
+  await db
+    .delete(emailLogTable)
+    .where(
+      sql`(${address} = ANY(${emailLogTable.toAddresses}) OR ${emailLogTable.subject} ILIKE ${likePattern(address)})`,
+    );
+}
+
+/** `%value%` for ILIKE, with LIKE wildcards in `value` matched literally. */
+function likePattern(value: string): string {
+  return `%${value.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
 export interface EmailLogQuery {
@@ -146,7 +178,7 @@ export async function listEmailLog(q: EmailLogQuery) {
   if (q.status) conditions.push(eq(emailLogTable.status, q.status));
   if (q.beforeId) conditions.push(lt(emailLogTable.id, q.beforeId));
   if (q.search) {
-    const pattern = `%${q.search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const pattern = likePattern(q.search);
     conditions.push(
       sql`(${emailLogTable.subject} ILIKE ${pattern} OR array_to_string(${emailLogTable.toAddresses}, ',') ILIKE ${pattern})`,
     );

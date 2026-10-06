@@ -41,6 +41,18 @@ const STATUS_LABELS: Record<string, string> = {
 
 const PROBLEM_STATUSES = new Set(["failed", "bounced", "suppressed", "complained"]);
 
+interface EmailReply {
+  id: number;
+  fromAddress: string;
+  subject: string;
+  textBody: string | null;
+  forwardStatus: string | null;
+  receivedAt: string;
+  inReplyToSubject: string | null;
+  inReplyToCategory: string | null;
+  inReplyToSentAt: string | null;
+}
+
 const ukDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", {
     day: "2-digit",
@@ -50,9 +62,78 @@ const ukDateTime = (iso: string) =>
     minute: "2-digit",
   });
 
+function RepliesList() {
+  const [, setLocation] = useLocation();
+  const [replies, setReplies] = useState<EmailReply[]>([]);
+  const [nextBefore, setNextBefore] = useState<number | null>(null);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(before: number | null) {
+    setFetching(true);
+    try {
+      const params = before ? `?before=${before}` : "";
+      const r = await fetch(`${BASE}/api/admin/email-replies${params}`, { credentials: "include" });
+      if (r.status === 403) {
+        setLocation("/", { replace: true });
+        return;
+      }
+      if (!r.ok) throw new Error("Could not load replies");
+      const data: { replies: EmailReply[]; nextBefore: number | null } = await r.json();
+      setReplies((prev) => (before ? [...prev, ...data.replies] : data.replies));
+      setNextBefore(data.nextBefore);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load replies");
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  useEffect(() => {
+    void load(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  return (
+    <div className="space-y-3">
+      {replies.length === 0 && !fetching && <p className="text-sm text-muted-foreground">No replies yet.</p>}
+      {replies.map((reply) => (
+        <article key={reply.id} className="border rounded p-3 space-y-1">
+          <div className="flex flex-wrap justify-between gap-2 text-sm">
+            <span className="font-medium break-all">{reply.fromAddress}</span>
+            <span className="text-muted-foreground">{ukDateTime(reply.receivedAt)}</span>
+          </div>
+          <p className="text-sm">{reply.subject || "(no subject)"}</p>
+          <p className="text-xs text-muted-foreground">
+            {reply.inReplyToSubject
+              ? `In reply to "${reply.inReplyToSubject}" (${CATEGORY_LABELS[reply.inReplyToCategory ?? ""] ?? reply.inReplyToCategory}), sent ${ukDateTime(reply.inReplyToSentAt!)}`
+              : "Not matched to an email we sent"}
+            {reply.forwardStatus ? ` · ${reply.forwardStatus}` : ""}
+          </p>
+          <details>
+            <summary className="text-sm text-primary cursor-pointer">Show message</summary>
+            <pre className="mt-2 whitespace-pre-wrap break-words text-sm font-sans">
+              {reply.textBody ?? "The message text could not be fetched. It is in Resend's received emails."}
+            </pre>
+          </details>
+        </article>
+      ))}
+      {fetching && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {nextBefore && !fetching && (
+        <button type="button" onClick={() => void load(nextBefore)} className="px-3 py-1.5 rounded border text-sm">
+          Load older replies
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AdminEmailLog() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [view, setView] = useState<"sent" | "replies">("sent");
 
   const [entries, setEntries] = useState<EmailLogEntry[]>([]);
   const [nextBefore, setNextBefore] = useState<number | null>(null);
@@ -112,11 +193,27 @@ export default function AdminEmailLog() {
         </Link>
         <h1 className="text-2xl font-bold mt-2">Email log</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-          Every email My Impact has sent, newest first, with what Resend reported back.
-          Message content is not stored.
-          {retentionDays ? ` Entries are deleted after ${Math.round(retentionDays / 30)} months.` : ""}
+          Every email My Impact has sent, newest first, with what Resend reported back, and the
+          replies people sent. Sent message content is not stored.
+          {retentionDays ? ` Everything here is deleted after ${Math.round(retentionDays / 30)} months.` : ""}
         </p>
       </div>
+
+      <div className="flex gap-2" role="group" aria-label="Show">
+        {(["sent", "replies"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={view === v}
+            onClick={() => setView(v)}
+            className={`px-3 py-1.5 rounded border text-sm ${view === v ? "bg-primary text-primary-foreground" : "bg-background"}`}
+          >
+            {v === "sent" ? "Sent" : "Replies"}
+          </button>
+        ))}
+      </div>
+
+      {view === "replies" ? <RepliesList /> : (<>
 
       <form
         className="flex flex-wrap gap-2"
@@ -222,6 +319,7 @@ export default function AdminEmailLog() {
           Load older emails
         </button>
       )}
+      </>)}
     </div>
   );
 }

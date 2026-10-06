@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
 import { listEmailLog, EMAIL_LOG_RETENTION_DAYS } from "../lib/emailLog.js";
+import { listEmailReplies } from "../lib/emailReplies.js";
 
 /** Admin-only view of the email log (lib/emailLog.ts). Mounted at /admin. */
 const router: IRouter = Router();
@@ -32,6 +33,21 @@ router.get("/email-log", authenticate, async (req: AuthenticatedRequest, res) =>
     nextBefore: hasMore ? entries[entries.length - 1]!.id : null,
     retentionDays: EMAIL_LOG_RETENTION_DAYS,
   });
+});
+
+router.get("/email-replies", authenticate, async (req: AuthenticatedRequest, res) => {
+  if (!isAdminEmail(req.user!.email)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const before = Number(req.query.before);
+  const rows = await listEmailReplies({
+    beforeId: Number.isInteger(before) && before > 0 ? before : undefined,
+    limit: PAGE_SIZE + 1,
+  });
+  const hasMore = rows.length > PAGE_SIZE;
+  const replies = rows.slice(0, PAGE_SIZE);
+  res.json({ replies, nextBefore: hasMore ? replies[replies.length - 1]!.id : null });
 });
 
 export default router;
