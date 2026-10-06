@@ -44,6 +44,7 @@ import {
   computeNextDueDate,
   computeCurrentOccurrence,
 } from "../lib/recurringSchedule.js";
+import { defaultGroupFor } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
 
@@ -661,7 +662,7 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
 
     const [inserted] = await db
       .insert(impactRecordsTable)
-      .values({ userId, ...newValues })
+      .values({ userId, orgGroupId: await defaultGroupFor(userId), ...newValues })
       .returning();
     record = inserted;
 
@@ -1745,6 +1746,7 @@ interface TemplateRow {
   occurrenceDonationsGBP?: string | null;
   usualLocationJson?: unknown;
   sharingOrgId?: string | null;
+  sharingGroupId?: string | null;
   lastSkippedAt?: Date | null;
   createdAt: Date;
 }
@@ -2156,9 +2158,10 @@ router.post("/templates/:id/confirm", authenticate, async (req: AuthenticatedReq
     });
   }
   if (inserts.length > 0) {
+    const orgGroupId = await defaultGroupFor(userId);
     const created = await db
       .insert(impactRecordsTable)
-      .values(inserts)
+      .values(inserts.map((i) => ({ ...i, orgGroupId })))
       .returning({ id: impactRecordsTable.id });
     await autoVerifyRecordsForUser(userId, created.map((r) => r.id));
   }
@@ -2302,6 +2305,9 @@ router.post("/templates/:id/log-occurrence", authenticate, async (req: Authentic
     | { kind: "not_due" }
     | { kind: "duplicate"; existingId: number }
     | { kind: "logged"; record: typeof impactRecordsTable.$inferSelect; template: TemplateRow | null };
+  // The group this occurrence counts for: the remembered choice, else the
+  // member's only group (lib/orgGroups.ts).
+  const occurrenceGroupId = await defaultGroupFor(userId, row.sharingGroupId);
   const txOutcome: TxOutcome = await db.transaction(async (tx) => {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${id})`,
@@ -2345,6 +2351,7 @@ router.post("/templates/:id/log-occurrence", authenticate, async (req: Authentic
       .insert(impactRecordsTable)
       .values({
         userId,
+        orgGroupId: occurrenceGroupId,
         name: row.label,
         periodLabel: calendarMonthLabel(occurrenceDate),
         totalValue: String(result.totalValue),
@@ -2740,9 +2747,10 @@ router.post("/year-rollover", authenticate, async (req: AuthenticatedRequest, re
   }
 
   if (inserts.length > 0) {
+    const orgGroupId = await defaultGroupFor(userId);
     const created = await db
       .insert(impactRecordsTable)
-      .values(inserts)
+      .values(inserts.map((i) => ({ ...i, orgGroupId })))
       .returning({ id: impactRecordsTable.id });
     await autoVerifyRecordsForUser(userId, created.map((r) => r.id));
   }

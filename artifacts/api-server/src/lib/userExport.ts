@@ -15,6 +15,8 @@ import {
   voiceUsageTable,
   textAiUsageTable,
   orgMembersTable,
+  orgGroupMembersTable,
+  orgGroupsTable,
   organisationsTable,
   userAuditLogTable,
   pageViewsTable,
@@ -142,6 +144,18 @@ export async function buildUserExport(userId: string): Promise<Record<string, un
     .leftJoin(organisationsTable, eq(orgMembersTable.orgId, organisationsTable.id))
     .where(eq(orgMembersTable.userId, userId));
 
+  const groupMemberships = await db
+    .select({
+      groupId: orgGroupMembersTable.groupId,
+      groupName: orgGroupsTable.name,
+      orgId: orgGroupsTable.orgId,
+      role: orgGroupMembersTable.role,
+      joinedAt: orgGroupMembersTable.joinedAt,
+    })
+    .from(orgGroupMembersTable)
+    .innerJoin(orgGroupsTable, eq(orgGroupsTable.id, orgGroupMembersTable.groupId))
+    .where(eq(orgGroupMembersTable.userId, userId));
+
   const auditLog = await db
     .select()
     .from(userAuditLogTable)
@@ -222,6 +236,7 @@ export async function buildUserExport(userId: string): Promise<Record<string, un
     voiceUsage,
     textAiUsage,
     organisationMemberships: memberships,
+    organisationGroupMemberships: groupMemberships,
     pulseSurveyResponses,
     pulseSurveyOptOuts,
     pageViews,

@@ -26,7 +26,7 @@ import {
   attachmentsTable,
   type Organisation,
 } from "@workspace/db";
-import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { deleteAttachment } from "./objectStorage.js";
 
@@ -227,6 +227,9 @@ export async function purgeOrganisation(org: Organisation, opts: { dryRun?: bool
     await tx.delete(orgMigrationsTable).where(eq(orgMigrationsTable.orgId, org.id));
     await tx.delete(orgSubscriptionsTable).where(eq(orgSubscriptionsTable.orgId, org.id));
     await tx.delete(orgRegistrationsTable).where(eq(orgRegistrationsTable.inviteCode, org.inviteCode));
+    // Groups go with the organisation (ON DELETE CASCADE); clear the ids
+    // left on members' personal activities.
+    await tx.execute(sql`UPDATE impact_records SET org_group_id = NULL WHERE org_group_id IN (SELECT id FROM org_groups WHERE org_id = ${org.id})`);
     await tx.delete(organisationsTable).where(eq(organisationsTable.id, org.id));
 
     console.log(

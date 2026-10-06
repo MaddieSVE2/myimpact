@@ -145,6 +145,13 @@ vi.mock("../src/middleware/authenticate.js", () => ({
 }));
 
 // ── Stub out heavy / unrelated modules pulled in at org.ts load time ────────
+// Organisation groups have their own tests (orgGroups.test.ts); the members
+// here are in none, so activities get no group.
+vi.mock("../src/lib/orgGroups.js", () => ({
+  defaultGroupFor: vi.fn(async () => null),
+  canUseGroup: vi.fn(async () => true),
+  removeFromOrgGroups: vi.fn(async () => {}),
+}));
 vi.mock("../src/lib/resend.js", () => ({
   getUncachableResendClient: vi.fn(async () => ({
     client: { emails: { send: vi.fn(async () => ({ id: "stub" })) } },

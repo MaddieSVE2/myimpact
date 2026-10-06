@@ -22,6 +22,7 @@ import { getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
 import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, onlyThisOrgsSubmissionsCondition, orgVisibleMemberRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
+import { canUseGroup, defaultGroupFor, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -549,6 +550,7 @@ router.post("/leave", authenticate, async (req: AuthenticatedRequest, res) => {
   await db.delete(orgMembersTable).where(
     and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)),
   );
+  await removeFromOrgGroups(orgId, userId);
 
   // Consented-logging orgs: mark any active consent as withdrawn so the
   // member's activities stop counting in org aggregates.
@@ -3182,6 +3184,8 @@ interface MemberSubmitBody {
   sourceReportId?: unknown;
   /** Optional organisation-specific note captured in the share flow. */
   note?: unknown;
+  /** The group this counts for: an org_groups id, or null for no group. Defaults per lib/orgGroups.ts. */
+  groupId?: unknown;
 }
 
 // How long a member can edit or withdraw their own submission after sending
@@ -3711,10 +3715,26 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       detail: c.detail,
     }));
 
+    // The group this submission counts for: the member's choice (null for
+    // none), else the shared report's group, else their only group.
+    let submissionGroupId: string | null;
+    if (body.groupId === null) {
+      submissionGroupId = null;
+    } else if (typeof body.groupId === "string" && body.groupId) {
+      if (!(await canUseGroup(userId, body.groupId))) {
+        res.status(400).json({ error: "You can only count activities for groups you are in." });
+        return;
+      }
+      submissionGroupId = body.groupId;
+    } else {
+      submissionGroupId = await defaultGroupFor(userId, sourceReport?.orgGroupId);
+    }
+
     let inserted: typeof impactRecordsTable.$inferSelect;
     try {
       [inserted] = await db.insert(impactRecordsTable).values({
       userId,
+      orgGroupId: submissionGroupId,
       name,
       periodLabel,
       totalValue: String(calc.totalValue),
@@ -3834,6 +3854,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
       const dateLabel = parsedActivityDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
       const [personalInserted] = await db.insert(impactRecordsTable).values({
         userId,
+        orgGroupId: submissionGroupId,
         name: `${name} (personal)`,
         periodLabel: dateLabel,
         totalValue: String(personalCalc.totalValue),

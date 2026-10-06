@@ -385,6 +385,13 @@ vi.mock("../src/lib/impactPdf.js", () => ({
   parsePdfData: vi.fn(() => ({})),
 }));
 vi.mock("../src/lib/evidencePackPdf.js", () => ({ buildEvidencePackDocument: vi.fn(() => null) }));
+// Organisation groups have their own tests (orgGroups.test.ts); the members
+// here are in none, so activities get no group.
+vi.mock("../src/lib/orgGroups.js", () => ({
+  defaultGroupFor: vi.fn(async () => null),
+  canUseGroup: vi.fn(async () => true),
+  removeFromOrgGroups: vi.fn(async () => {}),
+}));
 vi.mock("../src/lib/orgMatch.js", () => ({ computeMatchesForRecords: vi.fn(() => []) }));
 vi.mock("../src/lib/webhookDispatcher.js", () => ({ enqueueOrgEvent: vi.fn(async () => undefined) }));
 vi.mock("../src/lib/analytics.js", () => ({ trackServerEvent: vi.fn(), ANALYTICS_EVENTS: [] }));

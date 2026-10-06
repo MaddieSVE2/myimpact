@@ -425,3 +425,35 @@ export type RecordVerification = typeof recordVerificationsTable.$inferSelect;
 export type OrgAuditLog = typeof orgAuditLogTable.$inferSelect;
 export type OrgMigration = typeof orgMigrationsTable.$inferSelect;
 export type OrgMigratedActivity = typeof orgMigratedActivitiesTable.$inferSelect;
+
+/**
+ * Groups (clubs, teams) inside an organisation. Managers create and archive
+ * them; members can be in several. Each activity counts for at most one
+ * group (impact_records.org_group_id), so group totals add up to the
+ * organisation total. Archived groups keep their history for reports.
+ */
+export const orgGroupsTable = pgTable("org_groups", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  orgNameUnique: unique("org_groups_org_name_unique").on(t.orgId, t.name),
+  orgIdx: index("org_groups_org_idx").on(t.orgId),
+}));
+
+export const orgGroupMembersTable = pgTable("org_group_members", {
+  groupId: text("group_id").notNull().references(() => orgGroupsTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // 'member' | 'lead'. A lead sees their group's report and members.
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (t) => ({
+  membershipUnique: unique("org_group_members_membership_unique").on(t.groupId, t.userId),
+  userIdx: index("org_group_members_user_idx").on(t.userId),
+}));
+
+export type OrgGroup = typeof orgGroupsTable.$inferSelect;
+export type OrgGroupMember = typeof orgGroupMembersTable.$inferSelect;

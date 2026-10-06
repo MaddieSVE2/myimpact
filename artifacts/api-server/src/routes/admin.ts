@@ -18,6 +18,7 @@ import {
 } from "../lib/voiceUsage.js";
 import { getMonthlyUsageReport, AI_BUDGET_ALERT_USD } from "../lib/aiUsage.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
+import { removeFromOrgGroups } from "../lib/orgGroups.js";
 import { normalizeSubmittedUrl } from "../lib/charitySubmissionVerification.js";
 
 const router: IRouter = Router();
@@ -729,6 +730,7 @@ router.delete("/orgs/:id/members/:userId", authenticate, async (req: Authenticat
   await db.delete(orgMembersTable).where(
     and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)),
   );
+  await removeFromOrgGroups(orgId, userId);
 
   const consent = await db.query.orgMemberConsentsTable.findFirst({
     where: and(eq(orgMemberConsentsTable.orgId, orgId), eq(orgMemberConsentsTable.userId, userId)),

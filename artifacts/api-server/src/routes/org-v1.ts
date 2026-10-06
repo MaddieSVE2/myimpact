@@ -11,6 +11,7 @@ import { authenticateApiKey, requireScope, createApiKeyRateLimiter, type ApiKeyR
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
+import { defaultGroupFor } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
 
@@ -298,6 +299,7 @@ router.post("/hours", requireScope("hours.write"), async (req: ApiKeyRequest, re
 
   const [inserted] = await db.insert(impactRecordsTable).values({
     userId: user.id,
+    orgGroupId: await defaultGroupFor(user.id),
     name: activityName,
     periodLabel,
     totalValue: String(totalValue),

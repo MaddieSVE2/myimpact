@@ -29,6 +29,9 @@ export const recurringTemplatesTable = pgTable("recurring_templates", {
   // Prior org-sharing preference: id of the org the user last chose to share
   // occurrences from this template with. NULL = no stored preference.
   sharingOrgId: text("sharing_org_id"),
+  // The group occurrences of this activity count for, remembered from the
+  // member's last choice. NULL = the default rules apply.
+  sharingGroupId: text("sharing_group_id"),
   // Set when the user skips the current scheduled occurrence — silences the
   // due prompt until the next occurrence without creating any records.
   lastSkippedAt: timestamp("last_skipped_at"),
@@ -47,6 +50,7 @@ export const insertRecurringTemplateSchema = createInsertSchema(recurringTemplat
   lastConfirmedAt: true,
   lastSkippedAt: true,
   lastRemindedOccurrence: true,
+  sharingGroupId: true,
 });
 export type InsertRecurringTemplate = z.infer<typeof insertRecurringTemplateSchema>;
 export type RecurringTemplate = typeof recurringTemplatesTable.$inferSelect;
@@ -133,6 +137,10 @@ export const impactRecordsTable = pgTable("impact_records", {
   // (b) personal aggregations can drop the org copy as a duplicate. NULL for
   // ad-hoc submissions and all non-submission rows.
   sourceReportId: integer("source_report_id"),
+  // The organisation group (org_groups.id) this activity counts for; at most
+  // one, so group totals add up. NULL = no group. Set automatically when the
+  // member is in exactly one group, otherwise chosen by them (lib/orgGroups.ts).
+  orgGroupId: text("org_group_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),
