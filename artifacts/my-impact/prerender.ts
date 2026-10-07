@@ -70,7 +70,11 @@ function injectPage(
     : null;
 
   // Replace the placeholder title the Vite build puts in index.html
-  let result = html.replace(/<title>[^<]*<\/title>/, `<title>${escapedTitle}</title>`);
+  let result = html
+    .replace(/<title>[^<]*<\/title>/, `<title>${escapedTitle}</title>`)
+    // A repeated prerender may read an already-generated homepage shell.
+    // Never carry its schema into a different page (or duplicate it on /).
+    .replace(/<script\s+type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, "");
 
   // Remove any pre-existing description / canonical / robots metas that Vite
   // might have copied from index.html, then inject fresh ones after <head>

@@ -2,6 +2,8 @@ import { SECTION_MAX_WIDTH, CONTENT_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { scrollContentToTop } from "@/lib/scroll-utils";
+import { PageMeta } from "@/components/PageMeta";
+import { SECURITY_META } from "@/lib/page-metadata";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -241,6 +243,7 @@ export default function Security() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, overflowX: "hidden" }}>
+      <PageMeta {...SECURITY_META} />
       <section className="mi-hero" style={{ minHeight: "auto", paddingBottom: 80, paddingTop: 80 }}>
         <div style={{ position: "relative", zIndex: 2, padding: "0 5%", maxWidth: SECTION_MAX_WIDTH, width: "100%", margin: "0 auto" }}>
           <div style={{

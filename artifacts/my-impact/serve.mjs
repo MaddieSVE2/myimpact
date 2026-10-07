@@ -101,6 +101,7 @@ function injectSlugMeta(shell, { title, description, canonical, robots }) {
     `  <meta property="og:title" content="${escHtml(title)}" />`,
     `  <meta property="og:description" content="${escHtml(description)}" />`,
     `  <meta property="og:type" content="website" />`,
+    `  <meta property="og:locale" content="en_GB" />`,
     canonical ? `  <meta property="og:url" content="${escHtml(canonical)}" />` : null,
     `  <meta property="og:image" content="${escHtml(OG_IMAGE)}" />`,
     `  <meta property="og:image:width" content="1200" />`,
@@ -116,6 +117,9 @@ function injectSlugMeta(shell, { title, description, canonical, robots }) {
 
   return shell
     .replace(/<title>[^<]*<\/title>/, `<title>${escHtml(title)}</title>`)
+    // The shell is the prerendered homepage. Its FAQ and app schema describe
+    // that page, not a public profile or an organisation share report.
+    .replace(/<script\s+type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<meta\s+name="description"[^>]*>/gi, "")
     .replace(/<meta\s+name="robots"[^>]*>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "")

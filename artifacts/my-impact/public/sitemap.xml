@@ -31,6 +31,23 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://myimpact.uk/privacy</loc>
+    <lastmod>2026-08-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://myimpact.uk/terms</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://myimpact.uk/security</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://myimpact.uk/organisations</loc>
     <lastmod>2026-09-19</lastmod>
     <changefreq>monthly</changefreq>

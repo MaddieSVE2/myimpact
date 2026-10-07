@@ -18,6 +18,9 @@ import About from "@/pages/About";
 import Methodology from "@/pages/Methodology";
 import WhatsNew from "@/pages/WhatsNew";
 import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Security from "@/pages/Security";
 import Organisations from "@/pages/Organisations";
 import OrgDemoPage from "@/pages/OrgDemoPage";
 import OrgRegister from "@/pages/OrgRegister";
@@ -34,6 +37,9 @@ const PUBLIC_PAGES: Record<string, ComponentType> = {
   "/methodology": Methodology,
   "/whats-new": WhatsNew,
   "/contact": Contact,
+  "/privacy": Privacy,
+  "/terms": Terms,
+  "/security": Security,
   "/organisations": Organisations,
   "/org/demo": OrgDemoPage,
   "/org/register": OrgRegister,

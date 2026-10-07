@@ -18,7 +18,7 @@ localPort = 18650
 run = "pnpm --filter @workspace/pitch-deck-orgs run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/pitch-deck-orgs", "run", "build" ]
+build = [ "bash", "-lc", "pnpm --filter @workspace/pitch-deck-orgs run build && pnpm --filter @workspace/scripts prerender:deck pitch-deck-orgs" ]
 publicDir = "artifacts/pitch-deck-orgs/dist/public"
 serve = "static"
 

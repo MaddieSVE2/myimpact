@@ -102,6 +102,21 @@ test("slug SSR remains complete beyond the public per-IP request limit", async (
     assert.match(removedPricingHtml, /Page not found/i);
     assert.doesNotMatch(removedPricingHtml, /Simple pricing for measurable impact/i);
 
+    const schemas = html => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map(match => JSON.parse(match[1]));
+    const homeHtml = await (await fetch(`http://127.0.0.1:${WEB_PORT}/`)).text();
+    assert.deepEqual(schemas(homeHtml).map(schema => schema["@type"]), ["WebSite", "WebApplication", "FAQPage"]);
+
+    const methodologyHtml = await (await fetch(`http://127.0.0.1:${WEB_PORT}/methodology`)).text();
+    assert.deepEqual(schemas(methodologyHtml).map(schema => schema["@type"]), ["Article"]);
+    const whatsNewHtml = await (await fetch(`http://127.0.0.1:${WEB_PORT}/whats-new`)).text();
+    assert.deepEqual(schemas(whatsNewHtml).map(schema => schema["@id"]), [
+      "https://myimpact.uk/whats-new#september-2026",
+      "https://myimpact.uk/whats-new#july-2026",
+      "https://myimpact.uk/whats-new#may-2026",
+      "https://myimpact.uk/whats-new#march-2026",
+    ]);
+
     for (let requestNumber = 0; requestNumber < 35; requestNumber += 1) {
       const [profileResponse, orgResponse] = await Promise.all([
         fetch(`http://127.0.0.1:${WEB_PORT}/profile/jane`),
@@ -120,6 +135,11 @@ test("slug SSR remains complete beyond the public per-IP request limit", async (
       assert.match(orgHtml, /98,765/);
       assert.match(profileHtml, /window\.__MY_IMPACT_SSR_DATA__/);
       assert.match(orgHtml, /window\.__MY_IMPACT_SSR_DATA__/);
+      for (const html of [profileHtml, orgHtml]) {
+        assert.equal((html.match(/property="og:locale" content="en_GB"/g) ?? []).length, 1);
+      }
+      assert.deepEqual(schemas(profileHtml), []);
+      assert.deepEqual(schemas(orgHtml), []);
     }
     assert.equal(apiRequests, 70);
   } finally {

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "prerender:deck": "tsx ./src/deck-seo.ts",
+    "test:deck-seo": "tsx --test ./src/deck-seo.test.ts",
     "generate:feature-list": "node ./generate-feature-list.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

@@ -136,18 +136,6 @@ export const METHODOLOGY_META: PageMetadata = {
   jsonLd: [
     {
       "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "@id": `${SITE_ORIGIN}/whats-new#september-2026`,
-      "url": `${SITE_ORIGIN}/whats-new#september-2026`,
-      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
-      "headline": "What's new in My Impact — September 2026",
-      "description": "Running-record, photo logging, local ideas, organisation sharing, sign-in, reliability, and accessibility improvements shipped by My Impact through September 2026.",
-      "datePublished": "2026-09",
-      "dateModified": "2026-09",
-      "publisher": PUBLISHER,
-    },
-    {
-      "@context": "https://schema.org",
       "@type": "Article",
       "@id": `${SITE_ORIGIN}/methodology#article`,
       "url": `${SITE_ORIGIN}/methodology`,
@@ -168,6 +156,18 @@ export const WHATS_NEW_META: PageMetadata = {
   robots: "index, follow",
   ogType: "article",
   jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#september-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#september-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — September 2026",
+      "description": "Running-record, photo logging, local ideas, organisation sharing, sign-in, reliability, and accessibility improvements shipped by My Impact through September 2026.",
+      "datePublished": "2026-09",
+      "dateModified": "2026-09",
+      "publisher": PUBLISHER,
+    },
     {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
@@ -211,6 +211,27 @@ export const CONTACT_META: PageMetadata = {
   title: "Contact Us — My Impact",
   description: "Get in touch with the My Impact team. We'll respond within 1–2 working days.",
   canonical: "https://myimpact.uk/contact",
+  robots: "index, follow",
+};
+
+export const PRIVACY_META: PageMetadata = {
+  title: "Privacy Policy — My Impact",
+  description: "Read how My Impact collects, uses and protects your personal information, who we share it with, and how to exercise your data rights.",
+  canonical: `${SITE_ORIGIN}/privacy`,
+  robots: "index, follow",
+};
+
+export const TERMS_META: PageMetadata = {
+  title: "Terms of Service — My Impact",
+  description: "Read the terms for using My Impact, including your responsibilities, our services and the conditions that apply to your account.",
+  canonical: `${SITE_ORIGIN}/terms`,
+  robots: "index, follow",
+};
+
+export const SECURITY_META: PageMetadata = {
+  title: "Security & Privacy — My Impact",
+  description: "Learn how My Impact protects your information through access controls, data handling practices and security measures.",
+  canonical: `${SITE_ORIGIN}/security`,
   robots: "index, follow",
 };
 
@@ -282,6 +303,9 @@ const METADATA_BY_ROUTE: Record<string, PageMetadata> = {
   "/methodology": METHODOLOGY_META,
   "/whats-new": WHATS_NEW_META,
   "/contact": CONTACT_META,
+  "/privacy": PRIVACY_META,
+  "/terms": TERMS_META,
+  "/security": SECURITY_META,
   "/organisations": ORGANISATIONS_META,
   "/org/demo": ORG_DEMO_META,
   "/org/register": ORG_REGISTER_META,
