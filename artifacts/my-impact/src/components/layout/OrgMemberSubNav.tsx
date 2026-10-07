@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { ClipboardList, Trophy, Building2, History } from "lucide-react";
+import { ClipboardList, Trophy, Building2, History, UsersRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { joinedGroups, useMyGroups } from "@/lib/org-groups";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -28,8 +29,18 @@ export function OrgMemberSubNav() {
   const inOrg = !isLoading && !!orgData?.org;
   const isOrgManager = inOrg && orgData?.org?.role === "manager";
   const isOrgMemberOnly = inOrg && !isOrgManager;
+  const { data: orgGroups } = useMyGroups(isOrgMemberOnly);
 
   if (!isOrgMemberOnly) return null;
+
+  // Which groups the member is in, or a nudge to join one when the
+  // organisation has groups. Nothing when it has none.
+  const myGroups = joinedGroups(orgGroups);
+  const groupsLabel = myGroups.length > 0
+    ? `Your groups: ${myGroups.slice(0, 2).map((g) => g.name).join(", ")}${myGroups.length > 2 ? ` +${myGroups.length - 2}` : ""}`
+    : (orgGroups?.length ?? 0) > 0 ? "Join a group" : null;
+  // Phones show the bar scrolled to the start, so the link goes first there, shortened.
+  const groupsShortLabel = myGroups.length > 0 ? `My groups (${myGroups.length})` : "Join a group";
 
   const orgName = orgData?.org?.name ?? "My Organisation";
   const pulseActive = location === "/org/member/pulse" || location.startsWith("/org/member/pulse/");
@@ -76,6 +87,18 @@ export function OrgMemberSubNav() {
             </Link>
           );
         })}
+        {groupsLabel && (
+          <Link
+            href="/org#your-groups"
+            data-testid="member-subnav-groups"
+            title={myGroups.length > 0 ? myGroups.map((g) => g.name).join(", ") : undefined}
+            className="order-first lg:order-none lg:ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 text-white/80 hover:text-white hover:bg-white/10"
+          >
+            <UsersRound className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span className="lg:hidden">{groupsShortLabel}</span>
+            <span className="hidden lg:inline">{groupsLabel}</span>
+          </Link>
+        )}
       </div>
     </div>
   );

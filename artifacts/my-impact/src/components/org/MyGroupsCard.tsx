@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,14 @@ export function MyGroupsCard() {
   const invalidate = useInvalidateGroups();
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
+  const hasGroups = Boolean(groups && groups.length > 0);
+
+  // Arriving from the "Your groups" link in the organisation bar.
+  useEffect(() => {
+    if (hasGroups && window.location.hash === "#your-groups") {
+      document.getElementById("your-groups")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [hasGroups]);
 
   if (!groups || groups.length === 0) return null;
 
@@ -36,7 +44,7 @@ export function MyGroupsCard() {
   };
 
   return (
-    <section className="bg-white border border-border rounded-2xl p-5 sm:p-6 shadow-sm" aria-labelledby="my-groups-heading" data-testid="card-my-groups">
+    <section id="your-groups" className="scroll-mt-32 bg-white border border-border rounded-2xl p-5 sm:p-6 shadow-sm" aria-labelledby="my-groups-heading" data-testid="card-my-groups">
       <div className="flex items-center gap-2 mb-1">
         <Users className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
         <h2 id="my-groups-heading" className="text-base font-display font-semibold text-foreground">Your groups</h2>
