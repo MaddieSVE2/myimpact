@@ -6,7 +6,7 @@ import {
   Sparkles, History, Lightbulb, BookOpen, Award, PlusCircle,
   Menu, X, LogIn, LogOut, MessageCircle, Smartphone, Share,
   MoreVertical, User, ChevronDown, Eye, Building2, Settings, MessageSquare, ShieldCheck, NotebookPen, Gift, Trophy,
-  Users as UsersIcon, Flag, ClipboardList, ClipboardCheck, Download,
+  Users as UsersIcon, UsersRound, Flag, ClipboardList, ClipboardCheck, Download,
 } from "lucide-react";
 import { usePendingApprovalsCount } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
@@ -259,6 +259,7 @@ export function Navbar() {
     ? [
         { href: "/org/dashboard",  label: "Dashboard",  icon: Building2 },
         { href: "/org/activities", label: "Activities", icon: UsersIcon },
+        { href: "/org/groups",     label: "Groups",     icon: UsersRound },
         { href: "/org/approvals",  label: "Approvals",  icon: ClipboardCheck, badge: pendingApprovals },
         { href: "/org/challenges", label: "Challenges", icon: Flag },
         { href: "/org/pulse",      label: "Pulse",      icon: ClipboardList },
