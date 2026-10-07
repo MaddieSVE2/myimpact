@@ -26,6 +26,7 @@ export const BREAKDOWN_DIMENSIONS = [
   "category",
   "sdg",
   "proxy",
+  "group",
 ] as const;
 export type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
 
@@ -49,6 +50,17 @@ export interface BreakdownRecord {
   outwardCode: string | null;
   locationJson: unknown;
   resultJson: unknown;
+  /** Organisation group the record counts for (org_groups.id); null = no group. */
+  orgGroupId?: string | null;
+}
+
+/** Row key and label for activities that count for no group. */
+export const NO_GROUP_KEY = "none";
+export const NO_GROUP_LABEL = "No group";
+
+export interface BreakdownOptions {
+  /** Group names by id, for the "group" dimension. */
+  groupNames?: Map<string, string>;
 }
 
 export interface BreakdownRow {
@@ -151,7 +163,11 @@ const PROXY_BY_ACTIVITY = new Map(ACTIVITIES.map(a => [a.id, a.proxy]));
  * lines at all fall into "Unknown". This guarantees every dimension's
  * column totals sum to the same organisation-wide figures as the month view.
  */
-export function computeOrgBreakdown(records: BreakdownRecord[], dimension: BreakdownDimension): BreakdownRow[] {
+export function computeOrgBreakdown(
+  records: BreakdownRecord[],
+  dimension: BreakdownDimension,
+  options: BreakdownOptions = {},
+): BreakdownRow[] {
   const groups = new Map<string, { label: string; recordIds: Set<BreakdownRecord>; members: Set<string>; hours: number; value: number }>();
 
   const add = (key: string, label: string, r: BreakdownRecord, hours: number, value: number) => {
@@ -169,6 +185,15 @@ export function computeOrgBreakdown(records: BreakdownRecord[], dimension: Break
   const lineLevel = dimension === "category" || dimension === "sdg" || dimension === "proxy";
 
   for (const r of records) {
+    if (dimension === "group") {
+      // Each record counts for one group at most, so groups add up to the
+      // organisation totals like the other record-level dimensions.
+      const id = r.orgGroupId ?? null;
+      const label = id ? (options.groupNames?.get(id) ?? UNKNOWN) : NO_GROUP_LABEL;
+      const totals = storedTotals(r);
+      add(id ?? NO_GROUP_KEY, label, r, totals.hours, totals.value);
+      continue;
+    }
     if (!lineLevel) {
       const { key, label } = recordKey(r, dimension);
       const totals = storedTotals(r);

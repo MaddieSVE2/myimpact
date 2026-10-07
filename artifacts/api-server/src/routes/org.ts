@@ -23,6 +23,7 @@ import { computeEstimateActualReconciliation, deriveReportingYear, redactLocatio
 import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, onlyThisOrgsSubmissionsCondition, orgVisibleMemberRecordsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
 import { canUseGroup, defaultGroupFor, removeFromOrgGroups } from "../lib/orgGroups.js";
+import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -1207,19 +1208,14 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
   try {
     const userId = req.user!.id;
 
-    const membership = await db.query.orgMembersTable.findFirst({
-      where: eq(orgMembersTable.userId, userId),
-    });
-
-    if (!membership) {
-      res.status(404).json({ error: "You are not a member of any organisation." });
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(userId, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
       return;
     }
-
-    if (membership.role !== "manager") {
-      res.status(403).json({ error: "Only organisation managers can download the report." });
-      return;
-    }
+    const scope = scoped.scope;
+    const membership = { orgId: scope.orgId };
 
     const org = await db.query.organisationsTable.findFirst({
       where: eq(organisationsTable.id, membership.orgId),
@@ -1263,7 +1259,7 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
     if (sharedCondition) {
       const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
       const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
-      records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
+      records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition, groupCondition(scope)));
     }
 
     let totalSocialValue = 0;
@@ -1315,7 +1311,7 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       periodLabel = `Up to ${to.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
     }
 
-    const verifiedTotals = await getVerifiedTotalsForOrg(org.id, from, to);
+    const verifiedTotals = await getVerifiedTotalsForOrg(org.id, from, to, scope);
 
     let logoDataUrl: string | null = null;
     if (org.logoKey) {
@@ -1329,8 +1325,9 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       }
     }
 
+    const reportScopeName = await scopeLabel(scope);
     const doc = buildOrgDocument({
-      orgName: org.name,
+      orgName: reportScopeName ? `${org.name}: ${reportScopeName}` : org.name,
       orgType: org.type,
       period: periodLabel,
       totalSocialValue: Math.round(totalSocialValue * 100) / 100,
@@ -1374,18 +1371,14 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
   try {
     const userId = req.user!.id;
 
-    const membership = await db.query.orgMembersTable.findFirst({
-      where: eq(orgMembersTable.userId, userId),
-    });
-    if (!membership) {
-      res.status(404).json({ error: "You are not a member of any organisation." });
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(userId, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
       return;
     }
-
-    if (membership.role !== "manager") {
-      res.status(403).json({ error: "Only organisation managers can access analytics." });
-      return;
-    }
+    const scope = scoped.scope;
+    const membership = { orgId: scope.orgId };
 
     const sharingCtx = await getOrgSharingContext(membership.orgId);
     if (sharingCtx.revoked) {
@@ -1428,7 +1421,7 @@ router.get("/stats/monthly", authenticate, async (req: AuthenticatedRequest, res
     const records = await db.select({
       entryDate: impactRecordsTable.entryDate,
       resultJson: impactRecordsTable.resultJson,
-    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
+    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition, groupCondition(scope)));
 
     const monthMap: Record<string, number> = {};
     for (const r of records) {
@@ -1654,18 +1647,14 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
   try {
     const userId = req.user!.id;
 
-    const membership = await db.query.orgMembersTable.findFirst({
-      where: eq(orgMembersTable.userId, userId),
-    });
-    if (!membership) {
-      res.status(404).json({ error: "You are not a member of any organisation." });
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(userId, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
       return;
     }
-
-    if (membership.role !== "manager") {
-      res.status(403).json({ error: "Only organisation managers can access analytics." });
-      return;
-    }
+    const scope = scoped.scope;
+    const membership = { orgId: scope.orgId };
 
     const sharingCtx = await getOrgSharingContext(membership.orgId);
     if (sharingCtx.revoked) {
@@ -1713,7 +1702,7 @@ router.get("/stats/regions", authenticate, async (req: AuthenticatedRequest, res
       userId: impactRecordsTable.userId,
       region: impactRecordsTable.region,
       resultJson: impactRecordsTable.resultJson,
-    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
+    }).from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition, groupCondition(scope)));
 
     const regionMap: Record<string, { userIds: Set<string>; hours: number; value: number }> = {};
     for (const r of records) {
@@ -1761,17 +1750,14 @@ router.get("/stats/breakdown", authenticate, async (req: AuthenticatedRequest, r
   try {
     const userId = req.user!.id;
 
-    const membership = await db.query.orgMembersTable.findFirst({
-      where: eq(orgMembersTable.userId, userId),
-    });
-    if (!membership) {
-      res.status(404).json({ error: "You are not a member of any organisation." });
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(userId, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
       return;
     }
-    if (membership.role !== "manager") {
-      res.status(403).json({ error: "Only organisation managers can access analytics." });
-      return;
-    }
+    const scope = scoped.scope;
+    const membership = { orgId: scope.orgId };
 
     const dimension = parseBreakdownDimension(req.query.dimension);
     if (!dimension) {
@@ -1824,13 +1810,17 @@ router.get("/stats/breakdown", authenticate, async (req: AuthenticatedRequest, r
       periodLabel: impactRecordsTable.periodLabel,
       totalHours: impactRecordsTable.totalHours,
       totalValue: impactRecordsTable.totalValue,
+      orgGroupId: impactRecordsTable.orgGroupId,
     }).from(impactRecordsTable).where(and(
       sharedCondition,
       gte(impactRecordsTable.entryDate, from),
       lt(impactRecordsTable.entryDate, to),
+      groupCondition(scope),
     ));
 
-    const rows = computeOrgBreakdown(records, dimension);
+    const rows = computeOrgBreakdown(records, dimension, {
+      groupNames: dimension === "group" ? await groupNamesFor(membership.orgId) : undefined,
+    });
     // Surface the shared estimate-vs-actual reconciliation excess separately —
     // it cannot be attributed to a single group (see contributionModel.ts).
     const recon = computeEstimateActualReconciliation(records);
@@ -3120,8 +3110,10 @@ router.post("/verifications/bulk-approve", authenticate, async (req: Authenticat
 
 // ─── Verified totals helper used by stats/dashboards ───────────────────────
 
-export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: Date): Promise<{ verifiedHours: number; verifiedSocialValue: number; verifiedRecordCount: number }> {
+export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: Date, scope?: ReportScope): Promise<{ verifiedHours: number; verifiedSocialValue: number; verifiedRecordCount: number }> {
   const baseConditions = [eq(recordVerificationsTable.orgId, orgId), eq(recordVerificationsTable.status, "approved")];
+  const inScope = scope ? groupCondition(scope) : undefined;
+  if (inScope) baseConditions.push(inScope);
   if (from) baseConditions.push(gte(impactRecordsTable.entryDate, from));
   if (to) baseConditions.push(lt(impactRecordsTable.entryDate, to));
 
@@ -4455,9 +4447,14 @@ router.patch("/member-submissions/:recordId", authenticate, async (req: Authenti
 //   to    — ISO-8601 date (inclusive upper bound on activity date)
 router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const membership = await requireOrgManager(req, res);
-    if (!membership) return;
-    const orgId = membership.orgId;
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(req.user!.id, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
+      return;
+    }
+    const scope = scoped.scope;
+    const orgId = scope.orgId;
 
     const fromParam = req.query.from;
     const toParam   = req.query.to;
@@ -4493,9 +4490,13 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
     const records = await db
       .select()
       .from(impactRecordsTable)
-      .where(consentedCond
-        ? sql`(${memberCond}) OR (${attestedCond}) OR (${consentedCond})`
-        : sql`(${memberCond}) OR (${attestedCond})`)
+      .where(and(
+        // Bracketed so the group condition applies to every source.
+        consentedCond
+          ? sql`((${memberCond}) OR (${attestedCond}) OR (${consentedCond}))`
+          : sql`((${memberCond}) OR (${attestedCond}))`,
+        groupCondition(scope),
+      ))
       .orderBy(desc(impactRecordsTable.createdAt));
 
     // Approved verifications for these records, so member-submitted lines can

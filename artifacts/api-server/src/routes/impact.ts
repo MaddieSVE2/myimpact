@@ -5,7 +5,7 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable, orgGroupMembersTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
@@ -45,6 +45,7 @@ import {
   computeCurrentOccurrence,
 } from "../lib/recurringSchedule.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
+import { resolveReportScope, groupCondition, type ReportScope } from "../lib/orgReportScope.js";
 
 const router: IRouter = Router();
 
@@ -1310,12 +1311,20 @@ function parseResultJson(raw: unknown): StoredResultJson {
   };
 }
 
-async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
+async function computeOrgStats(orgId: string, from?: Date, to?: Date, scope?: ReportScope) {
   const members = await db.query.orgMembersTable.findMany({
     where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
   });
 
-  const memberIds = members.map(m => m.userId);
+  // A group report counts that group's members; otherwise the organisation's.
+  let memberIds = members.map(m => m.userId);
+  if (scope?.groupIds) {
+    const inGroups = new Set(
+      (await db.select({ userId: orgGroupMembersTable.userId }).from(orgGroupMembersTable)
+        .where(inArray(orgGroupMembersTable.groupId, scope.groupIds))).map((m) => m.userId),
+    );
+    memberIds = memberIds.filter((id) => inGroups.has(id));
+  }
 
   // For consented-logging orgs, only records from consenting members within
   // each member's shared window count. Explicit orgs keep legacy behaviour.
@@ -1326,7 +1335,7 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date) {
   if (sharedCondition) {
     const fromCondition = from ? gte(impactRecordsTable.entryDate, from) : undefined;
     const toCondition = to ? lt(impactRecordsTable.entryDate, to) : undefined;
-    records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition));
+    records = await db.select().from(impactRecordsTable).where(and(sharedCondition, fromCondition, toCondition, scope ? groupCondition(scope) : undefined));
   }
 
   const totalRecords = records.length;
@@ -1391,19 +1400,14 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
   try {
     const userId = req.user!.id;
 
-    const membership = await db.query.orgMembersTable.findFirst({
-      where: eq(orgMembersTable.userId, userId),
-    });
-
-    if (!membership) {
-      res.status(404).json({ error: "You are not a member of any organisation." });
+    // Managers see the organisation or one group; leads only their groups.
+    const scoped = await resolveReportScope(userId, req.query.groupId);
+    if (!scoped.ok) {
+      res.status(scoped.status).json({ error: scoped.error });
       return;
     }
-
-    if (membership.role !== "manager") {
-      res.status(403).json({ error: "Only organisation managers can access org statistics." });
-      return;
-    }
+    const scope = scoped.scope;
+    const membership = { orgId: scope.orgId };
 
     const sharingCtx = await getOrgSharingContext(membership.orgId);
     if (sharingCtx.revoked) {
@@ -1435,8 +1439,8 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
     }
 
     const [stats, verified] = await Promise.all([
-      computeOrgStats(membership.orgId, from, to),
-      getVerifiedTotalsForOrg(membership.orgId, from, to),
+      computeOrgStats(membership.orgId, from, to, scope),
+      getVerifiedTotalsForOrg(membership.orgId, from, to, scope),
     ]);
 
     // Server-side dashboard-section gating (super-admin controlled).

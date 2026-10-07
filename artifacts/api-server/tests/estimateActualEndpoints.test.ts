@@ -392,6 +392,17 @@ vi.mock("../src/lib/orgGroups.js", () => ({
   canUseGroup: vi.fn(async () => true),
   removeFromOrgGroups: vi.fn(async () => {}),
 }));
+// Report scope has its own tests (orgReportScope.test.ts); here managers see
+// the whole organisation, as before groups existed.
+vi.mock("../src/lib/orgReportScope.js", () => ({
+  resolveReportScope: vi.fn(async (userId: string) => {
+    const m = state.orgMembers.find((x) => x.userId === userId);
+    if (!m) return { ok: false, status: 404, error: "You are not a member of any organisation." };
+    if (m.role !== "manager") return { ok: false, status: 403, error: "Only organisation managers can see reports." };
+    return { ok: true, scope: { orgId: m.orgId, isManager: true, groupIds: null, ungroupedOnly: false } };
+  }),
+  groupCondition: vi.fn(() => undefined),
+}));
 vi.mock("../src/lib/orgMatch.js", () => ({ computeMatchesForRecords: vi.fn(() => []) }));
 vi.mock("../src/lib/webhookDispatcher.js", () => ({ enqueueOrgEvent: vi.fn(async () => undefined) }));
 vi.mock("../src/lib/analytics.js", () => ({ trackServerEvent: vi.fn(), ANALYTICS_EVENTS: [] }));
