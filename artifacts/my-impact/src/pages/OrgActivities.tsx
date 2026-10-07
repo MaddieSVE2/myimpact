@@ -10,6 +10,8 @@ import {
   type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import { useMyOrg, BASE } from "@/lib/org-export";
+import { useGroupFilter, useReportAccess } from "@/lib/org-groups";
+import { GroupFilter } from "@/components/org/GroupFilter";
 import { useOrgPeriod } from "@/hooks/useOrgPeriod";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
@@ -129,6 +131,7 @@ const BREAKDOWN_DIMENSIONS: Array<{ key: string; label: string }> = [
   { key: "category", label: "Category" },
   { key: "sdg", label: "SDG" },
   { key: "proxy", label: "Proxy / outcome" },
+  { key: "group", label: "Group" },
 ];
 
 interface BreakdownRow {
@@ -146,12 +149,13 @@ interface BreakdownResponse {
   reconciliation: { hoursExcess: number; valueExcess: number };
 }
 
-function OrgBreakdownPanel({ periodOffset }: { periodOffset: number }) {
+function OrgBreakdownPanel({ periodOffset, groupId }: { periodOffset: number; groupId: string | null }) {
   const [dimension, setDimension] = useState("month");
   const { data, isLoading, isError } = useQuery<BreakdownResponse>({
-    queryKey: ["org-breakdown", dimension, periodOffset],
+    queryKey: ["org-breakdown", dimension, periodOffset, groupId],
     queryFn: async () => {
       const params = new URLSearchParams({ dimension, periodOffset: String(periodOffset) });
+      if (groupId) params.set("groupId", groupId);
       const res = await fetch(`${BASE}/api/org/stats/breakdown?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load breakdown");
       return res.json();
@@ -256,13 +260,14 @@ function OrgBreakdownPanel({ periodOffset }: { periodOffset: number }) {
   );
 }
 
-function useRealOrgActivities(enabled: boolean, from: string, to: string) {
+function useRealOrgActivities(enabled: boolean, from: string, to: string, groupId: string | null) {
   return useQuery<{ activities: RealActivity[]; members: RealMember[] }>({
-    queryKey: ["org-activities", from, to],
+    queryKey: ["org-activities", from, to, groupId],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (from) params.set("from", from);
       if (to)   params.set("to",   to);
+      if (groupId) params.set("groupId", groupId);
       const res = await fetch(`${BASE}/api/org/activities?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load activities");
       return res.json();
@@ -351,9 +356,13 @@ export default function OrgActivities() {
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [openTooltip]);
 
-  const realFeedEnabled = Boolean(orgData?.org && isManager && !isDemoOrg);
-  const { data: realData, isLoading: realLoading } = useRealOrgActivities(realFeedEnabled, from, to);
-  const { data: migratedData } = useMigratedHistory(realFeedEnabled);
+  // Managers see the organisation or one group; group leads see their groups.
+  const [groupId, setGroupId] = useGroupFilter();
+  const reportAccess = useReportAccess(Boolean(orgData?.org) && !isDemoOrg, isManager);
+  const realFeedEnabled = Boolean(orgData?.org && reportAccess.canView && !isDemoOrg);
+  const { data: realData, isLoading: realLoading } = useRealOrgActivities(realFeedEnabled, from, to, groupId);
+  // Imported history belongs to the whole organisation: managers only, unfiltered.
+  const { data: migratedData } = useMigratedHistory(realFeedEnabled && isManager && !groupId);
   const migration = migratedData?.migration ?? null;
   const migratedActivities = migratedData?.activities ?? [];
 
@@ -501,7 +510,8 @@ export default function OrgActivities() {
     </div>;
   }
 
-  if (!isManager) {
+  if (reportAccess.loading) return null;
+  if (!reportAccess.canView) {
     return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
       <p className="text-base font-semibold mb-2">Manager access required</p>
       <Link href="/org" className="text-primary text-sm underline mt-3 inline-block">Back to your organisation page</Link>
@@ -529,9 +539,12 @@ export default function OrgActivities() {
             isCurrentPeriod={isCurrentPeriod}
           />
         </div>
-        <p className="text-sm text-muted-foreground mb-5">
+        <p className="text-sm text-muted-foreground mb-3">
           The detailed log of every member action, with names visible by default. Use Anonymise to remove identifying information before sharing.
         </p>
+        <div className="mb-5">
+          <GroupFilter groups={reportAccess.groups} isManager={isManager} value={groupId} onChange={setGroupId} />
+        </div>
 
 
         <div className="bg-white border border-border rounded-xl p-5 mb-6">
@@ -751,7 +764,7 @@ export default function OrgActivities() {
           )}
         </div>
 
-        {!isDemoOrg && <OrgBreakdownPanel periodOffset={periodOffset} />}
+        {!isDemoOrg && <OrgBreakdownPanel periodOffset={periodOffset} groupId={groupId} />}
 
         {migration && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5" data-testid="migrated-history-section">

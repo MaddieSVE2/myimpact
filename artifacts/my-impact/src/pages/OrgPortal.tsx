@@ -20,6 +20,7 @@ import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/Eviden
 import { VerificationQueue } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
+import { MyGroupsCard } from "@/components/org/MyGroupsCard";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1983,6 +1984,16 @@ export default function OrgPortal() {
             <CopyJoinLinkButton orgId={joinLinkData.orgId} inviteCode={joinLinkData.inviteCode} />
           )}
           {inOrg && isManager && (
+            <Link
+              href="/org/groups"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-white text-foreground text-xs font-semibold hover:bg-muted/40 transition-colors"
+              data-testid="link-org-groups"
+            >
+              <Users className="w-3.5 h-3.5" aria-hidden="true" />
+              Groups
+            </Link>
+          )}
+          {inOrg && isManager && (
             <DownloadPdfButton from={from} to={to} />
           )}
         </div>
@@ -2030,6 +2041,8 @@ export default function OrgPortal() {
             challengeHref={memberChallengeHref}
             testIdPrefix="member"
           />
+
+          <MyGroupsCard />
 
           <MemberConsentCard orgName={orgData!.org!.name} />
         </div>

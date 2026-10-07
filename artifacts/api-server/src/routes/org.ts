@@ -4559,8 +4559,9 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
 
     for (const r of records) {
       const user = userMap.get(r.userId);
-      const memberName  = user?.displayName ?? user?.email ?? "Member";
-      const memberEmail = user?.email ?? null;
+      // Group leads see members' names, never their email addresses.
+      const memberName  = user?.displayName ?? (scope.isManager ? user?.email : null) ?? "Member";
+      const memberEmail = scope.isManager ? (user?.email ?? null) : null;
 
       const actLines = Array.isArray(r.activitiesJson)
         ? (r.activitiesJson as Array<Record<string, unknown>>)
@@ -4690,8 +4691,8 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
     // Members list (for the filter dropdown in the UI).
     const memberList = users.map(u => ({
       id: u.id,
-      name: u.displayName ?? u.email ?? "Member",
-      email: u.email,
+      name: u.displayName ?? (scope.isManager ? u.email : null) ?? "Member",
+      email: scope.isManager ? u.email : null,
     }));
 
     res.json({ activities: lines, members: memberList });

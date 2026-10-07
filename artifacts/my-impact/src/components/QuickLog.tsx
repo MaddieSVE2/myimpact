@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { NumberInput } from "@/components/ui/number-input";
 import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
 import { todayIso } from "@/components/quicklog/activity-shared";
+import { joinedGroups, setTemplateGroup, useMyGroups } from "@/lib/org-groups";
+import { GroupPicker } from "@/components/org/GroupPicker";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -79,6 +81,11 @@ interface QuickLogProps {
   showManageLink?: boolean;
 }
 
+/** The group a regular activity's occurrences count for, as the server remembers it. */
+function rememberedGroup(template: RecurringTemplate): string | null {
+  return (template as { sharingGroupId?: string | null }).sharingGroupId ?? null;
+}
+
 export function QuickLog({ onlyDue = false, variant = "default", showManageLink = false }: QuickLogProps) {
   const { isLoggedIn, user } = useAuth();
   const queryClient = useQueryClient();
@@ -93,6 +100,11 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
 
   // Which template's occurrence prompt is open, plus editable overrides.
   const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
+  // Members in several organisation groups choose which one each regular
+  // activity counts for; the choice is remembered on the activity.
+  const { data: myGroups } = useMyGroups(isLoggedIn);
+  const memberGroups = joinedGroups(myGroups);
+  const [promptGroup, setPromptGroup] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editHours, setEditHours] = useState<number>(1);
   const [editDate, setEditDate] = useState<string>(todayIso());
@@ -135,6 +147,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
     setEditHours(Math.max(1, occurrenceHours(template)));
     setEditDate((template.dueOccurrenceDate ?? new Date().toISOString()).slice(0, 10));
     setEditLocation((template.usualLocation as ActivityLocationValue | null) ?? null);
+    setPromptGroup(rememberedGroup(template));
   };
 
   /**
@@ -154,6 +167,15 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   };
 
   const doLog = async (template: RecurringTemplate, opts?: { useEdits?: boolean; force?: boolean }) => {
+    // Remember a changed group first: the server counts the new entry for it.
+    if (memberGroups.length >= 2 && promptGroup !== rememberedGroup(template)) {
+      try {
+        await setTemplateGroup(template.id, promptGroup);
+        queryClient.invalidateQueries({ queryKey: getListRecurringTemplatesQueryKey() });
+      } catch {
+        toast({ title: "The group was not saved", description: "You can choose it for this entry in your history.", variant: "destructive" });
+      }
+    }
     try {
       const result = await logMutation.mutateAsync({
         id: template.id,
@@ -339,6 +361,16 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                         </div>
                       )}
 
+                      <div className="mt-3">
+                        <GroupPicker
+                          id={`quick-log-group-${template.id}`}
+                          groups={memberGroups}
+                          value={promptGroup}
+                          onChange={setPromptGroup}
+                          label="Counts for"
+                          compact
+                        />
+                      </div>
                       {duplicateFor === template.id ? (
                         <div className="mt-3" data-testid={`quick-log-duplicate-${template.id}`}>
                           <p className="text-xs text-foreground">

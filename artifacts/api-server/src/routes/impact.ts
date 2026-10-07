@@ -1248,6 +1248,8 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
 
   const formatted = deduped.map((r) => ({
     id: String(r.id),
+    // The organisation group this activity counts for (null = none).
+    orgGroupId: r.orgGroupId ?? null,
     userId: r.userId,
     name: r.name,
     period: r.periodLabel ?? null,
@@ -1816,6 +1818,8 @@ function serializeTemplate(row: TemplateRow, now: Date) {
     occurrenceDonationsGBP: row.occurrenceDonationsGBP != null ? Number(row.occurrenceDonationsGBP) : 0,
     usualLocation: row.usualLocationJson ?? null,
     sharingOrgId: row.sharingOrgId ?? null,
+    // The group this activity's occurrences count for (lib/orgGroups.ts).
+    sharingGroupId: row.sharingGroupId ?? null,
     occurrencesPerYear: OCCURRENCES_PER_YEAR[cadence],
     anchorDate: row.anchorDate.toISOString(),
     lastConfirmedAt: row.lastConfirmedAt ? row.lastConfirmedAt.toISOString() : null,

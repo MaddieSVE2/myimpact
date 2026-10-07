@@ -17,6 +17,8 @@ import {
   buildOrgPdfBlobAsync, DEFAULT_SROI_COST_PER_VOLUNTEER, DEFAULT_PDF_SECTIONS,
   type PdfSections, type MemberDirectory,
 } from "@/lib/org-export";
+import { NO_GROUP, useGroupFilter, useReportAccess, withGroup } from "@/lib/org-groups";
+import { GroupFilter } from "@/components/org/GroupFilter";
 import { PdfPager } from "@/components/PdfPager";
 import { useLocale } from "@/i18n/context";
 
@@ -60,15 +62,22 @@ export default function OrgExport() {
 
   // Live data for real (non-demo) organisations. Fetch all activities once
   // and filter client-side so the From/To inputs behave like the demo path.
-  const isRealOrgManager = !!orgData?.org && isManager && !isDemoOrg;
+  // Managers export the organisation or one group; group leads their groups.
+  const [groupId, setGroupId] = useGroupFilter();
+  const reportAccess = useReportAccess(!!orgData?.org && !isDemoOrg, isManager);
+  const groupName = groupId === NO_GROUP
+    ? "Not in a group"
+    : reportAccess.groups.find((g) => g.id === groupId)?.name
+      ?? (!isManager && reportAccess.groups.length === 1 ? reportAccess.groups[0]!.name : null);
+  const isRealOrgManager = !!orgData?.org && reportAccess.canView && !isDemoOrg;
   const {
     data: liveData,
     isLoading: liveLoading,
     isError: liveError,
   } = useQuery<{ activities: LiveOrgActivity[]; members: Array<{ id: string; name: string; email: string | null }> }>({
-    queryKey: ["org-activities-all", orgData?.org?.id],
+    queryKey: ["org-activities-all", orgData?.org?.id, groupId],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/activities`, { credentials: "include" });
+      const res = await fetch(withGroup(`${BASE}/api/org/activities`, groupId), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load activities");
       return res.json();
     },
@@ -77,10 +86,10 @@ export default function OrgExport() {
 
   // Real member count for the SROI assumptions (mirrors the dashboard).
   const { data: liveStats } = useQuery({
-    queryKey: ["org-stats", orgData?.org?.id, periodOffset, summaryYearStart],
+    queryKey: ["org-stats", orgData?.org?.id, periodOffset, summaryYearStart, groupId],
     queryFn: async () => {
       const res = await fetch(
-        `${BASE}/api/impact/org-stats?periodOffset=${periodOffset}`,
+        withGroup(`${BASE}/api/impact/org-stats?periodOffset=${periodOffset}`, groupId),
         { credentials: "include" },
       );
       if (!res.ok) throw new Error("Failed to load org stats");
@@ -144,8 +153,9 @@ export default function OrgExport() {
   // NOTE: no early returns above or between hooks. All conditional loading /
   // error states are rendered after every hook has run, so the hook order
   // stays stable while queries resolve.
-  const orgName = orgData?.org?.name ?? "";
-  const slug = orgName.replace(/\s+/g, "-").toLowerCase();
+  const orgName = groupName ? `${orgData?.org?.name ?? ""}: ${groupName}` : (orgData?.org?.name ?? "");
+  // Letters, digits and hyphens only: a group report is named "Org: Group".
+  const slug = orgName.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
 
   function rangeSummary(): string {
     const bits: string[] = [];
@@ -351,7 +361,8 @@ export default function OrgExport() {
       <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
     </div>;
   }
-  if (!isManager) {
+  if (reportAccess.loading) return null;
+  if (!reportAccess.canView) {
     return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
       <p className="text-base font-semibold mb-2">Manager access required</p>
     </div>;
@@ -383,9 +394,12 @@ export default function OrgExport() {
           isCurrentPeriod={isCurrentPeriod}
         />
       </div>
-      <p className="text-sm text-muted-foreground mb-5">
+      <p className="text-sm text-muted-foreground mb-3">
         Download a polished impact report (PDF) or raw activity data (CSV) for your funders, board or comms team.
       </p>
+      <div className="mb-5">
+        <GroupFilter groups={reportAccess.groups} isManager={isManager} value={groupId} onChange={setGroupId} />
+      </div>
 
 
       {/* Options */}

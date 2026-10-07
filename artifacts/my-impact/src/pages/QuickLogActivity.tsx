@@ -40,6 +40,8 @@ import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/
 import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
 import { ShareWithOrgPrompt } from "@/components/ShareWithOrgPrompt";
 import { useMyOrg } from "@/lib/org-export";
+import { joinedGroups, setRecordGroup, useMyGroups } from "@/lib/org-groups";
+import { GroupPicker } from "@/components/org/GroupPicker";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import type { ImpactResult } from "@workspace/api-client-react";
 
@@ -318,6 +320,12 @@ export default function QuickLogActivity() {
   // changing under our feet must not alter the confirmation branching.
   const [inlineShareOffered, setInlineShareOffered] = useState(false);
 
+  // Members in several of their organisation's groups choose which one this
+  // activity counts for; with one group (or none) the server fills it in.
+  const { data: myGroups } = useMyGroups(myOrg?.membershipStatus === "active");
+  const memberGroups = joinedGroups(myGroups);
+  const [groupChoice, setGroupChoice] = useState<string | null>(null);
+
   // Reset quantity when picking a different activity, unless a "Log again"
   // pre-fill just set the usual amount.
   useEffect(() => {
@@ -536,6 +544,20 @@ export default function QuickLogActivity() {
       const numericId = saved?.id != null ? Number(saved.id) : NaN;
       setSavedRecordId(Number.isFinite(numericId) ? numericId : null);
       setSavedResult(calcResult);
+
+      // Set the chosen group before any share below: the organisation copy
+      // takes its group from this record.
+      if (memberGroups.length >= 2 && Number.isFinite(numericId)) {
+        try {
+          await setRecordGroup(numericId, groupChoice);
+        } catch {
+          toast({
+            title: "Saved, but the group was not set",
+            description: "You can choose the group for this activity in your history.",
+            variant: "destructive",
+          });
+        }
+      }
 
       // Inline org share: the member opted in on the logging screen, so
       // submit the saved record to the org now. A share failure never blocks
@@ -986,6 +1008,12 @@ export default function QuickLogActivity() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {memberGroups.length >= 2 && (
+        <div className="mb-5 bg-white border border-border rounded-xl p-4" data-testid="quick-log-group">
+          <GroupPicker id="quick-log-group" groups={memberGroups} value={groupChoice} onChange={setGroupChoice} />
         </div>
       )}
 

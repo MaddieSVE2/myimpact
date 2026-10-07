@@ -21,6 +21,8 @@ import {
   type SdgBreakdownPoint, type ActivityCategory,
 } from "@/lib/org-demo-mock";
 import { useMyOrg, hexToHslVar, DEFAULT_SROI_COST_PER_VOLUNTEER, BASE } from "@/lib/org-export";
+import { NO_GROUP, useGroupFilter, useReportAccess, withGroup } from "@/lib/org-groups";
+import { GroupFilter } from "@/components/org/GroupFilter";
 import {
   detectPeriodType, activityInPeriod,
   SUMMARY_PERIOD_PRESETS, type SummaryPeriodType,
@@ -65,6 +67,14 @@ export default function OrgDashboard() {
   const isManager = orgData?.org?.role === "manager";
   const isDemoOrg = orgData?.org?.id === DEMO_ORG_ID;
   const t = useT();
+
+  // Managers see the organisation or one group; group leads see their groups.
+  const [groupId, setGroupId] = useGroupFilter();
+  const reportAccess = useReportAccess(!!orgData?.org && !isDemoOrg, isManager);
+  const groupLabel = groupId === NO_GROUP
+    ? "Not in a group"
+    : reportAccess.groups.find((g) => g.id === groupId)?.name
+      ?? (!isManager && reportAccess.groups.length === 1 ? reportAccess.groups[0]!.name : null);
 
   // ── Period setting: persisted in localStorage for demo org, from API for real orgs ──
   const [summaryYearStart, setSummaryYearStart] = useState<string>(() => {
@@ -133,10 +143,10 @@ export default function OrgDashboard() {
   // The server reads summaryYearStart from the DB and uses periodOffset to
   // compute the canonical period window, filtering by entryDate.
   const { data: realStats } = useQuery({
-    queryKey: ["org-stats", periodOffset, summaryYearStart],
+    queryKey: ["org-stats", periodOffset, summaryYearStart, groupId],
     queryFn: async () => {
       const res = await fetch(
-        `${BASE}/api/impact/org-stats?periodOffset=${periodOffset}`,
+        withGroup(`${BASE}/api/impact/org-stats?periodOffset=${periodOffset}`, groupId),
         { credentials: "include" },
       );
       if (!res.ok) throw new Error("Failed to load org stats");
@@ -147,20 +157,20 @@ export default function OrgDashboard() {
         valueByCategory: Array<{ category: string; value: number }>;
       }>;
     },
-    enabled: !isDemoOrg && !!orgData?.org,
+    enabled: !isDemoOrg && !!orgData?.org && reportAccess.canView,
   });
 
   const { data: realMonthly } = useQuery({
-    queryKey: ["org-monthly", periodOffset, summaryYearStart],
+    queryKey: ["org-monthly", periodOffset, summaryYearStart, groupId],
     queryFn: async () => {
       const res = await fetch(
-        `${BASE}/api/org/stats/monthly?periodOffset=${periodOffset}`,
+        withGroup(`${BASE}/api/org/stats/monthly?periodOffset=${periodOffset}`, groupId),
         { credentials: "include" },
       );
       if (!res.ok) throw new Error("Failed to load monthly stats");
       return res.json() as Promise<{ monthly: Array<{ month: string; value: number }> }>;
     },
-    enabled: !isDemoOrg && !!orgData?.org,
+    enabled: !isDemoOrg && !!orgData?.org && reportAccess.canView,
   });
 
   // ── Unified stats (demo or real) ──
@@ -213,16 +223,17 @@ export default function OrgDashboard() {
   const { data: skillsActivitiesData, isLoading: skillsActivitiesLoading } = useQuery<{
     activities: Array<{ id: string; memberId: string; category: string; activity: string; hours: number; socialValueGBP: number }>;
   }>({
-    queryKey: ["org-activities", periodFrom, periodTo],
+    queryKey: ["org-activities", periodFrom, periodTo, groupId],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (periodFrom) params.set("from", periodFrom);
       if (periodTo) params.set("to", periodTo);
+      if (groupId) params.set("groupId", groupId);
       const res = await fetch(`${BASE}/api/org/activities?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load activities");
       return res.json();
     },
-    enabled: showSkills && !!orgData?.org && isManager,
+    enabled: showSkills && !!orgData?.org && reportAccess.canView,
   });
 
   const timelineData = useMemo<MonthlyDataPoint[]>(() => {
@@ -265,10 +276,11 @@ export default function OrgDashboard() {
       <Link href="/org" className="text-primary underline">Go to the organisation portal</Link>
     </div>;
   }
-  if (!isManager) {
+  if (reportAccess.loading) return null;
+  if (!reportAccess.canView) {
     return <div className="max-w-2xl mx-auto px-4 py-20 text-center">
       <p className="text-base font-semibold mb-2">Manager access required</p>
-      <p className="text-sm text-muted-foreground">The organisation dashboard is only available to your organisation manager.</p>
+      <p className="text-sm text-muted-foreground">The organisation dashboard is only available to your organisation managers and group leads.</p>
       <Link href="/org" className="text-primary text-sm underline mt-3 inline-block">Back to your organisation page</Link>
     </div>;
   }
@@ -376,10 +388,10 @@ export default function OrgDashboard() {
               {isDemoOrg && <span className="text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Demo data</span>}
             </div>
             <p className="text-sm text-muted-foreground">
-              Impact summary · {periodLabel}
+              Impact summary{groupLabel ? ` · ${groupLabel}` : ""} · {periodLabel}
             </p>
             <p className="text-[12px] text-muted-foreground inline-flex items-center gap-1.5 mt-1">
-              <EyeOff className="w-3 h-3" /> Anonymised, no member is named on this page. Member-level data lives in <Link href="/org/activities" className="underline">Activities</Link>.
+              <EyeOff className="w-3 h-3" /> Anonymised, no member is named on this page. Member-level data lives in <Link href={withGroup("/org/activities", groupId)} className="underline">Activities</Link>.
             </p>
           </div>
         </div>
@@ -391,8 +403,9 @@ export default function OrgDashboard() {
         />
       </div>
 
-      {/* Period settings toggle row */}
-      <div className="flex items-center mb-3">
+      {/* Period settings toggle row, and the group filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        {isManager && (
         <button
           type="button"
           onClick={() => setShowPeriodSettings(s => !s)}
@@ -404,11 +417,13 @@ export default function OrgDashboard() {
           Summary period
           <Settings className="w-3 h-3 opacity-60" />
         </button>
+        )}
+        <GroupFilter groups={reportAccess.groups} isManager={isManager} value={groupId} onChange={setGroupId} />
       </div>
 
       {/* Collapsible period settings panel */}
       <AnimatePresence>
-        {showPeriodSettings && (
+        {isManager && showPeriodSettings && (
           <motion.div
             key="period-settings"
             initial={{ opacity: 0, height: 0 }}
@@ -789,17 +804,17 @@ export default function OrgDashboard() {
 
       {/* Cross-links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <Link href="/org/activities" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-activities">
+        <Link href={withGroup("/org/activities", groupId)} className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-activities">
           <Users className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkActivitiesTitle")}</p>
           <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkActivitiesSub")}</p>
         </Link>
-        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-pdf">
+        <Link href={withGroup("/org/export", groupId)} className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-pdf">
           <FileText className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkPdfTitle")}</p>
           <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkPdfSub")}</p>
         </Link>
-        <Link href="/org/export" className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-csv">
+        <Link href={withGroup("/org/export", groupId)} className="bg-white border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all" data-testid="card-link-export-csv">
           <FileSpreadsheet className="w-4 h-4 text-primary mb-1.5" />
           <p className="text-sm font-semibold text-foreground">{t("orgDashboard.crossLinkCsvTitle")}</p>
           <p className="text-[13px] text-muted-foreground mt-0.5">{t("orgDashboard.crossLinkCsvSub")}</p>

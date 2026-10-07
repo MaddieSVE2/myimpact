@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import { useMyOrg } from "@/lib/org-export";
+import { joinedGroups, useMyGroups } from "@/lib/org-groups";
+import { RecordGroupControl } from "@/components/org/RecordGroupControl";
 import { QuickLog } from "@/components/QuickLog";
 import StreakChip from "@/components/StreakChip";
 import { TagEditor } from "@/components/TagEditor";
@@ -341,6 +343,9 @@ export default function History() {
   // Deferred report sharing: members (not managers) of an active
   // explicit-submission org can launch Review & share from History.
   const { data: shareOrgData } = useMyOrg();
+  // Members choose which of their organisation's groups each activity counts for.
+  const { data: myGroups } = useMyGroups(shareOrgData?.org?.membershipStatus === "active");
+  const memberGroups = joinedGroups(myGroups);
   // No membershipStatus gate: explicit-submission orgs accept submissions
   // from pending members too (matching /org/submit), and the server
   // re-checks eligibility on the share endpoint regardless.
@@ -1304,6 +1309,11 @@ export default function History() {
                                 }
                                 return null;
                               })()}
+                              <RecordGroupControl
+                                recordId={record.id}
+                                groupId={(record as { orgGroupId?: string | null }).orgGroupId ?? null}
+                                groups={memberGroups}
+                              />
                               {(() => {
                                 const sw = (record as { sharedWith?: { orgId: string; orgName: string; twinId: number } | null }).sharedWith;
                                 if (!sw) return null;

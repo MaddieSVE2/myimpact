@@ -86,6 +86,7 @@ const OrgMemberPulse = lazyWithRetry(() => import("@/pages/OrgMemberPulse"));
 const OrgMemberChallenges = lazyWithRetry(() => import("@/pages/OrgMemberChallenges"));
 const OrgExport = lazyWithRetry(() => import("@/pages/OrgExport"));
 const OrgSettings = lazyWithRetry(() => import("@/pages/OrgSettings"));
+const OrgGroups = lazyWithRetry(() => import("@/pages/OrgGroups"));
 const OrgRegister = lazyWithRetry(() => import("@/pages/OrgRegister"));
 const OrgTypeExplicitSubmission = lazyWithRetry(() => import("@/pages/OrgTypeExplicitSubmission"));
 const OrgTypeConsentedLogging = lazyWithRetry(() => import("@/pages/OrgTypeConsentedLogging"));
@@ -457,6 +458,9 @@ function AppRouter() {
               </Route>
               <Route path="/org/settings">
                 {() => <PrivateRoute component={OrgSettings} />}
+              </Route>
+              <Route path="/org/groups">
+                {() => <PrivateRoute component={OrgGroups} />}
               </Route>
               <Route path="/org">
                 {() => <OrgGuestRoute />}
