@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "fs";
+import { glob } from "node:fs/promises";
 import path from "path";
-import glob from "fast-glob";
 import chokidar from "chokidar";
 import type { FSWatcher } from "chokidar";
 import type { Plugin } from "vite";
@@ -40,10 +40,19 @@ export function mockupPreviewPlugin(): Plugin {
   }
 
   async function discoverComponents(): Promise<Array<DiscoveredComponent>> {
-    const files = await glob(`${MOCKUPS_DIR}/**/*.tsx`, {
+    const files: string[] = [];
+    for await (const file of glob(`${MOCKUPS_DIR}/**/*.tsx`, {
       cwd: root,
-      ignore: ["**/_*/**", "**/_*.tsx"],
-    });
+      // Match fast-glob's previous underscore exclusions and default dot-file
+      // behaviour without pulling in micromatch/braces.
+      exclude: (file) =>
+        file.split(path.sep).some((segment) =>
+          segment.startsWith("_") || segment.startsWith("."),
+        ),
+    })) {
+      files.push(file.split(path.sep).join("/"));
+    }
+    files.sort();
 
     return files.map((f) => ({
       globKey: "./" + f.slice("src/".length),

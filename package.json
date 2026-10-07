@@ -19,7 +19,8 @@
     "test:e2e:headed": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:headed",
     "test:e2e:ui": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:ui",
     "test:e2e:sso": "pnpm --filter @workspace/sso-e2e test",
-    "test:sw-e2e": "pnpm --filter @workspace/sw-e2e test"
+    "test:sw-e2e": "pnpm --filter @workspace/sw-e2e test",
+    "test:dependencies": "node --test scripts/dependency-compatibility.test.cjs && pnpm --filter @workspace/mockup-sandbox test"
   },
   "private": true,
   "devDependencies": {
@@ -30,13 +31,13 @@
   "pnpm": {
     "overrides": {
       "tar": ">=7.5.21",
-      "dompurify": "^3.4.13",
+      "dompurify": "^3.4.16",
       "form-data@2": "^2.5.6",
       "form-data@4": "^4.0.6",
       "vite@7": "^7.3.5",
-      "markdown-it": "^14.2.0",
+      "markdown-it": "^14.3.1",
       "linkify-it": "^5.0.1",
-      "js-yaml@3": "^3.15.2",
+      "js-yaml@3": "^4.3.2",
       "js-yaml@4": "^4.3.2",
       "@opentelemetry/core@2": "^2.8.0",
       "@babel/core@7": "^7.29.6",
@@ -53,7 +54,7 @@
       "postcss": "^8.5.28",
       "nanoid@3": "^3.3.18",
       "nanoid@5": "^5.1.16",
-      "ip-address": "^10.3.1",
+      "ip-address": "^10.7.3",
       "tmp": "^0.2.6",
       "ws": "^8.20.1",
       "qs": "^6.16.0",
@@ -66,7 +67,15 @@
       "proxy-agent": "^8.0.2",
       "body-parser@1": ">=1.20.6",
       "body-parser@2": ">=2.3.0",
-      "express>body-parser": ">=2.3.0"
+      "express>body-parser": ">=2.3.0",
+      "proxy-addr": "^2.0.8",
+      "source-map-js": "^1.2.2",
+      "basic-ftp": "^6.2.2",
+      "compression": "^1.8.2",
+      "postcss-selector-parser": "^7.1.6"
+    },
+    "patchedDependencies": {
+      "@lhci/utils@0.15.1": "patches/@lhci__utils@0.15.1.patch"
     }
   },
   "dependencies": {
