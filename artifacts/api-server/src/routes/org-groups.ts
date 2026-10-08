@@ -182,6 +182,28 @@ router.patch("/groups/:groupId", authenticate, async (req: AuthenticatedRequest,
   }
 });
 
+// Every active group membership in the organisation, for the Members list
+// in Settings (managers only).
+router.get("/groups/memberships", authenticate, async (req: AuthenticatedRequest, res) => {
+  const me = await activeMembership(req.user!.id);
+  if (me?.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can see group memberships." });
+    return;
+  }
+  const memberships = await db
+    .select({
+      userId: orgGroupMembersTable.userId,
+      groupId: orgGroupsTable.id,
+      groupName: orgGroupsTable.name,
+      role: orgGroupMembersTable.role,
+    })
+    .from(orgGroupMembersTable)
+    .innerJoin(orgGroupsTable, eq(orgGroupsTable.id, orgGroupMembersTable.groupId))
+    .where(and(eq(orgGroupsTable.orgId, me.orgId), isNull(orgGroupsTable.archivedAt)))
+    .orderBy(asc(orgGroupsTable.name));
+  res.json({ memberships });
+});
+
 router.get("/groups/:groupId/members", authenticate, async (req: AuthenticatedRequest, res) => {
   const me = await activeMembership(req.user!.id);
   const group = me ? await groupInOrg(String(req.params.groupId), me.orgId) : null;

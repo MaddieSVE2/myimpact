@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck } from "lucide-react";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck, UsersRound } from "lucide-react";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
+import { GroupsManager } from "@/components/org/GroupsManager";
+import { useGroupMemberships, type GroupMembership } from "@/lib/org-groups";
 import CopyField from "@/components/CopyField";
 import {
   DEMO_ORG_ID, DEMO_ORG_NAME, DEMO_ORG_TYPE, DEMO_INVITE_CODE,
@@ -45,10 +47,11 @@ function useMyOrg() {
   });
 }
 
-type TabKey = "members" | "approvals" | "ai" | "sso" | "developer" | "share" | "profile";
+type TabKey = "members" | "groups" | "approvals" | "ai" | "sso" | "developer" | "share" | "profile";
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: "members",   label: "Members",     icon: Users },
+  { key: "groups",    label: "Groups",      icon: UsersRound },
   { key: "approvals", label: "Approvals",   icon: ClipboardCheck },
   { key: "ai",        label: "AI features", icon: Sparkles },
   { key: "sso",       label: "SSO",         icon: ShieldCheck },
@@ -174,7 +177,13 @@ function AllowedDomainField({ initialDomain, isDemoOrg }: { initialDomain: strin
   );
 }
 
+/** "Football club (lead), Allotment group" */
+function groupLabel(groups: GroupMembership[] | undefined): string {
+  return (groups ?? []).map((g) => (g.role === "lead" ? `${g.groupName} (lead)` : g.groupName)).join(", ");
+}
+
 function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; orgId: string; allowedDomain: string | null }) {
+  const { data: groupsByUser } = useGroupMemberships(!isDemoOrg);
   const [removed, setRemoved] = useState<string[]>(() => isDemoOrg ? getRemovedMemberIds(orgId) : []);
   const [inviteCode, setInviteCode] = useState<string>(() => isDemoOrg ? getOrgInviteCode(orgId, DEMO_INVITE_CODE) : "");
   const [inviteLoading, setInviteLoading] = useState(!isDemoOrg);
@@ -669,6 +678,9 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-semibold text-foreground truncate">{m.name}</p>
                       <p className="text-[12px] text-muted-foreground truncate">{m.email}</p>
+                      {groupLabel(groupsByUser?.get(m.userId)) && (
+                        <p className="text-[12px] text-muted-foreground truncate">Groups: {groupLabel(groupsByUser?.get(m.userId))}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${m.role === "manager" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {m.role}
@@ -702,6 +714,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[140px]">Name</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[180px]">Email</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[170px]">Groups</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
@@ -718,6 +731,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                             {m.role}
                           </span>
                         </td>
+                        <td className="py-2 pr-3 text-muted-foreground">—</td>
                         <td className="py-2 pr-3 text-muted-foreground">{m.postcode}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
@@ -745,6 +759,9 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                             {m.role}
                           </span>
                         </td>
+                        <td className="py-2 pr-3 text-muted-foreground truncate" title={groupLabel(groupsByUser?.get(m.userId))}>
+                          {groupLabel(groupsByUser?.get(m.userId)) || "None"}
+                        </td>
                         <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
@@ -762,7 +779,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                     ))
                 }
                 {(isDemoOrg ? pagedDemoMembers : liveMembers).length === 0 && (
-                  <tr><td colSpan={6} className="py-6 text-center text-xs text-muted-foreground">No members yet.</td></tr>
+                  <tr><td colSpan={7} className="py-6 text-center text-xs text-muted-foreground">No members yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1746,9 +1763,24 @@ function ColourField({ label, value, onChange, testId }: { label: string; value:
   );
 }
 
+/** The tab to open: ?tab=<key> (e.g. links to the Groups tab), else Members. */
+function initialTab(): TabKey {
+  if (typeof window === "undefined") return "members";
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return TABS.some((t) => t.key === tab) ? (tab as TabKey) : "members";
+}
+
 export default function OrgSettings() {
   const { data: orgData, isLoading, isError } = useMyOrg();
-  const [active, setActive] = useState<TabKey>("members");
+  const [active, setActiveState] = useState<TabKey>(initialTab);
+  // Keep the open tab in the address so it can be linked and survives a reload.
+  const setActive = (tab: TabKey) => {
+    setActiveState(tab);
+    const url = new URL(window.location.href);
+    if (tab === "members") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", tab);
+    window.history.replaceState(window.history.state, "", url);
+  };
 
   if (isLoading) {
     return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
@@ -1819,6 +1851,7 @@ export default function OrgSettings() {
 
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} allowedDomain={orgData.org.allowedDomain ?? null} />}
+        {active === "groups"    && <GroupsManager />}
         {active === "approvals" && <ApprovalsTab initialAutoVerify={orgData.org.autoVerifyActivities ?? false} initialEvidencePolicy={orgData.org.evidencePolicy ?? "optional"} isDemoOrg={isDemoOrg} />}
         {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} initialLeaderboardEnabled={orgData.org.challengeLeaderboardEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}

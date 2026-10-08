@@ -1985,7 +1985,7 @@ export default function OrgPortal() {
           )}
           {inOrg && isManager && (
             <Link
-              href="/org/groups"
+              href="/org/settings?tab=groups"
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-white text-foreground text-xs font-semibold hover:bg-muted/40 transition-colors"
               data-testid="link-org-groups"
             >

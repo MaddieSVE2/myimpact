@@ -101,12 +101,34 @@ export const groupsApi = {
     send(`/org/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, "DELETE"),
 };
 
+export interface GroupMembership {
+  userId: string;
+  groupId: string;
+  groupName: string;
+  role: "member" | "lead";
+}
+
+/** Every member's active groups, by user id (managers only; for the Members list). */
+export function useGroupMemberships(enabled = true) {
+  return useQuery<Map<string, GroupMembership[]>>({
+    queryKey: ["org-group-memberships"],
+    enabled,
+    queryFn: async () => {
+      const { memberships } = (await send("/org/groups/memberships", "GET")) as { memberships: GroupMembership[] };
+      const byUser = new Map<string, GroupMembership[]>();
+      for (const m of memberships) byUser.set(m.userId, [...(byUser.get(m.userId) ?? []), m]);
+      return byUser;
+    },
+  });
+}
+
 /** Refreshes everything that depends on group membership or the group filter. */
 export function useInvalidateGroups() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: ["org-my-groups"] });
     void queryClient.invalidateQueries({ queryKey: ["org-report-groups"] });
+    void queryClient.invalidateQueries({ queryKey: ["org-group-memberships"] });
   };
 }
 
