@@ -8,9 +8,9 @@ import { computeBadges, getNextMilestone } from "@/lib/badges";
 import { motion } from "framer-motion";
 import {
   Trophy, TrendingUp, HandCoins, UserPlus, Save,
-  ArrowRight, Info, Download, Share2, Twitter, Linkedin, Check,
+  ArrowRight, Info, Check,
   BookOpen, Award, ChevronDown, ChevronUp, FlaskConical, CalendarDays,
-  MessageSquare, FileText, Mountain
+  MessageSquare, Mountain
 } from "lucide-react";
 import CopyField from "@/components/CopyField";
 import { useSidekick } from "@/lib/sidekick-context";
@@ -47,26 +47,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsDesktop } from "@/hooks/use-desktop";
 
 import { useAuth } from "@/lib/auth-context";
-import { paintResultsShareCard } from "@/lib/share-cards";
+import { ReportActions } from "@/components/results/ReportActions";
+import { useYearResult, yearReportCopy } from "@/lib/year-report";
 
-const RESULTS_BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const RESULTS_LOGO_SRC = `${RESULTS_BASE_URL}/images/myimpact.png`;
-
-async function loadLogoDataUrl(src: string): Promise<string | undefined> {
-  try {
-    const res = await fetch(src);
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return undefined;
-  }
-}
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -923,8 +906,6 @@ export default function Results() {
   const { isLoggedIn, user } = useAuth();
   const { open: sidekickOpen, setOpen: openSidekick } = useSidekick();
   const isDesktop = useIsDesktop();
-  const [exporting, setExporting] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
   // Whether the completed save was an in-place edit of an existing record.
   // editRecordId itself is cleared right after a successful edit-save (so a
@@ -937,7 +918,6 @@ export default function Results() {
   // year — it survives editRecordId being cleared post-save, so a completed
   // edit of a cross-year report keeps showing the year the record lives in.
   const [savedEntryDate, setSavedEntryDate] = useState<string | null>(null);
-  const [shareOpen, setShareOpen] = useState(false);
   const [conflictInfo, setConflictInfo] = useState<{
     existingRecordId: string;
     period: string;
@@ -1002,6 +982,8 @@ export default function Results() {
     },
   });
   const annualBase = isLoggedIn && recapQuery.data ? recapQuery.data.totalValue : null;
+  // /impact's report actions cover the year so far, not one calculation.
+  const yearResultQuery = useYearResult(heroYear, isLoggedIn && viewingSavedDashboard);
   // Until this calculation is saved it isn't in the server total yet; edits of
   // an existing record are already counted (at their pre-edit value).
   const annualTotal = annualBase != null
@@ -1290,104 +1272,7 @@ export default function Results() {
     }
   };
 
-  const handleExportPNG = async () => {
-    setExporting(true);
-    try {
-      const logoSrc = await loadLogoDataUrl(RESULTS_LOGO_SRC);
-      const canvas = await paintResultsShareCard({
-        totalValue: result.totalValue,
-        impactValue: result.impactValue,
-        contributionValue: result.contributionValue,
-        donationsValue: result.donationsValue,
-        personalDevelopmentValue: result.personalDevelopmentValue,
-        logoSrc,
-      });
-      const link = document.createElement("a");
-      link.download = "my-impact.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch {
-      toast({ title: "Export failed", description: "Could not generate the image.", variant: "destructive" });
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleDownloadPdf = async () => {
-    setExportingPdf(true);
-    try {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-      const res = await fetch(`${BASE}/api/impact/pdf`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          impactResult: result,
-          name: user?.email ?? "My Impact",
-          date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-        }),
-      });
-      if (!res.ok) throw new Error("Server error");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "my-impact-report.pdf";
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: "PDF export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
-    } finally {
-      setExportingPdf(false);
-    }
-  };
-
   const shareText = `I generated ${formatCurrency(result.totalValue)} in social value this year. Find out what yours is:`;
-  const shareUrl = "https://myimpact.uk";
-
-  const handleNativeShare = async () => {
-    const hasNative = typeof navigator !== "undefined" && typeof navigator.share === "function";
-    track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel: hasNative ? "native" : "menu" });
-    if (!hasNative) {
-      setShareOpen(o => !o);
-      return;
-    }
-    // Share the branded report card image when the platform supports file
-    // sharing — far more useful than a bare link to the homepage.
-    try {
-      const logoSrc = await loadLogoDataUrl(RESULTS_LOGO_SRC);
-      const canvas = await paintResultsShareCard({
-        totalValue: result.totalValue,
-        impactValue: result.impactValue,
-        contributionValue: result.contributionValue,
-        donationsValue: result.donationsValue,
-        personalDevelopmentValue: result.personalDevelopmentValue,
-        logoSrc,
-      });
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
-      if (blob) {
-        const file = new File([blob], "my-impact-report.png", { type: "image/png" });
-        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "My Impact", text: `${shareText} ${shareUrl}` });
-          return;
-        }
-      }
-    } catch (err) {
-      // AbortError means the user dismissed the share sheet — stop quietly.
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      // Otherwise fall through to the plain link share below.
-    }
-    try {
-      await navigator.share({ title: "My Impact", text: shareText, url: shareUrl });
-    } catch {
-      // user cancelled — nothing to do
-    }
-  };
-
-  const trackResultsShare = (channel: "twitter" | "linkedin") => {
-    track(ANALYTICS_EVENTS.SHARE_CLICK, { source: "results", channel });
-  };
-
   if (viewingSavedDashboard) {
     const records = [...(historyQuery.data?.records ?? [])].sort((a, b) => {
       const dateOrder = b.entryDate.localeCompare(a.entryDate);
@@ -1414,6 +1299,14 @@ export default function Results() {
           <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
             Your reconciled running total for {heroYear}, calculated using globally recognised Social Value Engine proxies.
           </p>
+          {yearResultQuery.data && yearResultQuery.data.recordCount > 0 && (
+            <ReportActions
+              result={yearResultQuery.data.result}
+              {...yearReportCopy(heroYear, formatCurrency(yearResultQuery.data.result.totalValue))}
+              source="impact"
+              className="justify-center mt-6"
+            />
+          )}
         </motion.div>
 
         <section aria-labelledby="running-record-heading" data-testid="impact-running-record">
@@ -1923,72 +1816,14 @@ export default function Results() {
             </>
           )}
 
-          {/* Secondary actions */}
-          <button
-            onClick={handleDownloadPdf}
-            disabled={exportingPdf}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border text-sm font-medium transition-all disabled:opacity-50 shrink-0"
-            style={{ borderColor: "var(--brand-orange)", color: "var(--brand-orange)" }}
-          >
-            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
-            {exportingPdf ? "Generating…" : "Download PDF"}
-          </button>
-          <button
-            onClick={handleExportPNG}
-            disabled={exporting}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all disabled:opacity-50 shrink-0"
-          >
-            <Download className="w-3.5 h-3.5" aria-hidden="true" />
-            {exporting ? "Exporting…" : "PNG"}
-          </button>
-
-          <div className="relative shrink-0">
-            <button
-              onClick={handleNativeShare}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all"
-            >
-              <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> Share
-            </button>
-            {shareOpen && (
-              <div className="absolute bottom-full mb-2 left-0 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-50">
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackResultsShare("twitter")}
-                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                >
-                  <Twitter className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" /> Share on X
-                </a>
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackResultsShare("linkedin")}
-                  className="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                >
-                  <Linkedin className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" /> Share on LinkedIn
-                </a>
-              </div>
-            )}
-          </div>
-
-          <Link
-            href="/journal"
-            className="flex items-center justify-center gap-1.5 px-3.5 py-3 min-h-[44px] rounded-lg border border-border text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-muted/30 transition-all shrink-0"
-          >
-            <BookOpen className="w-3.5 h-3.5" aria-hidden="true" /> Journal
-          </Link>
-
-          {/* Ideas CTA, grows to fill remaining space */}
-          <Link
-            href="/suggestions"
-            className="flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
-            style={{ background: "var(--brand-orange-bright)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-bright) 25%, transparent)" }}
-          >
-            Get personalised ideas <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-          </Link>
-
+          <ReportActions
+            result={result}
+            shareText={shareText}
+            fileStem="my-impact-report"
+            source="results"
+            menuOpensUp
+            className="sm:flex-nowrap"
+          />
         </div>
       </div>
 

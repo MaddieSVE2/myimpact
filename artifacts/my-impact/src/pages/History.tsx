@@ -7,6 +7,8 @@ import type { ImpactResult, SelectedActivity, SavedImpact } from "@workspace/api
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
+import { ReportActions } from "@/components/results/ReportActions";
+import { useYearResult, yearReportCopy } from "@/lib/year-report";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, TrendingUp, ArrowRight, ChevronDown, ChevronUp,
@@ -279,6 +281,8 @@ export default function History() {
     query: { queryKey: getGetAnnualRecapQueryKey(selectedYear), enabled: isAuthenticated },
   });
   const recapData = recapQuery.data;
+  // The selected year as one report, for the PDF / PNG / share actions.
+  const yearResultQuery = useYearResult(selectedYear, isAuthenticated);
 
   const yearOptions = useMemo(() => {
     const set = new Set<number>([currentYear, selectedYear]);
@@ -959,6 +963,23 @@ export default function History() {
                 <p className="text-xs text-muted-foreground mt-1">{latest.period || new Date(latest.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
               </div>
             </motion.div>
+          )}
+
+          {/* Report actions for the whole year, so returning users don't have
+              to open an entry's full report to download or share. */}
+          {yearResultQuery.data && yearResultQuery.data.recordCount > 0 && (
+            <div className="mb-6">
+              <ReportActions
+                result={yearResultQuery.data.result}
+                {...yearReportCopy(selectedYear, formatCurrency(yearResultQuery.data.result.totalValue))}
+                source="history"
+              />
+              {lifetimeMatched > 0 && orgName && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  The report covers your own entries, without matched funding.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Year-over-year comparison */}

@@ -37,8 +37,8 @@ export function parseRecordKind(raw: unknown): RecordKind | null {
 // from the headline total must also surrender its contribution (NLW) and
 // personal-development (£15/hr) components, since those are derived from
 // hours inside every stored resultJson.totalValue.
-const VOLUNTEER_RATE = 12.21;
-const PERSONAL_DEV_RATE_PER_HOUR = 15;
+export const VOLUNTEER_RATE = 12.21;
+export const PERSONAL_DEV_RATE_PER_HOUR = 15;
 
 // ── Activity location ──────────────────────────────────────────────────────
 
