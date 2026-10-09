@@ -1529,7 +1529,7 @@ const TRIGGER_LABELS: { key: keyof PushTriggerToggles; title: string; desc: stri
   {
     key: "recurringDue",
     title: "Regular activity due",
-    desc: "A reminder when one of your recurring activities is scheduled.",
+    desc: "A reminder when one of your recurring activities is scheduled. Sent instead of the reminder email.",
   },
   {
     key: "monthlyDigest",
@@ -1596,7 +1596,7 @@ function RemindersSettings() {
       setPermission(currentPermission());
       toast({
         title: "Reminders are on",
-        description: "We'll only nudge you about things you've turned on below.",
+        description: "Regular activity reminders now come as notifications instead of by email.",
       });
     } catch (err) {
       toast({
@@ -1616,7 +1616,10 @@ function RemindersSettings() {
       await disablePush();
       const p = await fetchPreferences();
       setPrefs(p);
-      toast({ title: "Reminders turned off" });
+      toast({
+        title: "Reminders turned off",
+        description: "Regular activity reminders go back to email, unless you've turned those off.",
+      });
     } catch {
       toast({ title: "Couldn't turn off", variant: "destructive" });
     } finally {
@@ -1723,6 +1726,10 @@ function RemindersSettings() {
               Get a friendly nudge for your daily streak, recurring activities, and your monthly
               recap. Pause or turn it off any time.
             </p>
+            <p className="text-xs text-muted-foreground leading-relaxed" data-testid="push-replaces-email-note">
+              Once they're on, reminders for your regular activities come as notifications
+              instead of by email. Your other emails, like the monthly recap, don't change.
+            </p>
             <button
               type="button"
               onClick={handleEnable}
@@ -1759,6 +1766,7 @@ function RemindersSettings() {
                 ) : (
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {prefs?.subscriptions.length} device{prefs?.subscriptions.length === 1 ? "" : "s"} subscribed.
+                    Regular activity reminders come here instead of by email.
                   </p>
                 )}
               </div>
