@@ -4,6 +4,7 @@ import { db, emailSuppressionsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { applyEmailEvent } from "../lib/emailLog.js";
 import { handleReceivedEmail, type ReceivedEmailEvent } from "../lib/emailReplies.js";
+import { handleActivityEmail } from "../lib/emailActivityInbox.js";
 
 // Resend signs webhooks with Svix. The signature is an HMAC-SHA256 over
 // `${svix-id}.${svix-timestamp}.${rawBody}` keyed with the base64-decoded
@@ -121,11 +122,14 @@ export async function resendWebhookHandler(req: Request, res: Response): Promise
   const eventAt = payload.created_at ? new Date(payload.created_at) : new Date();
   const eventDate = Number.isNaN(eventAt.getTime()) ? new Date() : eventAt;
 
-  // Inbound mail for the domain. Only the reply inbox is ours to handle.
+  // Inbound mail for the domain. The reply inbox and the activity inbox are
+  // ours to handle; each handler ignores mail for the other.
   if (eventType === "email.received") {
     try {
-      const result = await handleReceivedEmail((payload.data ?? {}) as ReceivedEmailEvent);
-      res.json({ ok: true, result });
+      const event = (payload.data ?? {}) as ReceivedEmailEvent;
+      const result = await handleReceivedEmail(event);
+      const activity = await handleActivityEmail(event);
+      res.json({ ok: true, result, activity });
     } catch (err) {
       // 500 so Resend retries; the stored claim stops a retry forwarding twice.
       console.error("[resend-webhook] could not handle a received email:", err);

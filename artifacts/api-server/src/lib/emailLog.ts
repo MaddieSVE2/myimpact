@@ -6,7 +6,7 @@
  * delivered, opened, bounced and so on. Logging never blocks or fails a send.
  */
 import type { Resend } from "resend";
-import { db, emailLogTable, emailRepliesTable } from "@workspace/db";
+import { db, emailActivityMessagesTable, emailLogTable, emailRepliesTable } from "@workspace/db";
 import { and, desc, eq, lt, sql, type SQL } from "drizzle-orm";
 
 export type EmailCategory =
@@ -18,6 +18,8 @@ export type EmailCategory =
   | "organisation"
   | "account"
   | "challenge"
+  /** Replies from the activity inbox (lib/emailActivityInbox.ts). */
+  | "activity-log"
   /** Alerts and notices to the My Impact team, not to members. */
   | "internal";
 
@@ -138,18 +140,20 @@ export async function applyEmailEvent(resendId: string, eventType: string, at: D
     .where(eq(emailLogTable.id, row.id));
 }
 
-/** Deletes log entries and replies older than EMAIL_LOG_RETENTION_DAYS. */
+/** Deletes log entries, replies and activity emails older than EMAIL_LOG_RETENTION_DAYS. */
 export async function pruneEmailLog(now = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - EMAIL_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   await db.delete(emailRepliesTable).where(lt(emailRepliesTable.receivedAt, cutoff));
+  await db.delete(emailActivityMessagesTable).where(lt(emailActivityMessagesTable.receivedAt, cutoff));
   const deleted = await db.delete(emailLogTable).where(lt(emailLogTable.sentAt, cutoff)).returning({ id: emailLogTable.id });
   return deleted.length;
 }
 
-/** Erases every entry sent to `email` and every reply from it (account deletion). */
+/** Erases every entry sent to `email` and every reply or activity email from it (account deletion). */
 export async function deleteEmailLogFor(email: string): Promise<void> {
   const address = email.trim().toLowerCase();
   await db.delete(emailRepliesTable).where(eq(emailRepliesTable.fromAddress, address));
+  await db.delete(emailActivityMessagesTable).where(eq(emailActivityMessagesTable.fromAddress, address));
   // Also team emails that name them, such as forwarded replies.
   await db
     .delete(emailLogTable)

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { completeJson } from "../lib/aiJson.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { textAiQuota } from "../lib/textAiUsage.js";
@@ -70,40 +70,6 @@ const LITTER_RE = /\blitter[\s-]?pick(?:ing|er|ers|s|ed)?\b|\bpick(?:ing|ed)?\s+
 // the History "fix this entry" repair path shares the exact same logic.
 export { parseDonation } from "../lib/donationRepair";
 import { parseDonation } from "../lib/donationRepair";
-
-type ChatMessage = { role: "system" | "user"; content: string };
-
-async function completeJson(
-  messages: ChatMessage[],
-  maxCompletionTokens: number,
-): Promise<Record<string, unknown> | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: maxCompletionTokens,
-        reasoning_effort: "low",
-        response_format: { type: "json_object" },
-        messages,
-      });
-      const content = completion.choices[0]?.message?.content;
-      if (!content?.trim()) {
-        console.warn(`completeJson: empty model output (attempt ${attempt + 1})`);
-        continue;
-      }
-      try {
-        return JSON.parse(content) as Record<string, unknown>;
-      } catch {
-        console.warn(`completeJson: unparseable model output (attempt ${attempt + 1})`);
-        continue;
-      }
-    } catch (err) {
-      console.error(`completeJson: model call failed (attempt ${attempt + 1}):`, err);
-      if (attempt === 1) throw err;
-    }
-  }
-  return null;
-}
 
 const router = Router();
 

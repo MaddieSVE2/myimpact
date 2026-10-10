@@ -45,6 +45,7 @@ import {
   computeCurrentOccurrence,
 } from "../lib/recurringSchedule.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
+import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds } from "../lib/recordHelpers.js";
 import { yearImpactResult } from "../lib/yearResult.js";
 import { resolveReportScope, groupCondition, type ReportScope } from "../lib/orgReportScope.js";
 
@@ -237,10 +238,6 @@ function parseEntryDate(raw: unknown): Date {
   return new Date();
 }
 
-function calendarMonthLabel(d: Date): string {
-  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-}
-
 function startOfYearUTC(year: number): Date {
   return new Date(Date.UTC(year, 0, 1, 0, 0, 0));
 }
@@ -322,62 +319,10 @@ function startOfMonthOfDate(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
 }
 
-// Pick out the activity ids embedded in a stored `activitiesJson` payload so
-// /save can detect when a user is about to create a new entry that would
-// overlap an already-existing habit entry for the same calendar month.
-function extractActivityIds(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  const ids: string[] = [];
-  for (const a of raw) {
-    if (a && typeof a === "object" && typeof (a as { activityId?: unknown }).activityId === "string") {
-      ids.push((a as { activityId: string }).activityId);
-    }
-  }
-  return ids;
-}
-
 function startOfMonthUTC(year: number, monthIndex: number): Date {
   return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0));
 }
 
-// Auto-verification hook. Some organisations (e.g. universities) count every
-// member activity toward their totals without a manager approval step. For
-// each org the user actively belongs to where `autoVerifyActivities` is true,
-// insert an approved record_verifications row for each freshly created
-// impact record. The (recordId, orgId) unique constraint plus
-// onConflictDoNothing makes this idempotent and safe against races with a
-// manual verification request. Failures are logged but never block the save.
-async function autoVerifyRecordsForUser(userId: string, recordIds: number[]): Promise<void> {
-  if (recordIds.length === 0) return;
-  try {
-    const autoOrgs = await db
-      .select({ orgId: orgMembersTable.orgId })
-      .from(orgMembersTable)
-      .innerJoin(organisationsTable, eq(organisationsTable.id, orgMembersTable.orgId))
-      .where(
-        and(
-          eq(orgMembersTable.userId, userId),
-          eq(orgMembersTable.status, "active"),
-          eq(organisationsTable.autoVerifyActivities, true),
-        ),
-      );
-    if (autoOrgs.length === 0) return;
-
-    const now = new Date();
-    const values = autoOrgs.flatMap(({ orgId }) =>
-      recordIds.map((recordId) => ({
-        recordId,
-        orgId,
-        status: "approved" as const,
-        decidedAt: now,
-        reason: "auto-verified",
-      })),
-    );
-    await db.insert(recordVerificationsTable).values(values).onConflictDoNothing();
-  } catch (err) {
-    console.error("[impact] auto-verify failed:", err);
-  }
-}
 
 router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
   // A supplied-but-malformed reportPeriod (wrong type, null, missing fields,

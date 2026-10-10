@@ -60,3 +60,39 @@ export const emailRepliesTable = pgTable(
 );
 
 export type EmailReply = typeof emailRepliesTable.$inferSelect;
+
+/**
+ * Emails to the activity inbox (EMAIL_ACTIVITY_INBOX, e.g. log@), read by
+ * artifacts/api-server/src/lib/emailActivityInbox.ts: people describe what
+ * they did and My Impact adds it to their record. One row per email; a
+ * sender's run of "asked" rows is an open conversation. Deleted with the
+ * email log, and with the sender's account.
+ */
+export const emailActivityMessagesTable = pgTable(
+  "email_activity_messages",
+  {
+    id: serial("id").primaryKey(),
+    /** Resend's id for the received email; makes webhook retries harmless. */
+    resendReceivedId: text("resend_received_id").notNull().unique(),
+    fromAddress: text("from_address").notNull(),
+    /** The account the entries went to, once known. */
+    userId: text("user_id"),
+    subject: text("subject").notNull(),
+    /** The sender's new text (quoted history and signature removed), truncated. */
+    textBody: text("text_body"),
+    /** "asked", "logged", "no_activity", "needs_review" or "ignored"; null while being handled. */
+    outcome: text("outcome"),
+    /** Why, for "ignored" and "needs_review". */
+    note: text("note"),
+    /** The follow-up question sent back, when the outcome is "asked". */
+    question: text("question"),
+    /** Entries added from this email. */
+    recordIds: integer("record_ids").array(),
+    receivedAt: timestamp("received_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    fromReceivedIdx: index("email_activity_messages_from_received_idx").on(t.fromAddress, t.receivedAt),
+  }),
+);
+
+export type EmailActivityMessage = typeof emailActivityMessagesTable.$inferSelect;

@@ -14,8 +14,8 @@
 - **Replies.** Member emails (every category except `internal`, unless
   the email sets its own Reply-To) carry `Reply-To: EMAIL_REPLY_TO`. Resend
   receives all mail for the domain and sends `email.received` to the same
-  webhook; only mail to the reply inbox is handled (hello@, log@ and other
-  inboxes are ignored). Each reply is stored once in `email_replies` with
+  webhook; only mail to the reply inbox is handled here (log@ is the
+  activity inbox, below; hello@ and others are ignored). Each reply is stored once in `email_replies` with
   its text, linked to the latest member email sent to that person, and a
   plain-text copy is forwarded to `EMAIL_REPLY_FORWARD_TO` with the member
   as Reply-To, so answering it goes straight to them.
@@ -66,3 +66,52 @@ Settings or by the signed one-click link in each email (unsubscribe token
 list `activity-reminders`). Members with push set up and on get push only.
 The button opens the app's due prompt; the email never logs anything,
 because mail scanners follow links.
+
+## Activity inbox (test only)
+
+People email what they did to `EMAIL_ACTIVITY_INBOX` (log@myimpact.uk) and
+it is added to their record (`src/lib/emailActivityInbox.ts`, rules in
+`src/lib/emailActivity.ts`). It is not part of any member email yet: only
+senders listed in `EMAIL_ACTIVITY_TEST_SENDERS` are read, and only into demo
+accounts. Everything else sent there is stored and ignored.
+
+- The AI reads the sender's new text (quoted history and signature
+  dropped) together with the open conversation, and matches it to the
+  activity list. The server then checks the answer: a known activity, a
+  date within the last year and not in the future, and hours (for hour
+  activities) or a count (people, trees and so on). Sessions, workshops,
+  events, households and donations count as one per occasion. Money
+  donations are valued as donations.
+- **Complete:** each item becomes a Quick Log entry (`kind` quick_log, name
+  "Logged by email", `result_json.capturedBy` "email", plus any outcome
+  they mention as `emailNote`), valued as Quick Log values it. The same
+  activity already logged that day is not added again. The reply lists
+  each entry with its value.
+- **Missing something:** one short question goes back (Reply-To the
+  activity inbox), and the answer is read with the earlier emails. After
+  two unanswered or still-incomplete rounds, or for anything that isn't a
+  simple activity (support questions, "stop emailing me", "delete my
+  data", anything worrying), it goes to `EMAIL_REPLY_FORWARD_TO` and the
+  sender is told the team will look.
+- **Evidence** is never taken by email. When the person's organisation
+  collects submissions, the reply links each entry to
+  `/org/share-report/<id>`, where they log in, add a photo if the
+  organisation requires one, and send it. The usual evidence check there
+  applies, so email can't skip it.
+- Automatic replies, bounces, our own addresses and more than 30 emails a
+  day from one sender are never answered. Webhook retries are harmless
+  (each email is claimed once).
+- Each email is kept in `email_activity_messages` with its outcome, and
+  deleted with the email log (12 months) and with the sender's account.
+
+**To test:**
+
+1. In the Replit Shell run `pnpm --filter @workspace/db run migrate` (adds
+   `email_activity_messages`) **before** republishing.
+2. Replit secrets: `EMAIL_ACTIVITY_INBOX` = `log@myimpact.uk`, and
+   `EMAIL_ACTIVITY_TEST_SENDERS` = `<your address>=demo@demo.org` (more
+   pairs comma separated; the account must be a demo persona, or the pair
+   is dropped). Sign in to the demo account once first.
+3. Republish, then email log@myimpact.uk from that address.
+
+To switch it off, remove `EMAIL_ACTIVITY_INBOX`.

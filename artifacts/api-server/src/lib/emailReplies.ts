@@ -52,7 +52,8 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-async function fetchReceivedText(id: string): Promise<string | null> {
+/** The received email's text from Resend (the webhook carries no body). */
+export async function fetchReceivedText(id: string): Promise<string | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (process.env.E2E_TEST_MODE === "1" || !apiKey) return null;
   const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(id)}`, {
