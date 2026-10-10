@@ -83,4 +83,89 @@ describe("scheduled jobs trigger", () => {
     expect((await run("no-such-job").set("Authorization", `Bearer ${TOKEN}`)).status).toBe(404);
     expect(runner.runScheduledJob).not.toHaveBeenCalled();
   });
+
+  describe("run-due (cron-job.org)", () => {
+    const CRON_TOKEN = "c".repeat(40);
+    const runDue = () => request(app).post("/api/internal/scheduled-jobs/run-due");
+    beforeEach(() => {
+      process.env.SCHEDULED_JOBS_CRON_TOKEN = CRON_TOKEN;
+    });
+    afterEach(() => {
+      delete process.env.SCHEDULED_JOBS_CRON_TOKEN;
+      vi.restoreAllMocks();
+    });
+
+    it("runs every due job in turn, never forcing one", async () => {
+      const res = await runDue().set("Authorization", `Bearer ${CRON_TOKEN}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        ok: true,
+        failed: [],
+        jobs: [
+          { id: "onboarding-emails", status: "ran", ok: true, ms: 5 },
+          { id: "calendar-sync", status: "ran", ok: true, ms: 5 },
+        ],
+      });
+      expect(runner.runScheduledJob.mock.calls).toEqual([["onboarding-emails"], ["calendar-sync"]]);
+    });
+
+    it("answers GET the same way", async () => {
+      const res = await request(app).get("/api/internal/scheduled-jobs/run-due").set("Authorization", `Bearer ${CRON_TOKEN}`);
+      expect(res.status).toBe(200);
+      expect(runner.runScheduledJob).toHaveBeenCalledTimes(2);
+    });
+
+    it("takes the full token too", async () => {
+      expect((await runDue().set("Authorization", `Bearer ${TOKEN}`)).status).toBe(200);
+    });
+
+    it("gives the cron token nothing else", async () => {
+      expect((await due().set("Authorization", `Bearer ${CRON_TOKEN}`)).status).toBe(401);
+      expect((await run("push-reminders", "?force=1").set("Authorization", `Bearer ${CRON_TOKEN}`)).status).toBe(401);
+      expect(runner.runScheduledJob).not.toHaveBeenCalled();
+    });
+
+    it("fails closed, and rejects a wrong token", async () => {
+      expect((await runDue().set("Authorization", `Bearer ${"x".repeat(40)}`)).status).toBe(401);
+      delete process.env.SCHEDULED_JOBS_TOKEN;
+      process.env.SCHEDULED_JOBS_CRON_TOKEN = "short";
+      expect((await runDue().set("Authorization", "Bearer short")).status).toBe(503);
+      expect(runner.dueJobIds).not.toHaveBeenCalled();
+    });
+
+    it("reports a failure as a 500 without the error text, and still runs the rest", async () => {
+      runner.runScheduledJob
+        .mockResolvedValueOnce({ status: "ran", ok: false, ms: 5, error: "Resend said no for someone@example.org" })
+        .mockResolvedValueOnce({ status: "ran", ok: true, ms: 5 });
+      const res = await runDue().set("Authorization", `Bearer ${CRON_TOKEN}`);
+      expect(res.status).toBe(500);
+      expect(res.body.failed).toEqual(["onboarding-emails"]);
+      expect(JSON.stringify(res.body)).not.toContain("example.org");
+      expect(runner.runScheduledJob).toHaveBeenCalledTimes(2);
+    });
+
+    it("stops starting jobs once its time is up, leaving them due", async () => {
+      let now = 1_000_000;
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+      runner.dueJobIds.mockResolvedValue(["database-backup", "retention-cleanup", "activity-reminders"]);
+      runner.runScheduledJob.mockImplementation(async () => {
+        now += 25_000;
+        return { status: "ran", ok: true, ms: 25_000 };
+      });
+      const res = await runDue().set("Authorization", `Bearer ${CRON_TOKEN}`);
+      expect(res.status).toBe(200);
+      expect(res.body.jobs.map((j: { id: string; status: string }) => `${j.id}:${j.status}`)).toEqual([
+        "database-backup:ran",
+        "retention-cleanup:deferred",
+        "activity-reminders:deferred",
+      ]);
+    });
+
+    it("passes on a busy lock without failing", async () => {
+      runner.runScheduledJob.mockResolvedValue({ status: "busy" });
+      const res = await runDue().set("Authorization", `Bearer ${CRON_TOKEN}`);
+      expect(res.status).toBe(200);
+      expect(res.body.jobs[0]).toEqual({ id: "onboarding-emails", status: "busy" });
+    });
+  });
 });

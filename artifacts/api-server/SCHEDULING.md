@@ -3,15 +3,30 @@
 The API is an autoscale deployment: it sleeps when nobody is using the site,
 so it cannot run anything on a timer, and a Replit project can only have one
 deployment, so a separate Scheduled Deployment would replace the website.
-Instead a GitHub Actions workflow (`.github/workflows/scheduled-jobs.yml`)
-calls the live API every hour:
+Instead an outside service calls the live API every hour:
 
-1. `POST /api/internal/scheduled-jobs/due` returns the jobs that are due.
-2. `POST /api/internal/scheduled-jobs/run/<id>` runs one of them, inside
-   that request, and returns its outcome.
+- **cron-job.org** (the main trigger) calls
+  `POST /api/internal/scheduled-jobs/run-due` at 5 past each hour. It runs
+  every due job in turn, inside that request, and answers with each outcome
+  (500 if one failed). It stops starting new jobs after 20 seconds, because
+  cron-job.org gives up after 30; the rest stay due and run next hour. GET
+  works too.
+- **GitHub Actions** (`.github/workflows/scheduled-jobs.yml`) is a backup
+  trigger and the way to run a job by hand. GitHub skips most hourly runs
+  (about 4 a day in October 2026), so it can't be the only trigger. It calls
+  `POST /api/internal/scheduled-jobs/due` for the due jobs, then
+  `POST /api/internal/scheduled-jobs/run/<id>` for each (`?force=1` runs
+  one that is not due).
 
-Both need `Authorization: Bearer <SCHEDULED_JOBS_TOKEN>` and refuse every
-request when that secret is missing or shorter than 32 characters.
+Two secrets guard them, and both are refused when missing or shorter than
+32 characters:
+
+- `SCHEDULED_JOBS_TOKEN` works on all three.
+- `SCHEDULED_JOBS_CRON_TOKEN` works only on `run-due`. It is the one
+  cron-job.org holds, so that service can never force a job.
+
+Both triggers can call at once: the advisory lock runs one job at a time and
+a job already done is no longer due, so nothing runs twice.
 
 The rules live in `src/lib/scheduledJobs.ts` and the runner in
 `src/jobs/runner.ts`. When each job last started and last succeeded is kept
@@ -56,21 +71,34 @@ database from the workspace.
 
 ## Setting it up
 
-1. **Replit:** add a secret `SCHEDULED_JOBS_TOKEN` to the production app,
-   a long random value (at least 32 characters), then republish.
+1. **Replit:** add two secrets to the production app, each a long random
+   value (at least 32 characters), then republish:
+   - `SCHEDULED_JOBS_TOKEN`
+   - `SCHEDULED_JOBS_CRON_TOKEN` (a different value)
+
    `BACKUP_NOTIFY_EMAIL` (recommended) is told when a backup fails and gets a
    summary of each monthly digest.
-2. **GitHub:** in the repository's Settings, Secrets and variables, Actions,
+2. **cron-job.org:** create a cron job:
+   - URL `https://<live site>/api/internal/scheduled-jobs/run-due`
+   - Schedule: every hour, at minute 5
+   - Advanced: request method POST, request body `{}`, header
+     `Authorization` = `Bearer <SCHEDULED_JOBS_CRON_TOKEN>`, timeout 30
+     seconds
+   - Notifications: on failure, and when it succeeds again after failing
+
+   Use **Test run** to check it: the response lists each job.
+3. **GitHub:** in the repository's Settings, Secrets and variables, Actions,
    add two repository secrets:
    - `APP_URL`: the live site, e.g. `https://myimpact.example`
    - `SCHEDULED_JOBS_TOKEN`: the same value as in Replit
-3. In the Actions tab, open **Scheduled jobs** and use **Run workflow** to
-   test it straight away.
 
-Until both GitHub secrets exist the workflow does nothing and says so.
+   In the Actions tab, open **Scheduled jobs** and use **Run workflow** to
+   test it. Until both secrets exist the workflow does nothing and says so.
 
 ## Checking it works
 
+- cron-job.org keeps each call's status and response (the job names and
+  outcomes only; errors stay in the Replit logs) and emails on failure.
 - In GitHub, each run lists the due jobs and each job's HTTP status. A
   failed job fails the run, and GitHub emails the repository owner. The
   repository is public, so the log shows only job names and outcomes.
