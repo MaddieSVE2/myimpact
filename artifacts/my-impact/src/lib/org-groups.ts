@@ -5,7 +5,10 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BASE } from "@/lib/org-export";
+
+// Not imported from lib/org-export: this file loads on every page (the
+// organisation bar), and org-export pulls in the PDF renderer and demo data.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface MyGroup {
   id: string;
