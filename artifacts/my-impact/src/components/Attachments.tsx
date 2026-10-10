@@ -33,6 +33,8 @@ interface AttachmentsProps {
   onChange?: (items: AttachmentItem[]) => void;
   /** Large, responsive media treatment for chronological journal entries. */
   presentation?: "compact" | "journal-feed";
+  /** Change it to reload the list after something else uploaded a file. */
+  refreshKey?: number;
 }
 
 // Keep in sync with api-server attachments route (ALLOWED_IMAGE_TYPES / ALLOWED_PDF_TYPES / MAX_FILE_SIZE_BYTES).
@@ -104,6 +106,7 @@ export default function Attachments({
   compact = false,
   onChange,
   presentation = "compact",
+  refreshKey,
 }: AttachmentsProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -180,7 +183,7 @@ export default function Attachments({
     }
   }, [queryString]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh, refreshKey]);
 
   const upload = async (file: File, kind: "photo" | "receipt") => {
     if (!isAllowedFileType(file, kind)) {

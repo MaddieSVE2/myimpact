@@ -390,6 +390,7 @@ function ActivityCardItem({
 function JournalEntryItem({
   entry,
   photoCount,
+  photoUploads,
   isLoggedIn,
   onDelete,
   onSave,
@@ -398,6 +399,8 @@ function JournalEntryItem({
 }: {
   entry: JournalEntry;
   photoCount: number;
+  /** Bumped when the composer uploads this entry's photo, so the list reloads. */
+  photoUploads: number;
   isLoggedIn: boolean;
   onDelete: (id: string) => void;
   onSave: (id: string, changes: { text: string; prompt: string; tags: string[] }) => Promise<boolean>;
@@ -487,8 +490,9 @@ function JournalEntryItem({
             <Attachments
               journalId={numericId}
               maxImages={1}
-              label="Private photo"
+              label="Photo"
               presentation="journal-feed"
+              refreshKey={photoUploads}
               onChange={(attachments) => onPhotoCount(entry.id, attachments.filter((attachment) => attachment.kind === "photo").length)}
             />
           )}
@@ -524,6 +528,9 @@ export default function Journal() {
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
+  // The new entry is listed before its photo finishes uploading, so its
+  // photo list loads empty; bumping this makes it load again.
+  const [photoUploads, setPhotoUploads] = useState<Record<string, number>>({});
   const migrated = useRef(false);
 
   const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
@@ -698,6 +705,7 @@ export default function Journal() {
           try {
             await uploadJournalPhoto(BASE, entryId, draftPhoto);
             setPhotoCounts(prev => ({ ...prev, [String(entryId)]: 1 }));
+            setPhotoUploads(prev => ({ ...prev, [String(entryId)]: (prev[String(entryId)] ?? 0) + 1 }));
           } catch (error) {
             const message = error instanceof Error ? error.message : "Could not upload the photo.";
             setPhotoUploadError(message);
@@ -946,7 +954,7 @@ export default function Journal() {
             </div>
             {isLoggedIn && (
               <div className="mt-3 rounded-lg border border-border/70 p-3">
-                <p className="text-xs font-medium text-foreground mb-2">Private photo <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <p className="text-xs font-medium text-foreground mb-2">Photo <span className="font-normal text-muted-foreground">(optional)</span></p>
                 {draftPhotoUrl ? (
                   <div className="flex items-start gap-3">
                     <img src={draftPhotoUrl} alt="Selected journal photo preview" className="h-24 w-24 rounded-lg border border-border object-cover" />
@@ -1128,6 +1136,7 @@ export default function Journal() {
                   key={entry.id}
                   entry={entry}
                   photoCount={photoCounts[entry.id] ?? 0}
+                  photoUploads={photoUploads[entry.id] ?? 0}
                   isLoggedIn={isLoggedIn}
                   onDelete={handleDelete}
                   onSave={handleSaveEntry}
