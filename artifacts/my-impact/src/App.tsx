@@ -354,9 +354,12 @@ function AppRouter() {
         <div id={CONTENT_SCROLL_ID} className="flex flex-col flex-grow min-w-0 lg:overflow-y-auto">
           <OrgMemberSubNav />
           <GuestBanner />
+          {/* The footer waits with the page: outside this boundary it showed
+              straight under the empty fallback while a page's code loaded,
+              then jumped down when the page arrived (a large layout shift). */}
+          <Suspense fallback={null}>
           <main className="flex-grow">
             <ErrorBoundary>
-            <Suspense fallback={null}>
             <Switch>
               <Route path="/" component={Intro} />
 
@@ -488,10 +491,10 @@ function AppRouter() {
 
               <Route component={NotFound} />
             </Switch>
-            </Suspense>
             </ErrorBoundary>
           </main>
           {showFooter && <Footer />}
+          </Suspense>
         </div>
         {/* ── Sidekick column (desktop only; mobile handled inside Sidekick) ── */}
         <Sidekick />
