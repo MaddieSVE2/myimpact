@@ -29,8 +29,10 @@ import {
   newText,
   ONE_PER_OCCASION_UNITS,
   parseTestSenders,
+  questionReply,
   replySubject,
   REVIEW_REPLY,
+  storedLocation,
   validateInterpretation,
   type AddedLine,
   type ConversationTurn,
@@ -120,6 +122,7 @@ async function addEntry(userId: string, item: LoggableItem): Promise<{ id: numbe
     if (sameDay.some((r) => extractActivityIds(r.activitiesJson).includes(item.activityId))) return null;
   }
   const result = calculateImpact(entry.activities, entry.donationsGBP, 0, []);
+  const { locationJson, outwardCode } = storedLocation(item.kind === "activity" ? item.location : null);
   const [inserted] = await db
     .insert(impactRecordsTable)
     .values({
@@ -139,19 +142,27 @@ async function addEntry(userId: string, item: LoggableItem): Promise<{ id: numbe
       source: entryDate.getUTCFullYear() < new Date().getUTCFullYear() ? "retrospective" : "user",
       kind: "quick_log",
       reportingYear: deriveReportingYear(entryDate),
+      locationJson,
+      outwardCode,
     })
     .returning({ id: impactRecordsTable.id });
   await autoVerifyRecordsForUser(userId, [inserted!.id]);
   return { id: inserted!.id, value: result.totalValue };
 }
 
-/** "Food bank volunteering (2 hours)", "Mentoring young people (3 young people, 6 hours)". */
-function itemLabel(item: LoggableItem): string {
-  if (item.kind === "donation") return `Donation of £${item.amountGBP.toLocaleString("en-GB")}`;
+/** How an item is listed in the reply: its name, "2 hours" or "3 young people, 4 hours", and where. */
+function describeItem(item: LoggableItem): { name: string; detail: string; place: string | null } {
+  if (item.kind === "donation") return { name: "Donation", detail: `£${item.amountGBP.toLocaleString("en-GB")}`, place: null };
   const activity = ACTIVITIES.find((a) => a.id === item.activityId)!;
   const hours = `${item.hours} ${item.hours === 1 ? "hour" : "hours"}`;
-  if (activity.unit === "hour" || ONE_PER_OCCASION_UNITS.has(activity.unit)) return `${activity.shortName} (${hours})`;
-  return `${activity.shortName} (${item.quantity} ${activity.unitLabel.toLowerCase().replace(/ per year$/, "")}, ${hours})`;
+  const counted = activity.unit !== "hour" && !ONE_PER_OCCASION_UNITS.has(activity.unit);
+  const loc = item.location;
+  const place = loc ? (loc.mode === "online" ? "online" : [loc.label, loc.townCity].filter(Boolean).join(", ") || loc.postcode) : null;
+  return {
+    name: activity.shortName,
+    detail: counted ? `${item.quantity} ${activity.unitLabel.toLowerCase().replace(/ per year$/, "")}, ${hours}` : hours,
+    place,
+  };
 }
 
 /**
@@ -244,6 +255,7 @@ export async function handleActivityEmail(
           today,
           activities: ACTIVITIES,
           questionsAsked: open.length,
+          senderText: conversation.filter((t) => t.from === "sender").map((t) => t.text).join("\n"),
         })
       : { outcome: "needs_review", reason: "The email text could not be read." };
   } catch (err) {
@@ -261,7 +273,7 @@ export async function handleActivityEmail(
         await finish(id, { outcome: "no_activity" });
         break;
       case "ask":
-        await reply(interpretation.question);
+        await reply(questionReply(interpretation.question));
         await finish(id, { outcome: "asked", question: interpretation.question });
         break;
       case "needs_review": {
@@ -272,7 +284,7 @@ export async function handleActivityEmail(
         break;
       }
       case "ready":
-        await logItems(id, user.id, interpretation.items, reply);
+        await logItems(id, user.id, interpretation.items, interpretation.acknowledgement, reply);
         break;
     }
   } catch (err) {
@@ -283,7 +295,13 @@ export async function handleActivityEmail(
   return "handled";
 }
 
-async function logItems(messageId: number, userId: string, items: LoggableItem[], reply: (body: string) => Promise<void>) {
+async function logItems(
+  messageId: number,
+  userId: string,
+  items: LoggableItem[],
+  acknowledgement: string,
+  reply: (body: string) => Promise<void>,
+) {
   // What the organisation needs before an entry counts for it. Only orgs
   // that collect submissions ask; consented-logging orgs see entries as
   // their member's consent allows, without an evidence step.
@@ -292,18 +310,18 @@ async function logItems(messageId: number, userId: string, items: LoggableItem[]
   const collectsSubmissions = !!org && !org.revokedAt && org.dataSharingMode === "explicit_submission";
 
   const added: AddedLine[] = [];
-  const duplicates: { label: string; date: string }[] = [];
+  const duplicates: { name: string; date: string }[] = [];
   const recordIds: number[] = [];
   for (const item of items) {
-    const label = itemLabel(item);
+    const described = describeItem(item);
     const entry = await addEntry(userId, item);
     if (!entry) {
-      duplicates.push({ label, date: item.date });
+      duplicates.push({ name: described.name, date: item.date });
       continue;
     }
     recordIds.push(entry.id);
     added.push({
-      label,
+      ...described,
       date: item.date,
       value: entry.value,
       orgStep: collectsSubmissions
@@ -312,5 +330,5 @@ async function logItems(messageId: number, userId: string, items: LoggableItem[]
     });
   }
   await finish(messageId, { outcome: "logged", recordIds });
-  await reply(addedReply(added, duplicates, `${appUrl()}/history`));
+  await reply(addedReply(acknowledgement, added, duplicates, `${appUrl()}/history`));
 }

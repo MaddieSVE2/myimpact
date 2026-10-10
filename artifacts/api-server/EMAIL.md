@@ -77,17 +77,23 @@ accounts. Everything else sent there is stored and ignored.
 
 - The AI reads the sender's new text (quoted history and signature
   dropped) together with the open conversation, and matches it to the
-  activity list. The server then checks the answer: a known activity, a
-  date within the last year and not in the future, and hours (for hour
-  activities) or a count (people, trees and so on). Sessions, workshops,
-  events, households and donations count as one per occasion. Money
-  donations are valued as donations.
+  activity list. Nothing is assumed: the server checks the answer for a
+  known activity, a date they gave (within the last year, not in the
+  future; today only if they said "today", "this morning" or similar),
+  how long they spent (always), and a count where the activity is counted
+  (people, trees and so on; sessions, workshops, events and households are
+  one per occasion). Where it happened is asked once and saved on the
+  entry, but never holds it back. Money donations are valued as donations.
+- Replies: the AI writes the questions and a one-line thanks about what
+  they did (no praise, no exclamation marks, no em dashes); the facts in
+  the confirmation (date, hours, place, value, links) are filled in by the
+  server. Every reply is signed "My Impact".
 - **Complete:** each item becomes a Quick Log entry (`kind` quick_log, name
   "Logged by email", `result_json.capturedBy` "email", plus any outcome
   they mention as `emailNote`), valued as Quick Log values it. The same
   activity already logged that day is not added again. The reply lists
   each entry with its value.
-- **Missing something:** one short question goes back (Reply-To the
+- **Missing something:** one short question covering everything missing goes back (Reply-To the
   activity inbox), and the answer is read with the earlier emails. After
   two unanswered or still-incomplete rounds, or for anything that isn't a
   simple activity (support questions, "stop emailing me", "delete my
