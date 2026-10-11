@@ -66,7 +66,7 @@ beforeEach(() => {
       } else if (c && typeof c === "object") {
         const cc = c as { value?: unknown };
         if (Array.isArray(cc.value)) chunks.push(cc.value.join(""));
-        else if (c instanceof Number || c instanceof Boolean) { chunks.push("?"); values.push((c as Number | Boolean).valueOf()); }
+        else if (c instanceof Number || c instanceof Boolean) { chunks.push("?"); values.push((c as { valueOf(): unknown }).valueOf()); }
         else if (cc.value !== undefined) { chunks.push("?"); values.push(cc.value); }
         else { chunks.push("?"); values.push(undefined); }
       }

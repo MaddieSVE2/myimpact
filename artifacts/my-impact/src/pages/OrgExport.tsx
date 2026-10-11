@@ -57,7 +57,6 @@ export default function OrgExport() {
   useEffect(() => {
     setFrom(periodFrom);
     setTo(periodTo);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFrom, periodTo]);
 
   // Live data for real (non-demo) organisations. Fetch all activities once

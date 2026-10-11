@@ -1169,7 +1169,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const streak = { ...streakInfo, lastAckedMilestone: profile?.lastAckedStreakMilestone ?? 0 };
 
   const recordIds = deduped.map(r => r.id);
-  let verifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
+  const verifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
   if (recordIds.length > 0) {
     const verifs = await db
       .select({

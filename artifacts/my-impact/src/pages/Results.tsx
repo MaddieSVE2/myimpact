@@ -1144,7 +1144,7 @@ export default function Results() {
       const totalHours = Math.round(result.totalHours);
       const donationAmount = input.donationsGBP ?? 0;
 
-      let summaryParts: string[] = [];
+      const summaryParts: string[] = [];
       if (totalHours > 0) {
         summaryParts.push(`You volunteered ${totalHours} ${totalHours === 1 ? "hour" : "hours"}${activityCount > 0 ? ` across ${activityCount} ${activityCount === 1 ? "activity" : "activities"}` : ""}`);
       }

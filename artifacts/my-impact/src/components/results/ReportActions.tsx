@@ -130,7 +130,11 @@ export function ReportActions({
     // Share the branded report card image when the platform supports file
     // sharing — far more useful than a bare link to the homepage.
     try {
-      const blob = await new Promise<Blob | null>(async (resolve) => (await paintCard()).toBlob(resolve, "image/png"));
+      // Painting first, outside the Promise: a failure inside an async
+      // executor would leave the share waiting forever instead of falling
+      // back to the link share below.
+      const canvas = await paintCard();
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (blob) {
         const file = new File([blob], `${fileStem}.png`, { type: "image/png" });
         if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {

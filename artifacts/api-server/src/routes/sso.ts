@@ -549,7 +549,7 @@ router.get("/:provider/callback", async (req, res) => {
       });
       return;
     }
-    let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
+    const user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
     if (!user) {
       const pendingToken = jwt.sign({
         purpose: "google_pending_signup",
@@ -607,7 +607,7 @@ router.get("/:provider/callback", async (req, res) => {
     return;
   }
 
-  let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, identity.email) });
   if (!user) {
     // Age gate: brand-new SSO accounts must confirm their birth month/year
     // BEFORE any user row is stored — same policy as magic-link sign-up.

@@ -350,7 +350,7 @@ function getInitialState(): { state: WizardState; hasDraft: boolean } {
       INTEREST_OPTIONS.some(o => o.id === id)
     );
     // Migrate legacy `situation: string | null` to `situations: string[]`
-    let situations: string[] = Array.isArray(draft.situations)
+    const situations: string[] = Array.isArray(draft.situations)
       ? draft.situations
       : (draft.situation ? [draft.situation] : []);
     return {

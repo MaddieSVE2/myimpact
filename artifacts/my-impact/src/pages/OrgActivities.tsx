@@ -337,7 +337,6 @@ export default function OrgActivities() {
     setFrom(periodFrom);
     setTo(periodTo);
     setPage(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFrom, periodTo]);
 
   useEffect(() => {

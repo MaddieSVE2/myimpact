@@ -428,7 +428,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  let org = await db.query.organisationsTable.findFirst({
+  const org = await db.query.organisationsTable.findFirst({
     where: eq(organisationsTable.id, membership.orgId),
   });
 

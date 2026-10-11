@@ -237,7 +237,6 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
 
   useEffect(() => {
     if (!isDemoOrg) { fetchLiveMembers(page); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoOrg, page]);
 
   useEffect(() => {

@@ -39,7 +39,7 @@ export function computeNextDueDate(cadence: Cadence, dayOfPeriod: number, anchor
   // weekly / fortnightly
   const targetDow = ((Math.round(dayOfPeriod) % 7) + 7) % 7;
   const todayDow = today.getUTCDay();
-  let offset = (targetDow - todayDow + 7) % 7;
+  const offset = (targetDow - todayDow + 7) % 7;
   let candidate = new Date(today);
   candidate.setUTCDate(candidate.getUTCDate() + offset);
 
@@ -81,7 +81,7 @@ export function computeLastScheduledDateRaw(
 
   const targetDow = ((Math.round(dayOfPeriod) % 7) + 7) % 7;
   const todayDow = today.getUTCDay();
-  let offset = (todayDow - targetDow + 7) % 7;
+  const offset = (todayDow - targetDow + 7) % 7;
   let candidate = new Date(today);
   candidate.setUTCDate(candidate.getUTCDate() - offset);
 

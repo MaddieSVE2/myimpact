@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 // from the dev server / hashes it into the production build instead of trying
 // to bundle the worker into the main app graph.
 import * as pdfjsLib from "pdfjs-dist";
-// eslint-disable-next-line import/no-unresolved
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { NumberInput } from "@/components/ui/number-input";
 

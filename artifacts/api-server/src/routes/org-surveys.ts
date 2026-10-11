@@ -161,7 +161,7 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
   });
 
   // Compute latest-window average for each survey in a single query
-  let latestAverageMap: Record<string, number | null> = {};
+  const latestAverageMap: Record<string, number | null> = {};
   if (surveys.length > 0) {
     const surveyIds = surveys.map(s => s.id);
     const allResponses = await db.query.orgSurveyResponsesTable.findMany({

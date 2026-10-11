@@ -20,13 +20,19 @@
     "test:e2e:ui": "E2E_MANAGED_SERVERS=1 E2E_TEST_MODE=1 pnpm --filter @workspace/e2e test:ui",
     "test:e2e:sso": "pnpm --filter @workspace/sso-e2e test",
     "test:sw-e2e": "pnpm --filter @workspace/sw-e2e test",
-    "test:dependencies": "node --test scripts/dependency-compatibility.test.cjs && pnpm --filter @workspace/mockup-sandbox test"
+    "test:dependencies": "node --test scripts/dependency-compatibility.test.cjs && pnpm --filter @workspace/mockup-sandbox test",
+    "lint": "eslint ."
   },
   "private": true,
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.71.1"
   },
   "pnpm": {
     "overrides": {

@@ -336,7 +336,7 @@ async function ensureDemoChallenges(orgId: string, memberUserIds: string[]) {
 export async function seedDemo() {
   const userId = await ensureUser(DEMO_EMAIL, DEMO_USER_ID);
 
-  let existingOrg = await db.query.organisationsTable.findFirst({
+  const existingOrg = await db.query.organisationsTable.findFirst({
     where: eq(organisationsTable.inviteCode, DEMO_INVITE_CODE),
   });
 

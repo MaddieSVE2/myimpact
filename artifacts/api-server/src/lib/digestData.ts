@@ -321,7 +321,7 @@ function buildBadgeInput(
   let totalValue = 0;
   let cumulativeHours = 0;
   let cumulativeDonations = 0;
-  let cumulativePeopleSupported = 0; // we don't track this explicitly — leave 0
+  const cumulativePeopleSupported = 0; // we don't track this explicitly — leave 0
 
   for (const r of records) {
     totalValue += num(r.totalValue);
