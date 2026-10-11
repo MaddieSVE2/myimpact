@@ -3,6 +3,12 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
+import { request as httpRequest } from "node:http";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
+import { compressDir } from "./compress-assets.mjs";
 
 const TOKEN = "test-ssr-secret";
 const API_PORT = 43998;
@@ -146,5 +152,85 @@ test("slug SSR remains complete beyond the public per-IP request limit", async (
     web.kill("SIGTERM");
     api.close();
     await Promise.allSettled([once(web, "exit"), once(api, "close")]);
+  }
+});
+// Raw requests: fetch() decompresses, which would hide what the server sends.
+function rawGet(port, path, headers = {}, method = "GET") {
+  return new Promise((resolvePromise, reject) => {
+    const req = httpRequest({ host: "127.0.0.1", port, path, method, headers }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolvePromise({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+test("sends precompressed files when accepted, with security headers", async () => {
+  const STATIC_PORT = 44001;
+  const root = mkdtempSync(join(tmpdir(), "mi-serve-"));
+  const js = "console.log('hello');\n".repeat(200);
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>T</title></head><body><div id="root"></div>${"<p>x</p>".repeat(300)}</body></html>`;
+  mkdirSync(join(root, "assets"));
+  writeFileSync(join(root, "assets", "app-ABCDEFGH12.js"), js);
+  writeFileSync(join(root, "index.html"), html);
+  writeFileSync(join(root, "tiny.txt"), "small");
+  compressDir(root);
+
+  const web = spawn(process.execPath, ["serve.mjs"], {
+    cwd: import.meta.dirname,
+    env: { ...process.env, HOST: "127.0.0.1", PORT: String(STATIC_PORT), STATIC_ROOT: root },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  try {
+    await waitForServer(`http://127.0.0.1:${STATIC_PORT}/`);
+    const asset = "/assets/app-ABCDEFGH12.js";
+
+    const br = await rawGet(STATIC_PORT, asset, { "accept-encoding": "gzip, deflate, br" });
+    assert.equal(br.headers["content-encoding"], "br");
+    assert.equal(br.headers["vary"], "Accept-Encoding");
+    assert.equal(Number(br.headers["content-length"]), br.body.length);
+    assert.equal(brotliDecompressSync(br.body).toString(), js);
+    assert.match(br.headers["cache-control"], /immutable/);
+
+    const gz = await rawGet(STATIC_PORT, asset, { "accept-encoding": "gzip" });
+    assert.equal(gz.headers["content-encoding"], "gzip");
+    assert.equal(gunzipSync(gz.body).toString(), js);
+
+    const refused = await rawGet(STATIC_PORT, asset, { "accept-encoding": "br;q=0, gzip;q=0" });
+    assert.equal(refused.headers["content-encoding"], undefined);
+    assert.equal(refused.body.toString(), js);
+
+    const plain = await rawGet(STATIC_PORT, asset);
+    assert.equal(plain.headers["content-encoding"], undefined);
+    assert.equal(plain.body.toString(), js);
+
+    const head = await rawGet(STATIC_PORT, asset, { "accept-encoding": "br" }, "HEAD");
+    assert.equal(head.headers["content-encoding"], "br");
+    assert.equal(head.body.length, 0);
+
+    const page = await rawGet(STATIC_PORT, "/", { "accept-encoding": "br" });
+    assert.equal(page.headers["content-encoding"], "br");
+    assert.equal(brotliDecompressSync(page.body).toString(), html);
+    assert.equal(page.headers["x-frame-options"], "SAMEORIGIN");
+    assert.equal(page.headers["referrer-policy"], "strict-origin-when-cross-origin");
+    assert.equal(page.headers["x-content-type-options"], "nosniff");
+    assert.match(page.headers["permissions-policy"], /camera=\(self\), microphone=\(self\), geolocation=\(\)/);
+    assert.match(page.headers["content-security-policy-report-only"], /default-src 'self'.*report-uri \/api\/csp-report/);
+    assert.equal(page.headers["content-security-policy"], undefined);
+
+    // Small files have no compressed copy and are sent as they are.
+    const tiny = await rawGet(STATIC_PORT, "/tiny.txt", { "accept-encoding": "br" });
+    assert.equal(tiny.headers["content-encoding"], undefined);
+    assert.equal(tiny.body.toString(), "small");
+
+    // The copies are never served on their own.
+    assert.equal((await rawGet(STATIC_PORT, `${asset}.br`)).status, 404);
+    assert.equal((await rawGet(STATIC_PORT, "/index.html.gz")).status, 404);
+  } finally {
+    web.kill("SIGTERM");
+    await once(web, "exit");
+    rmSync(root, { recursive: true, force: true });
   }
 });

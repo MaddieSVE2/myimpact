@@ -4,7 +4,9 @@ import { stat } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
+import { gzipSync } from "node:zlib";
 import { isKnownRoute } from "./valid-routes.mjs";
+import { COMPRESSIBLE } from "./compress-assets.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 // Allow tests to point the static server at an arbitrary build output
@@ -48,6 +50,86 @@ const NO_CACHE_HEADERS = {
 const IMMUTABLE_HEADERS = {
   "Cache-Control": "public, max-age=31536000, immutable",
 };
+
+// The policy the site should keep to. Report-only for now: browsers report
+// what would be blocked to /api/csp-report (logged by the API) and block
+// nothing. Once the reports are clean, send it as Content-Security-Policy.
+// 'unsafe-inline' covers the font loader's onload handler, the slug pages'
+// inline data script and the app's inline styles.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  // Profile photos, organisation logos and map tiles come from elsewhere.
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob:",
+  "connect-src 'self' https://api.postcodes.io https://*.sentry.io",
+  "frame-src 'self' https://calendly.com https://*.calendly.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "report-uri /api/csp-report",
+].join("; ");
+
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  // Pages are never framed by other sites. The embeddable profile widget is
+  // served by the API (/api/public-profile/widget), not from here.
+  "X-Frame-Options": "SAMEORIGIN",
+  // Camera (Quick Log photos) and microphone (voice Sidekick) for this site
+  // only; nothing else is used.
+  "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=()",
+  "Content-Security-Policy-Report-Only": CONTENT_SECURITY_POLICY,
+};
+
+function setSecurityHeaders(res) {
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
+}
+
+/** True when the request's Accept-Encoding allows `encoding` (q > 0). */
+function acceptsEncoding(header, encoding) {
+  for (const part of String(header ?? "").split(",")) {
+    const [name, ...params] = part.trim().toLowerCase().split(";");
+    if (name !== encoding) continue;
+    const q = params.map((p) => p.trim()).find((p) => p.startsWith("q="));
+    return !q || Number(q.slice(2)) > 0;
+  }
+  return false;
+}
+
+/** The precompressed copy of a file to send instead (compress-assets.mjs), if any. */
+async function compressedVariant(req, filePath) {
+  if (!COMPRESSIBLE.has(extname(filePath).toLowerCase())) return null;
+  for (const [encoding, suffix] of [["br", ".br"], ["gzip", ".gz"]]) {
+    if (!acceptsEncoding(req.headers["accept-encoding"], encoding)) continue;
+    try {
+      const s = await stat(filePath + suffix);
+      if (s.isFile()) return { path: filePath + suffix, stat: s, encoding };
+    } catch {
+      // No compressed copy (e.g. a small file): try the next, then the original.
+    }
+  }
+  return null;
+}
+
+/** Sends a file, compressed when the browser accepts it and a copy exists. */
+async function sendFile(req, res, pathname, filePath, fileStat, status) {
+  const variant = await compressedVariant(req, filePath);
+  applyHeaders(res, pathname, filePath, variant ? variant.stat : fileStat);
+  if (COMPRESSIBLE.has(extname(filePath).toLowerCase())) res.setHeader("Vary", "Accept-Encoding");
+  if (variant) res.setHeader("Content-Encoding", variant.encoding);
+  res.statusCode = status;
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  createReadStream(variant ? variant.path : filePath).pipe(res);
+}
 
 function isHashedAsset(pathname) {
   // Vite default: `[name]-[hash].[ext]` under /assets/
@@ -125,7 +207,8 @@ function injectSlugMeta(shell, { title, description, canonical, robots }) {
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "")
     .replace(/<meta\s+property="og:[^"]+"[^>]*>/gi, "")
     .replace(/<meta\s+name="twitter:[^"]+"[^>]*>/gi, "")
-    .replace(/<head>/, `<head>\n${tags}`);
+    // After the charset tag, which browsers need within the first 1024 bytes.
+    .replace(/<meta charset="[^"]*"\s*\/?>/i, (charset) => `${charset}\n${tags}`);
 }
 
 function serializeInitialData(payload) {
@@ -319,7 +402,6 @@ function applyHeaders(res, pathname, filePath, fileStat) {
   const ext = extname(filePath).toLowerCase();
   res.setHeader("Content-Type", MIME[ext] ?? "application/octet-stream");
   res.setHeader("Content-Length", String(fileStat.size));
-  res.setHeader("X-Content-Type-Options", "nosniff");
 
   const isServiceWorker = pathname.endsWith("/service-worker.js") || pathname === "/service-worker.js";
   const isHtml = ext === ".html" || ext === "";
@@ -341,6 +423,7 @@ const server = createServer(async (req, res) => {
   }
 
   const pathname = req.url.split("?")[0];
+  setSecurityHeaders(res);
 
   // ── SSR metadata injection for slug routes ──────────────────────────────────
   // Must run before the static-file check because /profile/:slug and
@@ -351,10 +434,22 @@ const server = createServer(async (req, res) => {
   if (ssrHtml !== null) {
     for (const [k, v] of Object.entries(NO_CACHE_HEADERS)) res.setHeader(k, v);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Vary", "Accept-Encoding");
     res.statusCode = ssrHtml.status;
+    // Rendered per request, so compressed per request (gzip is fast enough).
+    const gzip = acceptsEncoding(req.headers["accept-encoding"], "gzip");
+    const body = gzip ? gzipSync(ssrHtml.html) : Buffer.from(ssrHtml.html);
+    if (gzip) res.setHeader("Content-Encoding", "gzip");
+    res.setHeader("Content-Length", String(body.length));
     if (req.method === "HEAD") { res.end(); return; }
-    res.end(ssrHtml.html);
+    res.end(body);
+    return;
+  }
+
+  // The .br and .gz copies are sent in place of the originals, never on their own.
+  if (/\.(br|gz)$/i.test(pathname)) {
+    res.statusCode = 404;
+    res.end("Not Found");
     return;
   }
 
@@ -411,10 +506,7 @@ const server = createServer(async (req, res) => {
         } catch {}
       }
       if (not404Path && not404Stat) {
-        applyHeaders(res, "/404.html", not404Path, not404Stat);
-        res.statusCode = 404;
-        if (req.method === "HEAD") { res.end(); return; }
-        createReadStream(not404Path).pipe(res);
+        await sendFile(req, res, "/404.html", not404Path, not404Stat, 404);
         return;
       }
       // No pre-rendered 404 page yet (dev build) — fall back to index.html
@@ -430,13 +522,7 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  applyHeaders(res, pathname, resolvedPath, resolvedStat);
-  res.statusCode = 200;
-  if (req.method === "HEAD") {
-    res.end();
-    return;
-  }
-  createReadStream(resolvedPath).pipe(res);
+  await sendFile(req, res, pathname, resolvedPath, resolvedStat, 200);
 });
 
 server.listen(PORT, HOST, () => {

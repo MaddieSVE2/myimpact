@@ -77,14 +77,15 @@ function injectPage(
     .replace(/<script\s+type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, "");
 
   // Remove any pre-existing description / canonical / robots metas that Vite
-  // might have copied from index.html, then inject fresh ones after <head>
+  // might have copied from index.html, then inject fresh ones after the
+  // charset tag (browsers need it within the first 1024 bytes)
   result = result
     .replace(/<meta\s+name="description"[^>]*>/gi, "")
     .replace(/<meta\s+name="robots"[^>]*>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "");
 
   const injected = jsonLdBlocks ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
-  result = result.replace(/<head>/, `<head>\n${injected}`);
+  result = result.replace(/<meta charset="[^"]*"\s*\/?>/i, (charset) => `${charset}\n${injected}`);
   // react-helmet-async leaves JSON-LD scripts inline in the SSR body when
   // renderToString is used without extracting Helmet state. The same schemas
   // are injected into <head> above, so remove the body copies to avoid

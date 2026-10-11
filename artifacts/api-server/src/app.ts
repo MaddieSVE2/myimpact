@@ -10,6 +10,9 @@ import { isTrustedInternalSsrRequest } from "./lib/internalSsrRequest.js";
 
 const app: Express = express();
 
+// Don't announce the framework in every response.
+app.disable("x-powered-by");
+
 // Trust the first proxy hop so req.ip reflects the real client IP
 // (used by rate limiters — prevents x-forwarded-for spoofing)
 app.set("trust proxy", 1);

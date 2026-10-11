@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import cspReportRouter from "./csp-report";
 import impactRouter from "./impact";
 import sidekickRouter from "./sidekick";
 import customActivityRouter from "./custom-activity";
@@ -64,6 +65,7 @@ router.use("/challenges", challengesRouter);
 router.use("/billing", billingRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/push", pushRouter);
+router.use(cspReportRouter);
 router.use(scheduledJobsRouter);
 
 // Test-only endpoints are mounted unconditionally; the router itself
