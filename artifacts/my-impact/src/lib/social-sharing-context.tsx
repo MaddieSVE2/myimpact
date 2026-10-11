@@ -10,7 +10,8 @@ const SocialSharingContext = createContext<SocialSharingContextValue>({
   toggleSocialSharing: () => {},
 });
 
-const STORAGE_KEY = "mi-social-sharing";
+export const SOCIAL_SHARING_STORAGE_KEY = "mi-social-sharing";
+const STORAGE_KEY = SOCIAL_SHARING_STORAGE_KEY;
 
 export function SocialSharingProvider({ children }: { children: React.ReactNode }) {
   const [socialSharingEnabled, setSocialSharingEnabled] = useState<boolean>(() => {

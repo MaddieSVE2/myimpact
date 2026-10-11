@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, Component, Suspense, type ReactNode } from "react";
+import { useState, useRef, useEffect, Component, Suspense, type ComponentType, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { updateNavHistory } from "@/lib/nav-history";
 import { scrollContentToTop, CONTENT_SCROLL_ID } from "@/lib/scroll-utils";
 import { captureException as captureSentryException } from "@/lib/sentry";
-import { lazyWithRetry, isChunkLoadError, attemptChunkErrorReload } from "@/lib/lazy-retry";
+import { lazyWithRetry, isChunkLoadError, attemptChunkErrorReload, type PreloadableLazy } from "@/lib/lazy-retry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -205,11 +205,11 @@ function Redirect({ to }: { to: string }) {
 const HIDE_BANNER_PATHS = ["/login", "/auth/confirm", "/org/demo", "/", "/results", "/profile"];
 
 function GuestBanner() {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { showsGuestContent } = useAuth();
   const [location] = useLocation();
   const [dismissed, setDismissed] = useState(false);
 
-  if (isLoading || isLoggedIn || dismissed) return null;
+  if (!showsGuestContent || dismissed) return null;
   if (HIDE_BANNER_PATHS.some(p => location === p || location.startsWith(p + "/"))) return null;
 
   const loginHref = `/login?from=${encodeURIComponent(location)}`;
@@ -504,6 +504,28 @@ function AppRouter() {
     </div>
   );
 }
+
+/**
+ * The prerendered public pages (prerender.ts, lib/page-metadata.ts), so
+ * main.tsx can load a page's code before hydrating it.
+ */
+export const PRERENDERED_ROUTE_PAGES: Record<string, PreloadableLazy<ComponentType<unknown>>> = {
+  "/": Intro,
+  "/about": About,
+  "/methodology": Methodology,
+  "/whats-new": WhatsNew,
+  "/contact": Contact,
+  "/privacy": Privacy,
+  "/terms": Terms,
+  "/security": Security,
+  "/organisations": Organisations,
+  "/org/demo": OrgDemoPage,
+  "/org/register": OrgRegister,
+  "/org/types/explicit-submission": OrgTypeExplicitSubmission,
+  "/org/types/consented-logging": OrgTypeConsentedLogging,
+  "/suggestions": Suggestions,
+  "/404": NotFound,
+};
 
 function App() {
   return (

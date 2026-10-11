@@ -14,7 +14,8 @@ const ThemeContext = createContext<ThemeContextValue>({
   isHighContrast: false,
 });
 
-const STORAGE_KEY = "mi-theme";
+export const THEME_STORAGE_KEY = "mi-theme";
+const STORAGE_KEY = THEME_STORAGE_KEY;
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {

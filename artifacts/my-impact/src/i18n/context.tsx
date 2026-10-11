@@ -41,7 +41,7 @@ function writeCookie(name: string, value: string, maxAgeDays: number): void {
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
 }
 
-function detectInitialLocale(): Locale {
+export function detectInitialLocale(): Locale {
   const fromCookie = readCookie(LOCALE_COOKIE);
   if (isLocale(fromCookie)) return fromCookie;
   if (typeof navigator !== "undefined" && Array.isArray(navigator.languages)) {

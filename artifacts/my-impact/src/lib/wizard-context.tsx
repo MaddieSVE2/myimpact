@@ -249,7 +249,8 @@ const defaultState: WizardState = {
   activityLocation: null,
 };
 
-const DRAFT_KEY = 'wizard_draft_v1';
+export const WIZARD_DRAFT_KEY = 'wizard_draft_v1';
+const DRAFT_KEY = WIZARD_DRAFT_KEY;
 
 type StoredDraft = Partial<WizardState> & { interests?: string[]; situation?: string | null; userId?: string | null };
 

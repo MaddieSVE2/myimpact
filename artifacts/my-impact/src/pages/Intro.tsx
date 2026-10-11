@@ -460,7 +460,7 @@ function TestimonialsCarousel() {
 
 export default function Intro() {
   const { interests, situations } = useWizard();
-  const { isLoggedIn, isLoading: authLoading, user } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, showsGuestContent, user } = useAuth();
   const isVeteran = situations.includes('armed_forces') || interests.includes('military');
 
   const showRecapBanner =
@@ -503,11 +503,12 @@ export default function Intro() {
   const hasActivePulse = isOrgMember && activeSurveys.length > 0;
   const challengeHref = `/challenges`;
 
-  // While auth is resolving, or, for a logged-in user, while we're still
-  // checking whether they belong to an org, render a neutral placeholder so
-  // we never flash the marketing hero or briefly show the wrong CTA set.
+  // While a returning member's session is being checked, or while we're
+  // still checking whether a logged-in user belongs to an org, render a
+  // neutral placeholder so members never see the marketing hero or the wrong
+  // CTA set. A first-time guest sees the hero straight away, as prerendered.
   const heroResolving =
-    authLoading || (isLoggedIn && myOrgQuery.isLoading);
+    (authLoading && !showsGuestContent) || (isLoggedIn && myOrgQuery.isLoading);
 
   const firstName = firstNameFrom(user?.displayName);
 
@@ -849,7 +850,7 @@ export default function Intro() {
           </div>
         </section>
       )}
-      {!isLoggedIn && !authLoading && (
+      {showsGuestContent && (
       <>
       {/* ── GDP STATEMENT ── */}
       <section style={{ background: C.cream, padding: "clamp(28px, 4vw, 48px) 5% clamp(60px, 10vw, 120px)" }}>

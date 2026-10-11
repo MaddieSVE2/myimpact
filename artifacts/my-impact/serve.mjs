@@ -219,12 +219,16 @@ function serializeInitialData(payload) {
 }
 
 function injectRootMarkup(html, body, initialData) {
+  // The shell is the prerendered homepage, whose root carries
+  // data-prerendered="/". The slug page replaces it without that marker, so
+  // the client draws this page itself rather than reusing the markup.
+  const rootMatch = /<div id="root"[^>]*>/.exec(html);
+  if (!rootMatch) return html;
+  const rootStart = rootMatch.index;
   const rootOpen = '<div id="root">';
-  const rootStart = html.indexOf(rootOpen);
-  if (rootStart < 0) return html;
 
   const tagPattern = /<div\b[^>]*>|<\/div>/gi;
-  tagPattern.lastIndex = rootStart + rootOpen.length;
+  tagPattern.lastIndex = rootStart + rootMatch[0].length;
   let depth = 1;
   let match;
   while ((match = tagPattern.exec(html))) {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { setSentryUser } from "@/lib/sentry";
+import { hasSignedInHint, setSignedInHint } from "./signed-in-hint";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -39,6 +40,13 @@ interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
+  /**
+   * Show guest content: signed out, or still checking in a browser that has
+   * never been signed in. Public pages use it rather than isLoading so they
+   * render as prerendered, while a returning member still sees a neutral
+   * placeholder until their session is checked.
+   */
+  showsGuestContent: boolean;
   requestMagicLink: (
     email: string,
     returnTo?: string,
@@ -64,6 +72,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   user: null,
   isLoading: true,
+  showsGuestContent: false,
   requestMagicLink: async (_e: string, _r?: string, _o?: { marketingOptIn?: boolean }) => ({ instantLogin: false }),
   demoLogin: async () => { throw new Error("Not implemented") as Error & { status: number }; },
   updateProfile: async () => {},
@@ -76,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // There is no session request during build-time rendering. Starting in the
   // settled guest state lets public pages emit their complete guest content.
   const [isLoading, setIsLoading] = useState(typeof window !== "undefined");
+  // Read once: whether this browser was signed in on a previous visit.
+  const [signedInBefore] = useState(hasSignedInHint);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -89,6 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSentryUser(user ? { id: user.id } : null);
   }, [user]);
+
+  useEffect(() => {
+    if (!isLoading) setSignedInHint(!!user);
+  }, [isLoading, user]);
 
   const requestMagicLink = async (
     email: string,
@@ -196,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, requestMagicLink, demoLogin, updateProfile, refreshUser, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn: !!user, user, isLoading, showsGuestContent: !user && (!isLoading || !signedInBefore), requestMagicLink, demoLogin, updateProfile, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

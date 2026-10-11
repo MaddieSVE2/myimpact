@@ -52,18 +52,41 @@ export function attemptChunkErrorReload(): boolean {
   return true;
 }
 
+export type PreloadableLazy<T extends ComponentType<unknown>> = LazyExoticComponent<T> & {
+  /** Loads the page's code ahead of rendering (see main.tsx). */
+  preload: () => Promise<void>;
+};
+
+/**
+ * A thenable that calls back at once. React.lazy then renders an
+ * already-loaded page without suspending, which hydrating a prerendered
+ * page needs: a suspended page can't take updates until its code arrives.
+ */
+function settledThenable<V>(value: V): Promise<V> {
+  const thenable = {
+    then(onFulfilled: (v: V) => unknown) {
+      onFulfilled(value);
+      return thenable;
+    },
+  };
+  return thenable as unknown as Promise<V>;
+}
+
 /**
  * Drop-in replacement for React.lazy that recovers from stale-deploy chunk
  * fetch failures (old index.html referencing replaced chunk filenames) by
  * reloading the page once. Guarded via sessionStorage to avoid reload loops.
+ * Once `preload()` has finished, the page renders without suspending.
  */
 export function lazyWithRetry<T extends ComponentType<unknown>>(
   factory: () => Promise<{ default: T }>
-): LazyExoticComponent<T> {
-  return lazy(() =>
+): PreloadableLazy<T> {
+  let loaded: { default: T } | null = null;
+  const load = () =>
     factory()
       .then((module) => {
         clearChunkReloadFlag();
+        loaded = module;
         return module;
       })
       .catch((error: unknown) => {
@@ -73,6 +96,8 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
           return new Promise<{ default: T }>(() => {});
         }
         throw error;
-      })
-  );
+      });
+  const component = lazy(() => (loaded ? settledThenable(loaded) : load())) as PreloadableLazy<T>;
+  component.preload = () => load().then(() => undefined);
+  return component;
 }

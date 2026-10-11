@@ -84,19 +84,18 @@ function injectPage(
     .replace(/<meta\s+name="robots"[^>]*>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "");
 
-  const injected = jsonLdBlocks ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
+  // Pages with PageMeta render their JSON-LD inside the app, and the browser
+  // renders it in the same place, so it stays in the body (moving it would
+  // stop the markup matching for hydration). Only add it to <head> for a page
+  // whose body has none, so it never appears twice.
+  const bodyHasJsonLd = /<script type="application\/ld\+json">/.test(body);
+  const injected = jsonLdBlocks && !bodyHasJsonLd ? `${metaTags}\n${jsonLdBlocks}` : metaTags;
   result = result.replace(/<meta charset="[^"]*"\s*\/?>/i, (charset) => `${charset}\n${injected}`);
-  // react-helmet-async leaves JSON-LD scripts inline in the SSR body when
-  // renderToString is used without extracting Helmet state. The same schemas
-  // are injected into <head> above, so remove the body copies to avoid
-  // duplicate structured data in the generated page.
-  const bodyWithoutInlineJsonLd = body.replace(
-    /<script type="application\/ld\+json">[\s\S]*?<\/script>/g,
-    "",
-  );
+  // data-prerendered tells the client which page this markup is, so it only
+  // reuses it on that page (lib/prerender-hydration.ts).
   result = result.replace(
     /<div id="root"><\/div>/,
-    `<div id="root">${bodyWithoutInlineJsonLd}</div>`,
+    `<div id="root" data-prerendered="${escape(page.path)}">${body}</div>`,
   );
 
   return result;
@@ -178,11 +177,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const { render } = await import(pathToFileURL(serverEntry).href) as {
-    render: (path: string) => string;
+    render: (path: string) => Promise<string>;
   };
 
   for (const page of PRERENDER_PAGES) {
-    const body = render(page.path);
+    const body = await render(page.path);
     const html = injectPage(template, page, body);
     writeHtml(page.path, html);
   }
