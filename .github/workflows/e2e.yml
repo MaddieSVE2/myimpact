@@ -52,6 +52,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The migrations assume the original tables (users and the rest), which
+      # were created before migrations existed, so they can't build a
+      # database from empty. Create the tables from the schema first; every
+      # migration then applies cleanly on top. Safe here because the
+      # database is empty, so push has nothing to ask about.
+      - name: Create tables from the schema
+        run: pnpm --filter @workspace/db run push-force
+
       - name: Run migrations
         run: pnpm --filter @workspace/db run migrate
 
