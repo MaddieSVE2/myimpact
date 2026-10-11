@@ -1,0 +1,66 @@
+# The API server's unit and database tests (artifacts/api-server/tests), on
+# every push and pull request, against a throwaway Postgres built the same
+# way as the E2E database. Some tests write and delete rows, so they must
+# never point at a real database.
+name: API tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  vitest:
+    name: Vitest (api-server)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: myimpact_api_tests
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myimpact_api_tests
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # As in e2e.yml: the tables first (the migrations assume them), then
+      # the migrations on top.
+      - name: Create tables from the schema
+        run: pnpm --filter @workspace/db run push-force
+
+      - name: Run migrations
+        run: pnpm --filter @workspace/db run migrate
+
+      - name: Build the shared libraries
+        run: pnpm run typecheck:libs
+
+      - name: Run the API tests
+        run: pnpm --filter @workspace/api-server run test

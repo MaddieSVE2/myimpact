@@ -1321,7 +1321,7 @@ describe("/history — twin dedupe and sharedWith badge", () => {
     expect(res.body.records).toHaveLength(1);
     const rec = res.body.records[0];
     expect(rec.id).toBe("10");
-    expect(rec.sharedWith).toEqual({ orgId: "org-1", orgName: "Acme Volunteers" });
+    expect(rec.sharedWith).toEqual({ orgId: "org-1", orgName: "Acme Volunteers", twinId: 20 });
     expect(rec.source).toBe("user");
   });
 
@@ -1338,7 +1338,7 @@ describe("/history — twin dedupe and sharedWith badge", () => {
     expect(res.body.records).toHaveLength(1);
     const rec = res.body.records[0];
     expect(rec.id).toBe("500");
-    expect(rec.sharedWith).toEqual({ orgId: "org-2", orgName: "University of Example" });
+    expect(rec.sharedWith).toEqual({ orgId: "org-2", orgName: "University of Example", twinId: 501 });
   });
 
   it("diverged-value twin pair collapses to the personal record (keeps personal values)", async () => {

@@ -110,8 +110,12 @@ vi.mock("@workspace/db", () => {
     "occurrenceActivities", "occurrenceDonationsGBP", "usualLocationJson",
     "sharingOrgId", "lastSkippedAt", "createdAt",
   ]);
-  const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role"]);
-  const organisationsTable = tableTag("organisations", ["id", "name"]);
+  const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role", "status"]);
+  const organisationsTable = tableTag("organisations", ["id", "name", "dataSharingMode", "revokedAt"]);
+  // Queried by /history (consented-logging badges) and group defaults; no
+  // test here needs rows in them.
+  const orgMemberConsentsTable = tableTag("org_member_consents", ["id", "orgId", "userId", "status", "shareFrom"]);
+  const orgGroupMembersTable = tableTag("org_group_members", ["id", "groupId", "userId", "role"]);
   const orgMatchRatesTable = tableTag("org_match_rates", ["id", "orgId", "effectiveFrom"]);
   const journalEntriesTable = tableTag("journal_entries", ["id", "userId"]);
   const userProfilesTable = tableTag("user_profiles", ["id", "userId", "lastAckedStreakMilestone"]);
@@ -366,6 +370,8 @@ vi.mock("@workspace/db", () => {
     journalEntriesTable,
     userProfilesTable,
     recordVerificationsTable,
+    orgMemberConsentsTable,
+    orgGroupMembersTable,
   };
 });
 

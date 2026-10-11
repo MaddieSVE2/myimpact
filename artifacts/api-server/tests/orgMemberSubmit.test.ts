@@ -940,7 +940,9 @@ describe("DELETE /api/org/member-submissions/:recordId", () => {
     expect(payload.reason).toBe("Sent by mistake");
   });
 
-  it("blocks the member after the 24h window with 403", async () => {
+  // Withdrawing is the member taking back their own data, so it has no time
+  // limit (since 91c8de3); the 24-hour window applies only to edits.
+  it("lets the member withdraw after the 24h window too", async () => {
     state.authUser = { id: "user-1", email: "user1@example.com" };
     state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
     const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
@@ -949,10 +951,10 @@ describe("DELETE /api/org/member-submissions/:recordId", () => {
     const app = makeApp();
     const res = await request(app).delete("/api/org/member-submissions/7").send({});
 
-    expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/24 hours/i);
-    expect(state.deletes).toHaveLength(0);
-    expect(state.enqueued).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(state.deletes).toHaveLength(1);
+    expect(state.enqueued).toHaveLength(1);
+    expect(state.enqueued[0].eventType).toBe("hours.withdrawn");
   });
 
   it("lets a manager withdraw any time, even after the window", async () => {
