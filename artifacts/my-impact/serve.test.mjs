@@ -228,6 +228,12 @@ test("sends precompressed files when accepted, with security headers", async () 
     // The copies are never served on their own.
     assert.equal((await rawGet(STATIC_PORT, `${asset}.br`)).status, 404);
     assert.equal((await rawGet(STATIC_PORT, "/index.html.gz")).status, 404);
+
+    // www goes to the bare domain, keeping the path and query.
+    const www = await rawGet(STATIC_PORT, "/about?ref=x", { host: "www.myimpact.uk" });
+    assert.equal(www.status, 301);
+    assert.equal(www.headers.location, "https://myimpact.uk/about?ref=x");
+    assert.equal((await rawGet(STATIC_PORT, "/", { host: "myimpact.uk" })).status, 200);
   } finally {
     web.kill("SIGTERM");
     await once(web, "exit");

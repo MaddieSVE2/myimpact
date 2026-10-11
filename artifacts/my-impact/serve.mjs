@@ -425,6 +425,17 @@ const server = createServer(async (req, res) => {
   const pathname = req.url.split("?")[0];
   setSecurityHeaders(res);
 
+  // One address for everyone: www.myimpact.uk goes to myimpact.uk, keeping
+  // the path and query. (API calls on www go straight to the API server.)
+  const host = String(req.headers.host ?? "").toLowerCase();
+  if (host.startsWith("www.")) {
+    res.statusCode = 301;
+    res.setHeader("Location", `https://${host.slice(4)}${req.url}`);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.end();
+    return;
+  }
+
   // ── SSR metadata injection for slug routes ──────────────────────────────────
   // Must run before the static-file check because /profile/:slug and
   // /org/share/:slug have no pre-built static file — they would fall through
