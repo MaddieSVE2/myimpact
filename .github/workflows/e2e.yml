@@ -36,6 +36,10 @@ jobs:
       APP_URL: http://localhost:24656
       ALLOWED_ORIGINS: http://localhost:24656
       CI: "1"
+      # The API won't start without these. Nothing reachable is behind them:
+      # tests must not depend on the AI service.
+      AI_INTEGRATIONS_OPENAI_BASE_URL: http://127.0.0.1:9
+      AI_INTEGRATIONS_OPENAI_API_KEY: e2e-placeholder
 
     steps:
       - uses: actions/checkout@v7
