@@ -216,7 +216,7 @@ export function ReportActions({
       <Link
         href="/suggestions"
         className="flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white whitespace-nowrap transition-all hover:-translate-y-px"
-        style={{ background: "var(--brand-orange-bright)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-bright) 25%, transparent)" }}
+        style={{ background: "var(--brand-orange-solid)", boxShadow: "0 2px 12px color-mix(in srgb, var(--brand-orange-solid) 25%, transparent)" }}
       >
         Get personalised ideas <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
       </Link>

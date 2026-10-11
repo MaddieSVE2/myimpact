@@ -1051,7 +1051,7 @@ export default function Results() {
         <div className="flex flex-wrap gap-3 justify-center mt-2">
           <button
             onClick={() => setLocation("/wizard/actions")}
-            className="px-5 py-2.5 rounded-xl bg-[var(--brand-orange-bright)] text-white text-sm font-bold hover:bg-[#d95420] transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[var(--brand-orange-solid)] text-white text-sm font-bold hover:bg-[var(--brand-orange)] transition-colors"
           >
             Calculate my impact →
           </button>

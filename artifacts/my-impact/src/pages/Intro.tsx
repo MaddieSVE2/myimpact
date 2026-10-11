@@ -614,8 +614,9 @@ export default function Intro() {
             WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
           }}>
             <img
-              src={`${import.meta.env.BASE_URL}images/faces.png`}
+              src={`${import.meta.env.BASE_URL}images/faces.webp`}
               alt=""
+              fetchPriority="high"
               aria-hidden="true"
               style={{
                 width: "100%", height: "100%",
@@ -734,8 +735,9 @@ export default function Intro() {
           WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,0.7) 100%)",
         }}>
           <img
-            src={`${import.meta.env.BASE_URL}images/faces.png`}
+            src={`${import.meta.env.BASE_URL}images/faces.webp`}
             alt=""
+            fetchPriority="high"
             aria-hidden="true"
             style={{
               width: "100%", height: "100%",
