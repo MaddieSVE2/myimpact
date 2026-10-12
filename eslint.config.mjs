@@ -18,10 +18,8 @@ export default defineConfig(
       "**/.lighthouseci/**",
       "**/test-results/**",
       "**/playwright-report/**",
-      // Prototyping sandbox and the pitch decks (not in this repository).
+      // Prototyping sandbox.
       "artifacts/mockup-sandbox/**",
-      "artifacts/pitch-deck/**",
-      "artifacts/pitch-deck-orgs/**",
     ],
   },
   js.configs.recommended,
