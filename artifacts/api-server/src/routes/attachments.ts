@@ -18,6 +18,7 @@ import {
   getUserPrefixBytes,
 } from "../lib/objectStorage.js";
 import { createRateLimiter } from "../lib/rateLimiter.js";
+import { getOrgSharingContext, sharedRecordsCondition } from "../lib/orgSharing.js";
 import { attachmentPendingReservationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -699,9 +700,12 @@ router.get("/list", authenticate, async (req: AuthenticatedRequest, res) => {
  * Load an attachment the requesting user may view. Access is granted when:
  *   • the user owns the attachment, or
  *   • the attachment is linked to an impact record that was submitted to an
- *     organisation the user manages (org evidence review).
+ *     organisation the user manages (org evidence review), or
+ *   • the record is one a consenting member shares automatically with an
+ *     organisation the user actively manages (consented logging): the same
+ *     records that organisation's activities feed shows.
  */
-async function loadViewableAttachment(
+export async function loadViewableAttachment(
   userId: string,
   id: number,
 ): Promise<typeof attachmentsTable.$inferSelect | null> {
@@ -730,6 +734,27 @@ async function loadViewableAttachment(
         ))
         .limit(1);
       if (membership) return row;
+    }
+
+    const managed = await db
+      .select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.role, "manager"),
+        eq(orgMembersTable.status, "active"),
+      ));
+    for (const { orgId } of managed) {
+      const ctx = await getOrgSharingContext(orgId);
+      if (ctx.mode !== "consented_logging" || ctx.revoked) continue;
+      const shared = sharedRecordsCondition(ctx);
+      if (!shared) continue;
+      const [visible] = await db
+        .select({ id: impactRecordsTable.id })
+        .from(impactRecordsTable)
+        .where(and(eq(impactRecordsTable.id, row.recordId), shared))
+        .limit(1);
+      if (visible) return row;
     }
   }
   return null;
