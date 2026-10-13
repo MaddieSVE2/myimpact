@@ -59,6 +59,8 @@ export default defineConfig({
       prettier: true,
       override: {
         zod: {
+          // Zod 3-style output, which also runs on the Zod 4 we install.
+          // Switching to 4 rewrites every generated file, so do that alone.
           version: 3,
           coerce: {
             query: ['boolean', 'number', 'string'],
