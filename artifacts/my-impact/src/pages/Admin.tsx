@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import AdminFunnels from "@/components/AdminFunnels";
 import AdminOrganisations from "@/components/AdminOrganisations";
+import AdminRevalueOneOff from "@/components/AdminRevalueOneOff";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -387,6 +388,8 @@ export default function Admin() {
           Email log →
         </a>
       </p>
+
+      <AdminRevalueOneOff />
 
       {error && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">

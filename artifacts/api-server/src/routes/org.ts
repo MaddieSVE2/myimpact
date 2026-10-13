@@ -16,7 +16,7 @@ import { trackServerEvent } from "../lib/analytics.js";
 import { featureCap } from "../lib/featureFlags.js";
 import { configuredProviders, isProviderConfigured, normalizeDomain, type SsoProvider } from "../lib/oidc.js";
 import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
-import { calculateImpact, ACTIVITIES } from "../lib/impactData.js";
+import { calculateImpact, ACTIVITIES, ONE_OFF_KINDS, YEARLY_HOUSEHOLD_ACTIVITY_IDS } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
@@ -3400,6 +3400,20 @@ function cleanReportShareActivities(
   return { cleaned };
 }
 
+/**
+ * A shared one-off entry is valued as the member's entry was: yearly
+ * per-person activities as time, and a household habit counted only if the
+ * entry counted it (its stored value isn't 0).
+ */
+function oneOffShareValuation(sourceResultJson: unknown) {
+  const breakdowns = ((sourceResultJson as { activityBreakdowns?: unknown } | null)?.activityBreakdowns ?? []) as Array<{ activityId?: string; impactValue?: number }>;
+  const counted = new Set<string>();
+  for (const b of Array.isArray(breakdowns) ? breakdowns : []) {
+    if (b?.activityId && YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(b.activityId) && Number(b.impactValue) === 0) counted.add(b.activityId);
+  }
+  return { oneOff: true, householdsCountedThisYear: counted };
+}
+
 router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -3678,6 +3692,7 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         sdg: c.custom!.sdg,
         sdgColor: c.custom!.sdgColor,
       })),
+      sourceReport?.kind && ONE_OFF_KINDS.has(sourceReport.kind) ? oneOffShareValuation(sourceReport.resultJson) : {},
     );
 
     const now = new Date();
