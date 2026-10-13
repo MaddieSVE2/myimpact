@@ -525,6 +525,8 @@ export const PRERENDERED_ROUTE_PAGES: Record<string, PreloadableLazy<ComponentTy
   "/org/types/consented-logging": OrgTypeConsentedLogging,
   "/suggestions": Suggestions,
   "/404": NotFound,
+  "/login": Login,
+  "/wizard/actions": ActionsStep,
 };
 
 function App() {

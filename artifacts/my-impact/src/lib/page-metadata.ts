@@ -292,6 +292,20 @@ export const ORG_TYPE_CONSENTED_LOGGING_META: PageMetadata = {
   ogType: "article",
 };
 
+export const LOGIN_META: PageMetadata = {
+  title: "Sign in | My Impact",
+  description: "Sign in to My Impact to save your impact, keep a history and share your results.",
+  canonical: undefined,
+  robots: "noindex, nofollow",
+};
+
+export const WIZARD_ACTIONS_META: PageMetadata = {
+  title: "Calculate your impact | My Impact",
+  description: "Tell us what you do and My Impact works out the social value of your volunteering, caring and community work.",
+  canonical: undefined,
+  robots: "noindex, nofollow",
+};
+
 /**
  * All public pages to pre-render, in order.
  * Routes come from public-routes.json, which is also consumed by the
@@ -321,4 +335,10 @@ export const PRERENDER_PAGES: PrerenderPage[] = PUBLIC_ROUTES.map((path) => {
     throw new Error(`Missing page metadata for public route: ${path}`);
   }
   return { path, ...metadata };
-});
+}).concat([
+  // App pages a first-time visitor opens straight from a link: prerendered
+  // so they appear quickly on phones, but not public pages (not indexed,
+  // not in the sitemap or public-routes.json).
+  { path: "/login", ...LOGIN_META },
+  { path: "/wizard/actions", ...WIZARD_ACTIONS_META },
+]);

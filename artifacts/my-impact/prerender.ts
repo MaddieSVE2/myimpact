@@ -171,6 +171,17 @@ async function main(): Promise<void> {
     }
   }
 
+  // Other app pages (history, results and the like) depend on who is signed
+  // in, so they get this shell with an empty root and draw themselves once
+  // their code has loaded (serve.mjs). Serving them the homepage instead
+  // would flash its content first.
+  if (template.includes('<div id="root"></div>')) {
+    // The homepage chunk is no use to these pages.
+    const shell = template.replace(/\s*<link rel="modulepreload" crossorigin href="\/assets\/Intro-[^"]*" \/>/, "");
+    writeFileSync(join(DIST, "app-shell.html"), shell, "utf-8");
+    console.log(`[prerender] wrote ${join(DIST, "app-shell.html")}`);
+  }
+
   const serverEntry = join(__dirname, "dist", "server", "entry-server.js");
   if (!existsSync(serverEntry)) {
     console.error("[prerender] dist/server/entry-server.js not found — run the SSR build first");

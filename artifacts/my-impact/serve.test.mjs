@@ -229,6 +229,16 @@ test("sends precompressed files when accepted, with security headers", async () 
     assert.equal((await rawGet(STATIC_PORT, `${asset}.br`)).status, 404);
     assert.equal((await rawGet(STATIC_PORT, "/index.html.gz")).status, 404);
 
+    // App pages get the homepage until a build writes the app shell, then
+    // the shell; the homepage itself is unchanged.
+    assert.equal(brotliDecompressSync((await rawGet(STATIC_PORT, "/history", { "accept-encoding": "br" })).body).toString(), html);
+    const shell = `<!DOCTYPE html><html><head><title>T</title></head><body><div id="root"></div></body></html>`;
+    writeFileSync(join(root, "app-shell.html"), shell);
+    const history = await rawGet(STATIC_PORT, "/history");
+    assert.equal(history.status, 200);
+    assert.equal(history.body.toString(), shell);
+    assert.equal(brotliDecompressSync((await rawGet(STATIC_PORT, "/", { "accept-encoding": "br" })).body).toString(), html);
+
     // www goes to the bare domain, keeping the path and query.
     const www = await rawGet(STATIC_PORT, "/about?ref=x", { host: "www.myimpact.uk" });
     assert.equal(www.status, 301);

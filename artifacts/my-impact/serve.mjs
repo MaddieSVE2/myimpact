@@ -498,16 +498,21 @@ const server = createServer(async (req, res) => {
     }
 
     // Decide whether this is a known React Router route or a genuine 404.
-    // Known routes get index.html with HTTP 200 so the client router handles
-    // them; everything else gets the pre-rendered 404 page with HTTP 404.
+    // Known routes get the app shell (prerender.ts) with HTTP 200 so the
+    // client router handles them; everything else gets the pre-rendered 404
+    // page with HTTP 404.
     const indexPath = join(ROOT, "index.html");
 
     if (isKnownRoute(pathname)) {
-      // Valid SPA route — hand off to the client-side router.
-      try {
-        resolvedStat = statSync(indexPath);
-        resolvedPath = indexPath;
-      } catch {
+      // Valid SPA route — hand off to the client-side router. Builds without
+      // a shell (dev) use index.html.
+      for (const candidate of [join(ROOT, "app-shell.html"), indexPath]) {
+        try {
+          const s = statSync(candidate);
+          if (s.isFile()) { resolvedPath = candidate; resolvedStat = s; break; }
+        } catch {}
+      }
+      if (!resolvedStat) {
         res.statusCode = 404;
         res.end("Not Found");
         return;
