@@ -4,6 +4,7 @@ import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql, count } from "d
 import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { requireOrgManager } from "../lib/orgManager.js";
+import { customLinesFromResult } from "../lib/customLines.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -2355,10 +2356,20 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
 
         // Per-activity lines with value detail, mirroring the shapes used by
         // the member-submissions panel and the full-tier activities feed.
+        // Custom lines come from the stored breakdowns (lib/customLines).
+        const customLines = customLinesFromResult(record.resultJson);
+        const customIds = new Set(customLines.map(c => c.activityId));
         const rawLines = Array.isArray(record.activitiesJson)
           ? (record.activitiesJson as Array<Record<string, unknown>>)
           : [];
-        const lines = rawLines.map(l => {
+        const customDetail = new Map<string, string>();
+        for (const l of rawLines) {
+          if (typeof l.activityId === "string" && customIds.has(l.activityId) && typeof l.detail === "string") {
+            customDetail.set(l.activityId, l.detail);
+          }
+        }
+        const standardLines = rawLines.filter(l => !(typeof l.activityId === "string" && customIds.has(l.activityId)));
+        const lines = standardLines.map(l => {
           const actId = typeof l.activityId === "string" ? l.activityId : "";
           const def = ACTIVITIES.find(a => a.id === actId);
           const hours = typeof l.hoursPerYear === "number" ? l.hoursPerYear : 0;
@@ -2386,6 +2397,19 @@ router.get("/verifications/pending", authenticate, async (req: AuthenticatedRequ
             value,
           };
         });
+        for (const c of customLines) {
+          lines.push({
+            activityName: c.name,
+            category: "Custom",
+            title: null,
+            detail: customDetail.get(c.activityId) ?? null,
+            hours: c.hours,
+            quantity: c.quantity,
+            valuePerUnit: c.valuePerUnit,
+            unitLabel: c.unitLabel,
+            value: Math.round(c.impactValue * 100) / 100,
+          });
+        }
 
         const source: "member-submitted" | "org-attested" | "shared" =
           record.source === "member-submitted" ? "member-submitted"
@@ -4039,9 +4063,20 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       const memberName  = user?.displayName ?? (scope.isManager ? user?.email : null) ?? "Member";
       const memberEmail = scope.isManager ? (user?.email ?? null) : null;
 
-      const actLines = Array.isArray(r.activitiesJson)
+      // Custom lines are read from the stored breakdowns (lib/customLines),
+      // which also covers records made only of custom lines.
+      const customLines = customLinesFromResult(r.resultJson);
+      const customIds = new Set(customLines.map(c => c.activityId));
+      const rawLines = Array.isArray(r.activitiesJson)
         ? (r.activitiesJson as Array<Record<string, unknown>>)
         : [];
+      const customDetail = new Map<string, string>();
+      for (const l of rawLines) {
+        if (typeof l.activityId === "string" && customIds.has(l.activityId) && typeof l.detail === "string") {
+          customDetail.set(l.activityId, l.detail);
+        }
+      }
+      const actLines = rawLines.filter(l => !(typeof l.activityId === "string" && customIds.has(l.activityId)));
 
       // Determine the canonical date for this record.
       // org-attested: occurredAt lives in resultJson; fall back to attestedAt/createdAt.
@@ -4162,6 +4197,33 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
           });
         }
       }
+
+      customLines.forEach((c, k) => {
+        lines.push({
+          id: `${r.id}-c${k}`,
+          occurredAt: recordDate,
+          memberId: r.userId,
+          memberName,
+          memberEmail,
+          category: "Custom",
+          activity: c.name,
+          description: customDetail.get(c.activityId) ?? "",
+          hours: c.hours,
+          socialValueGBP: Math.round(c.impactValue * 100) / 100,
+          verified: !!r.attestedAt || approvedRecordIds.has(r.id),
+          verificationStatus: r.attestedAt
+            ? "verified"
+            : approvedRecordIds.has(r.id) ? "approved" : "submitted",
+          valuePerUnit: c.valuePerUnit,
+          unitLabel: c.unitLabel,
+          proxy: c.proxy,
+          proxyYear: c.proxyYear,
+          source: r.submittedToOrgId === orgId ? "member-submitted" : "shared",
+          // Photos go on the record's first row, as for standard lines.
+          evidence: actLines.length === 0 && k === 0 ? (evidenceByRecord.get(r.id) ?? []) : [],
+          reportPeriod: recordReportPeriod,
+        });
+      });
     }
 
     // Members list (for the filter dropdown in the UI).
