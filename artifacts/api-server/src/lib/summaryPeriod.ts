@@ -70,3 +70,10 @@ export function isValidSummaryYearStart(v: unknown): v is string {
   if (month < 1 || month > 12 || day < 1) return false;
   return day <= MONTH_MAX_DAYS[month - 1]!;
 }
+
+/** The last millisecond of `d`'s day, for date ranges that include their end date. */
+export function endOfDay(d: Date): Date {
+  const end = new Date(d);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
