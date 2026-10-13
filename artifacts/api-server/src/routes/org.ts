@@ -8,7 +8,6 @@ import { getUncachableResendClient } from "../lib/resend.js";
 import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildOrgDocument } from "../lib/orgPdf.js";
-import React from "react";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";

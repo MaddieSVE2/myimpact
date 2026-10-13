@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Globe, Lock, CheckCircle, AlertCircle, Loader2, ExternalLink, Info, Code2 } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
-import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { BASE } from "@/lib/api";
 
@@ -193,7 +192,6 @@ function Toggle({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: (
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 
 export default function PublicProfileSettings() {
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<PublicProfileData | null>(null);

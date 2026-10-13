@@ -14,7 +14,7 @@ test.describe("GDPR self-service", () => {
     await api.dispose();
   });
 
-  test("user can download a JSON export of their data", async ({ page, context }) => {
+  test("user can download a JSON export of their data", async ({ page }) => {
     const email = uniqueEmail("gdpr-export");
     await api.resetUser(email);
 

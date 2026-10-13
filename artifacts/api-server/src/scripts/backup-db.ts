@@ -148,7 +148,7 @@ async function loadProdRowCountsFromFile(countsPath: string): Promise<TableCount
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
-    throw new Error(`Counts file ${countsPath} is not valid JSON: ${(err as Error).message}`);
+    throw new Error(`Counts file ${countsPath} is not valid JSON: ${(err as Error).message}`, { cause: err });
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(

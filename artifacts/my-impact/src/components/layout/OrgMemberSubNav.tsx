@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ClipboardList, Trophy, Building2, History, UsersRound } from "lucide-react";
+import { ClipboardList, Trophy, History, UsersRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { joinedGroups, useMyGroups } from "@/lib/org-groups";

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useWizard } from "@/lib/wizard-context";
 import { formatPeriodRange } from "@/lib/report-period";
@@ -558,7 +558,7 @@ function generateDofEPortfolioText(results: DofESectionResult[]): string {
     const hrs = Math.round(r.totalHours);
     const level = dofeBadgeLevel(r.totalHours, r.thresholds);
     const actNames = r.activities.map(a => a.name.toLowerCase());
-    let actText = "";
+    let actText: string;
     if (actNames.length === 1) actText = actNames[0];
     else if (actNames.length === 2) actText = `${actNames[0]} and ${actNames[1]}`;
     else actText = `${actNames.slice(0, -1).join(", ")}, and ${actNames[actNames.length - 1]}`;
@@ -727,7 +727,7 @@ function generateCVText(result: any, interests: string[] = [], careerBreak = fal
   const valueFormatted = formatCurrency(result.totalValue);
   const skillNames = skills.slice(0, 5).map((s: { emoji: string; name: string }) => s.name);
 
-  let actText = "";
+  let actText: string;
   if (activityNames.length === 0) {
     actText = "caring for others, supporting my community, and contributing to environmental and social causes";
   } else if (activityNames.length === 1) {
@@ -740,7 +740,7 @@ function generateCVText(result: any, interests: string[] = [], careerBreak = fal
     actText = `${rest.join(", ")}, and ${last}`;
   }
 
-  let skillText = "";
+  let skillText: string;
   if (skillNames.length === 0) {
     skillText = "communication, teamwork, and initiative";
   } else if (skillNames.length === 1) {
@@ -912,7 +912,6 @@ export default function Results() {
   // editRecordId itself is cleared right after a successful edit-save (so a
   // follow-up save creates a new entry), so this keeps the CTA reading
   // "Updated!" instead of flipping to "Saved!".
-  const [savedWasEdit, setSavedWasEdit] = useState(false);
   const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
   // Entry date the server actually persisted on the last successful save
   // (ISO YYYY-MM-DD). Once set, it is the authoritative anchor for the hero
@@ -1231,7 +1230,6 @@ export default function Results() {
         activity_count: result.activityBreakdowns.length,
         has_donation: (input.donationsGBP ?? 0) > 0,
       });
-      setSavedWasEdit(wasEdit);
       if (editRecordId) setEditRecordId(null);
       toast(
         wasEdit

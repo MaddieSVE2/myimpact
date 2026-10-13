@@ -370,7 +370,7 @@ router.post("/delete-account", authenticate, async (req: AuthenticatedRequest, r
     return;
   }
 
-  let attachmentsRemoved = 0;
+  let attachmentsRemoved: number;
   try {
     const result = await eraseUserData(userId);
     attachmentsRemoved = result.attachmentsRemoved;

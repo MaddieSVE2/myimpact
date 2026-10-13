@@ -26,7 +26,7 @@
  *                             test runs.
  */
 import { db, usersTable, impactRecordsTable } from "@workspace/db";
-import { eq, and, gte, lt, sql, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, sql, inArray, isNotNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { sendPushSafely } from "../lib/push.js";

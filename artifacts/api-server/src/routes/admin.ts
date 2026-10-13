@@ -9,8 +9,6 @@ import { randomUUID } from "crypto";
 import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
-  PENCE_PER_TRANSCRIBE_SECOND,
-  PENCE_PER_TTS_CHAR,
   currentMonthKey,
   estimateTranscribeCostPence,
   estimateTtsCostPence,

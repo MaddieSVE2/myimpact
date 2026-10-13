@@ -25,7 +25,6 @@ import {
   CalendarDays,
   PartyPopper,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";

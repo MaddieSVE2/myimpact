@@ -60,7 +60,6 @@ interface PendingCustomActivity {
   analysed: AnalysedActivity;
 }
 
-type Phase = "select" | "quantify";
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
@@ -240,7 +239,6 @@ export default function ActivitiesStep() {
 
   const primaryActivities = sortedActivities.slice(0, 8);
   const moreActivities = sortedActivities.slice(8);
-  const displayedActivities = showAll ? sortedActivities : primaryActivities;
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -272,7 +270,7 @@ export default function ActivitiesStep() {
     }
     if (selectedIds.size === 0 && pendingCustomActivities.length === 0) {
       // Only already-committed custom activities, skip quantify and go straight through
-      input.activities.forEach((_, i) => removeActivity(0));
+      input.activities.forEach(() => removeActivity(0));
       setLocation("/wizard/contributions");
       return;
     }
@@ -282,7 +280,7 @@ export default function ActivitiesStep() {
   const totalQuantifyCount = selectedList.length + pendingCustomActivities.length;
 
   const commitAndNavigate = () => {
-    input.activities.forEach((_, i) => removeActivity(0));
+    input.activities.forEach(() => removeActivity(0));
     selectedList.forEach(a => {
       const qty = quantities[a.id] ?? (a.defaultQuantity ?? 1);
       const hrs = a.unit === "hour" ? (quantities[a.id] ?? (a.defaultQuantity ?? 20)) : (hours[a.id] ?? Math.max(1, Math.round((quantities[a.id] ?? (a.defaultQuantity ?? 1)) * 2)));
@@ -510,7 +508,6 @@ export default function ActivitiesStep() {
     }
   };
 
-  const isQuantityUnit = (a: ActivityItem) => a.unit !== "hour";
 
   return (
     <div className={`${CONTENT_CONTAINER} py-10`}>

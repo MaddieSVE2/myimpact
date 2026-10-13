@@ -326,12 +326,12 @@ async function buildWidgetPayload(slug: string) {
   // been touched.
   let totalHours: number | null = null;
   let totalSroi: number | null = null;
-  let impactMaxCreatedAt: Date | null = null;
+  let impactMaxCreatedAt: Date | null;
   // Raw aggregate sum, captured regardless of privacy toggles, used as a
   // cheap "did anything in the impact records change?" detector for the
   // version hash. (impact_records has no updatedAt, so summing total_value
   // gives us edit-detection without an extra column.)
-  let impactSumTotalRaw = "0";
+  let impactSumTotalRaw: string;
   const recon =
     profile.showHours || profile.showSroi || profile.showCategories
       ? await computeUserReconciliation(profile.userId)

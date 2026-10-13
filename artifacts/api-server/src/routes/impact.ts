@@ -15,7 +15,6 @@ import { calculateStreak } from "../lib/streak.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildImpactDocument, parsePdfData } from "../lib/impactPdf.js";
 import { buildEvidencePackDocument } from "../lib/evidencePackPdf.js";
-import React from "react";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";

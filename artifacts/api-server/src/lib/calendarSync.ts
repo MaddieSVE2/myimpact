@@ -92,7 +92,7 @@ export async function syncSource(source: CalendarSource): Promise<SyncSummary> {
         updatedAt: new Date(),
       })
       .where(eq(calendarSourcesTable.id, source.id));
-    throw new Error(`Ownership check failed for source ${source.id}: ${message}`);
+    throw new Error(`Ownership check failed for source ${source.id}: ${message}`, { cause: err });
   }
 
   // Security: verify the stored calendarId still matches the server-derived

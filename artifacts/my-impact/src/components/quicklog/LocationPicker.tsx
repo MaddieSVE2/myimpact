@@ -217,7 +217,6 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
   const previousLabel = describeLocation(previous);
   const isPreviousSelected =
     !!value && !!previous && describeLocation(value) === previousLabel && value.mode === previous.mode;
-  const inPersonSelected = value?.mode === "in_person" && !isPreviousSelected;
 
   return (
     <div data-testid="quick-log-location">

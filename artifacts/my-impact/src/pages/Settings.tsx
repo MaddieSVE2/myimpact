@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, MailCheck, HardDrive, Sparkles, Repeat, Trash2, Pencil, Check, Mic, Bell, BellOff, Loader2, Pause, Languages, ShieldCheck, Download, AlertTriangle } from "lucide-react";
-import { useLocation } from "wouter";
+import { User, Mail, Eye, LogOut, ChevronRight, CheckCircle, Building2, Smartphone, HardDrive, Sparkles, Repeat, Trash2, Pencil, Mic, Bell, BellOff, Loader2, Pause, Languages, ShieldCheck, Download, AlertTriangle } from "lucide-react";
 import {
   isPushSupported,
   currentPermission,
@@ -742,7 +741,6 @@ function BirthDateSettings() {
 function YourDataSection() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [exporting, setExporting] = useState(false);
   const [wipingImpact, setWipingImpact] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);

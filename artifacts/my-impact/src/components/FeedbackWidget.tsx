@@ -2,14 +2,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { X, MessageSquare, Send, CheckCircle, NotebookPen } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
-import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { BASE } from "@/lib/api";
 
 
 export function FeedbackWidget() {
   const { feedbackMode, setFeedbackMode } = useFeedback();
-  const { user } = useAuth();
   const [location] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [message, setMessage] = useState("");

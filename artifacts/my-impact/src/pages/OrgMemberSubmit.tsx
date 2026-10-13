@@ -156,7 +156,6 @@ export default function OrgMemberSubmit() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdRecordId, setCreatedRecordId] = useState<number | null>(null);
-  const [personalRecordId, setPersonalRecordId] = useState<number | null>(null);
   const [submittedStatus, setSubmittedStatus] = useState<"pending" | "approved" | null>(null);
   const [mySubs, setMySubs] = useState<MySubmission[] | null>(null);
   const [mySubsError, setMySubsError] = useState<string | null>(null);
@@ -458,7 +457,6 @@ export default function OrgMemberSubmit() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Submission failed.");
       setCreatedRecordId(data?.record?.id ?? null);
-      setPersonalRecordId(data?.record?.personalRecordId ?? null);
       setSubmittedStatus(data?.record?.verificationStatus === "pending" ? "pending" : "approved");
       setWithdrawn(false);
       setWithdrawError(null);
@@ -1564,7 +1562,6 @@ export default function OrgMemberSubmit() {
                 setEvidence([]);
                 setEvidenceError(null);
                 setCreatedRecordId(null);
-                setPersonalRecordId(null);
                 setSubmittedStatus(null);
                 setWithdrawn(false);
                 setWithdrawError(null);

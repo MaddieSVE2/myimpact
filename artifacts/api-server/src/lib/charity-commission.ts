@@ -124,8 +124,6 @@ export async function searchCharities(
     charity_name: string;
     reg_status: string;
   };
-  let candidates: CandidateRow[] = [];
-
   const isRegistered = (c: CandidateRow) => c.reg_status === "R" || c.reg_status === "Registered";
 
   const [localByName, broadByKeyword] = await Promise.all([
@@ -134,7 +132,7 @@ export async function searchCharities(
   ]);
 
   const confirmedByName = localByName.filter(isRegistered);
-  candidates = confirmedByName;
+  const candidates: CandidateRow[] = confirmedByName;
 
   if (candidates.length < maxResults) {
     const broadRegistered = broadByKeyword.filter(isRegistered);

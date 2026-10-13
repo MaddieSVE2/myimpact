@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { BirthDateForm } from "@/components/BirthDateForm";
@@ -7,7 +6,6 @@ import { BASE } from "@/lib/api";
 
 
 export default function AuthConfirm() {
-  const [, navigate] = useLocation();
 
   const [status, setStatus] = useState<"verifying" | "ready" | "confirming" | "birthdate" | "error">("verifying");
   const [email, setEmail] = useState<string | null>(null);
@@ -26,7 +24,7 @@ export default function AuthConfirm() {
 
     fetch(`${BASE}/api/auth/verify?token=${encodeURIComponent(token)}`, { credentials: "include" })
       .then(async (r) => {
-        let data: Record<string, unknown> = {};
+        let data: Record<string, unknown>;
         try {
           data = await r.json();
         } catch {

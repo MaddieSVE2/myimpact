@@ -1,4 +1,4 @@
-import { Link, useLocation, useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { Building2, GraduationCap, Heart, Landmark } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";

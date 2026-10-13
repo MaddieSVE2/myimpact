@@ -296,7 +296,7 @@ export default function About() {
               My Impact recognises meaningful contributions across four domains of social value. If you do something good, chances are it fits.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 24 }}>
-              {IMPACT_CATEGORIES.map(({ icon, artwork, title, description, color }) => (
+              {IMPACT_CATEGORIES.map(({ icon, artwork, title, description }) => (
                 <FadeIn key={title} delay={0.1}>
                   <div style={{
                     background: "rgba(255,255,255,0.05)",

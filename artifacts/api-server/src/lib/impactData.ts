@@ -1091,7 +1091,7 @@ export function calculateImpact(
         !!options.householdsCountedThisYear?.has(activity.id);
       if (alreadyCounted) uncountedHours += sel.hoursPerYear;
 
-      let impactValue = 0;
+      let impactValue: number;
       if (asTime) {
         impactValue = sel.hoursPerYear * ONE_OFF_HOURLY_VALUE;
       } else if (alreadyCounted) {

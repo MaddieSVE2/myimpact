@@ -22,7 +22,7 @@ export default function Unsubscribe() {
       headers: { "X-Requested-With": "XMLHttpRequest" },
     })
       .then(async (r) => {
-        let data: Record<string, unknown> = {};
+        let data: Record<string, unknown>;
         try {
           data = await r.json();
         } catch {

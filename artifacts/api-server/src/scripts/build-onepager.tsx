@@ -8,8 +8,6 @@ import {
   StyleSheet,
   Font,
   renderToFile,
-  Svg,
-  Path,
 } from "@react-pdf/renderer";
 import path from "path";
 import { fileURLToPath } from "url";

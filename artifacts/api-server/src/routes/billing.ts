@@ -121,7 +121,7 @@ router.post("/checkout", authenticate, checkoutRateLimit, async (req: Authentica
   }
 
   // Find or create the customer.
-  let existing = await db.query.orgSubscriptionsTable.findFirst({
+  const existing = await db.query.orgSubscriptionsTable.findFirst({
     where: eq(orgSubscriptionsTable.orgId, result.org.id),
   });
 
@@ -143,9 +143,6 @@ router.post("/checkout", authenticate, checkoutRateLimit, async (req: Authentica
         stripeCustomerId: customerId,
         tier: "free",
         status: "active",
-      });
-      existing = await db.query.orgSubscriptionsTable.findFirst({
-        where: eq(orgSubscriptionsTable.orgId, result.org.id),
       });
     }
   }

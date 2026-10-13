@@ -1,7 +1,7 @@
 import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
 import { HOME_META, FAQ_ITEMS, HOMEPAGE_JSON_LD } from "@/lib/page-metadata";

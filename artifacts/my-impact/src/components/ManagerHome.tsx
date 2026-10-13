@@ -7,7 +7,7 @@ import {
   ArrowRight, BarChart2, FileSpreadsheet, Download,
 } from "lucide-react";
 import {
-  DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_PULSE_SURVEYS,
+  DEMO_ORG_ID, DEMO_ACTIVITIES,
   computeDemoAggregates, getRemovedMemberIds,
 } from "@/lib/org-demo-mock";
 import { apiJson } from "@/lib/api";

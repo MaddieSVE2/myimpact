@@ -24,7 +24,7 @@ import {
   attachmentsTable,
   usersTable,
 } from "@workspace/db";
-import { and, eq, inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   findPurgeableOrgs,

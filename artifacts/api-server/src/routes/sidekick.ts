@@ -23,7 +23,6 @@ import {
   estimateTtsCostPence,
   getUserVoiceUsage,
   probeAudioDurationSeconds,
-  recordTtsUsage,
   releaseTranscribeSeconds,
 } from "../lib/voiceUsage.js";
 import {

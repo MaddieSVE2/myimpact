@@ -10,8 +10,6 @@ import {
   challengesTable,
   challengeParticipantsTable,
   recordVerificationsTable,
-  orgShareLinksTable,
-  orgAuditLogTable,
   localCharityAreasTable,
   localCharitySuggestionsTable,
   type StoredCharityPlace,

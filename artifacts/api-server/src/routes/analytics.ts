@@ -67,7 +67,7 @@ router.post("/track", async (req, res) => {
 
   // Attach userId if we have a valid session cookie; otherwise leave null
   // so guest events still flow through (page views, etc.).
-  let userId: string | null = null;
+  let userId: string | null;
   try {
     const { decodeSessionCookie } = await import("../middleware/authenticate.js");
     userId = decodeSessionCookie(req) ?? null;

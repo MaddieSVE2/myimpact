@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation, useSearch, Link } from "wouter";
+import { useState } from "react";
+import { useSearch, Link } from "wouter";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, AlertCircle } from "lucide-react";
@@ -181,7 +181,6 @@ function ProfileForm({
 }
 
 export default function ProfileSetup() {
-  const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const returnTo = params.get("returnTo");

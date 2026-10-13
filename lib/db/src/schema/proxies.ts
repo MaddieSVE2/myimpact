@@ -1,5 +1,4 @@
 import { pgTable, serial, text, numeric, real, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 /**
  * Financial proxies used by the AI matcher for custom activities.

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, Copy, AlertCircle, CreditCard, BadgeCheck, CheckCircle2, XCircle } from "lucide-react";
+import { BarChart2, Users, TrendingUp, Clock, Building2, ArrowRight, KeyRound, ShieldCheck, Lock, ChevronDown, Search, Link2, Download, Calendar, HandCoins, FileSpreadsheet, Plus, X as XIcon, AlertCircle, CreditCard, BadgeCheck, XCircle } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
 import { Link, useLocation } from "wouter";
 import { OrgDemoButton } from "@/components/OrgDemoModal";
@@ -505,20 +505,6 @@ function MemberSubmissionsPanel() {
       )}
       <EvidenceLightbox item={lightbox} onClose={() => setLightbox(null)} />
     </motion.div>
-  );
-}
-
-
-function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
-  return (
-    <div className="bg-white border border-border rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-primary" />
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-      </div>
-      <p className="text-2xl font-display font-bold text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-    </div>
   );
 }
 

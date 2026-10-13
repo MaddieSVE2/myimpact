@@ -25,7 +25,7 @@ import {
   impactRecordsTable,
   onboardingEmailSendsTable,
 } from "@workspace/db";
-import { and, eq, gte, lte, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gte, lte, isNull, sql } from "drizzle-orm";
 import { getUncachableResendClient } from "../lib/resend.js";
 import {
   ONBOARDING_STEPS,

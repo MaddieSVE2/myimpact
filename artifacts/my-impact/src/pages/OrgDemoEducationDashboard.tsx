@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, GraduationCap, Lightbulb, Award, BookOpen, Coins } from "lucide-react";
+import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, GraduationCap, Lightbulb, BookOpen, Coins } from "lucide-react";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { formatCurrency } from "@/lib/utils";
 import {

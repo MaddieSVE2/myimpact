@@ -15,7 +15,7 @@ import {
   impactRecordsTable,
   recordVerificationsTable,
 } from "@workspace/db";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";

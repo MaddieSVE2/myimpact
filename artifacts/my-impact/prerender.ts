@@ -12,7 +12,7 @@
  */
 
 import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PRERENDER_PAGES, DEFAULT_OG_IMAGE } from "./src/lib/page-metadata.ts";
 import { pathToFileURL } from "node:url";

@@ -53,12 +53,6 @@ interface OSCRPage {
   data?: OSCRRecord[];
 }
 
-interface OSCRAnnualReturn {
-  GrossIncome?: number;
-  Year?: number;
-  [key: string]: unknown;
-}
-
 function buildActivityKeywords(activityName: string): string[] {
   const lower = activityName.toLowerCase();
   const KEYWORD_MAP: Array<[string, string[]]> = [
@@ -142,28 +136,11 @@ function cleanLocation(location: string): string {
 async function fetchPage(page: number, apiKey: string): Promise<OSCRPage> {
   const resp = await fetch(`${OSCR_API_BASE}/all_charities?page=${page}`, {
     headers: { "x-functions-key": apiKey },
+    // A slow page throws, and the search's catch falls back as for any error.
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!resp.ok) return {};
   return (await resp.json()) as OSCRPage;
-}
-
-async function fetchAnnualReturns(charityId: string, apiKey: string): Promise<OSCRAnnualReturn[]> {
-  try {
-    const resp = await fetch(`${OSCR_API_BASE}/annualreturns?charityid=${encodeURIComponent(charityId)}`, {
-      headers: { "x-functions-key": apiKey },
-    });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-function getMostRecentIncome(returns: OSCRAnnualReturn[]): number {
-  if (returns.length === 0) return 0;
-  const sorted = [...returns].sort((a, b) => (b.Year ?? 0) - (a.Year ?? 0));
-  return sorted[0].GrossIncome ?? 0;
 }
 
 function recordMatchesLocation(record: OSCRRecord, locationWords: string[]): boolean {
