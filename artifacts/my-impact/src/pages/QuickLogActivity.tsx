@@ -1290,7 +1290,14 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
       <div className="bg-muted/30 rounded-lg p-4">
         <div className="flex items-start gap-2 mb-3">
           <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
-          <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
+          <p className="text-sm font-medium text-foreground leading-snug">
+            {/* The analysis asks about a year; a quick log is one occasion. */}
+            {analysed.unit === "pound"
+              ? analysed.proxyMatch?.title === "Amount raised for charity"
+                ? "How much did you raise, in pounds?"
+                : "How much did you give, in pounds?"
+              : analysed.friendlyQuestion}
+          </p>
         </div>
 
         {analysed.unit === "pound" ? (
@@ -1313,7 +1320,7 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
               className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
               data-testid="quick-log-quantity"
             />
-            <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
+            <span className="text-sm text-muted-foreground">{analysed.unitLabel.replace(/\s*per year$/i, "")}</span>
           </div>
         )}
 

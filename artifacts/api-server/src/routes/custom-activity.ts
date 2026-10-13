@@ -54,8 +54,6 @@ const UNIT_LABELS: Record<string, string> = {
   household: "households",
 };
 
-const FUNDRAISING_RE = /fund[\s-]?rais/i;
-
 // Litter picking is valued via the GMCA "welfare cost from significant
 // litter accumulation" proxy (per household). The proxy title reads like a
 // cost, which confuses users, so this deterministic route pairs it with a
@@ -69,7 +67,7 @@ const LITTER_RE = /\blitter[\s-]?pick(?:ing|er|ers|s|ed)?\b|\bpick(?:ing|ed)?\s+
 // weekly habit (£72 × 48 weeks). Detection lives in lib/donationRepair so
 // the History "fix this entry" repair path shares the exact same logic.
 export { parseDonation } from "../lib/donationRepair";
-import { parseDonation } from "../lib/donationRepair";
+import { parseDonation, parseMoneyRaised } from "../lib/donationRepair";
 
 const router = Router();
 
@@ -96,12 +94,16 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
       return;
     }
 
-    if (FUNDRAISING_RE.test(name.trim())) {
+    // Money raised counts pound for pound, at the amount stated if there is
+    // one. Matching it to a proxy instead can turn "raised £200" into 200
+    // items, each given volunteer hours.
+    const raised = parseMoneyRaised(name.trim());
+    if (raised) {
       res.json({
         friendlyQuestion: "How much do you raise for charity each year, in pounds?",
         unit: "pound",
         unitLabel: "pounds raised per year",
-        defaultQuantity: 500,
+        defaultQuantity: raised.amount ?? 500,
         sdgHint: "SDG 17: Partnerships for the Goals",
         proxyMatch: {
           title: "Amount raised for charity",

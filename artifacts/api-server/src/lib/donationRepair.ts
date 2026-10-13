@@ -10,6 +10,32 @@ const FUNDRAISING_RE = /fund[\s-]?rais/i;
 const MONEY_RE = /£\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:pounds?|quid|gbp)\b/i;
 const DONATION_CUE_RE = /\bdonat\w*|\bgiv(?:e|es|ing)\b|\bgave\b|\bsponsor\w*|\btithe\w*|\bto\s+(?:\w+\s+){0,3}?(?:charit\w*|church|mosque|temple|good\s+cause|cause\b)/i;
 
+// Money raised for a cause: "fundraising", "raised £200", or a sale held to
+// raise money ("bake sale"). A raise verb only counts alongside an amount,
+// so "raising awareness" stays an ordinary activity.
+const RAISE_RE = /\brais(?:e|ed|es|ing)\b/i;
+const SALE_RE = /\b(?:bake|cake|jumble|charity|car[\s-]?boot|book)\s*sales?\b/i;
+
+export interface ParsedMoneyRaised {
+  /** The amount stated in the text, if any. */
+  amount: number | null;
+}
+
+function statedAmount(name: string): number | null {
+  const money = name.match(MONEY_RE);
+  if (!money) return null;
+  const amount = parseFloat((money[1] ?? money[2] ?? "").replace(/,/g, ""));
+  return isFinite(amount) && amount > 0 ? amount : null;
+}
+
+export function parseMoneyRaised(name: string): ParsedMoneyRaised | null {
+  const amount = statedAmount(name);
+  if (FUNDRAISING_RE.test(name) || SALE_RE.test(name) || (RAISE_RE.test(name) && amount != null)) {
+    return { amount };
+  }
+  return null;
+}
+
 export interface ParsedDonation {
   annualAmount: number;
 }
