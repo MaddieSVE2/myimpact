@@ -9,7 +9,7 @@ import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRa
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
-import { ACTIVITIES, CATEGORIES, calculateImpact } from "../lib/impactData.js";
+import { ACTIVITIES, CATEGORIES, calculateImpact, ONE_OFF_KINDS } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -45,7 +45,7 @@ import {
   computeCurrentOccurrence,
 } from "../lib/recurringSchedule.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
-import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds } from "../lib/recordHelpers.js";
+import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, oneOffValuation } from "../lib/recordHelpers.js";
 import { yearImpactResult } from "../lib/yearResult.js";
 import { resolveReportScope, groupCondition, type ReportScope } from "../lib/orgReportScope.js";
 
@@ -61,11 +61,21 @@ router.get("/activities", (_req, res) => {
 
 router.post("/calculate", (req, res) => {
   const body = CalculateImpactBody.parse(req.body);
+  // Preview only (it is not signed in): the client says whether this is a
+  // one-off entry and which household habits it already counted this year.
+  // /save values it again from the database.
+  const raw = req.body as { kind?: unknown; householdsCountedThisYear?: unknown };
   const result = calculateImpact(
     body.activities,
     body.donationsGBP,
     body.additionalVolunteerHours,
-    body.customActivities ?? []
+    body.customActivities ?? [],
+    {
+      oneOff: typeof raw.kind === "string" && ONE_OFF_KINDS.has(raw.kind),
+      householdsCountedThisYear: new Set(
+        Array.isArray(raw.householdsCountedThisYear) ? raw.householdsCountedThisYear.filter((id): id is string => typeof id === "string") : [],
+      ),
+    },
   );
   res.json(result);
 });
@@ -409,13 +419,26 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       : null;
   const force = rawBody.force === true;
 
+  // An edit that doesn't restate the kind keeps the stored one, so it is
+  // valued the same way (one-off entries value yearly activities as time).
+  const editedKind =
+    targetRecordId != null && parseRecordKind(rawBody.kind) === null
+      ? (await db
+          .select({ kind: impactRecordsTable.kind })
+          .from(impactRecordsTable)
+          .where(and(eq(impactRecordsTable.id, targetRecordId), eq(impactRecordsTable.userId, userId)))
+          .limit(1))[0]?.kind ?? null
+      : null;
+  const valuationKind = parseRecordKind(rawBody.kind) ?? parseRecordKind(editedKind) ?? "legacy";
+
   // Recompute impact server-side from the submitted activities so that
   // client-supplied totals in body.impactResult are never trusted or stored.
   const serverImpactResult = calculateImpact(
     body.activities,
     body.donationsGBP,
     body.additionalVolunteerHours,
-    body.customActivities ?? []
+    body.customActivities ?? [],
+    ONE_OFF_KINDS.has(valuationKind) ? await oneOffValuation(userId, entryDate, targetRecordId) : {},
   );
 
   // Snapshot the user's existing record count BEFORE writing so we can
@@ -2293,7 +2316,8 @@ router.post("/templates/:id/log-occurrence", authenticate, async (req: Authentic
   const location = normalizeActivityLocation(body.location) ?? normalizeActivityLocation(row.usualLocationJson);
 
   // Server-side valuation, same as /save — client totals are never trusted.
-  const result = calculateImpact(activities, donations, 0, []);
+  // One occurrence, so yearly activities are valued as a one-off entry.
+  const result = calculateImpact(activities, donations, 0, [], await oneOffValuation(userId, occurrenceDate));
 
   // The whole confirmation — fresh handled-state check, occurrence dedupe,
   // record insert, and template lastConfirmedAt update — runs in ONE

@@ -35,6 +35,7 @@ import {
   consumeChallengeContextForSave,
 } from "@/lib/challenge-context";
 import { NumberInput } from "@/components/ui/number-input";
+import { ONE_OFF_KINDS, YEARLY_HOUSEHOLD_ACTIVITY_IDS, YEARLY_PER_PERSON_ACTIVITY_IDS } from "@/lib/one-off-logging";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 import { LocationPicker, describeLocation, type ActivityLocationValue } from "@/components/quicklog/LocationPicker";
 import { todayIso, formatDisplayDate } from "@/components/quicklog/activity-shared";
@@ -64,12 +65,24 @@ function sdgFromHint(hint: string): { sdg: string; sdgColor: string } {
   return { sdg: hint || "Good Health and Well-Being", sdgColor: "#4C9F38" };
 }
 
-// A single fundraising occasion is logged as hours, plus any money raised.
-// The event-based "Fundraising" activity is for yearly estimates in the full
-// calculator, so Quick Log offers the hour-based fundraising activities
-// instead (Fundraising events, Charity collection, Sponsored challenge).
-const HIDDEN_IN_QUICK_LOG = new Set(["fundraising"]);
+// Activities whose value suits a yearly estimate but not a single occasion,
+// where an hour-based activity covers the same thing (the full calculator
+// still offers them):
+// - "Fundraising" is per event: logged as Fundraising events, Charity
+//   collection or Sponsored challenge, in hours, plus any money raised.
+// - Mentoring young people, Sports coaching and Arts & creative groups are
+//   per person per year: logged as Youth mentoring, Sports coaching (hours)
+//   and the Arts & Culture activities.
+const HIDDEN_IN_QUICK_LOG = new Set(["fundraising", "youth_mentoring", "sports_coaching", "arts_volunteering"]);
 const MONEY_RAISED_CATEGORY = "Fundraising";
+
+/**
+ * The other yearly per-person activities are logged in hours for a single
+ * occasion and valued as volunteering time (the server does the same for any
+ * one-off entry: lib/one-off-logging.ts).
+ */
+const loggedInHours = (activity: Pick<ActivityItem, "id" | "unit">) =>
+  activity.unit === "hour" || YEARLY_PER_PERSON_ACTIVITY_IDS.has(activity.id);
 
 interface ProxyMatch {
   title: string;
@@ -272,7 +285,7 @@ export default function QuickLogActivity() {
         seen.add(a.activityId);
         recents.push({
           activity: item,
-          usualQuantity: item.unit === "hour"
+          usualQuantity: loggedInHours(item)
             ? Math.max(1, Math.round(a.hoursPerYear || a.quantity || 1))
             : Math.max(1, Math.round(a.quantity || 1)),
           location: r.location ?? null,
@@ -293,6 +306,18 @@ export default function QuickLogActivity() {
   // Optional, for fundraising activities: counted pound for pound.
   const [moneyRaised, setMoneyRaised] = useState<number>(0);
   const [entryDate, setEntryDate] = useState<string>(todayIso());
+
+  // Household habits already counted in a one-off entry in the entry's year:
+  // they count once a year, so logging one again adds nothing.
+  const householdsCountedThisYear = useMemo(() => {
+    const year = entryDate.slice(0, 4);
+    const counted = new Set<string>();
+    for (const r of (historyQuery.data?.records ?? []) as unknown as HistRecord[]) {
+      if (!r.kind || !ONE_OFF_KINDS.has(r.kind) || !(r.entryDate ?? "").startsWith(year)) continue;
+      for (const a of r.activities ?? []) if (YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(a.activityId)) counted.add(a.activityId);
+    }
+    return counted;
+  }, [historyQuery.data, entryDate]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activityLocation, setActivityLocation] = useState<ActivityLocationValue | null>(null);
   const quantityTouchedRef = useRef(false);
@@ -431,7 +456,7 @@ export default function QuickLogActivity() {
     let description = "Quick log";
 
     if (mode === "pick" && selectedActivity) {
-      const isHourUnit = selectedActivity.unit === "hour";
+      const isHourUnit = loggedInHours(selectedActivity);
       const isHousehold = selectedActivity.unit === "household";
       // For hour-unit activities the wizard normalises to quantity=1 and
       // puts the entered hours into hoursPerYear; mirror that here so
@@ -515,6 +540,8 @@ export default function QuickLogActivity() {
           customActivities: customActivities.length > 0 ? customActivities : undefined,
           donationsGBP: 0,
           additionalVolunteerHours: 0,
+          // Value it as a single occasion (the save re-values it the same way).
+          ...({ kind: "quick_log", householdsCountedThisYear: [...householdsCountedThisYear] } as object),
         },
       });
 
@@ -881,6 +908,7 @@ export default function QuickLogActivity() {
             quantity={quantity}
             setQuantity={setQuantity}
             moneyRaised={selectedActivity.category === MONEY_RAISED_CATEGORY ? { value: moneyRaised, set: setMoneyRaised } : undefined}
+            countedThisYear={householdsCountedThisYear.has(selectedActivity.id) ? entryDate.slice(0, 4) : null}
             onChange={() => setSelectedActivity(null)}
           />
         )}
@@ -1103,10 +1131,19 @@ interface ActivityQuantityPanelProps {
   setQuantity: (n: number) => void;
   /** Shown for fundraising activities: the optional amount raised. */
   moneyRaised?: { value: number; set: (n: number) => void };
+  /** For a household habit already counted in this year: the year. */
+  countedThisYear?: string | null;
   onChange: () => void;
 }
 
+/** The unit beside the amount: "hours" when logged in hours, never "per year". */
+function quantityUnitLabel(activity: ActivityItem): string {
+  if (loggedInHours(activity)) return "hours";
+  return activity.unitLabel.replace(/\s*per year$/i, "");
+}
+
 function quantityFieldLabel(activity: ActivityItem): string {
+  if (activity.unit !== "hour" && loggedInHours(activity)) return "How many hours did you spend?";
   switch (activity.unit) {
     case "hour": return "How many hours did you do?";
     case "session": return "How many sessions?";
@@ -1120,7 +1157,7 @@ function quantityFieldLabel(activity: ActivityItem): string {
     case "event": return "How many events?";
     case "donation": return "How many donations?";
     case "mile_per_year": return "How many miles?";
-    case "week": return "How many weeks?";
+    case "week": return "How many weeks did this cover?";
     default: return activity.unitLabel ? `How many ${activity.unitLabel}?` : "How many?";
   }
 }
@@ -1130,6 +1167,7 @@ function ActivityQuantityPanel({
   quantity,
   setQuantity,
   moneyRaised,
+  countedThisYear,
   onChange,
 }: ActivityQuantityPanelProps) {
   return (
@@ -1161,7 +1199,13 @@ function ActivityQuantityPanel({
             </div>
             <span className="text-sm text-foreground">Yes, I do this for my household</span>
           </div>
-        ) : (
+        ) : null}
+        {activity.unit === "household" && countedThisYear ? (
+          <p className="text-xs text-muted-foreground mt-2" data-testid="quick-log-household-counted">
+            This already counts for your household in {countedThisYear}, so logging it again won't add to your total.
+          </p>
+        ) : null}
+        {activity.unit === "household" ? null : (
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               {quantityFieldLabel(activity)}
@@ -1174,7 +1218,7 @@ function ActivityQuantityPanel({
                 className="w-28 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
                 data-testid="quick-log-quantity"
               />
-              <span className="text-sm text-muted-foreground">{activity.unitLabel}</span>
+              <span className="text-sm text-muted-foreground">{quantityUnitLabel(activity)}</span>
             </div>
           </div>
         )}

@@ -16,7 +16,7 @@ import { ACTIVITIES, calculateImpact } from "./impactData.js";
 import { completeJson } from "./aiJson.js";
 import { deriveReportingYear } from "./contributionModel.js";
 import { activeOrgIdFor, defaultGroupFor } from "./orgGroups.js";
-import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds } from "./recordHelpers.js";
+import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, oneOffValuation } from "./recordHelpers.js";
 import { getUncachableResendClient } from "./resend.js";
 import { bareAddress, fetchReceivedText, isForReplyInbox, type ReceivedEmailEvent } from "./emailReplies.js";
 import { replyInboxAddress } from "./emailLog.js";
@@ -121,7 +121,7 @@ async function addEntry(userId: string, item: LoggableItem): Promise<{ id: numbe
       );
     if (sameDay.some((r) => extractActivityIds(r.activitiesJson).includes(item.activityId))) return null;
   }
-  const result = calculateImpact(entry.activities, entry.donationsGBP, 0, []);
+  const result = calculateImpact(entry.activities, entry.donationsGBP, 0, [], await oneOffValuation(userId, entryDate));
   const { locationJson, outwardCode } = storedLocation(item.kind === "activity" ? item.location : null);
   const [inserted] = await db
     .insert(impactRecordsTable)

@@ -1022,11 +1022,53 @@ interface CustomActivityInput {
   sdgColor: string;
 }
 
+/**
+ * Activities valued per person (or child) supported over a year, and yearly
+ * household habits. The web app keeps the same lists in
+ * artifacts/my-impact/src/lib/one-off-logging.ts (a test checks they match).
+ */
+export const YEARLY_PER_PERSON_ACTIVITY_IDS: ReadonlySet<string> = new Set([
+  "befriending",
+  "family_caring",
+  "helping_neighbours",
+  "career_break_school_liaison",
+  "coding_education_child",
+  "mental_health_support",
+  "literacy_support",
+  "youth_mentoring",
+  "elderly_visiting",
+  "digital_coaching",
+  "arts_volunteering",
+  "tutoring",
+  "veterans_breakfast",
+  "sports_coaching",
+]);
+export const YEARLY_HOUSEHOLD_ACTIVITY_IDS: ReadonlySet<string> = new Set(["food_waste", "energy_saving"]);
+/** Entry kinds that record a single occasion. */
+export const ONE_OFF_KINDS: ReadonlySet<string> = new Set(["quick_log", "recurring_confirmation"]);
+
+/** Volunteering time for one-off entries: the VCSE hours proxy the hour-based activities use. */
+export const ONE_OFF_HOURLY_VALUE = 17;
+const ONE_OFF_HOURLY_PROXY =
+  "Number of voluntary hours donated to support VCSEs, £17 an hour (a single occasion; the yearly value per person supported is counted in yearly estimates)";
+
+export interface ValuationOptions {
+  /**
+   * A single occasion (Quick Log, a regular activity's occurrence, an
+   * emailed activity). Yearly per-person activities are then valued as
+   * volunteering time, and yearly household habits count once a year.
+   */
+  oneOff?: boolean;
+  /** Household habits already counted in a one-off entry this calendar year. */
+  householdsCountedThisYear?: ReadonlySet<string>;
+}
+
 export function calculateImpact(
   activities: Array<{ activityId: string; quantity: number; hoursPerYear: number }>,
   donationsGBP: number,
   additionalVolunteerHours: number,
-  customActivities: CustomActivityInput[] = []
+  customActivities: CustomActivityInput[] = [],
+  options: ValuationOptions = {},
 ) {
   // Clamp numeric inputs: treat NaN/negative as zero to prevent corrupted totals
   const safeDonations = Math.max(0, isNaN(donationsGBP) ? 0 : donationsGBP);
@@ -1035,13 +1077,26 @@ export function calculateImpact(
   const VOLUNTEER_RATE = 12.21;   // National Living Wage 2024/25 — GOV.UK
   const PERSONAL_DEV_RATE_PER_HOUR = 15; // £15/hr — employer-valued skills premium, NCVO Time Well Spent 2023
 
+  // Hours of household habits already counted this year: not counted again.
+  let uncountedHours = 0;
   const activityBreakdowns = activities
     .map((sel) => {
       const activity = ACTIVITIES.find((a) => a.id === sel.activityId);
       if (!activity) return null;
 
+      const asTime = !!options.oneOff && YEARLY_PER_PERSON_ACTIVITY_IDS.has(activity.id);
+      const alreadyCounted =
+        !!options.oneOff &&
+        YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(activity.id) &&
+        !!options.householdsCountedThisYear?.has(activity.id);
+      if (alreadyCounted) uncountedHours += sel.hoursPerYear;
+
       let impactValue = 0;
-      if (activity.unit === "hour") {
+      if (asTime) {
+        impactValue = sel.hoursPerYear * ONE_OFF_HOURLY_VALUE;
+      } else if (alreadyCounted) {
+        impactValue = 0;
+      } else if (activity.unit === "hour") {
         impactValue = sel.hoursPerYear * activity.valuePerUnit;
       } else {
         impactValue = sel.quantity * activity.valuePerUnit;
@@ -1051,16 +1106,20 @@ export function calculateImpact(
         activityId: activity.id,
         activityName: activity.name,
         category: activity.category,
-        proxy: activity.proxy,
+        proxy: asTime
+          ? ONE_OFF_HOURLY_PROXY
+          : alreadyCounted
+            ? `${activity.proxy} (already counted for this household this year)`
+            : activity.proxy,
         proxyYear: activity.proxyYear,
         sdg: activity.sdg,
         sdgColor: activity.sdgColor,
         impactValue: Math.round(impactValue * 100) / 100,
-        hours: sel.hoursPerYear,
-        quantity: sel.quantity,
-        valuePerUnit: activity.valuePerUnit,
-        unit: activity.unit,
-        unitLabel: activity.unitLabel,
+        hours: alreadyCounted ? 0 : sel.hoursPerYear,
+        quantity: asTime ? 1 : sel.quantity,
+        valuePerUnit: asTime ? ONE_OFF_HOURLY_VALUE : activity.valuePerUnit,
+        unit: asTime ? "hour" : activity.unit,
+        unitLabel: asTime ? "hours" : activity.unitLabel,
       };
     })
     .filter(Boolean) as Array<{
@@ -1107,7 +1166,8 @@ export function calculateImpact(
   }
 
   const totalActivityHours =
-    activities.reduce((sum, a) => sum + a.hoursPerYear, 0) +
+    activities.reduce((sum, a) => sum + a.hoursPerYear, 0) -
+    uncountedHours +
     customActivities.reduce((sum, a) => sum + a.hoursPerYear, 0);
   const totalHours = totalActivityHours + safeExtraHours;
 
