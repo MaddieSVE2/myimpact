@@ -51,11 +51,12 @@ const IMMUTABLE_HEADERS = {
   "Cache-Control": "public, max-age=31536000, immutable",
 };
 
-// The policy the site should keep to. Report-only for now: browsers report
-// what would be blocked to /api/csp-report (logged by the API) and block
-// nothing. Once the reports are clean, send it as Content-Security-Policy.
-// 'unsafe-inline' covers the font loader's onload handler, the slug pages'
-// inline data script and the app's inline styles.
+// The policy the site keeps to. Browsers block anything outside it and
+// report each block to /api/csp-report, which the API logs as "[csp] ...".
+// Set CSP_REPORT_ONLY=1 to report without blocking (for checking a new
+// source before allowing it). 'unsafe-inline' covers the font loader's
+// onload handler, the slug pages' inline data script and the app's inline
+// styles.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
@@ -64,7 +65,8 @@ const CONTENT_SECURITY_POLICY = [
   // Profile photos, organisation logos and map tiles come from elsewhere.
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob:",
-  "connect-src 'self' https://api.postcodes.io https://*.sentry.io",
+  // Photo and receipt uploads go straight to Cloud Storage on a signed URL.
+  "connect-src 'self' https://api.postcodes.io https://*.sentry.io https://storage.googleapis.com",
   "frame-src 'self' https://calendly.com https://*.calendly.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
@@ -84,7 +86,8 @@ const SECURITY_HEADERS = {
   // Camera (Quick Log photos) and microphone (voice Sidekick) for this site
   // only; nothing else is used.
   "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=()",
-  "Content-Security-Policy-Report-Only": CONTENT_SECURITY_POLICY,
+  [process.env.CSP_REPORT_ONLY === "1" ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy"]:
+    CONTENT_SECURITY_POLICY,
 };
 
 function setSecurityHeaders(res) {

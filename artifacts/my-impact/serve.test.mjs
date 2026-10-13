@@ -217,8 +217,8 @@ test("sends precompressed files when accepted, with security headers", async () 
     assert.equal(page.headers["referrer-policy"], "strict-origin-when-cross-origin");
     assert.equal(page.headers["x-content-type-options"], "nosniff");
     assert.match(page.headers["permissions-policy"], /camera=\(self\), microphone=\(self\), geolocation=\(\)/);
-    assert.match(page.headers["content-security-policy-report-only"], /default-src 'self'.*report-uri \/api\/csp-report/);
-    assert.equal(page.headers["content-security-policy"], undefined);
+    assert.match(page.headers["content-security-policy"], /default-src 'self'.*storage\.googleapis\.com.*report-uri \/api\/csp-report/);
+    assert.equal(page.headers["content-security-policy-report-only"], undefined);
 
     // Small files have no compressed copy and are sent as they are.
     const tiny = await rawGet(STATIC_PORT, "/tiny.txt", { "accept-encoding": "br" });
