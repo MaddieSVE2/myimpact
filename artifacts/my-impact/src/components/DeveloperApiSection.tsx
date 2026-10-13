@@ -511,7 +511,7 @@ function LiveDeveloperApiSection() {
             <p className="font-semibold mb-1">Authentication</p>
             <p className="text-muted-foreground mb-1.5">All endpoints require a Bearer token in the <code className="font-mono bg-muted/30 px-1">Authorization</code> header. Each key is rate-limited to 120 requests/min.</p>
             <CopyableCode value={`curl -H "Authorization: Bearer mi_orgk_…" \\
-  https://app.myimpact.uk/api/v1/org/me`} />
+  https://myimpact.uk/api/v1/org/me`} />
           </div>
 
           <div>
@@ -534,7 +534,7 @@ function LiveDeveloperApiSection() {
             <p className="text-muted-foreground mb-1.5">
               Push attested hours on behalf of a member. Records created via this endpoint are flagged <strong>attested</strong> and skip the user-side verification queue.
             </p>
-            <CopyableCode value={`curl -X POST https://app.myimpact.uk/api/v1/org/hours \\
+            <CopyableCode value={`curl -X POST https://myimpact.uk/api/v1/org/hours \\
   -H "Authorization: Bearer mi_orgk_…" \\
   -H "Content-Type: application/json" \\
   -d '{
