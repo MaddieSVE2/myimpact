@@ -64,6 +64,13 @@ function sdgFromHint(hint: string): { sdg: string; sdgColor: string } {
   return { sdg: hint || "Good Health and Well-Being", sdgColor: "#4C9F38" };
 }
 
+// A single fundraising occasion is logged as hours, plus any money raised.
+// The event-based "Fundraising" activity is for yearly estimates in the full
+// calculator, so Quick Log offers the hour-based fundraising activities
+// instead (Fundraising events, Charity collection, Sponsored challenge).
+const HIDDEN_IN_QUICK_LOG = new Set(["fundraising"]);
+const MONEY_RAISED_CATEGORY = "Fundraising";
+
 interface ProxyMatch {
   title: string;
   proxyYear: string;
@@ -209,7 +216,7 @@ export default function QuickLogActivity() {
   }, [interests]);
 
   const sortedActivities = useMemo(() => {
-    const list = activitiesQuery.data?.activities ?? [];
+    const list = (activitiesQuery.data?.activities ?? []).filter((a) => !HIDDEN_IN_QUICK_LOG.has(a.id));
     return [...list].sort((a, b) => {
       const aScore = preferredCategories.has(a.category) ? 0 : 1;
       const bScore = preferredCategories.has(b.category) ? 0 : 1;
@@ -283,6 +290,8 @@ export default function QuickLogActivity() {
   const [pickSearch, setPickSearch] = useState("");
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  // Optional, for fundraising activities: counted pound for pound.
+  const [moneyRaised, setMoneyRaised] = useState<number>(0);
   const [entryDate, setEntryDate] = useState<string>(todayIso());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activityLocation, setActivityLocation] = useState<ActivityLocationValue | null>(null);
@@ -333,6 +342,7 @@ export default function QuickLogActivity() {
       setQuantity(1);
     }
     quantityTouchedRef.current = false;
+    setMoneyRaised(0);
   }, [selectedActivity]);
 
   useEffect(() => {
@@ -439,6 +449,24 @@ export default function QuickLogActivity() {
         hoursPerYear: hrs,
       }];
       description = `Quick log: ${selectedActivity.shortName}`;
+      // Money raised counts pound for pound, as a typed "fundraising"
+      // description does (custom-activity /analyse), with no extra hours.
+      const raised = selectedActivity.category === MONEY_RAISED_CATEGORY ? Math.max(0, Number(moneyRaised) || 0) : 0;
+      if (raised > 0) {
+        const { sdg, sdgColor } = sdgFromHint("SDG 17: Partnerships for the Goals");
+        customActivities = [{
+          activityId: `custom_raised_${Date.now()}`,
+          name: "Money raised for charity",
+          quantity: Math.round(raised * 100) / 100,
+          hoursPerYear: 0,
+          valuePerUnit: 1,
+          unit: "pound",
+          proxy: "Amount raised for charity",
+          proxyYear: "",
+          sdg,
+          sdgColor,
+        }];
+      }
     } else if (mode === "describe" && analysed) {
       const a = analysed.analysed;
       const { sdg, sdgColor } = sdgFromHint(a.sdgHint);
@@ -523,7 +551,7 @@ export default function QuickLogActivity() {
       track(ANALYTICS_EVENTS.IMPACT_RECORD_SAVED, {
         entry_mode: "quick_log",
         capture_mode: "form",
-        activity_type: customActivities.length > 0 ? "custom" : "catalogue",
+        activity_type: mode === "describe" ? "custom" : "catalogue",
         activity_count: activities.length + customActivities.length,
         has_challenge_context: Boolean(challengeContext),
       });
@@ -852,6 +880,7 @@ export default function QuickLogActivity() {
             activity={selectedActivity}
             quantity={quantity}
             setQuantity={setQuantity}
+            moneyRaised={selectedActivity.category === MONEY_RAISED_CATEGORY ? { value: moneyRaised, set: setMoneyRaised } : undefined}
             onChange={() => setSelectedActivity(null)}
           />
         )}
@@ -1072,6 +1101,8 @@ interface ActivityQuantityPanelProps {
   activity: ActivityItem;
   quantity: number;
   setQuantity: (n: number) => void;
+  /** Shown for fundraising activities: the optional amount raised. */
+  moneyRaised?: { value: number; set: (n: number) => void };
   onChange: () => void;
 }
 
@@ -1098,6 +1129,7 @@ function ActivityQuantityPanel({
   activity,
   quantity,
   setQuantity,
+  moneyRaised,
   onChange,
 }: ActivityQuantityPanelProps) {
   return (
@@ -1144,6 +1176,28 @@ function ActivityQuantityPanel({
               />
               <span className="text-sm text-muted-foreground">{activity.unitLabel}</span>
             </div>
+          </div>
+        )}
+        {moneyRaised && (
+          <div className="mt-4">
+            <label htmlFor="quick-log-money-raised" className="block text-sm font-medium text-foreground mb-2">
+              Money raised <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-semibold text-muted-foreground" aria-hidden="true">£</span>
+              <NumberInput
+                id="quick-log-money-raised"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0"
+                value={moneyRaised.value || ""}
+                onChange={(e) => moneyRaised.set(Number(e.target.value) || 0)}
+                className="w-32 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
+                data-testid="quick-log-money-raised"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">Added to your social value pound for pound.</p>
           </div>
         )}
       </div>
