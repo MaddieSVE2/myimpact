@@ -13,6 +13,12 @@ tags:
     description: Impact calculation operations
   - name: profile
     description: User profile operations
+  - name: organisation-api
+    description: |
+      The external API for organisations (routes/org-v1.ts), called with an
+      organisation API key created under Organisation settings → Developer.
+      Documentation only: these operations are not used to generate code
+      (see replit.md).
 paths:
   /healthz:
     get:
@@ -573,8 +579,381 @@ paths:
                 $ref: "#/components/schemas/ProfileResponse"
         "401":
           description: Not authenticated
+  /v1/org/me:
+    get:
+      operationId: orgApiGetMe
+      tags: [organisation-api]
+      summary: The organisation and API key making the request
+      security:
+        - orgApiKey: []
+      responses:
+        "200":
+          description: The key's organisation, and the key's label and scopes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiMe"
+        "401":
+          $ref: "#/components/responses/OrgApiUnauthorized"
+        "404":
+          description: The key's organisation no longer exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiError"
+        "429":
+          $ref: "#/components/responses/OrgApiRateLimited"
+  /v1/org/members:
+    get:
+      operationId: orgApiListMembers
+      tags: [organisation-api]
+      summary: List the organisation's members
+      description: |
+        Every membership of the organisation, oldest first, whatever its
+        status. Members are identified by `memberRef` (a stable id) and
+        `memberIndex`; email addresses and display names are included only
+        with `reveal=email`. Needs the `members.read` scope.
+      security:
+        - orgApiKey: []
+      parameters:
+        - name: reveal
+          in: query
+          required: false
+          description: Pass `email` to include each member's email address and display name.
+          schema:
+            type: string
+            enum: [email]
+      responses:
+        "200":
+          description: The members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiMembersResponse"
+        "401":
+          $ref: "#/components/responses/OrgApiUnauthorized"
+        "403":
+          $ref: "#/components/responses/OrgApiMissingScope"
+        "429":
+          $ref: "#/components/responses/OrgApiRateLimited"
+  /v1/org/stats:
+    get:
+      operationId: orgApiGetStats
+      tags: [organisation-api]
+      summary: Totals for the organisation over an optional date range
+      description: |
+        Social value, hours and donations from the records the organisation
+        can see (its members' shared and submitted records), filtered by when
+        each record was created. Where a member's annual estimate and their
+        logged activities cover the same activity in a reporting year, they
+        count once. Needs the `stats.read` scope.
+      security:
+        - orgApiKey: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Earliest creation date to include (ISO 8601, e.g. 2026-01-01).
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          description: Latest creation date to include, inclusive to the end of that day (ISO 8601).
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiStatsResponse"
+        "400":
+          description: "`from` or `to` is not a valid date"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiError"
+        "401":
+          $ref: "#/components/responses/OrgApiUnauthorized"
+        "403":
+          $ref: "#/components/responses/OrgApiMissingScope"
+        "429":
+          $ref: "#/components/responses/OrgApiRateLimited"
+  /v1/org/hours:
+    post:
+      operationId: orgApiRecordHours
+      tags: [organisation-api]
+      summary: Record hours the organisation attests for a member
+      description: |
+        Adds a verified record to the member's account, valued at
+        `valuePerHourGBP` per hour (£17 if omitted) plus `donationsGBP`, and
+        sends the `hours.logged` and `hours.attested` webhook events. The
+        member must already have a My Impact account and belong to the
+        organisation. Each call adds a new record: `externalRef` is stored and
+        returned but is not used to detect repeats, so sending the same hours
+        twice records them twice. Needs the `hours.write` scope.
+      security:
+        - orgApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrgApiHoursInput"
+      responses:
+        "201":
+          description: The record that was added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiHoursResponse"
+        "400":
+          description: A field is missing or out of range (the message says which)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiError"
+        "401":
+          $ref: "#/components/responses/OrgApiUnauthorized"
+        "403":
+          description: The key lacks `hours.write`, or the person is not a member of this organisation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiError"
+        "404":
+          description: No My Impact account has this email address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgApiError"
+        "429":
+          $ref: "#/components/responses/OrgApiRateLimited"
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: mi_session
+      description: The signed-in member's session cookie.
+    orgApiKey:
+      type: http
+      scheme: bearer
+      description: |
+        An organisation API key (`mi_orgk_…`), sent as
+        `Authorization: Bearer <key>`. Revoked keys are refused. Each key may
+        make 120 requests a minute.
+  responses:
+    OrgApiUnauthorized:
+      description: The Authorization header is missing or malformed, or the key is invalid or revoked
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OrgApiError"
+    OrgApiMissingScope:
+      description: The key lacks the scope this operation needs
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OrgApiError"
+    OrgApiRateLimited:
+      description: |
+        More than 120 requests in the key's current minute. `Retry-After` gives
+        the seconds to wait; every response carries `X-RateLimit-Limit`,
+        `X-RateLimit-Remaining` and `X-RateLimit-Reset` (Unix seconds).
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OrgApiError"
   schemas:
+    OrgApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    OrgApiMe:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          description: The kind of organisation, as chosen at registration.
+        apiKey:
+          type: object
+          properties:
+            id:
+              type: string
+            label:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+                enum: [hours.write, members.read, stats.read]
+          required: [id, label, scopes]
+      required: [id, name, type, apiKey]
+    OrgApiMember:
+      type: object
+      properties:
+        memberIndex:
+          type: integer
+          description: Position in the list, from 1.
+        memberRef:
+          type: string
+          description: A stable id for the member.
+        role:
+          type: string
+          description: "`manager` or `member`."
+        joinedAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+          description: Only with `reveal=email`.
+        displayName:
+          type: [string, "null"]
+          description: Only with `reveal=email`.
+      required: [memberIndex, memberRef, role, joinedAt]
+    OrgApiMembersResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgApiMember"
+      required: [count, members]
+    OrgApiStatsResponse:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            from:
+              type: [string, "null"]
+              format: date-time
+            to:
+              type: [string, "null"]
+              format: date-time
+          required: [from, to]
+        totals:
+          type: object
+          properties:
+            memberCount:
+              type: integer
+            activeMemberCount:
+              type: integer
+              description: Members with at least one record in the period.
+            records:
+              type: integer
+            attestedRecords:
+              type: integer
+              description: Records added through this API.
+            socialValueGBP:
+              type: number
+            hours:
+              type: number
+            donationsGBP:
+              type: number
+          required: [memberCount, activeMemberCount, records, attestedRecords, socialValueGBP, hours, donationsGBP]
+        valueByCategory:
+          type: array
+          description: Social value by activity category, largest first.
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              value:
+                type: number
+            required: [category, value]
+      required: [period, totals, valueByCategory]
+    OrgApiHoursInput:
+      type: object
+      properties:
+        memberEmail:
+          type: string
+          description: The member's My Impact email address.
+        hours:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 8760
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the activity happened (ISO 8601). Defaults to now.
+        category:
+          type: string
+          description: Defaults to `Community`.
+        activityName:
+          type: string
+          description: Defaults to `Org-attested activity`.
+        description:
+          type: string
+          description: Cut to 500 characters.
+        externalRef:
+          type: string
+          description: Your own reference (cut to 200 characters), stored and returned. Not used to detect repeats.
+        valuePerHourGBP:
+          type: number
+          minimum: 0
+          maximum: 1000
+          description: Value of each hour in pounds. Defaults to 17.
+        donationsGBP:
+          type: number
+          minimum: 0
+          description: Money given alongside the hours, counted pound for pound. Defaults to 0.
+        periodLabel:
+          type: string
+          description: A label for the record's period, such as a term or year (cut to 80 characters).
+      required: [memberEmail, hours]
+    OrgApiHoursResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        record:
+          type: object
+          properties:
+            id:
+              type: string
+            memberRef:
+              type: string
+            memberEmail:
+              type: string
+            activityName:
+              type: string
+            category:
+              type: string
+            hours:
+              type: number
+            socialValueGBP:
+              type: number
+              description: hours × valuePerHourGBP + donationsGBP, rounded to the penny.
+            attested:
+              type: boolean
+            attestedAt:
+              type: string
+              format: date-time
+            occurredAt:
+              type: string
+              format: date-time
+            externalRef:
+              type: [string, "null"]
+          required: [id, memberRef, memberEmail, activityName, category, hours, socialValueGBP, attested, attestedAt, occurredAt, externalRef]
+      required: [ok, record]
     HealthStatus:
       type: object
       properties:
