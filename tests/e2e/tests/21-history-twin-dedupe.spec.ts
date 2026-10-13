@@ -95,7 +95,7 @@ test.describe("Spec 21 — History twin-dedupe and Shared-with badge", () => {
       ).toBe(1);
 
       // The single record carries sharedWith metadata.
-      const record = historyJson.records[0];
+      const record = historyJson.records[0]!;
       expect(
         record.sharedWith,
         "sharedWith must not be null on the deduped record",

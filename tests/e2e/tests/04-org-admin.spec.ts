@@ -110,7 +110,7 @@ test.describe("Spec 4b — member-submissions endpoint handles zero evidence pho
       }
 
       // Specifically assert the record we just submitted has no photos.
-      const ourSubmission = submissionsBody.submissions[0];
+      const ourSubmission = submissionsBody.submissions[0]!;
       expect(ourSubmission.evidence).toEqual([]);
 
       // ── Manager: also verify /api/org/activities returns 200 ─────────────

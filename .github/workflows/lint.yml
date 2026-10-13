@@ -1,5 +1,6 @@
-# ESLint over the workspace (eslint.config.mjs) on every push and pull
-# request. Errors fail the check; warnings are listed but don't.
+# ESLint over the workspace (eslint.config.mjs) and the TypeScript check of
+# every package, on every push and pull request. Errors fail the check;
+# ESLint warnings are listed but don't.
 name: Lint
 
 on:
@@ -32,3 +33,6 @@ jobs:
 
       - name: Run ESLint
         run: pnpm lint
+
+      - name: Type check
+        run: pnpm run typecheck
