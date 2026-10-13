@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { Share2, Eye, X, Copy, Check, AlertCircle } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
 import { DEMO_SHARE_LINKS } from "@/lib/org-demo-mock";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface ShareLink {
   id: string;
@@ -157,9 +157,7 @@ function LiveShareLinkManager() {
   const { data, isLoading } = useQuery<{ links: ShareLink[] }>({
     queryKey: ["org-share-links"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/share-links`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load share links");
-      return res.json();
+      return apiJson(`/api/org/share-links`, { errorMessage: "Failed to load share links" });
     },
   });
 

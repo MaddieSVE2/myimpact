@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ShieldCheck, AlertCircle, Trash2, Lock, ExternalLink, Plus } from "lucide-react";
 import { DEMO_SSO_CONFIGS, DEMO_SSO_AVAILABLE_PROVIDERS } from "@/lib/org-demo-mock";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface SsoConfig {
   id: string;
@@ -26,9 +26,7 @@ function useSsoConfigs(enabled = true) {
     queryKey: ["org-sso-config"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/sso/config`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load SSO configs");
-      return res.json();
+      return apiJson(`/api/org/sso/config`, { errorMessage: "Failed to load SSO configs" });
     },
   });
 }

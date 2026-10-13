@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { BadgeCheck, CheckCircle2, XCircle, ShieldCheck, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface PendingVerificationEvidence {
   id: number;
@@ -96,9 +96,7 @@ export function usePendingVerifications(enabled: boolean) {
     queryKey: ["org-pending-verifications"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/verifications/pending`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load pending verifications");
-      return res.json();
+      return apiJson(`/api/org/verifications/pending`, { errorMessage: "Failed to load pending verifications" });
     },
   });
 }
@@ -113,9 +111,7 @@ export function usePendingApprovalsCount(enabled: boolean) {
     enabled,
     refetchInterval: 60_000,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/verifications/pending-count`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load pending count");
-      return res.json();
+      return apiJson(`/api/org/verifications/pending-count`, { errorMessage: "Failed to load pending count" });
     },
   });
 }

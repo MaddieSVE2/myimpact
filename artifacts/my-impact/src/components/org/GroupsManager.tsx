@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { BASE } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 import { groupsApi, useInvalidateGroups, useReportGroups, type ManagedGroup } from "@/lib/org-groups";
 
 interface OrgMember {

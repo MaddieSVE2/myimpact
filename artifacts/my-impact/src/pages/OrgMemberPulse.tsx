@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Check, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useMyOrg } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const SCALE_LABELS_MEANINGFULNESS = ["Not at all", "A little", "Somewhat", "Quite a bit", "Very much"];
 const SCALE_LABELS_WELLBEING = ["Struggling", "Low", "OK", "Good", "Great"];

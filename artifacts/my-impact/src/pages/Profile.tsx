@@ -16,7 +16,6 @@ import StreakChip from "@/components/StreakChip";
 import StreakCelebration from "@/components/StreakCelebration";
 import { useAuth } from "@/lib/auth-context";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 
 const SITUATION_OPTIONS = [

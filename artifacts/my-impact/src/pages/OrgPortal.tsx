@@ -21,8 +21,8 @@ import { VerificationQueue } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 import { MyGroupsCard } from "@/components/org/MyGroupsCard";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface OrgBranding {
   logoUrl: string | null;
@@ -109,9 +109,7 @@ function useMyOrg() {
   return useQuery<{ org: OrgInfo | null }>({
     queryKey: ["my-org"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
   });
 }
@@ -170,9 +168,7 @@ function useJoinLink(enabled: boolean) {
     queryKey: ["org-join-link"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my-join-link`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my-join-link`, { errorMessage: "Failed to load" });
     },
   });
 }
@@ -224,9 +220,7 @@ function useMemberSubmissions(enabled: boolean, source: SourceFilter) {
     queryKey: ["org-member-submissions", source],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/member-submissions?source=${source}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load member submissions");
-      return res.json();
+      return apiJson(`/api/org/member-submissions?source=${source}`, { errorMessage: "Failed to load member submissions" });
     },
   });
 }
@@ -537,9 +531,7 @@ function useOrgList() {
   return useQuery<{ orgs: OrgListItem[] }>({
     queryKey: ["org-list"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/list`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load organisations");
-      return res.json();
+      return apiJson(`/api/org/list`, { errorMessage: "Failed to load organisations" });
     },
   });
 }
@@ -634,9 +626,7 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
   }>({
     queryKey: ["my-org-consent"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my/consent`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load consent");
-      return res.json();
+      return apiJson(`/api/org/my/consent`, { errorMessage: "Failed to load consent" });
     },
     retry: false,
   });
@@ -1304,9 +1294,7 @@ function useMatchRates(enabled: boolean) {
     queryKey: ["org-match-rates"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/match/rates`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load match rates");
-      return res.json();
+      return apiJson(`/api/org/match/rates`, { errorMessage: "Failed to load match rates" });
     },
   });
 }
@@ -1677,9 +1665,7 @@ function BillingSection() {
   const { data: sub, isLoading } = useQuery<SubscriptionSnapshot>({
     queryKey: ["billing-subscription"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/billing/subscription`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load subscription");
-      return res.json();
+      return apiJson(`/api/billing/subscription`, { errorMessage: "Failed to load subscription" });
     },
   });
 

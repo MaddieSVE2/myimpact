@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { X, Share2, Gift } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import CopyField from "@/components/CopyField";
+import { BASE } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface InviteData {
   inviteCode: string;
@@ -22,7 +22,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    fetch(`${BASE_URL}/api/user/invite`, { credentials: "include" })
+    fetch(`${BASE}/api/user/invite`, { credentials: "include" })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -32,7 +32,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
     if (usedShare) return;
     setUsedShare(true);
     try {
-      await fetch(`${BASE_URL}/api/user/invite/use`, { method: "POST", credentials: "include" });
+      await fetch(`${BASE}/api/user/invite/use`, { method: "POST", credentials: "include" });
       await queryClient.invalidateQueries({ queryKey: ["user-invite"] });
     } catch {}
   };

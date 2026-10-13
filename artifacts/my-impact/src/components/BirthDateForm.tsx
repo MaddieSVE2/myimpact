@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Loader2, Cake } from "lucide-react";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",

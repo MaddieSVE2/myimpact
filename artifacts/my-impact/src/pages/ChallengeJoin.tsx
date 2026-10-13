@@ -4,8 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Trophy, Loader2, AlertCircle, CheckCircle2, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ChallengePreview {
   id: string;

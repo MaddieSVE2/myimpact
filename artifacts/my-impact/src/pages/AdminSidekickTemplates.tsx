@@ -9,6 +9,7 @@ import {
   type SidekickTemplate,
   type SidekickTemplateOverride,
 } from "@/lib/sidekick-templates";
+import { BASE } from "@/lib/api";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -16,7 +17,6 @@ const ADMIN_EMAILS = [
   "ivan.annibal@roseregeneration.co.uk",
 ];
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const PERSONA_ORDER: SidekickPersona[] = [
   "default",

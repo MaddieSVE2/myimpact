@@ -28,17 +28,15 @@ import {
   cleanDeviceLabel,
   OUTPUT_SELECTION_SUPPORTED,
 } from "@/hooks/useAudioDevices";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useMyOrgMembership(enabled: boolean) {
   return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean } | null }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
     staleTime: 60_000,
   });
@@ -388,9 +386,7 @@ export function Sidekick() {
   }>({
     queryKey: ["sidekick-quota"],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/sidekick/quota`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load quota");
-      return res.json();
+      return apiJson(`/api/sidekick/quota`, { errorMessage: "Failed to load quota" });
     },
     staleTime: 30_000,
   });
@@ -609,7 +605,7 @@ export function Sidekick() {
   const overridesQuery = useQuery<{ overrides: SidekickTemplateOverride[] }>({
     queryKey: ["sidekick-template-overrides"],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/sidekick/template-overrides`);
+      const res = await fetch(`${BASE}/api/sidekick/template-overrides`);
       if (!res.ok) throw new Error("Failed to load template overrides");
       return res.json();
     },

@@ -21,8 +21,8 @@ import { NO_GROUP, useGroupFilter, useReportAccess, withGroup } from "@/lib/org-
 import { GroupFilter } from "@/components/org/GroupFilter";
 import { PdfPager } from "@/components/PdfPager";
 import { useLocale } from "@/i18n/context";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // Shape returned by GET /api/org/activities for real (non-demo) organisations.
 interface LiveOrgActivity {

@@ -3,8 +3,8 @@ import { Link, useSearch } from "wouter";
 import { ArrowLeft, CheckCircle, Mail } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
 import { CONTACT_META } from "@/lib/page-metadata";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Contact() {
   const search = useSearch();

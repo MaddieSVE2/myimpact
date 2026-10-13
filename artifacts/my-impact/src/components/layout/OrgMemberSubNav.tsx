@@ -3,8 +3,8 @@ import { ClipboardList, Trophy, Building2, History, UsersRound } from "lucide-re
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { joinedGroups, useMyGroups } from "@/lib/org-groups";
+import { apiJson } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const ORG_SUBNAV_BG = "#1a3a4a";
 
@@ -13,9 +13,7 @@ function useMyOrgMembership(enabled: boolean) {
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
     staleTime: 60_000,
   });

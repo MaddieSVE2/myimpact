@@ -2,8 +2,8 @@ import { SECTION_MAX_WIDTH } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Clock, X, ChevronRight, Loader2 } from "lucide-react";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface UpcomingEvent {
   id: number;

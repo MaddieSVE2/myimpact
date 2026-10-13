@@ -11,6 +11,7 @@ import { SearchTagFilter } from "@/components/SearchTagFilter";
 import { useUrlFilters } from "@/lib/useUrlFilters";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { Calendar } from "@/components/ui/calendar";
+import { BASE } from "@/lib/api";
 
 interface JournalEntry {
   id: string;
@@ -535,7 +536,6 @@ export default function Journal() {
 
   const { filters, setSearch, toggleTag, clearAll } = useUrlFilters();
 
-  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   useEffect(() => {
     if (!draftPhoto) {

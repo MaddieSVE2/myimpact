@@ -8,8 +8,8 @@ import { useGetActivities } from "@workspace/api-client-react";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
+import { BASE } from "@/lib/api";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 // Must match the server's attachment limits (api-server/src/routes/attachments.ts).
 const EVIDENCE_MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB

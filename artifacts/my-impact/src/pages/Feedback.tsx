@@ -3,8 +3,8 @@ import { MessageSquare, Send, CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import { BASE } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Feedback() {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export default function Feedback() {
     setError(null);
 
     try {
-      const res = await fetch(`${BASE_URL}/api/feedback`, {
+      const res = await fetch(`${BASE}/api/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -5,6 +5,7 @@ import { ChevronDown, Download, Loader2 } from "lucide-react";
 import { scrollContentToTop } from "@/lib/scroll-utils";
 import { PageMeta } from "@/components/PageMeta";
 import { METHODOLOGY_META } from "@/lib/page-metadata";
+import { BASE } from "@/lib/api";
 
 const C = {
   dark: "var(--brand-dark)",
@@ -14,7 +15,6 @@ const C = {
   offBlack: "var(--brand-off-black)",
 };
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const LAST_UPDATED = "24 September 2026";
 
 function CitationLink({ id, children }: { id: string; children: React.ReactNode }) {
@@ -223,7 +223,7 @@ export default function Methodology() {
     setDownloading(true);
     setDownloadError(null);
     try {
-      const res = await fetch(`${BASE_URL}/api/impact/evidence-pack`, {
+      const res = await fetch(`${BASE}/api/impact/evidence-pack`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

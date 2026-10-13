@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ActiveSurvey {
   id: string;

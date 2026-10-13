@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import CopyField from "@/components/CopyField";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ChallengeFull {
   id: string;

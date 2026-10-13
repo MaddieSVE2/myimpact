@@ -4,8 +4,8 @@ import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const SITUATION_OPTIONS = [
   { id: "volunteer", label: "I volunteer" },

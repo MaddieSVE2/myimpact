@@ -9,8 +9,8 @@ import {
 } from "recharts";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface CostBreakdown {
   recruitment: number | null;

@@ -6,6 +6,7 @@ import { X, Download, Linkedin, Twitter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { BrandedArtwork } from "./BrandedArtwork";
+import { BASE } from "@/lib/api";
 
 interface MilestoneShareModalProps {
   badge: Badge;
@@ -25,8 +26,7 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 
 const SCALE = 0.38;
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const LOGO_SRC = `${BASE_URL}/images/myimpact.png`;
+const LOGO_SRC = `${BASE}/images/myimpact.png`;
 
 export default function MilestoneShareModal({ badge, totalValue, onClose }: MilestoneShareModalProps) {
   const [format, setFormat] = useState<Format>("landscape");

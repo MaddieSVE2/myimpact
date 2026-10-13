@@ -32,6 +32,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
+import { BASE, apiJson } from "@/lib/api";
 
 const LOCAL_HISTORY_KEY = "mi_local_history";
 
@@ -240,10 +241,7 @@ export default function History() {
     queryKey: ["impact-years", user?.id ?? ""],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-      const res = await fetch(`${BASE}/api/impact/years`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load years");
-      return res.json();
+      return apiJson(`/api/impact/years`, { errorMessage: "Failed to load years" });
     },
   });
   // Year-over-year comparison for the currently-selected year. The endpoint
@@ -267,10 +265,7 @@ export default function History() {
     queryKey: ["impact-yoy", user?.id ?? "", selectedYear],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-      const res = await fetch(`${BASE}/api/impact/yoy?year=${selectedYear}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load year-over-year data");
-      return res.json();
+      return apiJson(`/api/impact/yoy?year=${selectedYear}`, { errorMessage: "Failed to load year-over-year data" });
     },
   });
 
@@ -364,10 +359,7 @@ export default function History() {
     queryKey: ["impact-match-info", user?.id ?? ""],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-      const res = await fetch(`${BASE}/api/impact/match-info`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load match info");
-      return res.json();
+      return apiJson(`/api/impact/match-info`, { errorMessage: "Failed to load match info" });
     },
   });
   const matchByRecordId = new Map<string, MatchInfoEntry>();
@@ -392,7 +384,6 @@ export default function History() {
     queryKey: ["attachment-counts-records", recordIdsKey],
     enabled: isAuthenticated && numericRecordIds.length > 0,
     queryFn: async () => {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(
         `${BASE}/api/attachments/counts?recordIds=${encodeURIComponent(recordIdsKey)}`,
         { credentials: "include" },
@@ -432,7 +423,6 @@ export default function History() {
     setFixingDonationsId(String(record.id));
     try {
       if (isAuthenticated) {
-        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
         const res = await fetch(`${BASE}/api/impact/${record.id}/fix-donations`, {
           method: "POST",
           credentials: "include",
@@ -468,7 +458,6 @@ export default function History() {
   const handleDownloadPdf = async (recordId: string, recordName: string) => {
     setDownloadingPdfId(recordId);
     try {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${BASE}/api/impact/pdf?recordId=${encodeURIComponent(recordId)}`, {
         credentials: "include",
       });
@@ -641,7 +630,6 @@ export default function History() {
   const handleWithdrawShare = async (twinId: number, personalRecordId: string) => {
     setWithdrawingShareBusy(true);
     try {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${BASE}/api/org/member-submissions/${twinId}`, {
         method: "DELETE",
         credentials: "include",

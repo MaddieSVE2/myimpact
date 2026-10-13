@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
+import { BASE } from "@/lib/api";
 
 // On the user's first visit on/after 1 January, the API tells us whether
 // they have habits worth carrying forward. The modal lists each ongoing
@@ -51,7 +52,6 @@ export function YearRolloverModal() {
       try {
         const dismissedAt = window.sessionStorage.getItem(DISMISS_KEY);
         if (dismissedAt) return;
-        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
         const res = await fetch(`${BASE}/api/impact/year-rollover`, { credentials: "include" });
         if (!res.ok) return;
         const json: RolloverState = await res.json();
@@ -83,7 +83,6 @@ export function YearRolloverModal() {
     if (!state) return;
     setSubmitting(true);
     try {
-      const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${BASE}/api/impact/year-rollover`, {
         method: "POST",
         credentials: "include",

@@ -4,8 +4,8 @@ import { X, MessageSquare, Send, CheckCircle, NotebookPen } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { BASE } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export function FeedbackWidget() {
   const { feedbackMode, setFeedbackMode } = useFeedback();
@@ -27,7 +27,7 @@ export function FeedbackWidget() {
     setError(null);
 
     try {
-      const res = await fetch(`${BASE_URL}/api/feedback`, {
+      const res = await fetch(`${BASE}/api/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

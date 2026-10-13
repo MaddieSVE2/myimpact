@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ClipboardList } from "lucide-react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
-import { BASE } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
 
 interface PulseSummarySurvey {

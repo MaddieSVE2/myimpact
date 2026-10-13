@@ -7,7 +7,7 @@
  * push controls instead of throwing.
  */
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { BASE } from "@/lib/api";
 
 export type PushTriggerType = "streakAtRisk" | "recurringDue" | "monthlyDigest" | "challengeEnd";
 

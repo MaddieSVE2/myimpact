@@ -10,8 +10,8 @@ import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { NumberInput } from "@/components/ui/number-input";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
+import { BASE } from "@/lib/api";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 const SOMETHING_ELSE_ID = "something_else";
 

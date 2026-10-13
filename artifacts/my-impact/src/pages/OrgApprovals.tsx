@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { AlertCircle, ClipboardCheck } from "lucide-react";
 import { VerificationQueue } from "@/components/VerificationQueue";
+import { apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface OrgInfo {
   id: string;
@@ -15,9 +15,7 @@ function useMyOrg() {
   return useQuery<{ org: OrgInfo | null }>({
     queryKey: ["my-org"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
   });
 }

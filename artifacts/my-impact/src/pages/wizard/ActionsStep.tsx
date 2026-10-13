@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useT } from "@/i18n";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import { BASE } from "@/lib/api";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
@@ -40,7 +41,6 @@ async function lookupPostcode(raw: string) {
   };
 }
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function useChallengeIdFromQuery(): string | null {
   return useMemo(() => {

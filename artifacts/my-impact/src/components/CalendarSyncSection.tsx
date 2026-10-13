@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, Loader2, Plug, X, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type Provider = "google" | "microsoft";
 

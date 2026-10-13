@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { Code2, Plus, Trash2, Webhook, ChevronDown, Check, Copy } from "lucide-react";
 import { CopyButton } from "@/components/CopyField";
 import { DEMO_API_KEYS, DEMO_WEBHOOKS, DEMO_SUPPORTED_WEBHOOK_EVENTS } from "@/lib/org-demo-mock";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ApiKey {
   id: string;
@@ -171,18 +171,14 @@ function LiveDeveloperApiSection() {
   const keysQuery = useQuery<{ keys: ApiKey[] }>({
     queryKey: ["org-api-keys"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/api-keys`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load API keys");
-      return res.json();
+      return apiJson(`/api/org/api-keys`, { errorMessage: "Failed to load API keys" });
     },
   });
 
   const webhooksQuery = useQuery<{ webhooks: WebhookEntry[]; supportedEvents: string[] }>({
     queryKey: ["org-webhooks"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/webhooks`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load webhooks");
-      return res.json();
+      return apiJson(`/api/org/webhooks`, { errorMessage: "Failed to load webhooks" });
     },
   });
 

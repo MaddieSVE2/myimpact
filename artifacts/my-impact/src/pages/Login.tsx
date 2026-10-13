@@ -3,8 +3,8 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, ArrowRight, CheckCircle, X, Building2, Lock } from "lucide-react";
 import { useT } from "@/i18n";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface SsoLookup {
   provider: "google" | "microsoft";

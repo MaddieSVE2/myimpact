@@ -3,7 +3,7 @@ import { Trophy, AlertCircle, Flag, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { useMyOrg } from "@/lib/org-export";
-import { BASE } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 
 interface OrgChallenge {
   id: string;

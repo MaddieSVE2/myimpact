@@ -10,6 +10,8 @@
  * the docs in `artifacts/api-server/src/lib/ANALYTICS.md`.
  */
 
+import { BASE } from "@/lib/api";
+
 export const ANALYTICS_EVENTS = {
   PAGE_VIEW: "page_view",
   SIGNUP_COMPLETE: "signup_complete",
@@ -29,7 +31,6 @@ export const ANALYTICS_EVENTS = {
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 type AnalyticsData = Record<string, string | number | boolean>;
 

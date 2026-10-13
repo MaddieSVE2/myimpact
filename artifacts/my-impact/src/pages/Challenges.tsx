@@ -6,8 +6,8 @@ import { Trophy, Plus, Users, Calendar, Target, ChevronRight, Loader2, AlertCirc
 import { formatCurrency } from "@/lib/utils";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { NumberInput } from "@/components/ui/number-input";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ChallengeSummary {
   id: string;
@@ -32,9 +32,7 @@ function useMyChallenges() {
   return useQuery<{ challenges: ChallengeSummary[] }>({
     queryKey: ["challenges-mine"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/challenges/mine`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load challenges");
-      return res.json();
+      return apiJson(`/api/challenges/mine`, { errorMessage: "Failed to load challenges" });
     },
   });
 }
@@ -43,9 +41,7 @@ function useMyOrg() {
   return useQuery<{ org: { id: string; name: string; type: string; role: string } | null }>({
     queryKey: ["my-org"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
   });
 }

@@ -9,6 +9,7 @@
     "postbuild": "tsx prerender.ts && node compress-assets.mjs",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "start": "node serve.mjs",
+    "test": "vitest run",
     "test:ssr": "node --test serve.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -88,6 +89,7 @@
     "@vitejs/plugin-react": "catalog:",
     "sharp": "^0.35.5",
     "tailwindcss": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "^4.1.11"
   }
 }

@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Flag, Plus, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useT } from "@/i18n";
-import { BASE } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { NumberInput } from "@/components/ui/number-input";
 

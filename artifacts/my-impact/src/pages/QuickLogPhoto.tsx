@@ -17,8 +17,8 @@ import { describeCadence } from "@/components/QuickLog";
 import { NumberInput } from "@/components/ui/number-input";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useQueryClient } from "@tanstack/react-query";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type Stage = "camera" | "preview" | "details" | "saving" | "done";
 

@@ -18,11 +18,11 @@ import {
   isVideoExportSupported,
   type RecapVideoData,
 } from "@/lib/recap-video";
+import { BASE } from "@/lib/api";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function loadLogoImage(): Promise<HTMLImageElement> {
-  const res = await fetch(`${BASE_URL}/images/myimpact.png`);
+  const res = await fetch(`${BASE}/images/myimpact.png`);
   const blob = await res.blob();
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();

@@ -4,8 +4,8 @@ import { Camera, Paperclip, X, Trash2, FileText, Loader2, AlertCircle, AlertTria
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface AttachmentItem {
   id: string;

@@ -1,9 +1,9 @@
-const BASE_URL = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+import { BASE } from "@/lib/api";
 
 export type ArtworkSize = "web" | "export";
 
 export function brandedArtworkUrl(file: string, size: ArtworkSize = "web"): string {
-  return `${BASE_URL}/images/branded-artwork/${size}/${file}`;
+  return `${BASE}/images/branded-artwork/${size}/${file}`;
 }
 
 /**

@@ -18,8 +18,8 @@ import {
   DemoPulseSurvey, 
   DEMO_COMMENT_PRIVACY_THRESHOLD 
 } from "@/lib/org-demo-mock";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type Schedule = "one_off" | "monthly" | "quarterly";
 type Template = "meaningfulness" | "wellbeing" | "custom";
@@ -85,9 +85,7 @@ function useSurveys() {
   return useQuery<{ surveys: SurveyListItem[] }>({
     queryKey: ["org-surveys"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/surveys`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load surveys");
-      return res.json();
+      return apiJson(`/api/org/surveys`, { errorMessage: "Failed to load surveys" });
     },
   });
 }
@@ -96,9 +94,7 @@ function useTemplates() {
   return useQuery<{ templates: TemplateOption[]; schedules: Schedule[] }>({
     queryKey: ["org-survey-templates"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/surveys/templates`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/surveys/templates`, { errorMessage: "Failed to load" });
     },
   });
 }
@@ -108,9 +104,7 @@ function useSurveyResults(id: string | null) {
     queryKey: ["org-survey-results", id],
     enabled: !!id,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/surveys/${id}/results`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/surveys/${id}/results`, { errorMessage: "Failed to load" });
     },
   });
 }

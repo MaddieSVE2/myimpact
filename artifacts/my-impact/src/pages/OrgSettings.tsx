@@ -17,8 +17,8 @@ import {
   type DemoPendingRequest,
 } from "@/lib/org-demo-mock";
 import { NumberInput } from "@/components/ui/number-input";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface OrgBranding {
   logoUrl: string | null;
@@ -40,9 +40,7 @@ function useMyOrg() {
   return useQuery<MyOrgResponse>({
     queryKey: ["my-org"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/my`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
+      return apiJson(`/api/org/my`, { errorMessage: "Failed to load" });
     },
   });
 }

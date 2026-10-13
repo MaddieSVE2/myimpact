@@ -9,7 +9,8 @@ import {
   getDemoMember, getRemovedMemberIds, ALL_CATEGORIES,
   type ActivityCategory,
 } from "@/lib/org-demo-mock";
-import { useMyOrg, BASE } from "@/lib/org-export";
+import { useMyOrg } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 import { useGroupFilter, useReportAccess } from "@/lib/org-groups";
 import { GroupFilter } from "@/components/org/GroupFilter";
 import { useOrgPeriod } from "@/hooks/useOrgPeriod";

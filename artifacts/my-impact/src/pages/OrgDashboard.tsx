@@ -20,7 +20,8 @@ import {
   getRemovedMemberIds, getOrgInviteCode, SDG_BY_CATEGORY,
   type SdgBreakdownPoint, type ActivityCategory,
 } from "@/lib/org-demo-mock";
-import { useMyOrg, hexToHslVar, DEFAULT_SROI_COST_PER_VOLUNTEER, BASE } from "@/lib/org-export";
+import { useMyOrg, hexToHslVar, DEFAULT_SROI_COST_PER_VOLUNTEER } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 import { NO_GROUP, useGroupFilter, useReportAccess, withGroup } from "@/lib/org-groups";
 import { GroupFilter } from "@/components/org/GroupFilter";
 import {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { NoIndexMeta } from "@/components/PageMeta";
+import { BASE } from "@/lib/api";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -9,7 +10,6 @@ const ADMIN_EMAILS = [
   "ivan.annibal@roseregeneration.co.uk",
 ];
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface Proxy {
   id: number;

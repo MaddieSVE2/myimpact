@@ -17,7 +17,7 @@ import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
 import { OrgPulseSummaryCard } from "@/components/OrgPulseSummaryCard";
 import { computeSdgBreakdown, type DemoActivity } from "@/lib/org-demo-mock";
 import { SkillsBreakdownCard } from "@/components/SkillsBreakdownCard";
-import { BASE } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 
 export interface UniversityStats {
   totalRecords: number;

@@ -45,8 +45,8 @@ import { joinedGroups, setRecordGroup, useMyGroups } from "@/lib/org-groups";
 import { GroupPicker } from "@/components/org/GroupPicker";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import type { ImpactResult } from "@workspace/api-client-react";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
 const SDG_COLORS: Record<number, string> = {

@@ -10,8 +10,8 @@ import {
   DEMO_ORG_ID, DEMO_ACTIVITIES, DEMO_PULSE_SURVEYS,
   computeDemoAggregates, getRemovedMemberIds,
 } from "@/lib/org-demo-mock";
+import { apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface OrgStatsLite {
   totalUsers: number;
@@ -118,9 +118,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
   const liveStatsQuery = useQuery<OrgStatsLite>({
     queryKey: ["manager-home-org-stats", orgId],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/impact/org-stats`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiJson(`/api/impact/org-stats`, { errorMessage: "Failed" });
     },
     enabled: !isDemo,
     retry: false,
@@ -129,9 +127,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
   const liveChallengesQuery = useQuery<{ challenges: ChallengeLite[] }>({
     queryKey: ["manager-home-challenges", orgId],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/challenges/mine`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiJson(`/api/challenges/mine`, { errorMessage: "Failed" });
     },
     enabled: true,
     retry: false,
@@ -140,9 +136,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
   const liveSurveysQuery = useQuery<{ surveys: PulseSurveyLite[] }>({
     queryKey: ["manager-home-surveys", orgId],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/org/surveys`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiJson(`/api/org/surveys`, { errorMessage: "Failed" });
     },
     retry: false,
   });
@@ -160,9 +154,7 @@ export function ManagerHome({ orgId, orgName, firstName }: ManagerHomeProps) {
     queries: recentSurveyIds.map(id => ({
       queryKey: ["manager-home-survey-results", orgId, id],
       queryFn: async (): Promise<PulseResultsLite> => {
-        const res = await fetch(`${BASE}/api/org/surveys/${id}/results`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed");
-        return res.json();
+        return apiJson(`/api/org/surveys/${id}/results`, { errorMessage: "Failed" });
       },
       retry: false,
     })),

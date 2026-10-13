@@ -55,6 +55,7 @@ import {
 } from "recharts";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { BrandedArtwork } from "@/components/BrandedArtwork";
+import { BASE } from "@/lib/api";
 
 // Metric tile, styled to match original My Impact design
 function MetricTile({
@@ -1170,7 +1171,6 @@ export default function Results() {
       };
 
       try {
-        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
         const journalRes = await fetch(`${BASE}/api/journal`, {
           method: "POST",
           credentials: "include",

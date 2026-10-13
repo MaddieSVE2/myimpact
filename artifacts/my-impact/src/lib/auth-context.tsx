@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useQueryClient } from "@tanstack/react-query";
 import { setSentryUser } from "@/lib/sentry";
 import { hasSignedInHint, setSignedInHint } from "./signed-in-hint";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export type VoicePersona = "alloy" | "nova" | "shimmer" | "echo" | "fable" | "onyx";
 export type VoiceAccent = "neutral" | "british";

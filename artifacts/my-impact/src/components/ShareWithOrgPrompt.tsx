@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { Building2, ArrowRight, X, Eye } from "lucide-react";
 import type { ImpactResult } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
-import { useMyOrg, BASE } from "@/lib/org-export";
+import { useMyOrg } from "@/lib/org-export";
+import { BASE } from "@/lib/api";
 
 interface MyConsentResponse {
   consent: { status: string; shareFrom: string } | null;

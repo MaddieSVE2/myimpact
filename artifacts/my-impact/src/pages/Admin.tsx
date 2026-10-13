@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import AdminFunnels from "@/components/AdminFunnels";
 import AdminOrganisations from "@/components/AdminOrganisations";
 import AdminRevalueOneOff from "@/components/AdminRevalueOneOff";
+import { BASE } from "@/lib/api";
 
 const ADMIN_EMAILS = [
   "hello@myimpact.uk",
@@ -110,7 +111,6 @@ const ISSUE_LABELS: Record<string, string> = {
   other: "Other issue",
 };
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {

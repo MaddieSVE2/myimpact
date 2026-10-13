@@ -3,8 +3,8 @@ import { Globe, Lock, CheckCircle, AlertCircle, Loader2, ExternalLink, Info, Cod
 import { CopyButton } from "@/components/CopyField";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 type WidgetSize = "small" | "medium" | "large";
 type WidgetTheme = "light" | "dark";
 

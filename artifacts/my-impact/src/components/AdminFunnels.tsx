@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TrendingUp, BarChart3, Users, AlertCircle, Archive } from "lucide-react";
+import { BASE } from "@/lib/api";
 
 interface FunnelStep {
   key: string;
@@ -44,7 +45,6 @@ interface FunnelResponse {
   eventCounts: EventCount[];
 }
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 const WINDOW_OPTIONS = [7, 30, 90];
 
 function FunnelBar({ step, maxUsers }: { step: FunnelStep; maxUsers: number }) {

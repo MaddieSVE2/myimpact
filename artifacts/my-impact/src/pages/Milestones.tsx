@@ -11,8 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useT } from "@/i18n";
 import { BrandedArtwork } from "@/components/BrandedArtwork";
 import { MilestoneFireworks } from "@/components/MilestoneFireworks";
+import { BASE, apiJson } from "@/lib/api";
 
-const BASE_URL = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 function getYearMonth(isoDate: string): string {
   const d = new Date(isoDate);
@@ -34,7 +34,7 @@ export default function Milestones() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const base = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
+    const base = BASE.endsWith("/") ? BASE.slice(0, -1) : BASE;
     fetch(`${base}/api/org/my`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : { org: null })
       .then((d: { org: unknown }) => setIsOrgMember(!!d.org))
@@ -51,9 +51,7 @@ export default function Milestones() {
     queryKey: ["user-invite"],
     enabled: !!user?.id,
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/user/invite`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiJson(`/api/user/invite`, { errorMessage: "Failed" });
     },
     staleTime: 60_000,
   });

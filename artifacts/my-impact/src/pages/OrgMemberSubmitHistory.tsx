@@ -5,8 +5,8 @@ import { History, ArrowLeft, Loader2, AlertCircle, Plus, ShieldCheck, Clock } fr
 import { useMyOrg } from "@/lib/org-export";
 import { useAuth } from "@/lib/auth-context";
 import EvidenceLightbox, { type EvidenceLightboxData } from "@/components/EvidenceLightbox";
+import { BASE } from "@/lib/api";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 interface SubmissionEvidence {
   id: number;

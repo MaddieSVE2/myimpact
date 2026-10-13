@@ -38,8 +38,8 @@ import {
   AUDIO_DEVICES_SUPPORTED,
   OUTPUT_SELECTION_SUPPORTED,
 } from "@/hooks/useAudioDevices";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Settings() {
   const { user, updateProfile, logout } = useAuth();

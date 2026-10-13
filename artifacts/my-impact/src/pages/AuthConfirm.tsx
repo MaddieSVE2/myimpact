@@ -3,8 +3,8 @@ import { useLocation } from "wouter";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { BirthDateForm } from "@/components/BirthDateForm";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function AuthConfirm() {
   const [, navigate] = useLocation();

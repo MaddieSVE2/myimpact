@@ -15,8 +15,7 @@ export type { OrgBranding, PreloadedLogo, RenderOrgPdfArgs, PdfSections } from "
 export { DEFAULT_PDF_SECTIONS } from "@/lib/org-pdf-render";
 import { getSdgByNumber, getSdgText } from "@/lib/sdg";
 import type { Locale } from "@/i18n";
-
-export const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { BASE } from "@/lib/api";
 
 export interface SroiCostBreakdown {
   recruitment: number | null;

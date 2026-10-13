@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { Globe, Clock, TrendingUp, Tag, BookOpen, AlertCircle, Loader2, ChevronRight, BadgeCheck } from "lucide-react";
 import { PageMeta } from "@/components/PageMeta";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ProfileData {
   slug: string;

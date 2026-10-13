@@ -5,8 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { paintResultsShareCard } from "@/lib/share-cards";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const LOGO_SRC = `${BASE}/images/myimpact.png`;
 const SHARE_URL = "https://myimpact.uk";
 

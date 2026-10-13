@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
 import type { ReportResult } from "@/components/results/ReportActions";
+import { apiJson } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export interface YearResult {
   year: number;
@@ -19,9 +19,7 @@ export function useYearResult(year: number, enabled = true) {
   return useQuery<YearResult>({
     queryKey: [...getGetAnnualRecapQueryKey(year), "year-result"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/impact/year-result/${year}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Could not load the year");
-      return res.json();
+      return apiJson(`/api/impact/year-result/${year}`, { errorMessage: "Could not load the year" });
     },
     enabled,
   });

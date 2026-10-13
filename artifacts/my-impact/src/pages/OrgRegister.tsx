@@ -5,8 +5,8 @@ import { scrollContentToTop } from "@/lib/scroll-utils";
 import { PageMeta } from "@/components/PageMeta";
 import { ORG_REGISTER_META } from "@/lib/page-metadata";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const VALID_TYPES = ["charity", "corporate", "education", "public", "other"] as const;
 type OrgType = typeof VALID_TYPES[number] | "";

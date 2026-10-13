@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { CheckCircle, XCircle, Loader2, MailX } from "lucide-react";
+import { BASE } from "@/lib/api";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Unsubscribe() {
   const [status, setStatus] = useState<"working" | "done" | "error">("working");
