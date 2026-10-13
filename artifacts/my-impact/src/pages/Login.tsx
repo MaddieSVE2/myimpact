@@ -68,7 +68,7 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    const authError = params.get("authError");
+    const authError = new URLSearchParams(search).get("authError");
     if (authError === "google_unavailable") setError(t("login.googleUnavailable"));
   }, [search, t]);
 

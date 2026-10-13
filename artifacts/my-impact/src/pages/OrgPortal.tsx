@@ -932,6 +932,9 @@ function JoinOrgPanel() {
     if (fromInviteLink && canResolveInvite && code && step === "entry" && !validateMutation.isPending) {
       validateMutation.mutate({ inviteCode: code, orgId: selectedOrg?.id });
     }
+    // Deliberately not on validateMutation: re-running when it settles would
+    // retry a failed invite code in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromInviteLink, resolveOrgFromCode, selectedOrg, code, step]);
 
   const joinMutation = useMutation({

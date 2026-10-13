@@ -326,6 +326,8 @@ export default function Attachments({
 
   useEffect(() => {
     if (!lightbox) return;
+    // The photo that opened the viewer gets focus back when it closes.
+    const trigger = lightboxTriggerRef.current;
     lightboxCloseRef.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setLightbox(null);
@@ -333,7 +335,7 @@ export default function Attachments({
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       window.removeEventListener("keydown", closeOnEscape);
-      lightboxTriggerRef.current?.focus();
+      trigger?.focus();
     };
   }, [lightbox]);
 

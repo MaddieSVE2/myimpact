@@ -198,7 +198,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
-  useEffect(() => { setLocation(to, { replace: true }); }, [to]);
+  useEffect(() => { setLocation(to, { replace: true }); }, [to, setLocation]);
   return null;
 }
 

@@ -81,6 +81,9 @@ function AnimatedBar({ pct, delay = 0 }: { pct: number; delay?: number }) {
   return <div ref={barRef} className="h-full rounded-full bg-primary/30" style={{ width: "0%" }} />;
 }
 
+// One empty list for "no data yet", so memos don't recompute every render.
+const NO_ITEMS: never[] = [];
+
 export default function OrgUniversityDashboard({
   orgName, stats, timeline,
   periodOffset, setPeriodOffset, periodLabel, isCurrentPeriod,
@@ -101,7 +104,7 @@ export default function OrgUniversityDashboard({
     },
   });
 
-  const activities = activitiesData?.activities ?? [];
+  const activities = activitiesData?.activities ?? NO_ITEMS;
 
   const totalSocialValue = stats?.totalSocialValue ?? 0;
   const totalHours = Math.round(stats?.totalHours ?? 0);

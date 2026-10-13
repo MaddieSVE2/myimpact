@@ -135,6 +135,9 @@ function calcBreakdown(act: ActivityItem, line: SelectedLine): string {
   return `${line.quantity.toLocaleString("en-GB")} ${act.unitLabel} × ${rate}/${sing}`;
 }
 
+// One empty list for "no data yet", so memos don't recompute every render.
+const NO_ITEMS: never[] = [];
+
 export default function OrgMemberSubmit() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -199,7 +202,7 @@ export default function OrgMemberSubmit() {
     loadMySubs();
   }, [user, orgData?.org, loadMySubs]);
 
-  const activities = activitiesData?.activities ?? [];
+  const activities = activitiesData?.activities ?? NO_ITEMS;
   const categories = activitiesData?.categories ?? [];
   const activitiesById = useMemo(() => {
     const m = new Map<string, ActivityItem>();

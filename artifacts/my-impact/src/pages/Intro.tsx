@@ -322,9 +322,9 @@ function TestimonialsCarousel() {
 
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => go(1), 5500);
+    const t = setInterval(() => setCurrent(c => (c + 1) % n), 5500);
     return () => clearInterval(t);
-  }, [paused]);
+  }, [paused, n]);
 
   // Compute each card's offset from the center, normalised to [-floor(n/2), floor(n/2)]
   const getOffset = (i: number): number => {

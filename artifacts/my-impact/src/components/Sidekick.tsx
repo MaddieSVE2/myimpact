@@ -661,7 +661,7 @@ export function Sidekick() {
     return () => window.clearInterval(id);
   }, [streaming]);
 
-  const buildContext = () => {
+  const buildContext = useCallback(() => {
     const ctx: Record<string, unknown> = {};
     if (result?.totalValue) ctx.totalValue = result.totalValue;
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
@@ -673,7 +673,7 @@ export function Sidekick() {
     }
     if (effectiveInterests.length) ctx.interests = effectiveInterests;
     return Object.keys(ctx).length ? ctx : undefined;
-  };
+  }, [result, situation, interests, customInterests, isOrgManager, isOnOrgPage]);
 
   const sendMessage = useCallback(
     async (
@@ -853,7 +853,7 @@ export function Sidekick() {
         quotaQuery.refetch().catch(() => {});
       }
     },
-    [messages, streaming, result, interests, customInterests, situations, isOrgManager, isOnOrgPage, locale, toast, quotaQuery]
+    [messages, streaming, buildContext, locale, toast, quotaQuery]
   );
 
   const fireTemplate = useCallback(

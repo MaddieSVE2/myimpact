@@ -733,16 +733,17 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   // When auth resolves, discard any draft that was saved by a different user.
   // This prevents user A's localStorage draft from leaking into user B's session.
+  const userId = user?.id ?? null;
   useEffect(() => {
     if (authLoading) return;
-    if (!user) return; // guest — keep any existing draft
+    if (!userId) return; // guest — keep any existing draft
     const draft = loadDraft();
     if (!draft) return;
     const storedUserId = (draft as StoredDraft).userId;
-    if (storedUserId && storedUserId !== user.id) {
+    if (storedUserId && storedUserId !== userId) {
       clearDraft();
     }
-  }, [authLoading, user?.id, clearDraft]);
+  }, [authLoading, userId, clearDraft]);
 
   return (
     <WizardContext.Provider value={{

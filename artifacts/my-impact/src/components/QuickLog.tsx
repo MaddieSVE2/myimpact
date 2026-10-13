@@ -86,6 +86,9 @@ function rememberedGroup(template: RecurringTemplate): string | null {
   return (template as { sharingGroupId?: string | null }).sharingGroupId ?? null;
 }
 
+// One empty list for "no data yet", so memos don't recompute every render.
+const NO_ITEMS: never[] = [];
+
 export function QuickLog({ onlyDue = false, variant = "default", showManageLink = false }: QuickLogProps) {
   const { isLoggedIn, user } = useAuth();
   const queryClient = useQueryClient();
@@ -111,7 +114,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
   const [editLocation, setEditLocation] = useState<ActivityLocationValue | null>(null);
   const [duplicateFor, setDuplicateFor] = useState<string | null>(null);
 
-  const templates = templatesQuery.data?.templates ?? [];
+  const templates = templatesQuery.data?.templates ?? NO_ITEMS;
   const visibleTemplates = useMemo(() => {
     if (onlyDue) return templates.filter((t) => t.isDue);
     return templates;

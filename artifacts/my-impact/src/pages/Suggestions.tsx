@@ -660,6 +660,9 @@ function effortLabel(sug: { unit?: string; defaultQuantity?: number; recommended
   return `${defaultQuantity} ${noun}/year`;
 }
 
+// One empty list for "no data yet", so memos don't recompute every render.
+const NO_ITEMS: never[] = [];
+
 export default function Suggestions() {
   const {
     input, interests, customInterests, location, locationMeta, result,
@@ -695,8 +698,8 @@ export default function Suggestions() {
 
   const profile = profileData?.profile;
   const useProfileDefaults = isLoggedIn && !hasDraft && !!profile;
-  const resolvedInterestIds = useProfileDefaults ? (profile.interests ?? []) : interests;
-  const resolvedCustomInterests = useProfileDefaults ? (profile.customInterests ?? []) : customInterests;
+  const resolvedInterestIds = useProfileDefaults ? (profile.interests ?? NO_ITEMS) : interests;
+  const resolvedCustomInterests = useProfileDefaults ? (profile.customInterests ?? NO_ITEMS) : customInterests;
   const interestLabels = useMemo(() => [
     ...resolvedInterestIds
       .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
