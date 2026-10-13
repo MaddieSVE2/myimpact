@@ -785,7 +785,7 @@ export default function QuickLogActivity() {
                       </div>
                       <span
                         className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full text-white"
-                        style={{ background: "var(--brand-orange-bright)" }}
+                        style={{ background: "var(--brand-orange)" }}
                       >
                         <History className="w-3 h-3" aria-hidden="true" /> Log again
                       </span>
@@ -993,7 +993,7 @@ export default function QuickLogActivity() {
                   onClick={() => void handleSubmit({ force: true })}
                   disabled={submitting}
                   className="px-3.5 py-2 rounded-md text-xs font-semibold text-white transition-opacity disabled:opacity-60"
-                  style={{ background: "var(--brand-orange-bright)" }}
+                  style={{ background: "var(--brand-orange)" }}
                   data-testid="quick-log-duplicate-log-anyway"
                 >
                   Log anyway

@@ -381,7 +381,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                               onClick={() => void doLog(template, { useEdits: editing, force: true })}
                               disabled={pending}
                               className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
-                              style={{ background: "var(--brand-orange-bright)" }}
+                              style={{ background: "var(--brand-orange)" }}
                               data-testid={`quick-log-force-${template.id}`}
                             >
                               Log anyway
@@ -400,7 +400,7 @@ export function QuickLog({ onlyDue = false, variant = "default", showManageLink 
                             onClick={() => void doLog(template, { useEdits: editing })}
                             disabled={pending}
                             className="flex-1 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
-                            style={{ background: "var(--brand-orange-bright)" }}
+                            style={{ background: "var(--brand-orange)" }}
                             data-testid={`quick-log-confirm-yes-${template.id}`}
                           >
                             <Check className="w-3.5 h-3.5" aria-hidden="true" />

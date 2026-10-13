@@ -67,7 +67,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
         <Link
           href="/"
           className="inline-block px-5 py-2.5 rounded-lg text-white text-sm font-bold"
-          style={{ background: "var(--brand-orange-bright)" }}
+          style={{ background: "var(--brand-orange)" }}
         >
           Back to home
         </Link>
@@ -125,7 +125,7 @@ export function BirthDateForm({ onComplete }: { onComplete: () => void }) {
         disabled={saving || !birthMonth || !birthYear}
         data-testid="button-save-birth-date"
         className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] px-4 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
-        style={{ background: "var(--brand-orange-bright)" }}
+        style={{ background: "var(--brand-orange)" }}
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : null}
         {saving ? "Saving…" : "Continue"}

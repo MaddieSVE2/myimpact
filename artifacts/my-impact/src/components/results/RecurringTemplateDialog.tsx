@@ -153,7 +153,7 @@ export function RecurringTemplateDialog({
             onClick={onSave}
             disabled={isSaving || !tplLabel.trim()}
             className="flex-1 px-4 py-3 min-h-[44px] rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60"
-            style={{ background: "var(--brand-orange-bright)" }}
+            style={{ background: "var(--brand-orange)" }}
             data-testid="recurring-template-save-button"
           >
             {isSaving ? "Saving…" : "Save shortcut"}

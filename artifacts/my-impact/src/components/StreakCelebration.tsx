@@ -88,7 +88,7 @@ export default function StreakCelebration({ milestone, onDismiss }: StreakCelebr
             <button
               onClick={onDismiss}
               className="w-full py-2.5 rounded-lg text-white text-sm font-bold"
-              style={{ background: "var(--brand-orange-bright)" }}
+              style={{ background: "var(--brand-orange)" }}
             >
               Keep going
             </button>

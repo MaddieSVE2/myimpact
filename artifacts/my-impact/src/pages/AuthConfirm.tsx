@@ -137,7 +137,7 @@ export default function AuthConfirm() {
               <button
                 onClick={handleConfirm}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-white text-sm font-bold"
-                style={{ background: "var(--brand-orange-bright)" }}
+                style={{ background: "var(--brand-orange)" }}
               >
                 Confirm sign in
               </button>
@@ -165,7 +165,7 @@ export default function AuthConfirm() {
               <Link
                 href="/login"
                 className="inline-block px-5 py-2.5 rounded-lg text-white text-sm font-bold"
-                style={{ background: "var(--brand-orange-bright)" }}
+                style={{ background: "var(--brand-orange)" }}
               >
                 Request a new link
               </Link>

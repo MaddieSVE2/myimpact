@@ -311,7 +311,7 @@ export default function ChallengeDetail() {
             <button
               onClick={handleNativeShare}
               className="px-3 py-2 rounded-lg text-white text-sm font-bold inline-flex items-center gap-1.5 shrink-0"
-              style={{ background: "var(--brand-orange-bright)" }}
+              style={{ background: "var(--brand-orange)" }}
             >
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
               Share

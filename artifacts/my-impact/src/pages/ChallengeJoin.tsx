@@ -162,7 +162,7 @@ export default function ChallengeJoin() {
           onClick={() => joinMutation.mutate()}
           disabled={!preview || preview.hasEnded || joinMutation.isPending}
           className="w-full px-5 py-2.5 rounded-lg text-white text-sm font-bold disabled:opacity-50 transition-opacity inline-flex items-center justify-center gap-2"
-          style={{ background: "var(--brand-orange-bright)" }}
+          style={{ background: "var(--brand-orange)" }}
         >
           {joinMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
           Join challenge

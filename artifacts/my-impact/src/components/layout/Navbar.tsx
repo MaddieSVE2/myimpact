@@ -636,7 +636,7 @@ export function Navbar() {
                 href="/wizard/actions"
                 onClick={() => setMobileOpen(false)}
                 className="mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold text-white min-h-[44px]"
-                style={{ background: "var(--brand-orange-bright)" }}
+                style={{ background: "var(--brand-orange)" }}
               >
                 {t("navbar.calculateCta")}
               </Link>

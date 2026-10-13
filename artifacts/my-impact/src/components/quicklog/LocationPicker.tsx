@@ -212,7 +212,7 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
     `inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium border transition-colors min-h-[36px] ${
       active ? "text-white border-transparent" : "bg-white text-foreground border-border hover:border-foreground/40"
     }`;
-  const chipStyle = (active: boolean) => (active ? { background: "var(--brand-orange-bright)" } : undefined);
+  const chipStyle = (active: boolean) => (active ? { background: "var(--brand-orange)" } : undefined);
 
   const previousLabel = describeLocation(previous);
   const isPreviousSelected =
@@ -225,7 +225,7 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-white"
-            style={{ background: "var(--brand-orange-bright)" }}
+            style={{ background: "var(--brand-orange)" }}
             data-testid="quick-log-location-selected"
           >
             {value.mode === "online" ? <Globe className="w-3.5 h-3.5" /> : value.mode === "multiple" ? <Map className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />}

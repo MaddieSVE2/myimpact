@@ -654,7 +654,7 @@ export default function ActivitiesStep() {
                       onClick={handleDescribeSubmit}
                       disabled={!describeText.trim() || describeLoading}
                       className="mt-4 inline-flex items-center gap-2 px-5 py-3 min-h-[44px] rounded-md text-sm font-semibold text-white disabled:opacity-40 transition-all"
-                      style={{ background: "var(--brand-orange-bright)" }}
+                      style={{ background: "var(--brand-orange)" }}
                     >
                       {describeLoading ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</>
@@ -892,7 +892,7 @@ export default function ActivitiesStep() {
                                       onClick={analyseActivity}
                                       disabled={!customName.trim() || analysing}
                                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white disabled:opacity-40 transition-all shrink-0"
-                                      style={{ background: "var(--brand-orange-bright)" }}
+                                      style={{ background: "var(--brand-orange)" }}
                                     >
                                       {analysing ? (
                                         <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</>

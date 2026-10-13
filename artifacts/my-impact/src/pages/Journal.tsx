@@ -363,7 +363,7 @@ function ActivityCardItem({
                   onClick={handleSaveReflection}
                   disabled={!draft.trim() || saving}
                   className="px-4 py-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-40"
-                  style={{ background: "var(--brand-orange-bright)" }}
+                  style={{ background: "var(--brand-orange)" }}
                 >
                   {saving ? "Saving…" : editing ? "Save changes" : "Save reflection"}
                 </button>

@@ -1395,7 +1395,7 @@ export default function Results() {
             <Link
               href="/wizard/actions"
               className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white"
-              style={{ background: "var(--brand-orange-bright)" }}
+              style={{ background: "var(--brand-orange)" }}
             >
               Log another activity <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
@@ -1762,7 +1762,7 @@ export default function Results() {
           <button
             onClick={() => openSidekick(true)}
             className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
-            style={{ background: "var(--brand-orange-bright)", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" }}
+            style={{ background: "var(--brand-orange)", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" }}
           >
             Ask sidekick <ArrowRight className="w-3 h-3" aria-hidden="true" />
           </button>

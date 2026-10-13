@@ -250,7 +250,7 @@ export default function Profile() {
                   className="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                   style={
                     selected
-                      ? { background: "var(--brand-orange-bright)", borderColor: "var(--brand-orange-bright)", color: "white" }
+                      ? { background: "var(--brand-orange)", borderColor: "var(--brand-orange-bright)", color: "white" }
                       : { background: "white", borderColor: "#d1d5db", color: "#374151" }
                   }
                 >
@@ -274,7 +274,7 @@ export default function Profile() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
                   style={
                     selected
-                      ? { background: "var(--brand-orange-bright)", borderColor: "var(--brand-orange-bright)", color: "white" }
+                      ? { background: "var(--brand-orange)", borderColor: "var(--brand-orange-bright)", color: "white" }
                       : { background: "white", borderColor: "#d1d5db", color: "#374151" }
                   }
                 >
@@ -353,7 +353,7 @@ export default function Profile() {
             onClick={handleSave}
             disabled={saving || !dirty || !!postcodeError}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-50"
-            style={{ background: "var(--brand-orange-bright)" }}
+            style={{ background: "var(--brand-orange)" }}
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

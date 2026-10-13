@@ -171,7 +171,7 @@ export default function Milestones() {
           <Link
             href="/settings"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white"
-            style={{ background: "var(--brand-orange-bright)" }}
+            style={{ background: "var(--brand-orange)" }}
           >
             {t("milestones.openSettings")}
           </Link>
