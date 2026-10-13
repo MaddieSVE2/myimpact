@@ -35,14 +35,13 @@ if (!defaultRule) {
   process.exit(2);
 }
 
-// Strip the Vite content hash: "index-DlyEGm3B.js" -> "index".
-// Hash length is config-dependent, so drop everything after the last dash
-// (leaving something before it). Budget patterns are prefix-anchored, so even
-// a hash that itself contains a dash still matches the right rule.
+// Strip the Vite content hash: "index-DlyEGm3B.js" -> "index". The hash is
+// Vite's default 8 characters and may itself contain a dash
+// ("index-C-ZZzPBC.js"), so cutting at the last dash would leave "index-C",
+// which misses the "^index$" budget.
 function baseName(file) {
   const name = file.replace(/\.js$/, "");
-  const idx = name.lastIndexOf("-");
-  return idx > 0 ? name.slice(0, idx) : name;
+  return name.replace(/(?<=.)-[A-Za-z0-9_-]{8}$/, "");
 }
 
 const files = readdirSync(assetsDir).filter((f) => f.endsWith(".js"));
