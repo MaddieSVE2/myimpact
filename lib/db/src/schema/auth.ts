@@ -38,7 +38,10 @@ export const userProfilesTable = pgTable("user_profiles", {
   interests: text("interests").array(),
   customInterests: text("custom_interests").array(),
   customInterestCategories: jsonb("custom_interest_categories").$type<Record<string, string | null>>(),
+  // Always a postcode or outward code. For someone who picked a town it's the
+  // postcode nearest that town, and locationName holds the town.
   postcode: text("postcode"),
+  locationName: text("location_name"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   inviteCode: text("invite_code").unique(),
   inviteSharedAt: timestamp("invite_shared_at"),

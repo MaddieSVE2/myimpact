@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetProfile, useUpdateProfile, useAckStreakMilestone } from "@workspace/api-client-react";
 import {
   INTEREST_OPTIONS,
@@ -15,6 +15,8 @@ import RecapBanner from "@/components/RecapBanner";
 import StreakChip from "@/components/StreakChip";
 import StreakCelebration from "@/components/StreakCelebration";
 import { useAuth } from "@/lib/auth-context";
+import { HomeLocationField, type HomeLocationHandle, type SavedHomeLocation } from "@/components/HomeLocationField";
+import type { HomeLocation } from "@/lib/place-search";
 
 
 
@@ -26,8 +28,6 @@ const SITUATION_OPTIONS = [
   { id: "armed_forces", label: "Armed forces / veteran" },
   { id: "something_else", label: "Something else" },
 ];
-
-const POSTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 
 export default function Profile() {
   const { data: profileData, isLoading, isError, refetch } = useGetProfile();
@@ -43,8 +43,9 @@ export default function Profile() {
   const [customInterestCategories, setCustomInterestCategories] = useState<CustomInterestCategoryMap>({});
   const [customInterestInput, setCustomInterestInput] = useState("");
   const [customInterestError, setCustomInterestError] = useState<string | null>(null);
-  const [postcode, setPostcode] = useState("");
-  const [postcodeError, setPostcodeError] = useState<string | null>(null);
+  const [locationText, setLocationText] = useState("");
+  const [locationValue, setLocationValue] = useState<HomeLocation | null>(null);
+  const locationRef = useRef<HomeLocationHandle>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -53,7 +54,7 @@ export default function Profile() {
   const [savedInterests, setSavedInterests] = useState<string[]>([]);
   const [savedCustomInterests, setSavedCustomInterests] = useState<string[]>([]);
   const [savedCustomInterestCategories, setSavedCustomInterestCategories] = useState<CustomInterestCategoryMap>({});
-  const [savedPostcode, setSavedPostcode] = useState("");
+  const [savedLocation, setSavedLocation] = useState<SavedHomeLocation | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,17 +78,18 @@ export default function Profile() {
       const ints = p?.interests ?? [];
       const customInts = p?.customInterests ?? [];
       const categoryMap = buildCustomInterestCategoryMap(customInts, p?.customInterestCategories as CustomInterestCategoryMap | undefined);
-      const pc = p?.postcode ?? "";
+      const location = { postcode: p?.postcode ?? null, locationName: p?.locationName ?? null };
       setSituation(sit);
       setInterests(ints);
       setCustomInterests(customInts);
       setCustomInterestCategories(categoryMap);
-      setPostcode(pc);
+      setLocationText(location.locationName || location.postcode || "");
+      setLocationValue(null);
       setSavedSituation(sit);
       setSavedInterests(ints);
       setSavedCustomInterests(customInts);
       setSavedCustomInterestCategories(categoryMap);
-      setSavedPostcode(pc);
+      setSavedLocation(location);
       setDirty(false);
     }
   }, [isLoading, profileData]);
@@ -135,27 +137,20 @@ export default function Profile() {
     setSaved(false);
   };
 
-  const handlePostcodeChange = (val: string) => {
-    setPostcode(val);
+  const handleLocationChange = (text: string, value: HomeLocation | null) => {
+    setLocationText(text);
+    setLocationValue(value);
     setDirty(true);
     setSaved(false);
-    if (val.trim() && !POSTCODE_REGEX.test(val.trim())) {
-      setPostcodeError("Please enter a valid UK postcode (e.g. SW1A 1AA)");
-    } else {
-      setPostcodeError(null);
-    }
   };
 
   const handleSave = async () => {
-    const trimmed = postcode.trim();
-    if (trimmed && !POSTCODE_REGEX.test(trimmed)) {
-      setPostcodeError("Please enter a valid UK postcode (e.g. SW1A 1AA)");
-      return;
-    }
+    const settled = await locationRef.current?.settle();
+    if (settled && !settled.ok) return;
     setSaving(true);
     setSaveError(null);
     try {
-      await updateProfile({ data: { situation, interests, customInterests, customInterestCategories, postcode: trimmed || null } });
+      await updateProfile({ data: { situation, interests, customInterests, customInterestCategories, ...settled?.fields } });
       await refetch();
       setSaved(true);
       setDirty(false);
@@ -163,7 +158,6 @@ export default function Profile() {
       setSavedInterests(interests);
       setSavedCustomInterests(customInterests);
       setSavedCustomInterestCategories(customInterestCategories);
-      setSavedPostcode(trimmed || "");
     } catch {
       setSaved(false);
       setSaveError("Could not save your profile. Please try again.");
@@ -178,8 +172,8 @@ export default function Profile() {
     setCustomInterests(savedCustomInterests);
     setCustomInterestCategories(savedCustomInterestCategories);
     setCustomInterestInput("");
-    setPostcode(savedPostcode);
-    setPostcodeError(null);
+    setLocationText(savedLocation?.locationName || savedLocation?.postcode || "");
+    setLocationValue(null);
     setCustomInterestError(null);
     setSaveError(null);
     setDirty(false);
@@ -331,26 +325,25 @@ export default function Profile() {
         </section>
 
         <section>
-          <h3 className="text-sm font-semibold text-foreground mb-1">Your postcode <span className="text-muted-foreground font-normal">(optional)</span></h3>
+          <h3 className="text-sm font-semibold text-foreground mb-1">
+            <label htmlFor="profile-location">Your town or postcode</label>{" "}
+            <span className="text-muted-foreground font-normal">(optional)</span>
+          </h3>
           <p className="text-xs text-muted-foreground mb-3">Used to show you relevant local content</p>
-          <input
-            type="text"
-            value={postcode}
-            onChange={e => handlePostcodeChange(e.target.value)}
-            placeholder="e.g. SW1A 1AA"
-            maxLength={8}
-            className="bg-white w-full max-w-xs px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
-            aria-describedby={postcodeError ? "postcode-error" : undefined}
+          <HomeLocationField
+            ref={locationRef}
+            id="profile-location"
+            text={locationText}
+            value={locationValue}
+            saved={savedLocation}
+            onChange={handleLocationChange}
           />
-          {postcodeError && (
-            <p id="postcode-error" className="mt-1.5 text-xs text-red-600">{postcodeError}</p>
-          )}
         </section>
 
         <div className="flex items-center gap-3 pt-2">
           <button
             onClick={handleSave}
-            disabled={saving || !dirty || !!postcodeError}
+            disabled={saving || !dirty}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-50"
             style={{ background: "var(--brand-orange)" }}
           >

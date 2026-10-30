@@ -42,3 +42,4 @@
 - [Vite public-route SSG](vite-public-route-ssg.md) — public pages use a Vite SSR bundle at build time; Helmet needs bundling and its inline server tags must not remain in the body.
 - [Attachment cleanup safety](attachment-cleanup-safety.md) — never infer orphaned user files from a bucket-vs-DB snapshot; only delete objects tied to expired upload reservations.
 - [Org trial-to-live transition](org-test-to-live-transition.md) — preserve the org and memberships; rename it and selectively remove test challenges rather than revoke it.
+- [Home location fields](home-location.md) — profile `postcode` is always a lookup key; a picked town stores its nearest postcode plus `location_name`; older profiles may hold a town in `postcode`.

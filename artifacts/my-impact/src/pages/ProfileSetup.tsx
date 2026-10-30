@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSearch, Link } from "wouter";
 import { useGetProfile, useUpdateProfile } from "@workspace/api-client-react";
 import { INTEREST_OPTIONS } from "@/lib/wizard-context";
 import { Lock, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 import { BASE } from "@/lib/api";
+import { HomeLocationField, type HomeLocationFields, type HomeLocationHandle } from "@/components/HomeLocationField";
+import type { HomeLocation } from "@/lib/place-search";
 
 
 const SITUATION_OPTIONS = [
@@ -17,13 +19,12 @@ const SITUATION_OPTIONS = [
   { id: "something_else", label: "Something else" },
 ];
 
-const POSTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
-
 interface ProfileFormProps {
   initialSituation: string[];
   initialInterests: string[];
   initialPostcode: string | null;
-  onSave: (data: { situation: string[]; interests: string[]; postcode: string | null }) => Promise<void>;
+  initialLocationName: string | null;
+  onSave: (data: { situation: string[]; interests: string[] } & HomeLocationFields) => Promise<void>;
   onSkip?: () => void;
   saving: boolean;
   isSetup?: boolean;
@@ -33,6 +34,7 @@ function ProfileForm({
   initialSituation,
   initialInterests,
   initialPostcode,
+  initialLocationName,
   onSave,
   onSkip,
   saving,
@@ -40,8 +42,9 @@ function ProfileForm({
 }: ProfileFormProps) {
   const [situation, setSituation] = useState<string[]>(initialSituation);
   const [interests, setInterests] = useState<string[]>(initialInterests);
-  const [postcode, setPostcode] = useState(initialPostcode ?? "");
-  const [postcodeError, setPostcodeError] = useState<string | null>(null);
+  const [locationText, setLocationText] = useState(initialLocationName || initialPostcode || "");
+  const [locationValue, setLocationValue] = useState<HomeLocation | null>(null);
+  const locationRef = useRef<HomeLocationHandle>(null);
 
   const toggleSituation = (id: string) => {
     setSituation(prev =>
@@ -55,26 +58,10 @@ function ProfileForm({
     );
   };
 
-  const handlePostcodeChange = (val: string) => {
-    setPostcode(val);
-    if (val.trim() && !POSTCODE_REGEX.test(val.trim())) {
-      setPostcodeError("Please enter a valid UK postcode (e.g. SW1A 1AA)");
-    } else {
-      setPostcodeError(null);
-    }
-  };
-
   const handleSave = async () => {
-    const trimmed = postcode.trim();
-    if (trimmed && !POSTCODE_REGEX.test(trimmed)) {
-      setPostcodeError("Please enter a valid UK postcode (e.g. SW1A 1AA)");
-      return;
-    }
-    await onSave({
-      situation,
-      interests,
-      postcode: trimmed || null,
-    });
+    const settled = await locationRef.current?.settle();
+    if (settled && !settled.ok) return;
+    await onSave({ situation, interests, ...settled?.fields });
   };
 
   return (
@@ -136,26 +123,28 @@ function ProfileForm({
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-foreground mb-1">Your postcode <span className="text-muted-foreground font-normal">(optional)</span></h3>
+        <h3 className="text-sm font-semibold text-foreground mb-1">
+          <label htmlFor="setup-location">Your town or postcode</label>{" "}
+          <span className="text-muted-foreground font-normal">(optional)</span>
+        </h3>
         <p className="text-xs text-muted-foreground mb-3">Used to show you relevant local content</p>
-        <input
-          type="text"
-          value={postcode}
-          onChange={e => handlePostcodeChange(e.target.value)}
-          placeholder="e.g. SW1A 1AA"
-          maxLength={8}
-          className="bg-white w-full max-w-xs px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-[#F06127]/40 focus:border-[var(--brand-orange-bright)]"
-          aria-describedby={postcodeError ? "postcode-error" : undefined}
+        <HomeLocationField
+          ref={locationRef}
+          id="setup-location"
+          text={locationText}
+          value={locationValue}
+          saved={{ postcode: initialPostcode, locationName: initialLocationName }}
+          onChange={(text, value) => {
+            setLocationText(text);
+            setLocationValue(value);
+          }}
         />
-        {postcodeError && (
-          <p id="postcode-error" className="mt-1.5 text-xs text-red-600">{postcodeError}</p>
-        )}
       </section>
 
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={handleSave}
-          disabled={saving || !!postcodeError}
+          disabled={saving}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-bold transition-opacity disabled:opacity-60"
           style={{ background: "var(--brand-orange)" }}
         >
@@ -194,7 +183,7 @@ export default function ProfileSetup() {
   const { mutateAsync: updateProfile } = useUpdateProfile();
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async (data: { situation: string[]; interests: string[]; postcode: string | null }) => {
+  const handleSave = async (data: { situation: string[]; interests: string[] } & HomeLocationFields) => {
     setSaving(true);
     try {
       await updateProfile({ data: { ...data, customInterests: existing?.customInterests ?? [] } });
@@ -257,6 +246,7 @@ export default function ProfileSetup() {
             initialSituation={existing?.situation ?? []}
             initialInterests={existing?.interests ?? []}
             initialPostcode={existing?.postcode ?? null}
+            initialLocationName={existing?.locationName ?? null}
             onSave={handleSave}
             onSkip={handleSkip}
             saving={saving}

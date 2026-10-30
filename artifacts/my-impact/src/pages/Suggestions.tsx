@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Clock, Sparkles, MapPin, ExternalLink, AlertCirc
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/i18n";
 import { useAuth } from "@/lib/auth-context";
+import { isPostcodeLike } from "@/lib/place-search";
 
 interface LocalPlace {
   name: string;
@@ -38,7 +39,7 @@ interface PremappedResponse {
   categories: Array<{ category: string; places: LocalPlace[] }>;
 }
 
-function GoVoSearchCard({ postcode }: { postcode: string }) {
+function GoVoSearchCard({ postcode, place }: { postcode: string; place: string }) {
   return (
     <a
       href={`https://govo.org/search?postcode=${encodeURIComponent(postcode)}`}
@@ -49,7 +50,7 @@ function GoVoSearchCard({ postcode }: { postcode: string }) {
       <div className="min-w-0">
         <p className="text-sm font-semibold text-primary">Search GoVo</p>
         <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-          Browse live volunteering listings near {postcode}
+          Browse live volunteering listings near {place}
         </p>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -59,10 +60,12 @@ function GoVoSearchCard({ postcode }: { postcode: string }) {
 
 function VolunteerScotlandSearchCard({
   postcode,
+  place,
   lat,
   lon,
 }: {
   postcode: string;
+  place: string;
   lat: number;
   lon: number;
 }) {
@@ -85,7 +88,7 @@ function VolunteerScotlandSearchCard({
       <div className="min-w-0">
         <p className="text-sm font-semibold text-primary">Search Volunteer Scotland</p>
         <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-          Browse live volunteering opportunities near {postcode}
+          Browse live volunteering opportunities near {place}
         </p>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -686,7 +689,11 @@ export default function Suggestions() {
     data: PremappedResponse | null;
   }>({ loading: false, error: false, data: null });
 
-  const profilePostcode = profileData?.profile?.postcode?.trim() ?? "";
+  // Older profiles can hold a town name here, which no lookup understands:
+  // treat those as having no location, so they're prompted to choose one.
+  const storedPostcode = profileData?.profile?.postcode?.trim() ?? "";
+  const profilePostcode = isPostcodeLike(storedPostcode) ? storedPostcode : "";
+  const profilePlace = profileData?.profile?.locationName?.trim() || profilePostcode;
 
   // Derive whether the user's location is Scottish (no CC register). Prefer
   // the authoritative country from the pre-mapped lookup, fall back to the
@@ -799,14 +806,14 @@ export default function Suggestions() {
             <div className="flex items-center gap-2 min-w-0">
               <Compass className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <p className="text-xs text-muted-foreground leading-snug">
-                Add your postcode to see opportunities near you.
+                Add your town or postcode to see opportunities near you.
               </p>
             </div>
             <Link
               href="/profile"
               className="shrink-0 text-xs font-semibold text-primary hover:text-primary/80 whitespace-nowrap"
             >
-              Add postcode →
+              Add location →
             </Link>
           </div>
         ) : (
@@ -820,21 +827,22 @@ export default function Suggestions() {
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {localAuthority
                     ? `Live listings near ${localAuthority}`
-                    : `Live listings near ${profilePostcode}`}
+                    : `Live listings near ${profilePlace}`}
                 </p>
               </div>
               <Link
                 href="/profile"
                 className="text-[11px] text-muted-foreground hover:text-foreground whitespace-nowrap"
               >
-                Change postcode
+                Change location
               </Link>
             </div>
             <div className="space-y-2">
-              <GoVoSearchCard postcode={profilePostcode} />
+              <GoVoSearchCard postcode={profilePostcode} place={profilePlace} />
               {isScottish && volunteerScotlandLocation && (
                 <VolunteerScotlandSearchCard
                   postcode={volunteerScotlandLocation.postcode}
+                  place={profilePlace}
                   lat={volunteerScotlandLocation.lat}
                   lon={volunteerScotlandLocation.lon}
                 />
@@ -861,7 +869,7 @@ export default function Suggestions() {
           {data?.suggestions.map((sug, idx) => {
             const isOpen = openTiles[sug.activityId] ?? false;
             const places = placesByCategory.get(sug.category) ?? null;
-            const areaLabel = localAuthority || location || profilePostcode;
+            const areaLabel = localAuthority || location || profilePlace;
 
             return (
               <motion.div
@@ -942,7 +950,7 @@ export default function Suggestions() {
                               href="/profile"
                               className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/70 transition-colors"
                             >
-                              Add your postcode
+                              Add your town or postcode
                             </Link>{" "}
                             to see charities near you for this activity.
                           </p>
@@ -957,10 +965,11 @@ export default function Suggestions() {
                               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                               Couldn't load local suggestions right now. Try the live searches instead:
                             </div>
-                            <GoVoSearchCard postcode={profilePostcode} />
+                            <GoVoSearchCard postcode={profilePostcode} place={profilePlace} />
                             {isScottish && volunteerScotlandLocation && (
                               <VolunteerScotlandSearchCard
                                 postcode={volunteerScotlandLocation.postcode}
+                                place={profilePlace}
                                 lat={volunteerScotlandLocation.lat}
                                 lon={volunteerScotlandLocation.lon}
                               />
@@ -972,10 +981,11 @@ export default function Suggestions() {
                               <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                               Finding local charities for your area — check back soon. Meanwhile, try the live searches:
                             </div>
-                            <GoVoSearchCard postcode={profilePostcode} />
+                            <GoVoSearchCard postcode={profilePostcode} place={profilePlace} />
                             {isScottish && volunteerScotlandLocation && (
                               <VolunteerScotlandSearchCard
                                 postcode={volunteerScotlandLocation.postcode}
+                                place={profilePlace}
                                 lat={volunteerScotlandLocation.lat}
                                 lon={volunteerScotlandLocation.lon}
                               />

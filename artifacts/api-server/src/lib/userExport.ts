@@ -217,6 +217,7 @@ export async function buildUserExport(userId: string): Promise<Record<string, un
           situation: profile.situation,
           interests: profile.interests,
           postcode: profile.postcode,
+          locationName: profile.locationName,
           emailOptIn: profile.emailOptIn,
           marketingConsentAt: profile.marketingConsentAt,
           marketingConsentSource: profile.marketingConsentSource,

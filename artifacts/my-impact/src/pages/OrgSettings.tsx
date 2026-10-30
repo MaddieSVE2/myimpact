@@ -67,7 +67,7 @@ interface LiveMember {
   role: string;
   status: string;
   joinedAt: string;
-  postcode: string | null;
+  area: string | null;
 }
 
 interface LiveMembersResponse {
@@ -712,7 +712,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[180px]">Email</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[70px]">Role</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider w-[170px]">Groups</th>
-                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Postcode</th>
+                  <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px]">Area</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[90px] whitespace-nowrap">Joined</th>
                   <th className="py-2 pr-3 font-semibold uppercase text-[11px] tracking-wider min-w-[80px] text-right">Action</th>
                 </tr>
@@ -729,7 +729,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                           </span>
                         </td>
                         <td className="py-2 pr-3 text-muted-foreground">—</td>
-                        <td className="py-2 pr-3 text-muted-foreground">{m.postcode}</td>
+                        <td className="py-2 pr-3 text-muted-foreground">{m.region}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
                           {m.role === "manager" ? (
@@ -759,7 +759,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                         <td className="py-2 pr-3 text-muted-foreground truncate" title={groupLabel(groupsByUser?.get(m.userId))}>
                           {groupLabel(groupsByUser?.get(m.userId)) || "None"}
                         </td>
-                        <td className="py-2 pr-3 text-muted-foreground">{m.postcode ?? "—"}</td>
+                        <td className="py-2 pr-3 text-muted-foreground">{m.area ?? "—"}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
                           <button

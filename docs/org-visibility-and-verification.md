@@ -98,6 +98,12 @@ estimate-vs-actual reconciliation excess is returned separately as
 Exposed in the manager Activity feed page as a "Reporting breakdown" panel
 with CSV download.
 
+## Member list
+
+`GET /api/org/my/members` gives managers each member's general area as
+`area`: the town they chose, or the postcode area letters (e.g. "SW"). The
+full postcode is never included.
+
 ## Webhook payloads
 
 `hours.logged` (and `hours.attested` for org-API pushes) now additionally

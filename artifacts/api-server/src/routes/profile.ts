@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, userProfilesTable, impactRecordsTable, usersTable } from "@workspace/db";
+import { resolveProfileLocation } from "../lib/profileLocation.js";
 import { eq } from "drizzle-orm";
 import {
   authenticate,
@@ -165,6 +166,7 @@ router.get("/", authenticate, async (req: AuthenticatedRequest, res) => {
       customInterests: profile.customInterests ?? [],
       customInterestCategories: profile.customInterestCategories ?? {},
       postcode: profile.postcode ?? null,
+      locationName: profile.locationName ?? null,
       emailOptIn: profile.emailOptIn,
       updatedAt: profile.updatedAt.toISOString(),
     },
@@ -193,7 +195,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
   const customInterestCategories = Object.prototype.hasOwnProperty.call(body, "customInterestCategories")
     ? normalizeCustomInterestCategories(body.customInterestCategories, customInterests)
     : normalizeCustomInterestCategories(existingProfile?.customInterestCategories, customInterests);
-  const postcode = typeof body.postcode === "string" ? body.postcode.trim() : null;
+  const { postcode, locationName } = resolveProfileLocation(body, existingProfile);
 
   const [upserted] = await db
     .insert(userProfilesTable)
@@ -204,6 +206,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       customInterests,
       customInterestCategories,
       postcode,
+      locationName,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -214,6 +217,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
         customInterests,
         customInterestCategories,
         postcode,
+        locationName,
         updatedAt: new Date(),
       },
     })
@@ -228,6 +232,7 @@ router.put("/", authenticate, async (req: AuthenticatedRequest, res) => {
       customInterests: upserted.customInterests ?? [],
       customInterestCategories: upserted.customInterestCategories ?? {},
       postcode: upserted.postcode ?? null,
+      locationName: upserted.locationName ?? null,
       emailOptIn: upserted.emailOptIn,
       updatedAt: upserted.updatedAt.toISOString(),
     },

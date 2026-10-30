@@ -1570,6 +1570,9 @@ components:
         postcode:
           type: string
           nullable: true
+        locationName:
+          type: string
+          nullable: true
         updatedAt:
           type: string
     StreakInfo:
@@ -1627,6 +1630,9 @@ components:
               - string
               - "null"
         postcode:
+          type: string
+          nullable: true
+        locationName:
           type: string
           nullable: true
     UpdateImpactRecordInput:

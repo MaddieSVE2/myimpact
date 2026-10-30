@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Globe, Map, Loader2, X, Check } from "lucide-react";
-
-const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
-const UK_OUTWARD_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?$/i;
+import { PlaceSuggestionList, usePlaceSuggestions } from "@/components/PlaceSuggestions";
+import {
+  exactMatches,
+  isFullPostcode,
+  isPostcodeLike,
+  lookupPostcode,
+  resolvePlace,
+  searchPlaces,
+  type PlaceSuggestion,
+} from "@/lib/place-search";
 
 /**
  * Structured activity location matching the server's `location` field on
@@ -29,98 +36,24 @@ export function describeLocation(loc: ActivityLocationValue | null | undefined):
 }
 
 /**
- * Geocode a UK postcode (full or outward-only) via postcodes.io. Returns null
- * for anything that isn't a valid postcode — the caller then keeps the raw
- * text as a plain label (venue / town name).
+ * Geocode a UK postcode (full or outward-only). Returns null for anything that
+ * isn't a valid postcode — the caller then keeps the raw text as a plain label
+ * (venue / town name). An outward code stays outward: it's what the person
+ * chose to give.
  */
 async function geocode(raw: string): Promise<Partial<ActivityLocationValue> | null> {
-  const trimmed = raw.trim();
-  const compact = trimmed.replace(/\s+/g, "").toUpperCase();
-  try {
-    if (UK_POSTCODE_RE.test(trimmed)) {
-      const res = await fetch(`https://api.postcodes.io/postcodes/${compact}`);
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (json.status !== 200 || !json.result) return null;
-      const r = json.result;
-      return {
-        postcode: r.postcode as string,
-        townCity: (r.admin_district ?? r.parish ?? "") as string,
-        lat: r.latitude as number,
-        lng: r.longitude as number,
-        localAuthority: (r.admin_district ?? "") as string,
-        region: (r.region ?? r.nuts ?? "") as string,
-        country: (r.country ?? "") as string,
-      };
-    }
-    if (UK_OUTWARD_RE.test(compact)) {
-      const res = await fetch(`https://api.postcodes.io/outcodes/${compact}`);
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (json.status !== 200 || !json.result) return null;
-      const r = json.result;
-      return {
-        postcode: compact,
-        townCity: (r.admin_district?.[0] ?? "") as string,
-        lat: r.latitude as number,
-        lng: r.longitude as number,
-        localAuthority: (r.admin_district?.[0] ?? "") as string,
-        country: (r.country?.[0] ?? "") as string,
-      };
-    }
-  } catch {
-    /* offline / blocked — fall through to plain label */
-  }
-  return null;
-}
-
-/** A single town/area suggestion from the postcodes.io /places search. */
-interface PlaceSuggestion {
-  id: string;
-  name: string;
-  /** e.g. "City", "Village", "Suburban Area" */
-  localType: string;
-  localAuthority: string;
-  region: string;
-  country: string;
-  lat: number;
-  lng: number;
-}
-
-/**
- * Search town/area-level place suggestions via postcodes.io /places. Returns
- * [] on any failure — suggestions are strictly additive; free text always
- * still works as a plain label.
- */
-async function searchPlaces(query: string, signal: AbortSignal): Promise<PlaceSuggestion[]> {
-  try {
-    const res = await fetch(
-      `https://api.postcodes.io/places?q=${encodeURIComponent(query)}&limit=6`,
-      { signal }
-    );
-    if (!res.ok) return [];
-    const json = await res.json();
-    if (json.status !== 200 || !Array.isArray(json.result)) return [];
-    return (json.result as Array<Record<string, unknown>>)
-      .filter((r) => typeof r.latitude === "number" && typeof r.longitude === "number" && r.name_1)
-      .map((r) => ({
-        id: String(r.code ?? `${r.name_1}-${r.latitude}`),
-        name: String(r.name_1),
-        localType: typeof r.local_type === "string" ? r.local_type : "",
-        localAuthority: String(r.county_unitary ?? r.district_borough ?? ""),
-        region: String(r.region ?? r.country ?? ""),
-        country: String(r.country ?? ""),
-        lat: r.latitude as number,
-        lng: r.longitude as number,
-      }));
-  } catch {
-    return [];
-  }
-}
-
-function suggestionContext(s: PlaceSuggestion): string {
-  const parts = [s.localAuthority, s.region].filter((p) => p && p !== s.name);
-  return [...new Set(parts)].join(", ");
+  const result = await lookupPostcode(raw);
+  if (result.status !== "found") return null;
+  const { area } = result;
+  return {
+    postcode: isFullPostcode(raw) ? area.postcode : area.outwardCode,
+    townCity: area.adminDistrict,
+    lat: area.lat,
+    lng: area.lng,
+    localAuthority: area.adminDistrict,
+    region: area.region,
+    country: area.country,
+  };
 }
 
 interface LocationPickerProps {
@@ -132,80 +65,74 @@ interface LocationPickerProps {
 
 /**
  * "Where did this happen?" input for per-occurrence logging. Optional.
- * Offers: previous-location one-tap reuse, free search (venue, postcode or
- * town — geocoded to structured data when it looks like a UK postcode),
- * "Online / remote" and "Multiple locations".
+ * Offers: previous-location one-tap reuse, free search (a venue stays a plain
+ * label; a postcode or a town name resolves to structured data, so the
+ * organisation can report on it), "Online / remote" and "Multiple locations".
  */
 export function LocationPicker({ value, onChange, previous }: LocationPickerProps) {
   const [text, setText] = useState("");
   const [looking, setLooking] = useState(false);
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [highlighted, setHighlighted] = useState(-1);
+  const [needsPick, setNeedsPick] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Live place suggestions (town/area level) while typing. Skipped for
-  // postcode-shaped input — those geocode directly on "Use"/Enter as before.
-  useEffect(() => {
-    const raw = text.trim();
-    const compact = raw.replace(/\s+/g, "");
-    if (raw.length < 2 || UK_POSTCODE_RE.test(raw) || UK_OUTWARD_RE.test(compact)) {
-      setSuggestions([]);
-      setHighlighted(-1);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      const results = await searchPlaces(raw, controller.signal);
-      if (!controller.signal.aborted) {
-        setSuggestions(results);
-        setHighlighted(-1);
-      }
-    }, 250);
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [text]);
+  const { suggestions, highlighted, setHighlighted, moveHighlight, show, clear } = usePlaceSuggestions(text);
 
   // Close the suggestion list when clicking outside the picker.
   useEffect(() => {
     if (suggestions.length === 0) return;
     const onDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setSuggestions([]);
-        setHighlighted(-1);
-      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) clear();
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [suggestions.length]);
+  }, [suggestions.length, clear]);
 
-  const applySuggestion = (s: PlaceSuggestion) => {
+  // The nearest postcode supplies the local authority and region, so a town
+  // reports the same way as a postcode in the organisation's breakdowns. Its
+  // outward code is all that's kept: nobody typed a full postcode here.
+  const applySuggestion = async (s: PlaceSuggestion) => {
+    clear();
+    setNeedsPick(false);
+    setLooking(true);
+    const area = await resolvePlace(s);
+    setLooking(false);
     onChange({
       mode: "in_person",
       label: s.name,
       townCity: s.name,
+      postcode: area?.outwardCode || s.outwardCode || null,
       lat: s.lat,
       lng: s.lng,
-      localAuthority: s.localAuthority || null,
-      region: s.region || null,
-      country: s.country || null,
+      localAuthority: area?.adminDistrict || s.localAuthority || null,
+      region: area?.region || s.region || null,
+      country: area?.country || s.country || null,
     });
     setText("");
-    setSuggestions([]);
-    setHighlighted(-1);
   };
 
   const applyText = async () => {
     const raw = text.trim();
     if (!raw) return;
-    setSuggestions([]);
-    setHighlighted(-1);
+    clear();
+    setNeedsPick(false);
     setLooking(true);
-    const geo = await geocode(raw);
+    if (isPostcodeLike(raw)) {
+      const geo = await geocode(raw);
+      setLooking(false);
+      onChange({ mode: "in_person", label: raw, ...(geo ?? {}) });
+      setText("");
+      return;
+    }
+    const places = exactMatches(raw, await searchPlaces(raw));
     setLooking(false);
-    onChange({ mode: "in_person", label: raw, ...(geo ?? {}) });
-    setText("");
+    if (places.length === 1) {
+      await applySuggestion(places[0]);
+    } else if (places.length > 1) {
+      show(places);
+      setNeedsPick(true);
+    } else {
+      onChange({ mode: "in_person", label: raw });
+      setText("");
+    }
   };
 
   const chip = (active: boolean) =>
@@ -283,21 +210,23 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
               <input
                 type="text"
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setNeedsPick(false);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowDown" && suggestions.length > 0) {
                     e.preventDefault();
-                    setHighlighted((h) => (h + 1) % suggestions.length);
+                    moveHighlight(1);
                   } else if (e.key === "ArrowUp" && suggestions.length > 0) {
                     e.preventDefault();
-                    setHighlighted((h) => (h <= 0 ? suggestions.length - 1 : h - 1));
+                    moveHighlight(-1);
                   } else if (e.key === "Escape") {
-                    setSuggestions([]);
-                    setHighlighted(-1);
+                    clear();
                   } else if (e.key === "Enter") {
                     e.preventDefault();
                     if (highlighted >= 0 && suggestions[highlighted]) {
-                      applySuggestion(suggestions[highlighted]);
+                      void applySuggestion(suggestions[highlighted]);
                     } else {
                       void applyText();
                     }
@@ -312,39 +241,14 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
                 data-testid="quick-log-location-input"
               />
               {suggestions.length > 0 && (
-                <ul
+                <PlaceSuggestionList
                   id="quick-log-location-suggestions"
-                  role="listbox"
-                  className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-border rounded-md shadow-lg overflow-hidden"
-                  data-testid="quick-log-location-suggestions"
-                >
-                  {suggestions.map((s, i) => {
-                    const context = suggestionContext(s);
-                    return (
-                      <li key={s.id} role="option" aria-selected={i === highlighted}>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => applySuggestion(s)}
-                          onMouseEnter={() => setHighlighted(i)}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${
-                            i === highlighted ? "bg-muted" : "bg-white"
-                          }`}
-                          data-testid={`quick-log-location-suggestion-${i}`}
-                        >
-                          <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                          <span className="truncate">
-                            <span className="font-medium">{s.name}</span>
-                            {context && <span className="text-muted-foreground"> — {context}</span>}
-                          </span>
-                          {s.localType && (
-                            <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{s.localType}</span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                  testId="quick-log-location-suggestions"
+                  suggestions={suggestions}
+                  highlighted={highlighted}
+                  onHighlight={setHighlighted}
+                  onPick={(place) => void applySuggestion(place)}
+                />
               )}
             </div>
             <button
@@ -357,6 +261,11 @@ export function LocationPicker({ value, onChange, previous }: LocationPickerProp
               {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Use
             </button>
           </div>
+          {needsPick && (
+            <p className="text-[11px] text-red-600 mt-2" role="status" data-testid="quick-log-location-pick">
+              There's more than one place called {text.trim()}. Choose the right one from the list.
+            </p>
+          )}
           <p className="text-[11px] text-muted-foreground mt-2">
             Optional — helps you remember where it happened. We never fill this in from your home address.
           </p>

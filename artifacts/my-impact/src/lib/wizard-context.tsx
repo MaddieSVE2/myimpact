@@ -55,6 +55,11 @@ export interface LocationMeta {
   lat: number;
   lng: number;
   adminDistrict: string;
+  // Set when the location box resolved this; records and older drafts don't
+  // carry them.
+  postcode?: string;
+  locationName?: string | null;
+  country?: string;
 }
 
 export interface ActivitySelectionDraft {
@@ -150,7 +155,7 @@ interface WizardContextType extends WizardState {
   toggleInterest: (interestId: string) => void;
   setCareerBreak: (val: boolean) => void;
   toggleSituation: (id: string) => void;
-  seedFromProfile: (profile: { postcode: string | null; interests: string[]; customInterests?: string[]; customInterestCategories?: CustomInterestCategoryMap; situations: string[] }) => void;
+  seedFromProfile: (profile: { postcode: string | null; locationName?: string | null; interests: string[]; customInterests?: string[]; customInterestCategories?: CustomInterestCategoryMap; situations: string[] }) => void;
   updateInput: (updates: Partial<ImpactInput>) => void;
   addActivity: (activity: SelectedActivity) => void;
   removeActivity: (index: number) => void;
@@ -481,8 +486,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const seedFromProfile = useCallback((profile: { postcode: string | null; interests: string[]; customInterests?: string[]; customInterestCategories?: CustomInterestCategoryMap; situations: string[] }) => {
-    setLocationState(profile.postcode ?? '');
+  const seedFromProfile = useCallback((profile: { postcode: string | null; locationName?: string | null; interests: string[]; customInterests?: string[]; customInterestCategories?: CustomInterestCategoryMap; situations: string[] }) => {
+    setLocationState(profile.locationName || profile.postcode || '');
     const sanitized = (profile.interests ?? []).filter(id => INTEREST_OPTIONS.some(o => o.id === id));
     setInterests(sanitized);
     const custom = (profile.customInterests ?? []).map(normalizeCustomInterest).filter(Boolean);

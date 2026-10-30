@@ -135,6 +135,11 @@ const RELEASES: Release[] = [
             title: "More dependable local searches",
             desc: "Local charity searches now keep useful routes available even when a location lookup cannot return everything we expect.",
           },
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            title: "Set your location by town or postcode",
+            desc: "Type your town or postcode, choose it from the list, and we'll use it to find local charities and volunteering near you.",
+          },
         ],
       },
       {

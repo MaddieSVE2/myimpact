@@ -5,6 +5,7 @@ import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { requireOrgManager } from "../lib/orgManager.js";
 import { customLinesFromResult } from "../lib/customLines.js";
+import { memberArea } from "../lib/profileLocation.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import { renderToBuffer } from "@react-pdf/renderer";
@@ -1879,8 +1880,11 @@ router.get("/my/members", authenticate, async (req: AuthenticatedRequest, res) =
   const [userRows, profileRows] = memberUserIds.length > 0 ? await Promise.all([
     db.select({ id: usersTable.id, email: usersTable.email, displayName: usersTable.displayName })
       .from(usersTable).where(inArray(usersTable.id, memberUserIds)),
-    db.select({ userId: userProfilesTable.userId, postcode: userProfilesTable.postcode })
-      .from(userProfilesTable).where(inArray(userProfilesTable.userId, memberUserIds)),
+    db.select({
+      userId: userProfilesTable.userId,
+      postcode: userProfilesTable.postcode,
+      locationName: userProfilesTable.locationName,
+    }).from(userProfilesTable).where(inArray(userProfilesTable.userId, memberUserIds)),
   ]) : [[], []];
 
   const userMap = new Map(userRows.map(u => [u.id, u]));
@@ -1896,7 +1900,8 @@ router.get("/my/members", authenticate, async (req: AuthenticatedRequest, res) =
       role: r.role,
       status: r.status,
       joinedAt: r.joinedAt.toISOString(),
-      postcode: p?.postcode ?? null,
+      // General area only, same as activity locations: never the full postcode.
+      area: memberArea(p),
     };
   });
 

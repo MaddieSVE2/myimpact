@@ -5,15 +5,15 @@ import { useWizard, INTEREST_OPTIONS, CUSTOM_INTEREST_CATEGORIES, type CustomInt
 import { StepProgress } from "@/components/wizard/StepProgress";
 import { ReportPeriodPicker } from "@/components/wizard/ReportPeriodPicker";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Plus, CheckCircle, Loader2, RotateCcw, History, Trophy, Pencil, X } from "lucide-react";
+import { ArrowRight, Plus, CheckCircle, RotateCcw, History, Trophy, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useT } from "@/i18n";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 import { BASE } from "@/lib/api";
-
-const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
+import { HomeLocationField, type HomeLocationHandle, type SavedHomeLocation } from "@/components/HomeLocationField";
+import type { HomeLocation } from "@/lib/place-search";
 
 const SITUATION_OPTION_IDS = [
   "volunteer",
@@ -24,23 +24,6 @@ const SITUATION_OPTION_IDS = [
   "armed_forces",
   "something_else",
 ] as const;
-
-async function lookupPostcode(raw: string) {
-  const postcode = raw.replace(/\s+/g, "").toUpperCase();
-  const res = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
-  if (!res.ok) return null;
-  const json = await res.json();
-  if (json.status !== 200 || !json.result) return null;
-  const r = json.result;
-  return {
-    region: (r.region ?? r.nuts ?? r.admin_county ?? r.parliamentary_constituency ?? "") as string,
-    outwardCode: (r.outcode ?? postcode.slice(0, postcode.length - 3)) as string,
-    lat: r.latitude as number,
-    lng: r.longitude as number,
-    adminDistrict: (r.admin_district ?? r.admin_county ?? r.region ?? "") as string,
-  };
-}
-
 
 function useChallengeIdFromQuery(): string | null {
   return useMemo(() => {
@@ -101,7 +84,7 @@ function ChallengeContextBanner() {
 export default function ActionsStep() {
   const [, setLocation] = useLocation();
   const {
-    location, interests, customInterests, customInterestCategories, careerBreak, situations,
+    location, locationMeta, interests, customInterests, customInterestCategories, careerBreak, situations,
     setLocation: setWizardLocation, toggleInterest,
     addCustomInterest, updateCustomInterest, removeCustomInterest, setCustomInterestCategory, setCareerBreak, toggleSituation, seedFromProfile, updateInput, setLocationMeta,
     hasDraft, clearDraft, reportPeriod, setReportPeriod,
@@ -114,10 +97,19 @@ export default function ActionsStep() {
   const [editingCustomInterest, setEditingCustomInterest] = useState<string | null>(null);
   const [customInterestError, setCustomInterestError] = useState("");
   const [profileSaveError, setProfileSaveError] = useState("");
-  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
-  const [resolvedRegion, setResolvedRegion] = useState<string | null>(null);
+  const [savedLocation, setSavedLocation] = useState<SavedHomeLocation | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const profileSeeded = useRef(false);
+  const homeLocationRef = useRef<HomeLocationHandle>(null);
+
+  const homeLocation: HomeLocation | null = locationMeta?.postcode
+    ? {
+        ...locationMeta,
+        postcode: locationMeta.postcode,
+        locationName: locationMeta.locationName ?? null,
+        country: locationMeta.country ?? "",
+      }
+    : null;
 
   // Pre-fill from profile for logged-in users (only when no draft is active)
   useEffect(() => {
@@ -147,8 +139,13 @@ export default function ActionsStep() {
         // profile would wipe anything the user typed while the fetch was
         // in flight (the fetch resolves after mount, racing fast typers).
         if (hasAnyData) {
+          setSavedLocation({
+            postcode: data.profile.postcode ?? null,
+            locationName: data.profile.locationName ?? null,
+          });
           seedFromProfile({
             postcode: data.profile.postcode ?? null,
+            locationName: data.profile.locationName ?? null,
             interests: data.profile.interests ?? [],
             customInterests: loadedCustomInterests,
             customInterestCategories: loadedCustomInterestCategories,
@@ -163,37 +160,11 @@ export default function ActionsStep() {
   useEffect(() => {
     if (!hasDraft) {
       setShowCustom(false);
-      setLookupState('idle');
-      setResolvedRegion(null);
+      setSavedLocation(null);
       setProfileLoaded(false);
       profileSeeded.current = false;
     }
   }, [hasDraft]);
-
-  const handleLocationBlur = async () => {
-    const val = location.trim();
-    if (!val || !UK_POSTCODE_RE.test(val)) {
-      setLookupState('idle');
-      setResolvedRegion(null);
-      setLocationMeta(null);
-      return;
-    }
-    setLookupState('loading');
-    try {
-      const meta = await lookupPostcode(val);
-      if (meta && meta.region) {
-        setResolvedRegion(meta.region);
-        setLocationMeta(meta);
-        setLookupState('found');
-      } else {
-        setLookupState('error');
-        setLocationMeta(null);
-      }
-    } catch {
-      setLookupState('error');
-      setLocationMeta(null);
-    }
-  };
 
   const handleCareerBreakChange = (checked: boolean) => {
     setCareerBreak(checked);
@@ -209,6 +180,8 @@ export default function ActionsStep() {
 
   const handleNext = async () => {
     setProfileSaveError("");
+    const settled = await homeLocationRef.current?.settle();
+    if (settled && !settled.ok) return;
     const interestLabels = interests
       .map(id => INTEREST_OPTIONS.find(o => o.id === id)?.label)
       .filter(Boolean)
@@ -226,7 +199,6 @@ export default function ActionsStep() {
     });
 
     if (isLoggedIn) {
-      const postcode = location.trim() || null;
       // For guests without situations, fall back to careerBreak checkbox
       const situationsToSave = situations.length > 0
         ? situations
@@ -241,7 +213,7 @@ export default function ActionsStep() {
             interests,
             customInterests,
             customInterestCategories,
-            postcode,
+            ...settled?.fields,
           }),
         });
         if (!response.ok) throw new Error("profile save failed");
@@ -378,41 +350,22 @@ export default function ActionsStep() {
 
         {/* Location */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-foreground mb-0.5">
+          <label htmlFor="wizard-home-location" className="block text-sm font-medium text-foreground mb-0.5">
             {t("wizard.iLiveIn")}
           </label>
           <p className="text-xs text-muted-foreground mb-3">{t("wizard.iLiveInHelp")}</p>
-          <div className="relative max-w-xs">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              value={location}
-              onChange={e => {
-                setWizardLocation(e.target.value);
-                setLookupState('idle');
-                setResolvedRegion(null);
-                setLocationMeta(null);
-              }}
-              onBlur={handleLocationBlur}
-              placeholder={t("wizard.postcodePlaceholder")}
-              className="w-full pl-9 pr-4 py-3 min-h-[44px] rounded-md border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-            />
-          </div>
-          <div className="mt-1.5 h-5">
-            {lookupState === 'loading' && (
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("wizard.lookingUpPostcode")}
-              </span>
-            )}
-            {lookupState === 'found' && resolvedRegion && (
-              <span className="flex items-center gap-1.5 text-xs text-green-600">
-                <CheckCircle className="w-3.5 h-3.5" /> {resolvedRegion}
-              </span>
-            )}
-            {lookupState === 'error' && (
-              <span className="text-xs text-muted-foreground">{t("wizard.postcodeNotFound")}</span>
-            )}
-          </div>
+          <HomeLocationField
+            ref={homeLocationRef}
+            id="wizard-home-location"
+            text={location}
+            value={homeLocation}
+            saved={savedLocation}
+            onChange={(text, value) => {
+              setWizardLocation(text);
+              setLocationMeta(value);
+            }}
+            onSavedResolved={setLocationMeta}
+          />
         </div>
 
         {/* Interest chips */}

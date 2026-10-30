@@ -342,6 +342,7 @@ export interface UserProfileData {
   customInterests?: string[];
   customInterestCategories?: UserProfileDataCustomInterestCategories;
   postcode?: string | null;
+  locationName?: string | null;
   updatedAt?: string;
 }
 
@@ -359,6 +360,7 @@ export interface ProfileInput {
   customInterests?: string[];
   customInterestCategories?: ProfileInputCustomInterestCategories;
   postcode?: string | null;
+  locationName?: string | null;
 }
 
 export interface UpdateImpactRecordInput {

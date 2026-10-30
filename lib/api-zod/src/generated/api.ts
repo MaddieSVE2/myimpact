@@ -1342,6 +1342,7 @@ export const GetProfileResponse = zod.object({
         .record(zod.string(), zod.string().nullable())
         .optional(),
       postcode: zod.string().nullish(),
+      locationName: zod.string().nullish(),
       updatedAt: zod.string().optional(),
     }),
     zod.null(),
@@ -1369,6 +1370,7 @@ export const UpdateProfileBody = zod.object({
     .record(zod.string(), zod.string().nullable())
     .optional(),
   postcode: zod.string().nullish(),
+  locationName: zod.string().nullish(),
 });
 
 export const UpdateProfileResponse = zod.object({
@@ -1381,6 +1383,7 @@ export const UpdateProfileResponse = zod.object({
         .record(zod.string(), zod.string().nullable())
         .optional(),
       postcode: zod.string().nullish(),
+      locationName: zod.string().nullish(),
       updatedAt: zod.string().optional(),
     }),
     zod.null(),
