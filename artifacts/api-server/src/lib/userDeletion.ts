@@ -7,6 +7,7 @@ import {
   feedbackTable,
   onboardingEmailSendsTable,
   orgMembersTable,
+  orgMemberConsentsTable,
   publicProfilesTable,
   journalEntriesTable,
   impactRecordsTable,
@@ -85,6 +86,7 @@ export async function eraseUserData(userId: string): Promise<{
   await db.delete(feedbackTable).where(eq(feedbackTable.userId, userId));
   await db.delete(onboardingEmailSendsTable).where(eq(onboardingEmailSendsTable.userId, userId));
   await db.delete(orgMembersTable).where(eq(orgMembersTable.userId, userId));
+  await db.delete(orgMemberConsentsTable).where(eq(orgMemberConsentsTable.userId, userId));
   await db.delete(publicProfilesTable).where(eq(publicProfilesTable.userId, userId));
 
   // Personal content.

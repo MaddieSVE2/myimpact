@@ -3,7 +3,7 @@ import { db, impactRecordsTable, organisationsTable, orgMatchRatesTable, orgMemb
 import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { computeMatchesForRecords, type RecordForMatch } from "../lib/orgMatch.js";
-import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition } from "../lib/orgSharing.js";
 import { endOfDay } from "../lib/summaryPeriod.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { requireOrgManager } from "../lib/orgManager.js";
@@ -159,8 +159,9 @@ async function loadOrgMatchSet(orgId: string, from?: Date, to?: Date) {
   });
 
   let records: typeof impactRecordsTable.$inferSelect[] = [];
-  if (memberIds.length > 0) {
-    const baseCondition = orgVisibleMemberRecordsCondition(orgId, memberIds)!;
+  const sharingCtx = await getOrgSharingContext(orgId);
+  const baseCondition = sharedRecordsCondition(sharingCtx);
+  if (baseCondition) {
     const fromCondition = from ? gte(impactRecordsTable.createdAt, from) : undefined;
     const toCondition = to ? lte(impactRecordsTable.createdAt, to) : undefined;
     records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));
@@ -178,7 +179,7 @@ async function loadOrgMatchSet(orgId: string, from?: Date, to?: Date) {
   });
 
   const matches = computeMatchesForRecords(recordsForMatch, rates);
-  return { records, recordsForMatch, matches, memberIds };
+  return { records, recordsForMatch, matches, memberIds: [...memberIds, ...sharingCtx.formerMembers.keys()] };
 }
 
 router.get("/match/summary", authenticate, async (req: AuthenticatedRequest, res) => {

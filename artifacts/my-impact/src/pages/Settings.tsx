@@ -432,6 +432,7 @@ export default function Settings() {
           </Link>
           <PulseOptOutRow />
           <LeaveOrganisationRow />
+          <DeactivatedOrganisationRows />
         </div>
       </section>
 
@@ -643,6 +644,115 @@ function LeaveOrganisationRow() {
         </div>
       )}
     </div>
+  );
+}
+
+interface OrgDeactivation {
+  orgId: string;
+  orgName: string;
+  deactivatedAt: string;
+  hoursWithdrawn: boolean;
+}
+
+/**
+ * Organisations that deactivated this person. Leaving is how members take
+ * their hours out of an organisation's totals, so people who can no longer
+ * leave get the same choice here.
+ */
+function DeactivatedOrganisationRows() {
+  const { toast } = useToast();
+  const [rows, setRows] = useState<OrgDeactivation[]>([]);
+  const [confirmingOrgId, setConfirmingOrgId] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/org/deactivations`, { credentials: "include" });
+        if (!res.ok) return;
+        const data: { deactivations: OrgDeactivation[] } = await res.json();
+        if (!cancelled) setRows(data.deactivations);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleWithdraw = async (orgId: string) => {
+    if (withdrawing) return;
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`${BASE}/api/org/deactivations/${orgId}/withdraw-hours`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Failed to remove your hours.");
+      }
+      setRows(prev => prev.map(r => r.orgId === orgId ? { ...r, hoursWithdrawn: true } : r));
+      setConfirmingOrgId(null);
+      toast({ title: "Your hours have been removed" });
+    } catch (err) {
+      toast({
+        title: "Couldn't remove your hours",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  return (
+    <>
+      {rows.map(row => (
+        <div key={row.orgId} className="px-5 py-4 space-y-3" data-testid={`row-org-deactivation-${row.orgId}`}>
+          <div>
+            <p className="text-sm font-medium text-foreground">Deactivated from {row.orgName}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {row.hoursWithdrawn
+                ? `Your hours no longer count towards ${row.orgName}'s totals.`
+                : `Hours you logged before ${new Date(row.deactivatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })} still count towards ${row.orgName}'s totals.`}
+            </p>
+          </div>
+          {!row.hoursWithdrawn && (confirmingOrgId === row.orgId ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
+              <p className="text-xs text-red-700">
+                Your hours will stop counting towards {row.orgName}'s totals straight away.
+                Your personal activity history is not deleted.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleWithdraw(row.orgId)}
+                  disabled={withdrawing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+                  data-testid="button-confirm-withdraw-hours"
+                >
+                  {withdrawing && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                  Remove my hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingOrgId(null)}
+                  disabled={withdrawing}
+                  className="px-3 py-1.5 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingOrgId(row.orgId)}
+              className="text-xs font-semibold text-red-600 hover:text-red-700"
+              data-testid="button-withdraw-hours"
+            >
+              Remove my hours
+            </button>
+          ))}
+        </div>
+      ))}
+    </>
   );
 }
 

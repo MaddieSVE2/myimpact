@@ -5,10 +5,10 @@ import {
   GetSuggestionsBody,
   SaveImpactBody,
 } from "@workspace/api-zod";
-import { db, impactRecordsTable, orgMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable, orgGroupMembersTable } from "@workspace/db";
+import { db, impactRecordsTable, orgMembersTable, orgDeactivatedMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable, orgGroupMembersTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
-import { getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact, ONE_OFF_KINDS } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -538,12 +538,25 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
         };
       }
     }
+    // Someone deactivated keeps their record, but what an organisation counts
+    // for them stops at deactivation: re-dating it takes it past that cut-off,
+    // and any approval was for the figures it had before.
+    const deactivations = await db.query.orgDeactivatedMembersTable.findMany({
+      where: eq(orgDeactivatedMembersTable.userId, userId),
+      columns: { orgId: true },
+    });
     const [updated] = await db
       .update(impactRecordsTable)
-      .set(updateValues)
+      .set(deactivations.length > 0 ? { ...updateValues, createdAt: new Date() } : updateValues)
       .where(eq(impactRecordsTable.id, owned.id))
       .returning();
     record = updated;
+    if (deactivations.length > 0) {
+      await db.delete(recordVerificationsTable).where(and(
+        eq(recordVerificationsTable.recordId, owned.id),
+        inArray(recordVerificationsTable.orgId, deactivations.map(d => d.orgId)),
+      ));
+    }
   } else {
     // No silent merge: if a habit-generated entry already covers the same
     // calendar month with any overlapping activity, return 409 so the
@@ -1309,7 +1322,7 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date, scope?: Re
   }
 
   const totalRecords = records.length;
-  const totalUsers = new Set(records.map(r => r.userId)).size;
+  const contributors = new Set(records.map(r => r.userId)).size;
 
   let totalSocialValue = 0;
   let totalHours = 0;
@@ -1357,11 +1370,11 @@ async function computeOrgStats(orgId: string, from?: Date, to?: Date, scope?: Re
 
   return {
     totalRecords,
-    totalUsers,
+    totalUsers: currentContributorCount(sharingCtx, records),
     totalMemberCount: memberIds.length,
     totalSocialValue: Math.round(totalSocialValue * 100) / 100,
     totalHours: Math.round(totalHours * 100) / 100,
-    averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+    averageValuePerPerson: contributors > 0 ? Math.round((totalSocialValue / contributors) * 100) / 100 : 0,
     valueByCategory,
   };
 }

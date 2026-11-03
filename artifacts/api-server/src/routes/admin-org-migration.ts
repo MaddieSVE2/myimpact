@@ -5,6 +5,7 @@ import {
   organisationsTable,
   orgMembersTable,
   orgMemberConsentsTable,
+  orgDeactivatedMembersTable,
   orgMatchRatesTable,
   orgSurveysTable,
   orgSurveyResponsesTable,
@@ -15,12 +16,12 @@ import {
   impactRecordsTable,
   recordVerificationsTable,
 } from "@workspace/db";
-import { eq, desc, inArray, sql } from "drizzle-orm";
+import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { isAdminEmail } from "../lib/adminEmails.js";
-import { getOrgSharingContext, sharedRecordsCondition, normalizeDashboardSections } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition, notWithdrawnCondition, normalizeDashboardSections } from "../lib/orgSharing.js";
 
 const router: IRouter = Router();
 
@@ -43,6 +44,7 @@ const TRANSFERABLE_SETTINGS = [
   "sroiCostAdmin",
   "summaryYearStart",
   "autoVerifyActivities",
+  "autoApproveMembers",
   "dashboardSections",
 ] as const;
 
@@ -75,6 +77,20 @@ async function buildOrgExport(orgId: string) {
     .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
     .where(eq(orgMembersTable.orgId, orgId));
 
+  // Deactivated members, whose hours can still count towards the totals.
+  const deactivatedRows = await db
+    .select({
+      role: orgDeactivatedMembersTable.role,
+      joinedAt: orgDeactivatedMembersTable.joinedAt,
+      deactivatedAt: orgDeactivatedMembersTable.deactivatedAt,
+      hoursWithdrawnAt: orgDeactivatedMembersTable.hoursWithdrawnAt,
+      displayName: usersTable.displayName,
+      email: usersTable.email,
+    })
+    .from(orgDeactivatedMembersTable)
+    .innerJoin(usersTable, eq(orgDeactivatedMembersTable.userId, usersTable.id))
+    .where(eq(orgDeactivatedMembersTable.orgId, orgId));
+
   // Consents (consented-logging orgs).
   const consentRows = await db
     .select()
@@ -94,7 +110,7 @@ async function buildOrgExport(orgId: string) {
     .where(eq(orgApiKeysTable.orgId, orgId));
   const apiKeyIdList = orgApiKeyRows.map((k) => k.id);
 
-  const memberCond = eq(impactRecordsTable.submittedToOrgId, orgId);
+  const memberCond = and(eq(impactRecordsTable.submittedToOrgId, orgId), notWithdrawnCondition(orgId))!;
   const attestedCond = apiKeyIdList.length > 0
     ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
     : sql`FALSE`;
@@ -203,6 +219,7 @@ async function buildOrgExport(orgId: string) {
     `Exported: ${exportedAt}`,
     ``,
     `Members: ${memberRows.length} (${memberRows.filter((m) => m.status === "active").length} active)`,
+    `Deactivated members: ${deactivatedRows.length}`,
     `Shared activity records: ${activities.length} (${verifiedCount} verified)`,
     `Total social value shared: £${totalValue.toFixed(2)}`,
     `Total hours shared: ${totalHours}`,
@@ -236,6 +253,14 @@ async function buildOrgExport(orgId: string) {
       role: m.role,
       status: m.status,
       joinedAt: m.joinedAt.toISOString(),
+    })),
+    deactivatedMembers: deactivatedRows.map((m) => ({
+      name: m.displayName ?? null,
+      email: m.email,
+      role: m.role,
+      joinedAt: m.joinedAt.toISOString(),
+      deactivatedAt: m.deactivatedAt.toISOString(),
+      hoursWithdrawnAt: m.hoursWithdrawnAt ? m.hoursWithdrawnAt.toISOString() : null,
     })),
     consents: consentRows.map((c) => ({
       userId: c.userId,
@@ -305,6 +330,7 @@ const exportFileSchema = z.object({
       aiSidekickEnabled: z.boolean().optional(),
       challengeLeaderboardEnabled: z.boolean().optional(),
       autoVerifyActivities: z.boolean().optional(),
+      autoApproveMembers: z.boolean().optional(),
       logoKey: z.string().nullable().optional(),
       brandPrimary: z.string().nullable().optional(),
       brandAccent: z.string().nullable().optional(),

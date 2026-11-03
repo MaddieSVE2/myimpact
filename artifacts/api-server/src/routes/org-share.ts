@@ -3,7 +3,7 @@ import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgShareLi
 import { eq, sql } from "drizzle-orm";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
-import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
+import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition } from "../lib/orgSharing.js";
 import { isTrustedInternalSsrRequest } from "../lib/internalSsrRequest.js";
 
 const router: IRouter = Router();
@@ -88,10 +88,10 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
   });
   const memberIds = members.map(m => m.userId);
 
-  const records = memberIds.length > 0
-    ? await db.select().from(impactRecordsTable).where(
-        orgVisibleMemberRecordsCondition(link.orgId, memberIds)!,
-      )
+  const sharingCtx = await getOrgSharingContext(link.orgId);
+  const visibleRecords = sharedRecordsCondition(sharingCtx);
+  const records = visibleRecords
+    ? await db.select().from(impactRecordsTable).where(visibleRecords)
     : [];
 
   // ── Summary ─────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
     if (categoryValueMap[a.category] !== undefined) categoryValueMap[a.category] -= a.excessValue;
   }
 
-  const totalUsers = new Set(records.map(r => r.userId)).size;
+  const contributors = new Set(records.map(r => r.userId)).size;
   const valueByCategory = Object.entries(categoryValueMap)
     .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
     .sort((a, b) => b.value - a.value);
@@ -126,8 +126,8 @@ router.get("/:slug", sharePublicRateLimit, async (req: Request<Record<string, st
     totalSocialValue: Math.round(totalSocialValue * 100) / 100,
     totalHours: Math.round(totalHours * 100) / 100,
     totalMemberCount: memberIds.length,
-    totalUsers,
-    averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+    totalUsers: currentContributorCount(sharingCtx, records),
+    averageValuePerPerson: contributors > 0 ? Math.round((totalSocialValue / contributors) * 100) / 100 : 0,
   };
 
   // ── Timeline (cumulative monthly social value) ─────────────────────────────

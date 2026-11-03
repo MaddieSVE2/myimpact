@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck, UsersRound } from "lucide-react";
+import { Users, Sparkles, ShieldCheck, Code2, Share2, Building2, Check, Trash2, UserX, Mail, RefreshCw, Copy, Plus, X, AlertCircle, Loader2, Upload, Palette, ClipboardCheck, UsersRound } from "lucide-react";
 import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
@@ -32,7 +32,7 @@ interface SroiCostBreakdown {
   support: number | null;
   admin: number | null;
 }
-interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; membershipStatus?: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; autoVerifyActivities?: boolean; evidencePolicy?: string; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding; allowedDomain?: string | null } | null }
+interface MyOrgResponse { org: { id: string; name: string; type: string; role: string; membershipStatus?: string; aiSidekickEnabled: boolean; challengeLeaderboardEnabled: boolean; autoVerifyActivities?: boolean; autoApproveMembers?: boolean; evidencePolicy?: string; sroiCostPerVolunteer: number | null; sroiCostBreakdown?: SroiCostBreakdown; branding?: OrgBranding; allowedDomain?: string | null } | null }
 
 const DEFAULT_SROI_COST_PER_VOLUNTEER = 475;
 
@@ -68,6 +68,16 @@ interface LiveMember {
   status: string;
   joinedAt: string;
   area: string | null;
+  isSelf?: boolean;
+}
+
+interface DeactivatedMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  deactivatedAt: string;
+  hoursWithdrawn: boolean;
 }
 
 interface LiveMembersResponse {
@@ -207,6 +217,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
   const [livePending, setLivePending] = useState<LiveMember[]>([]);
   const [liveTotal, setLiveTotal] = useState(0);
   const [liveTotalPages, setLiveTotalPages] = useState(1);
+  const [liveDeactivated, setLiveDeactivated] = useState<DeactivatedMember[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
@@ -215,19 +226,26 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
   async function fetchLiveMembers(p: number) {
     setLiveLoading(true);
     try {
-      const [activeRes, pendingRes] = await Promise.all([
+      const [activeRes, pendingRes, deactivatedRes] = await Promise.all([
         fetch(`${BASE}/api/org/my/members?page=${p}&status=active`, { credentials: "include" }),
         fetch(`${BASE}/api/org/my/members?status=pending`, { credentials: "include" }),
+        fetch(`${BASE}/api/org/my/members/deactivated`, { credentials: "include" }),
       ]);
       if (activeRes.ok) {
         const j: LiveMembersResponse = await activeRes.json();
         setLiveMembers(j.members);
         setLiveTotal(j.total);
         setLiveTotalPages(j.totalPages);
+        // Deactivating the last person on the last page empties it.
+        if (j.members.length === 0 && p > 1) setPage(Math.max(1, j.totalPages));
       }
       if (pendingRes.ok) {
         const j: LiveMembersResponse = await pendingRes.json();
         setLivePending(j.members);
+      }
+      if (deactivatedRes.ok) {
+        const j: { members: DeactivatedMember[] } = await deactivatedRes.json();
+        setLiveDeactivated(j.members);
       }
     } catch { /* ignore */ }
     finally { setLiveLoading(false); }
@@ -282,12 +300,12 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
 
   function removeDemoMember(id: string) {
     const member = DEMO_MEMBERS.find(m => m.id === id);
-    if (member?.role === "manager") { flash("You can't remove the organisation manager."); return; }
-    if (!window.confirm(`Remove ${member?.name ?? "this member"} from the organisation?`)) return;
+    if (member?.role === "manager") { flash("You can't deactivate the organisation manager."); return; }
+    if (!window.confirm(`Deactivate ${member?.name ?? "this member"}?`)) return;
     const next = [...removed, id];
     setRemoved(next);
     setRemovedMemberIds(orgId, next);
-    flash(`Removed ${member?.name ?? "member"}.`);
+    flash(`Deactivated ${member?.name ?? "member"}.`);
   }
 
   function restoreDemoMember(id: string) {
@@ -336,6 +354,30 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
       await fetchLiveMembers(page);
       return true;
     } catch (e) { flash(e instanceof Error ? e.message : "Failed to reject."); return false; }
+    finally { setActionBusy(null); }
+  }
+
+  async function deactivateLiveMember(userId: string, name: string) {
+    if (!window.confirm(`Deactivate ${name}? They'll lose access to your organisation and its groups, and your join link won't let them back in. Hours they've already logged stay in your totals. You can reactivate them at any time.`)) return;
+    setActionBusy(userId);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/deactivate`, { method: "POST", credentials: "include" });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error((j as { error?: string }).error ?? "Failed"); }
+      flash(`${name} has been deactivated.`);
+      await fetchLiveMembers(page);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to deactivate."); }
+    finally { setActionBusy(null); }
+  }
+
+  async function reactivateLiveMember(userId: string, name: string) {
+    setActionBusy(userId);
+    try {
+      const res = await fetch(`${BASE}/api/org/my/members/${userId}/reactivate`, { method: "POST", credentials: "include" });
+      const j = await res.json().catch(() => ({})) as { error?: string; rejoinAllowed?: boolean };
+      if (!res.ok) throw new Error(j.error ?? "Failed");
+      flash(j.rejoinAllowed ? `${name} can now rejoin with your join link.` : `${name} is a member again.`);
+      await fetchLiveMembers(page);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed to reactivate."); }
     finally { setActionBusy(null); }
   }
 
@@ -664,7 +706,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                           className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
                           data-testid={`button-remove-${m.id}`}
                         >
-                          <Trash2 className="w-3 h-3" /> Remove
+                          <UserX className="w-3 h-3" /> Deactivate
                         </button>
                       )}
                     </div>
@@ -687,7 +729,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                         </span>
                       </div>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex flex-col items-end gap-1.5">
                       <button
                         type="button"
                         disabled={actionBusy === m.userId}
@@ -697,6 +739,17 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                       >
                         {m.role === "manager" ? "Demote" : "Make manager"}
                       </button>
+                      {!m.isSelf && (
+                        <button
+                          type="button"
+                          disabled={actionBusy === m.userId}
+                          onClick={() => deactivateLiveMember(m.userId, m.name)}
+                          className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold disabled:opacity-50"
+                          data-testid={`button-deactivate-${m.userId}`}
+                        >
+                          <UserX className="w-3 h-3" /> Deactivate
+                        </button>
+                      )}
                     </div>
                   </li>
                 ))
@@ -741,7 +794,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                               className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold"
                               data-testid={`button-remove-${m.id}-desktop`}
                             >
-                              <Trash2 className="w-3 h-3" /> Remove
+                              <UserX className="w-3 h-3" /> Deactivate
                             </button>
                           )}
                         </td>
@@ -762,15 +815,28 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                         <td className="py-2 pr-3 text-muted-foreground">{m.area ?? "—"}</td>
                         <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">{new Date(m.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td className="py-2 pr-3 text-right">
-                          <button
-                            type="button"
-                            disabled={actionBusy === m.userId}
-                            onClick={() => changeLiveMemberRole(m.userId, m.name, m.role === "manager" ? "member" : "manager")}
-                            className="inline-flex items-center gap-1 text-[12px] text-primary hover:text-primary/80 font-semibold disabled:opacity-50"
-                            data-testid={`button-role-${m.userId}-desktop`}
-                          >
-                            {m.role === "manager" ? "Demote" : "Make manager"}
-                          </button>
+                          <div className="flex flex-col items-end gap-1">
+                            <button
+                              type="button"
+                              disabled={actionBusy === m.userId}
+                              onClick={() => changeLiveMemberRole(m.userId, m.name, m.role === "manager" ? "member" : "manager")}
+                              className="inline-flex items-center gap-1 text-[12px] text-primary hover:text-primary/80 font-semibold disabled:opacity-50"
+                              data-testid={`button-role-${m.userId}-desktop`}
+                            >
+                              {m.role === "manager" ? "Demote" : "Make manager"}
+                            </button>
+                            {!m.isSelf && (
+                              <button
+                                type="button"
+                                disabled={actionBusy === m.userId}
+                                onClick={() => deactivateLiveMember(m.userId, m.name)}
+                                className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:text-red-700 font-semibold disabled:opacity-50"
+                                data-testid={`button-deactivate-${m.userId}-desktop`}
+                              >
+                                <UserX className="w-3 h-3" /> Deactivate
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -814,9 +880,37 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
           </div>
         )}
 
+        {!isDemoOrg && liveDeactivated.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-border" data-testid="panel-deactivated-members">
+            <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Deactivated members</p>
+            <ul className="space-y-2">
+              {liveDeactivated.map(m => (
+                <li key={m.userId} className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground" data-testid={`row-deactivated-${m.userId}`}>
+                  <div className="min-w-0">
+                    <p className="truncate">{m.name} <span className="text-[11px]">({m.email})</span></p>
+                    <p className="text-[11px]">
+                      Deactivated {new Date(m.deactivatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}.{" "}
+                      {m.hoursWithdrawn ? "They removed their hours from your totals." : "Their hours still count in your totals."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={actionBusy === m.userId}
+                    onClick={() => reactivateLiveMember(m.userId, m.name)}
+                    className="shrink-0 text-primary hover:underline text-[12px] font-semibold disabled:opacity-50"
+                    data-testid={`button-reactivate-${m.userId}`}
+                  >
+                    {m.hoursWithdrawn ? "Let them rejoin" : "Reactivate"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {isDemoOrg && removed.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
-            <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Recently removed</p>
+            <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Deactivated members</p>
             <ul className="space-y-1">
               {removed.map(id => {
                 const m = DEMO_MEMBERS.find(x => x.id === id);
@@ -824,7 +918,7 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
                 return (
                   <li key={id} className="flex items-center justify-between text-[13px] text-muted-foreground">
                     <span>{m.name} <span className="text-[11px]">({m.email})</span></span>
-                    <button onClick={() => restoreDemoMember(id)} className="text-primary hover:underline text-[12px] font-semibold">Restore</button>
+                    <button onClick={() => restoreDemoMember(id)} className="text-primary hover:underline text-[12px] font-semibold">Reactivate</button>
                   </li>
                 );
               })}
@@ -1031,17 +1125,24 @@ const APPROVAL_MODE_OPTIONS: Array<{ value: "auto" | "manual"; label: string; de
   { value: "manual", label: "Manual review", description: "Member activities wait in the verification queue until a manager approves them." },
 ];
 
-function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: { initialAutoVerify: boolean; initialEvidencePolicy: string; isDemoOrg: boolean }) {
+const MEMBER_APPROVAL_OPTIONS: { value: "manual" | "auto"; label: string; description: string }[] = [
+  { value: "manual", label: "Approve each member", description: "People who use your join link or code wait until a manager approves them." },
+  { value: "auto", label: "Approve automatically", description: "Anyone with your join link or code becomes a member straight away. Requests already waiting stay in your Members tab." },
+];
+
+function ApprovalsTab({ initialAutoVerify, initialAutoApproveMembers, initialEvidencePolicy, isDemoOrg }: { initialAutoVerify: boolean; initialAutoApproveMembers: boolean; initialEvidencePolicy: string; isDemoOrg: boolean }) {
   const queryClient = useQueryClient();
   const [autoVerify, setAutoVerify] = useState<boolean>(initialAutoVerify);
+  const [autoApproveMembers, setAutoApproveMembers] = useState<boolean>(initialAutoApproveMembers);
   const [evidencePolicy, setEvidencePolicy] = useState<string>(initialEvidencePolicy);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setAutoVerify(initialAutoVerify); }, [initialAutoVerify]);
+  useEffect(() => { setAutoApproveMembers(initialAutoApproveMembers); }, [initialAutoApproveMembers]);
   useEffect(() => { setEvidencePolicy(initialEvidencePolicy); }, [initialEvidencePolicy]);
 
-  const mutation = useMutation<{ org: { autoVerifyActivities: boolean; evidencePolicy: string } }, Error, Record<string, boolean | string>>({
+  const mutation = useMutation<{ org: { autoVerifyActivities: boolean; autoApproveMembers: boolean; evidencePolicy: string } }, Error, Record<string, boolean | string>>({
     mutationFn: async (patch) => {
       const res = await fetch(`${BASE}/api/org/my/settings`, {
         method: "PATCH",
@@ -1057,6 +1158,7 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
     },
     onSuccess: (data) => {
       setAutoVerify(data.org.autoVerifyActivities);
+      setAutoApproveMembers(data.org.autoApproveMembers);
       setEvidencePolicy(data.org.evidencePolicy);
       setSavedAt(Date.now());
       setError(null);
@@ -1064,6 +1166,7 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
     },
     onError: (err) => {
       setAutoVerify(initialAutoVerify);
+      setAutoApproveMembers(initialAutoApproveMembers);
       setEvidencePolicy(initialEvidencePolicy);
       setError(err.message);
     },
@@ -1078,6 +1181,15 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
     mutation.mutate({ autoVerifyActivities: nextAuto });
   }
 
+  function chooseMemberApproval(next: "auto" | "manual") {
+    const nextAuto = next === "auto";
+    if (nextAuto === autoApproveMembers) return;
+    setError(null);
+    if (isDemoOrg) { setAutoApproveMembers(nextAuto); setSavedAt(Date.now()); return; }
+    setAutoApproveMembers(nextAuto);
+    mutation.mutate({ autoApproveMembers: nextAuto });
+  }
+
   function chooseEvidencePolicy(next: string) {
     if (next === evidencePolicy) return;
     setError(null);
@@ -1088,6 +1200,35 @@ function ApprovalsTab({ initialAutoVerify, initialEvidencePolicy, isDemoOrg }: {
 
   return (
     <div className="space-y-4">
+      <div className="bg-white border border-border rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold">New member approval</h3>
+        <div className="space-y-2" role="radiogroup" aria-label="New member approval">
+          {MEMBER_APPROVAL_OPTIONS.map(opt => {
+            const selected = (opt.value === "auto") === autoApproveMembers;
+            return (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}
+                data-testid={`member-approval-${opt.value}`}
+              >
+                <input
+                  type="radio"
+                  name="member-approval"
+                  className="mt-1 accent-[hsl(var(--primary))]"
+                  checked={selected}
+                  onChange={() => chooseMemberApproval(opt.value)}
+                  disabled={mutation.isPending}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-foreground">{opt.label}</span>
+                  <span className="block text-[12px] text-muted-foreground">{opt.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="bg-white border border-border rounded-xl p-5 space-y-3">
         <h3 className="text-sm font-semibold">Activity approval mode</h3>
         <p className="text-[13px] text-muted-foreground">
@@ -1849,7 +1990,7 @@ export default function OrgSettings() {
       <motion.div key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {active === "members"   && <MembersTab isDemoOrg={isDemoOrg} orgId={orgData.org.id} allowedDomain={orgData.org.allowedDomain ?? null} />}
         {active === "groups"    && <GroupsManager />}
-        {active === "approvals" && <ApprovalsTab initialAutoVerify={orgData.org.autoVerifyActivities ?? false} initialEvidencePolicy={orgData.org.evidencePolicy ?? "optional"} isDemoOrg={isDemoOrg} />}
+        {active === "approvals" && <ApprovalsTab initialAutoVerify={orgData.org.autoVerifyActivities ?? false} initialAutoApproveMembers={orgData.org.autoApproveMembers ?? false} initialEvidencePolicy={orgData.org.evidencePolicy ?? "optional"} isDemoOrg={isDemoOrg} />}
         {active === "ai"        && <AiFeaturesTab initialEnabled={orgData.org.aiSidekickEnabled ?? true} initialLeaderboardEnabled={orgData.org.challengeLeaderboardEnabled ?? true} />}
         {active === "sso"       && <OrgSsoConfigPanel orgId={orgData.org.id} isDemoOrg={isDemoOrg} />}
         {active === "developer" && <DeveloperApiSection isDemoOrg={isDemoOrg} />}

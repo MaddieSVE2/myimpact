@@ -10,7 +10,7 @@ import { and, eq, inArray, gte, lte } from "drizzle-orm";
 import { authenticateApiKey, requireScope, createApiKeyRateLimiter, type ApiKeyRequest } from "../middleware/apiKeyAuth.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
-import { orgVisibleMemberRecordsCondition } from "../lib/orgSharing.js";
+import { getOrgSharingContext, sharedRecordsCondition } from "../lib/orgSharing.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
@@ -121,8 +121,8 @@ router.get("/stats", requireScope("stats.read"), async (req: ApiKeyRequest, res)
   const memberIds = members.map(m => m.userId);
 
   let records: typeof impactRecordsTable.$inferSelect[] = [];
-  if (memberIds.length > 0) {
-    const baseCondition = orgVisibleMemberRecordsCondition(req.apiKey!.orgId, memberIds)!;
+  const baseCondition = sharedRecordsCondition(await getOrgSharingContext(req.apiKey!.orgId));
+  if (baseCondition) {
     const fromCondition = range.from ? gte(impactRecordsTable.createdAt, range.from) : undefined;
     const toCondition = range.to ? lte(impactRecordsTable.createdAt, range.to) : undefined;
     records = await db.select().from(impactRecordsTable).where(and(baseCondition, fromCondition, toCondition));

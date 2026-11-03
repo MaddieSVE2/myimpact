@@ -114,6 +114,7 @@ vi.mock("@workspace/db", () => {
     db,
     organisationsTable: tableTag("organisations"),
     orgMembersTable: tableTag("org_members"),
+    orgDeactivatedMembersTable: tableTag("org_deactivated_members"),
     impactRecordsTable: tableTag("impact_records"),
     orgRegistrationsTable: tableTag("org_registrations"),
     orgMatchRatesTable: tableTag("org_match_rates"),

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, organisationsTable, orgMembersTable, impactRecordsTable, orgRegistrationsTable, orgShareLinksTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable, orgInvitesTable } from "@workspace/db";
+import { db, organisationsTable, orgMembersTable, orgDeactivatedMembersTable, impactRecordsTable, orgRegistrationsTable, orgShareLinksTable, recordVerificationsTable, orgAuditLogTable, usersTable, orgApiKeysTable, userProfilesTable, attachmentsTable, orgInvitesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, lt, asc, desc, isNull, sql, count } from "drizzle-orm";
 import { randomUUID, randomBytes } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
@@ -19,13 +19,40 @@ import { calculateImpact, ACTIVITIES, ONE_OFF_KINDS, YEARLY_HOUSEHOLD_ACTIVITY_I
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { endOfDay, getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
-import { getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, notWithdrawnCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
 import { canUseGroup, defaultGroupFor, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
+import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom, lockMembershipChanges } from "../lib/orgDeactivation.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
+
+// A joiner is auto-promoted to manager when their email matches either the
+// approved registration's contact email (self-registered orgs) or the
+// organisation's own contact email (admin-created orgs have no registration).
+async function isOrgContact(org: { inviteCode: string; contactEmail: string | null }, email: string): Promise<boolean> {
+  const registration = await db.query.orgRegistrationsTable.findFirst({
+    where: and(
+      eq(orgRegistrationsTable.inviteCode, org.inviteCode),
+      eq(orgRegistrationsTable.status, "approved"),
+    ),
+    columns: { contactEmail: true },
+  });
+  return registration?.contactEmail?.toLowerCase() === email.toLowerCase() ||
+    (org.contactEmail ?? "").toLowerCase() === email.toLowerCase();
+}
+
+// /leave promises that the contact can reclaim an organisation left with no
+// manager, and with none left nobody else could reactivate them.
+async function canReclaimOrg(org: { id: string; inviteCode: string; contactEmail: string | null }, email: string): Promise<boolean> {
+  if (!(await isOrgContact(org, email))) return false;
+  const manager = await db.query.orgMembersTable.findFirst({
+    where: and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.role, "manager"), eq(orgMembersTable.status, "active")),
+    columns: { userId: true },
+  });
+  return !manager;
+}
 
 const orgRegisterRateLimit = createRateLimiter({
   windowMs: 15 * 60 * 1000,
@@ -161,6 +188,11 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
 
   const userId = req.user!.id;
 
+  if ((await isDeactivatedFrom(org.id, userId)) && !(await canReclaimOrg(org, req.user!.email))) {
+    res.status(403).json({ error: DEACTIVATED_MEMBER_MESSAGE });
+    return;
+  }
+
   const otherMembership = await db.query.orgMembersTable.findFirst({
     where: eq(orgMembersTable.userId, userId),
   });
@@ -209,6 +241,13 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   const userId = req.user!.id;
   const userEmail = req.user!.email;
 
+  const deactivated = await isDeactivatedFrom(org.id, userId);
+  const reclaiming = deactivated && (await canReclaimOrg(org, userEmail));
+  if (deactivated && !reclaiming) {
+    res.status(403).json({ error: DEACTIVATED_MEMBER_MESSAGE });
+    return;
+  }
+
   // Consented-logging orgs: joining requires an explicit consent choice.
   // 'historic' shares activities dated on/after the member-chosen date;
   // 'from_join' shares only activities from the join moment onwards.
@@ -246,23 +285,11 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     }
   }
 
-  const registration = await db.query.orgRegistrationsTable.findFirst({
-    where: and(
-      eq(orgRegistrationsTable.inviteCode, inviteCode.trim().toUpperCase()),
-      eq(orgRegistrationsTable.status, "approved"),
-    ),
-    columns: { contactEmail: true },
-  });
-
-  // A joiner is auto-promoted to manager when their email matches either the
-  // approved registration's contact email (self-registered orgs) or the
-  // organisation's own contact email (admin-created orgs have no registration).
-  const shouldBeManager =
-    registration?.contactEmail?.toLowerCase() === userEmail.toLowerCase() ||
-    (org.contactEmail ?? "").toLowerCase() === userEmail.toLowerCase();
+  const shouldBeManager = await isOrgContact(org, userEmail);
   const role = shouldBeManager ? "manager" : "member";
-  // Managers are active immediately; regular members start as pending.
-  const memberStatus = shouldBeManager ? "active" : "pending";
+  // Managers are active immediately; regular members start as pending unless
+  // the org has turned on auto-approval for new members.
+  const memberStatus = shouldBeManager || org.autoApproveMembers ? "active" : "pending";
 
   const existing = await db.query.orgMembersTable.findFirst({
     where: (t, { and }) => and(eq(t.orgId, org.id), eq(t.userId, userId)),
@@ -279,15 +306,38 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const otherMembership = await db.query.orgMembersTable.findFirst({
-    where: eq(orgMembersTable.userId, userId),
+  const joined = await db.transaction(async (tx) => {
+    await lockMembershipChanges(tx, userId);
+    if (!reclaiming && (await isDeactivatedFrom(org.id, userId, tx))) return { result: "deactivated" as const };
+    const otherMembership = await tx.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (otherMembership) {
+      return otherMembership.orgId === org.id
+        ? { result: "already_member" as const, status: otherMembership.status }
+        : { result: "elsewhere" as const };
+    }
+    if (reclaiming) {
+      await tx.delete(orgDeactivatedMembersTable).where(and(
+        eq(orgDeactivatedMembersTable.orgId, org.id),
+        eq(orgDeactivatedMembersTable.userId, userId),
+      ));
+    }
+    await tx.insert(orgMembersTable).values({ orgId: org.id, userId, role, status: memberStatus });
+    return { result: "joined" as const };
   });
-  if (otherMembership) {
+  if (joined.result === "deactivated") {
+    res.status(403).json({ error: DEACTIVATED_MEMBER_MESSAGE });
+    return;
+  }
+  if (joined.result === "elsewhere") {
     res.status(409).json({ error: "You're already a member of an organisation." });
     return;
   }
-
-  await db.insert(orgMembersTable).values({ orgId: org.id, userId, role, status: memberStatus });
+  if (joined.result === "already_member") {
+    res.json({ ok: true, orgName: org.name, alreadyMember: true, status: joined.status });
+    return;
+  }
 
   if (memberStatus === "active") {
     await clearPendingInvite(org.id, userEmail);
@@ -311,7 +361,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     }).catch(err => console.error("[org.join] failed to write consent audit log:", err));
   }
 
-  if (shouldBeManager) {
+  if (memberStatus === "active") {
     enqueueOrgEvent({
       orgId: org.id,
       eventType: "member.joined",
@@ -490,6 +540,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       aiSidekickEnabled: org.aiSidekickEnabled,
       challengeLeaderboardEnabled: org.challengeLeaderboardEnabled,
       autoVerifyActivities: org.autoVerifyActivities ?? false,
+      autoApproveMembers: org.autoApproveMembers ?? false,
       evidencePolicy: org.evidencePolicy ?? "optional",
       sroiCostPerVolunteer: mySections.sroi ? (org.sroiCostPerVolunteer ?? null) : null,
       sroiCostBreakdown: mySections.sroi ? {
@@ -862,7 +913,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
   }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart, allowedDomain, autoVerifyActivities, evidencePolicy } = body as {
+  const { aiSidekickEnabled, challengeLeaderboardEnabled, sroiCostPerVolunteer, sroiCostBreakdown, summaryYearStart, allowedDomain, autoVerifyActivities, autoApproveMembers, evidencePolicy } = body as {
     aiSidekickEnabled?: unknown;
     challengeLeaderboardEnabled?: unknown;
     sroiCostPerVolunteer?: unknown;
@@ -870,6 +921,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     summaryYearStart?: unknown;
     allowedDomain?: unknown;
     autoVerifyActivities?: unknown;
+    autoApproveMembers?: unknown;
     evidencePolicy?: unknown;
   };
   const updates: {
@@ -883,6 +935,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     summaryYearStart?: string;
     allowedDomain?: string | null;
     autoVerifyActivities?: boolean;
+    autoApproveMembers?: boolean;
     evidencePolicy?: string;
   } = {};
   if (typeof aiSidekickEnabled === "boolean") {
@@ -898,6 +951,14 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       return;
     }
     updates.autoVerifyActivities = autoVerifyActivities;
+  }
+
+  if ("autoApproveMembers" in body) {
+    if (typeof autoApproveMembers !== "boolean") {
+      res.status(400).json({ error: "autoApproveMembers must be true or false." });
+      return;
+    }
+    updates.autoApproveMembers = autoApproveMembers;
   }
 
   if ("evidencePolicy" in body) {
@@ -1069,6 +1130,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       summaryYearStart: updated.summaryYearStart ?? "01-01",
       allowedDomain: updated.allowedDomain ?? null,
       autoVerifyActivities: updated.autoVerifyActivities ?? false,
+      autoApproveMembers: updated.autoApproveMembers ?? false,
       evidencePolicy: updated.evidencePolicy ?? "optional",
     },
   });
@@ -1287,7 +1349,7 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       if (a.sdg && sdgValueMap[a.sdg]) sdgValueMap[a.sdg].value -= a.excessValue;
     }
 
-    const totalUsers = new Set(records.map(r => r.userId)).size;
+    const contributors = new Set(records.map(r => r.userId)).size;
     const valueByCategory = Object.entries(categoryValueMap)
       .map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
       .sort((a, b) => b.value - a.value);
@@ -1330,8 +1392,8 @@ router.get("/report-pdf", authenticate, async (req: AuthenticatedRequest, res) =
       verifiedSocialValue: verifiedTotals.verifiedSocialValue,
       verifiedRecordCount: verifiedTotals.verifiedRecordCount,
       totalMemberCount: memberIds.length,
-      totalUsers,
-      averageValuePerPerson: totalUsers > 0 ? Math.round((totalSocialValue / totalUsers) * 100) / 100 : 0,
+      totalUsers: currentContributorCount(sharingCtx, records),
+      averageValuePerPerson: contributors > 0 ? Math.round((totalSocialValue / contributors) * 100) / 100 : 0,
       valueByCategory,
       sdgBreakdowns,
       sroiCostPerVolunteer: org.sroiCostPerVolunteer ?? null,
@@ -1902,6 +1964,7 @@ router.get("/my/members", authenticate, async (req: AuthenticatedRequest, res) =
       joinedAt: r.joinedAt.toISOString(),
       // General area only, same as activity locations: never the full postcode.
       area: memberArea(p),
+      isSelf: r.userId === userId,
     };
   });
 
@@ -2076,25 +2139,30 @@ router.post("/my/members/:userId/role", authenticate, async (req: AuthenticatedR
   if (target.status !== "active") { res.status(409).json({ error: "Only active members can have their role changed." }); return; }
   if (target.role === role) { res.json({ ok: true, role, unchanged: true }); return; }
 
-  if (role === "member") {
-    // Demotion: make sure at least one other active manager remains.
-    const [{ managerCount }] = await db
-      .select({ managerCount: count() })
-      .from(orgMembersTable)
-      .where(and(
-        eq(orgMembersTable.orgId, membership.orgId),
-        eq(orgMembersTable.role, "manager"),
-        eq(orgMembersTable.status, "active"),
-      ));
-    if (Number(managerCount) <= 1) {
-      res.status(409).json({ error: "An organisation must always have at least one manager. Promote someone else first." });
-      return;
+  const changed = await db.transaction(async (tx) => {
+    if (role === "member") {
+      // Demotion: make sure at least one other active manager remains. Locked
+      // so demoting and deactivating at the same moment can't leave none.
+      const managers = await tx
+        .select({ userId: orgMembersTable.userId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.orgId, membership.orgId),
+          eq(orgMembersTable.role, "manager"),
+          eq(orgMembersTable.status, "active"),
+        ))
+        .for("update");
+      if (managers.length <= 1) return false;
     }
+    await tx.update(orgMembersTable)
+      .set({ role })
+      .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
+    return true;
+  });
+  if (!changed) {
+    res.status(409).json({ error: "An organisation must always have at least one manager. Promote someone else first." });
+    return;
   }
-
-  await db.update(orgMembersTable)
-    .set({ role })
-    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
 
   res.json({ ok: true, role });
 });
@@ -2215,6 +2283,10 @@ router.post("/my/invites", authenticate, inviteSendLimiter, async (req: Authenti
       res.status(409).json({ error: "That person is already a member of your organisation (or has a pending join request)." });
       return;
     }
+    if (await isDeactivatedFrom(membership.orgId, existingUser.id)) {
+      res.status(409).json({ error: "That person was deactivated. You can reactivate them from your Members list." });
+      return;
+    }
   }
 
   const sendResult = await sendOrgInviteEmail(membership.orgId, emailRaw);
@@ -2274,12 +2346,18 @@ interface EligibleRecord {
   member: typeof orgMembersTable.$inferSelect;
 }
 
-// Returns records logged by users currently in the org since they joined.
+// Returns records logged by users in the org since they joined, and by
+// deactivated members up to when they were deactivated, since those still count.
 async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]> {
-  const members = await db.query.orgMembersTable.findMany({
+  const currentMembers = await db.query.orgMembersTable.findMany({
     where: eq(orgMembersTable.orgId, orgId),
   });
+  const former = await db.query.orgDeactivatedMembersTable.findMany({
+    where: and(eq(orgDeactivatedMembersTable.orgId, orgId), isNull(orgDeactivatedMembersTable.hoursWithdrawnAt)),
+  });
+  const members = [...currentMembers, ...former.map(f => ({ orgId, userId: f.userId, role: f.role, status: "deactivated", joinedAt: f.joinedAt }))];
   if (members.length === 0) return [];
+  const deactivatedAt = new Map(former.map(f => [f.userId, f.deactivatedAt]));
   const memberIds = members.map(m => m.userId);
   const memberMap = new Map(members.map(m => [m.userId, m]));
   const records = await db
@@ -2293,7 +2371,8 @@ async function getEligibleRecordsForOrg(orgId: string): Promise<EligibleRecord[]
   return records
     .filter(r => {
       const m = memberMap.get(r.userId);
-      return m && new Date(r.createdAt) >= new Date(m.joinedAt);
+      const until = deactivatedAt.get(r.userId);
+      return m && new Date(r.createdAt) >= new Date(m.joinedAt) && (!until || new Date(r.createdAt) <= until);
     })
     .map(r => ({ record: r, member: memberMap.get(r.userId)! }));
 }
@@ -2312,8 +2391,17 @@ async function isRecordEligibleForOrg(recordId: number, orgId: string): Promise<
   const member = await db.query.orgMembersTable.findFirst({
     where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, record.userId)),
   });
-  if (!member) return false;
-  return new Date(record.createdAt) >= new Date(member.joinedAt);
+  if (member) return new Date(record.createdAt) >= new Date(member.joinedAt);
+  const former = await db.query.orgDeactivatedMembersTable.findFirst({
+    where: and(
+      eq(orgDeactivatedMembersTable.orgId, orgId),
+      eq(orgDeactivatedMembersTable.userId, record.userId),
+      isNull(orgDeactivatedMembersTable.hoursWithdrawnAt),
+    ),
+  });
+  if (!former) return false;
+  const loggedAt = new Date(record.createdAt);
+  return loggedAt >= former.joinedAt && loggedAt <= former.deactivatedAt;
 }
 
 async function writeAuditLog(orgId: string, actorUserId: string, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
@@ -2601,7 +2689,7 @@ router.post("/verifications/bulk-approve", authenticate, async (req: Authenticat
 // ─── Verified totals helper used by stats/dashboards ───────────────────────
 
 export async function getVerifiedTotalsForOrg(orgId: string, from?: Date, to?: Date, scope?: ReportScope): Promise<{ verifiedHours: number; verifiedSocialValue: number; verifiedRecordCount: number }> {
-  const baseConditions = [eq(recordVerificationsTable.orgId, orgId), eq(recordVerificationsTable.status, "approved")];
+  const baseConditions = [eq(recordVerificationsTable.orgId, orgId), eq(recordVerificationsTable.status, "approved"), notWithdrawnCondition(orgId)];
   const inScope = scope ? groupCondition(scope) : undefined;
   if (inScope) baseConditions.push(inScope);
   if (from) baseConditions.push(gte(impactRecordsTable.entryDate, from));
@@ -3504,6 +3592,7 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
     const memberCond = and(
       eq(impactRecordsTable.submittedToOrgId, orgId),
       eq(impactRecordsTable.source, "member-submitted"),
+      notWithdrawnCondition(orgId),
     )!;
     const attestedCond = apiKeyIdList.length > 0
       ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
@@ -3973,7 +4062,7 @@ router.get("/activities", authenticate, async (req: AuthenticatedRequest, res) =
       .where(eq(orgApiKeysTable.orgId, orgId));
     const apiKeyIdList = orgApiKeyRows.map(k => k.id);
 
-    const memberCond = eq(impactRecordsTable.submittedToOrgId, orgId);
+    const memberCond = and(eq(impactRecordsTable.submittedToOrgId, orgId), notWithdrawnCondition(orgId))!;
     const attestedCond = apiKeyIdList.length > 0
       ? inArray(impactRecordsTable.attestedByApiKeyId, apiKeyIdList)
       : sql`FALSE`;

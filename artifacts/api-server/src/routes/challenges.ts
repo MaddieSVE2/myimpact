@@ -4,6 +4,7 @@ import {
   challengesTable,
   challengeParticipantsTable,
   impactRecordsTable,
+  orgDeactivatedMembersTable,
   orgMembersTable,
   organisationsTable,
   usersTable,
@@ -13,6 +14,7 @@ import { randomUUID } from "crypto";
 import crypto from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { isDeactivatedFrom } from "../lib/orgDeactivation.js";
 import {
   getOrgSharingContext,
   sharedRecordsCondition,
@@ -26,6 +28,11 @@ type GoalType = (typeof GOAL_TYPES)[number];
 
 const SCOPES = ["personal", "org"] as const;
 type Scope = (typeof SCOPES)[number];
+
+/** A deactivated member loses their organisation's challenges, even one they set up. */
+async function deactivatedFromChallengeOrg(challenge: typeof challengesTable.$inferSelect, userId: string): Promise<boolean> {
+  return challenge.scope === "org" && !!challenge.orgId && isDeactivatedFrom(challenge.orgId, userId);
+}
 
 function generateInviteCode(): string {
   return crypto.randomBytes(6).toString("base64url").slice(0, 8).toUpperCase();
@@ -390,11 +397,18 @@ router.get("/mine", authenticate, async (req: AuthenticatedRequest, res) => {
       res.json({ challenges: [] }); return;
     }
 
-    const challenges = await db
+    const deactivatedFrom = new Set(
+      (await db
+        .select({ orgId: orgDeactivatedMembersTable.orgId })
+        .from(orgDeactivatedMembersTable)
+        .where(eq(orgDeactivatedMembersTable.userId, userId))).map((r) => r.orgId),
+    );
+    const challenges = (await db
       .select()
       .from(challengesTable)
       .where(inArray(challengesTable.id, myChallengeIds))
-      .orderBy(desc(challengesTable.createdAt));
+      .orderBy(desc(challengesTable.createdAt)))
+      .filter((c) => !(c.scope === "org" && c.orgId && deactivatedFrom.has(c.orgId)));
 
     const now = Date.now();
     const allParticipantsByChallenge = await db
@@ -481,7 +495,7 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     const participantIds = participantRows.map((r) => r.userId);
     const isParticipant = participantIds.includes(userId);
 
-    let canView = isParticipant || challenge.ownerId === userId;
+    let canView = (isParticipant || challenge.ownerId === userId) && !(await deactivatedFromChallengeOrg(challenge, userId));
     if (!canView && challenge.scope === "org" && challenge.orgId) {
       const membership = await db.query.orgMembersTable.findFirst({
         where: and(
@@ -613,7 +627,7 @@ router.post("/:id/end", authenticate, async (req: AuthenticatedRequest, res) => 
     });
     if (!challenge) { res.status(404).json({ error: "Challenge not found" }); return; }
 
-    let canEnd = challenge.ownerId === userId;
+    let canEnd = challenge.ownerId === userId && !(await deactivatedFromChallengeOrg(challenge, userId));
     if (!canEnd && challenge.scope === "org" && challenge.orgId) {
       const membership = await getOrgManagerMembership(userId);
       if (membership && membership.orgId === challenge.orgId) canEnd = true;
@@ -677,7 +691,7 @@ router.post("/:id/send-summary", authenticate, async (req: AuthenticatedRequest,
     });
     if (!challenge) { res.status(404).json({ error: "Challenge not found" }); return; }
 
-    let canSend = challenge.ownerId === userId;
+    let canSend = challenge.ownerId === userId && !(await deactivatedFromChallengeOrg(challenge, userId));
     if (!canSend && challenge.scope === "org" && challenge.orgId) {
       const membership = await getOrgManagerMembership(userId);
       if (membership && membership.orgId === challenge.orgId) canSend = true;

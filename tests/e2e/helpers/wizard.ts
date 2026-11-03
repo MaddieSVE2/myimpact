@@ -55,7 +55,9 @@ export async function completeWizardWithExtraHours(
   // The donations input is the first number input on the page.
   const numberInputs = page.locator('input[type="number"]');
   await numberInputs.first().fill(String(donations));
-  await numberInputs.nth(1).fill(String(hours));
+  // Hours are asked by the week first; the helper's figure is annual.
+  await page.getByTestId("general-hours-period-year").click();
+  await page.getByTestId("general-hours-amount").fill(String(hours));
   await page.getByRole("button", { name: /reveal my impact/i }).click();
 
   // Land on /results. The hero renders the total as a large currency

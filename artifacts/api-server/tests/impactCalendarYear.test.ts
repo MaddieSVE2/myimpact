@@ -111,6 +111,7 @@ vi.mock("@workspace/db", () => {
     "sharingOrgId", "lastSkippedAt", "createdAt",
   ]);
   const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role", "status"]);
+  const orgDeactivatedMembersTable = tableTag("org_deactivated_members", ["orgId", "userId"]);
   const organisationsTable = tableTag("organisations", ["id", "name", "dataSharingMode", "revokedAt"]);
   // Queried by /history (consented-logging badges) and group defaults; no
   // test here needs rows in them.
@@ -345,6 +346,9 @@ vi.mock("@workspace/db", () => {
           state.orgMembers.filter((r) => (opts?.where ? opts.where(r) : true)),
         ),
       },
+      orgDeactivatedMembersTable: {
+        findMany: vi.fn(async () => []),
+      },
       userProfilesTable: {
         findFirst: vi.fn(async (opts?: { where?: Pred }) => {
           const rows = state.userProfiles.filter((r) => (opts?.where ? opts.where(r) : true));
@@ -365,6 +369,7 @@ vi.mock("@workspace/db", () => {
     impactRecordsTable,
     recurringTemplatesTable,
     orgMembersTable,
+    orgDeactivatedMembersTable,
     organisationsTable,
     orgMatchRatesTable,
     journalEntriesTable,

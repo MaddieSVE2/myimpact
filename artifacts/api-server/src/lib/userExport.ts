@@ -1,6 +1,7 @@
 import {
   db,
   usersTable,
+  orgDeactivatedMembersTable,
   userProfilesTable,
   impactRecordsTable,
   journalEntriesTable,
@@ -144,6 +145,19 @@ export async function buildUserExport(userId: string): Promise<Record<string, un
     .leftJoin(organisationsTable, eq(orgMembersTable.orgId, organisationsTable.id))
     .where(eq(orgMembersTable.userId, userId));
 
+  const organisationDeactivations = await db
+    .select({
+      orgId: orgDeactivatedMembersTable.orgId,
+      orgName: organisationsTable.name,
+      role: orgDeactivatedMembersTable.role,
+      joinedAt: orgDeactivatedMembersTable.joinedAt,
+      deactivatedAt: orgDeactivatedMembersTable.deactivatedAt,
+      hoursWithdrawnAt: orgDeactivatedMembersTable.hoursWithdrawnAt,
+    })
+    .from(orgDeactivatedMembersTable)
+    .leftJoin(organisationsTable, eq(orgDeactivatedMembersTable.orgId, organisationsTable.id))
+    .where(eq(orgDeactivatedMembersTable.userId, userId));
+
   const groupMemberships = await db
     .select({
       groupId: orgGroupMembersTable.groupId,
@@ -237,6 +251,7 @@ export async function buildUserExport(userId: string): Promise<Record<string, un
     voiceUsage,
     textAiUsage,
     organisationMemberships: memberships,
+    organisationDeactivations,
     organisationGroupMemberships: groupMemberships,
     pulseSurveyResponses,
     pulseSurveyOptOuts,

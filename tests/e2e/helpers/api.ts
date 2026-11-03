@@ -104,13 +104,13 @@ export class TestApi {
   }
 
   /** Direct-create an organisation, bypassing the registration queue. */
-  async createOrg(name?: string, type?: string): Promise<{
+  async createOrg(name?: string, type?: string, contactEmail?: string, dataSharingMode?: string): Promise<{
     orgId: string;
     inviteCode: string;
     orgName: string;
   }> {
     const res = await this.ctx.post("/api/test/create-org", {
-      data: { name, type },
+      data: { name, type, contactEmail, dataSharingMode },
     });
     if (!res.ok()) {
       const body = await res.text();

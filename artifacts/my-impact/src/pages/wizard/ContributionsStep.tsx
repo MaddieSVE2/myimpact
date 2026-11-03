@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { RecurringTemplateDialog } from "@/components/results/RecurringTemplateDialog";
 import { formatPeriodRange } from "@/lib/report-period";
 import { NumberInput } from "@/components/ui/number-input";
+import { HoursEstimator } from "@/components/HoursEstimator";
+import { weeksInPeriod } from "@/lib/hours-estimate";
+import type { HoursBasis } from "@/lib/hours-estimate";
 import { LocationPicker } from "@/components/quicklog/LocationPicker";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 
@@ -24,6 +27,7 @@ export default function ContributionsStep() {
 
   const [donations, setDonations] = useState<number>(input.donationsGBP || 0);
   const [hours, setHours] = useState<number>(input.additionalVolunteerHours || 0);
+  const [hoursBasis, setHoursBasis] = useState<HoursBasis | undefined>();
   const [calcError, setCalcError] = useState<string | null>(null);
 
   const calculateMutation = useCalculateImpact();
@@ -200,14 +204,13 @@ export default function ContributionsStep() {
               {t("wizard.generalVolunteerHours")}
             </label>
             <p className="text-xs text-muted-foreground mb-3">{t("wizard.generalVolunteerHoursDesc")}</p>
-            <div className="relative">
-              <NumberInput min="0"
-                value={hours}
-                onChange={e => setHours(Number(e.target.value))}
-                className="w-full min-h-[44px] py-3 px-3 rounded-md bg-white border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{t("wizard.hours")}</span>
-            </div>
+            <HoursEstimator
+              value={hours}
+              basis={hoursBasis}
+              reportWeeks={weeksInPeriod(reportPeriod)}
+              onChange={(annual, basis) => { setHours(annual); setHoursBasis(basis); }}
+              testId="general-hours"
+            />
           </div>
         </div>
 

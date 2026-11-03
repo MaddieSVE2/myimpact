@@ -47,6 +47,9 @@ export const organisationsTable = pgTable("organisations", {
   // created at save time) — no manager verification queue step needed.
   // Journal entries live in a separate table and are never shared.
   autoVerifyActivities: boolean("auto_verify_activities").notNull().default(false),
+  // When true, people who join with the org's invite code or link become
+  // active members straight away, with no manager approval step.
+  autoApproveMembers: boolean("auto_approve_members").notNull().default(false),
   // Evidence policy for member activity submissions to this org:
   //   'required'     — a submission must include at least one evidence photo.
   //   'optional'     — evidence can be attached but isn't mandatory (default).
@@ -106,6 +109,26 @@ export const orgMembersTable = pgTable("org_members", {
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (table) => ({
   membershipUnique: unique("org_members_membership_unique").on(table.orgId, table.userId),
+}));
+
+// People a manager has deactivated. Their org_members row moves here, so every
+// membership check treats them as outside the organisation and they can join a
+// different one. This row stops them rejoining this organisation, holds what a
+// manager needs to reactivate them, and keeps what they logged before
+// `deactivatedAt` in the organisation's totals until they withdraw it
+// (`hoursWithdrawnAt`).
+export const orgDeactivatedMembersTable = pgTable("org_deactivated_members", {
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").notNull(),
+  // The groups they were in, restored on reactivation.
+  groups: jsonb("groups").$type<Array<{ groupId: string; role: string }>>().notNull().default([]),
+  deactivatedAt: timestamp("deactivated_at").defaultNow().notNull(),
+  hoursWithdrawnAt: timestamp("hours_withdrawn_at"),
+}, (t) => ({
+  membershipUnique: unique("org_deactivated_members_membership_unique").on(t.orgId, t.userId),
+  userIdx: index("org_deactivated_members_user_idx").on(t.userId),
 }));
 
 // Email invites sent by an org manager from Organisation settings → Members.

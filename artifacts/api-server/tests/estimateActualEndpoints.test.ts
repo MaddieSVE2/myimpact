@@ -74,6 +74,7 @@ vi.mock("drizzle-orm", () => {
     preds.some((p) => (typeof p === "function" ? p(row) : Boolean(p)));
   const inArray = (col: Col, vals: unknown[]): Pred => (row) => vals.includes(row[col.__col]);
   const isNotNull = (col: Col): Pred => (row) => row[col.__col] != null;
+  const isNull = (col: Col): Pred => (row) => row[col.__col] == null;
   const ilike = (col: Col, val: string): Pred => {
     const needle = String(val).replace(/%/g, "").toLowerCase();
     return (row) => String(row[col.__col] ?? "").toLowerCase().includes(needle);
@@ -92,7 +93,7 @@ vi.mock("drizzle-orm", () => {
   sql.join = (...args: unknown[]): SqlMarker => ({ __sql: true, chunks: args });
   const sum = (target: unknown) => ({ __agg: "sum", target });
   const max = (target: unknown) => ({ __agg: "max", target });
-  return { eq, gte, lte, lt, and, or, inArray, isNotNull, ilike, desc, asc, sql, sum, max };
+  return { eq, gte, lte, lt, and, or, inArray, isNotNull, isNull, ilike, desc, asc, sql, sum, max };
 });
 
 function tableTag(name: string, columns: string[]) {
@@ -118,6 +119,7 @@ vi.mock("@workspace/db", () => {
   const orgMembersTable = tableTag("org_members", ["id", "orgId", "userId", "role", "status"]);
   const organisationsTable = tableTag("organisations", ["id", "name", "dataSharingMode", "revokedAt", "dashboardSections", "autoVerifyActivities"]);
   const orgMemberConsentsTable = tableTag("org_member_consents", ["id", "orgId", "userId", "status", "shareFrom"]);
+  const orgDeactivatedMembersTable = tableTag("org_deactivated_members", ["orgId", "userId", "hoursWithdrawnAt"]);
   const orgMatchRatesTable = tableTag("org_match_rates", ["id", "orgId", "effectiveFrom"]);
   const journalEntriesTable = tableTag("journal_entries", ["id", "userId"]);
   const userProfilesTable = tableTag("user_profiles", ["id", "userId", "lastAckedStreakMilestone"]);
@@ -347,6 +349,9 @@ vi.mock("@workspace/db", () => {
         findFirst: vi.fn(async (opts?: { where?: Pred }) =>
           state.organisations.filter((r) => (opts?.where ? opts.where(r) : true))[0] ?? null),
       },
+      orgDeactivatedMembersTable: {
+        findMany: vi.fn(async () => []),
+      },
       orgMemberConsentsTable: {
         findMany: vi.fn(async (opts?: { where?: Pred }) =>
           state.orgMemberConsents.filter((r) => (opts?.where ? opts.where(r) : true))),
@@ -361,7 +366,7 @@ vi.mock("@workspace/db", () => {
 
   return {
     db, impactRecordsTable, recurringTemplatesTable, orgMembersTable,
-    organisationsTable, orgMemberConsentsTable, orgMatchRatesTable, journalEntriesTable,
+    organisationsTable, orgMemberConsentsTable, orgDeactivatedMembersTable, orgMatchRatesTable, journalEntriesTable,
     userProfilesTable, recordVerificationsTable, publicProfilesTable, usersTable,
   };
 });

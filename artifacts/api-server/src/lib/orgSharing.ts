@@ -1,5 +1,5 @@
-import { db, organisationsTable, orgMembersTable, orgMemberConsentsTable, impactRecordsTable } from "@workspace/db";
-import { and, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
+import { db, organisationsTable, orgMembersTable, orgMemberConsentsTable, orgDeactivatedMembersTable, impactRecordsTable } from "@workspace/db";
+import { and, eq, gte, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 
 /**
  * Helpers for the two organisation data-sharing modes and the super-admin
@@ -11,6 +11,10 @@ import { and, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
  *     an ACTIVE consent row, and only records dated on/after each member's
  *     shareFrom. Journals and pulse/wellbeing answers are never shared under
  *     either mode (they live in separate tables and are never queried here).
+ *
+ * Deactivated members count under the same rules for what they logged before
+ * they were deactivated, unless they have withdrawn it. Editing a record after
+ * that re-dates it past the cut-off (see the save route), so it stops counting.
  */
 
 export type DataSharingMode = "explicit_submission" | "consented_logging";
@@ -79,6 +83,8 @@ export interface OrgSharingContext {
    */
   memberIds: string[];
   shareFromByUser: Map<string, Date>;
+  /** Deactivated members whose records still count, with when they were deactivated. */
+  formerMembers: Map<string, Date>;
 }
 
 export async function getOrgSharingContext(orgId: string): Promise<OrgSharingContext> {
@@ -96,6 +102,12 @@ export async function getOrgSharingContext(orgId: string): Promise<OrgSharingCon
   });
   const activeMemberIds = members.map((m) => m.userId);
 
+  const deactivated = await db.query.orgDeactivatedMembersTable.findMany({
+    where: and(eq(orgDeactivatedMembersTable.orgId, orgId), isNull(orgDeactivatedMembersTable.hoursWithdrawnAt)),
+    columns: { userId: true, deactivatedAt: true },
+  });
+  const formerMembers = new Map(deactivated.map((d) => [d.userId, d.deactivatedAt]));
+
   const shareFromByUser = new Map<string, Date>();
   let memberIds = activeMemberIds;
 
@@ -107,13 +119,19 @@ export async function getOrgSharingContext(orgId: string): Promise<OrgSharingCon
     const activeSet = new Set(activeMemberIds);
     memberIds = [];
     for (const c of consents) {
-      if (!activeSet.has(c.userId)) continue;
-      memberIds.push(c.userId);
-      shareFromByUser.set(c.userId, c.shareFrom);
+      if (activeSet.has(c.userId)) {
+        memberIds.push(c.userId);
+        shareFromByUser.set(c.userId, c.shareFrom);
+      } else if (formerMembers.has(c.userId)) {
+        shareFromByUser.set(c.userId, c.shareFrom);
+      }
+    }
+    for (const userId of formerMembers.keys()) {
+      if (!shareFromByUser.has(userId)) formerMembers.delete(userId);
     }
   }
 
-  return { orgId, mode, revoked, sections, memberIds, shareFromByUser };
+  return { orgId, mode, revoked, sections, memberIds, shareFromByUser, formerMembers };
 }
 
 /**
@@ -141,21 +159,18 @@ export function recordInSharedWindow(ctx: OrgSharingContext, userId: string, ent
  * Returns undefined when no members share anything (caller should short-circuit).
  */
 export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined {
-  if (ctx.memberIds.length === 0) return undefined;
   if (ctx.mode !== "consented_logging") {
-    return and(
-      inArray(impactRecordsTable.userId, ctx.memberIds),
-      onlyThisOrgsSubmissionsCondition(ctx.orgId),
-      notOrgTwinCondition(ctx.orgId),
-    );
+    return orgVisibleMemberRecordsCondition(ctx.orgId, ctx.memberIds, ctx.formerMembers);
   }
   const parts: SQL[] = [];
-  for (const userId of ctx.memberIds) {
+  for (const userId of [...ctx.memberIds, ...ctx.formerMembers.keys()]) {
     const from = ctx.shareFromByUser.get(userId);
     if (!from) continue;
+    const deactivatedAt = ctx.formerMembers.get(userId);
     const cond = and(
       eq(impactRecordsTable.userId, userId),
       gte(impactRecordsTable.entryDate, startOfActivityDay(from)),
+      deactivatedAt ? lte(impactRecordsTable.createdAt, deactivatedAt) : undefined,
     );
     if (cond) parts.push(cond);
   }
@@ -165,6 +180,24 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
     onlyThisOrgsSubmissionsCondition(ctx.orgId),
     notOrgTwinCondition(ctx.orgId),
   );
+}
+
+/**
+ * Leaves out deactivated members who withdrew their hours, for surfaces that
+ * select records by what was submitted to the org instead of by who is a member.
+ */
+export function notWithdrawnCondition(orgId: string): SQL {
+  return sql`NOT EXISTS (
+    SELECT 1 FROM ${orgDeactivatedMembersTable} AS withdrawn
+    WHERE withdrawn.org_id = ${orgId}
+      AND withdrawn.user_id = ${impactRecordsTable.userId}
+      AND withdrawn.hours_withdrawn_at IS NOT NULL
+  )`;
+}
+
+/** People behind `records` who are still members, for counts shown against the member total. */
+export function currentContributorCount(ctx: OrgSharingContext, records: Array<{ userId: string }>): number {
+  return new Set(records.map((r) => r.userId).filter((userId) => !ctx.formerMembers.has(userId))).size;
 }
 
 /**
@@ -234,15 +267,24 @@ export function notOrgTwinCondition(orgId: string): SQL {
 }
 
 /**
- * Full record-visibility condition for org-facing surfaces that filter by an
- * explicit member list (public share links, match sets, digests): member's
+ * Full record-visibility condition for an explicit member list: member's
  * records, minus submissions belonging to OTHER orgs, minus personal twins of
  * this org's submissions (incl. report shares) so nothing is double-counted.
+ * `formerMembers` adds what deactivated members logged before that date.
  */
-export function orgVisibleMemberRecordsCondition(orgId: string, memberIds: string[]): SQL | undefined {
-  if (memberIds.length === 0) return undefined;
+export function orgVisibleMemberRecordsCondition(
+  orgId: string,
+  memberIds: string[],
+  formerMembers: ReadonlyMap<string, Date> = new Map(),
+): SQL | undefined {
+  if (memberIds.length === 0 && formerMembers.size === 0) return undefined;
   return and(
-    inArray(impactRecordsTable.userId, memberIds),
+    or(
+      memberIds.length > 0 ? inArray(impactRecordsTable.userId, memberIds) : undefined,
+      ...[...formerMembers].map(([userId, deactivatedAt]) =>
+        and(eq(impactRecordsTable.userId, userId), lte(impactRecordsTable.createdAt, deactivatedAt)),
+      ),
+    ),
     onlyThisOrgsSubmissionsCondition(orgId),
     notOrgTwinCondition(orgId),
   );

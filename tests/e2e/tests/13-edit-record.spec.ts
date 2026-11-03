@@ -55,7 +55,8 @@ test.describe("Spec 13 — edit a saved record in place from History", () => {
     await page.waitForURL(/\/wizard\/contributions/);
     const numberInputs = page.locator('input[type="number"]');
     await numberInputs.first().fill("50");
-    await numberInputs.nth(1).fill("5");
+    await page.getByTestId("general-hours-period-year").click();
+    await page.getByTestId("general-hours-amount").fill("5");
     await page.getByRole("button", { name: /reveal my impact/i }).click();
 
     await page.waitForURL(/\/results/, { timeout: 30_000 });

@@ -10,6 +10,7 @@ vi.mock("@workspace/db", async () => {
 });
 
 const {
+  currentContributorCount,
   sharedRecordsCondition,
   notOrgTwinCondition,
   orgVisibleMemberRecordsCondition,
@@ -37,6 +38,7 @@ function makeCtx(overrides: Partial<OrgSharingContext> = {}): OrgSharingContext 
     },
     memberIds: ["user-1"],
     shareFromByUser: new Map([["user-1", new Date("2026-01-01T00:00:00Z")]]),
+    formerMembers: new Map(),
     ...overrides,
   };
 }
@@ -111,6 +113,38 @@ describe("sharedRecordsCondition", () => {
     expect(q.params).toContain("org-1");
   });
 
+  it("explicit mode: a deactivated member counts only for what they logged before being deactivated", () => {
+    const deactivatedAt = new Date("2026-06-01T12:00:00.000Z");
+    const cond = sharedRecordsCondition(makeCtx({
+      mode: "explicit_submission",
+      memberIds: [],
+      shareFromByUser: new Map(),
+      formerMembers: new Map([["former-1", deactivatedAt]]),
+    }));
+    const q = render(cond!);
+    expect(q.sql).toContain(`"created_at" <= `);
+    expect(q.params).toContain("former-1");
+    expect(q.params).toContain(deactivatedAt.toISOString());
+  });
+
+  it("consented mode: a deactivated member keeps their share window and gains the same cut-off", () => {
+    const deactivatedAt = new Date("2026-06-01T12:00:00.000Z");
+    const cond = sharedRecordsCondition(makeCtx({
+      memberIds: [],
+      shareFromByUser: new Map([["former-1", new Date("2026-01-01T00:00:00Z")]]),
+      formerMembers: new Map([["former-1", deactivatedAt]]),
+    }));
+    const q = render(cond!);
+    expect(q.sql).toContain(`"entry_date" >= `);
+    expect(q.sql).toContain(`"created_at" <= `);
+    expect(q.params).toContain(deactivatedAt.toISOString());
+  });
+
+  it("the cut-off applies only to deactivated members", () => {
+    const q = render(sharedRecordsCondition(makeCtx({ mode: "explicit_submission", shareFromByUser: new Map() }))!);
+    expect(q.sql).not.toContain(`"created_at" <= `);
+  });
+
   it("both modes scope org submissions to THIS org (no cross-org leakage for multi-org members)", () => {
     // A member of Org A and Org B: records submitted to Org A (member
     // submissions, report shares, attested rows — submitted_to_org_id set)
@@ -126,6 +160,14 @@ describe("sharedRecordsCondition", () => {
       // The scoping param is the requesting org's id.
       expect(q.params.filter(p => p === "org-1").length).toBeGreaterThanOrEqual(2);
     }
+  });
+});
+
+describe("currentContributorCount", () => {
+  it("leaves out deactivated members whose hours still count", () => {
+    const ctx = makeCtx({ formerMembers: new Map([["former-1", new Date("2026-01-01")]]) });
+    const records = [{ userId: "a" }, { userId: "a" }, { userId: "b" }, { userId: "former-1" }];
+    expect(currentContributorCount(ctx, records)).toBe(2);
   });
 });
 

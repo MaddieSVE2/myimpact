@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { NumberInput } from "@/components/ui/number-input";
+import { HoursEstimator } from "@/components/HoursEstimator";
+import { weeksInPeriod, withoutYearPhrase, type HoursBasis } from "@/lib/hours-estimate";
 import { CONTENT_CONTAINER } from "@/lib/layout";
 
 interface PreviousActivity {
@@ -63,7 +65,8 @@ interface PendingCustomActivity {
 
 export default function ActivitiesStep() {
   const [, setLocation] = useLocation();
-  const { input, interests, customInterests, customInterestCategories, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode } = useWizard();
+  const { input, interests, customInterests, customInterestCategories, addActivity, removeActivity, customActivities, addCustomActivity, removeCustomActivity, activitySelection, setActivitySelection, activityMode: wizardActivityMode, setActivityMode: setWizardActivityMode, reportPeriod } = useWizard();
+  const reportWeeks = weeksInPeriod(reportPeriod);
   const { data, isLoading } = useGetActivities();
   const { isLoggedIn } = useAuth();
 
@@ -136,19 +139,11 @@ export default function ActivitiesStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Session calculator (gap 2 fix)
-  const [showSessionCalc, setShowSessionCalc] = useState(false);
-  const [sessionHrs, setSessionHrs] = useState(2);
-  const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
-  const [weeksPerYear, setWeeksPerYear] = useState(40);
-
-  // Reset session calc when moving to a new activity
-  useEffect(() => {
-    setShowSessionCalc(false);
-    setSessionHrs(2);
-    setSessionsPerWeek(1);
-    setWeeksPerYear(40);
-  }, [quantifyIndex]);
+  // How each hours answer was given (per week, month or year), keyed by
+  // activity id, so moving between activities keeps what the person typed.
+  const [hourBases, setHourBases] = useState<Record<string, HoursBasis>>({});
+  const setHourBasis = (key: string, basis: HoursBasis) => setHourBases(b => ({ ...b, [key]: basis }));
+  const clearHourBasis = (key: string) => setHourBases(({ [key]: _cleared, ...rest }) => rest);
 
   // Sync selection state back to context for draft persistence
   useEffect(() => {
@@ -341,6 +336,7 @@ export default function ActivitiesStep() {
       setQuantities(q => ({ ...q, [prev.activityId]: prev.quantity }));
       setHours(h => ({ ...h, [prev.activityId]: prev.hoursPerYear }));
     });
+    setHourBases({});
     setPrefillDismissed(true);
   };
 
@@ -349,6 +345,7 @@ export default function ActivitiesStep() {
     setAnalysing(true);
     setAnalyseError("");
     setAnalysed(null);
+    clearHourBasis("custom");
     try {
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${base}/api/custom-activity/analyse`, {
@@ -409,6 +406,7 @@ export default function ActivitiesStep() {
     // Reset any stale pending state from a previous describe submission
     setPendingCustomActivities([]);
     setPendingCustomQuantities({});
+    setHourBases({});
 
     try {
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -912,29 +910,42 @@ export default function ActivitiesStep() {
                                 >
                                   <div className="flex items-start gap-2">
                                     <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
-                                    <p className="text-sm font-medium text-foreground leading-snug">{analysed.friendlyQuestion}</p>
+                                    <p className="text-sm font-medium text-foreground leading-snug">
+                                      {analysed.unit === "hour" ? withoutYearPhrase(analysed.friendlyQuestion) : analysed.friendlyQuestion}
+                                    </p>
                                   </div>
-                                  <div className="flex items-center gap-3">
-                                    {analysed.unit === "pound" ? (
-                                      <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
-                                        <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
+                                  {analysed.unit === "hour" ? (
+                                    <HoursEstimator
+                                      value={customQuantity}
+                                      basis={hourBases.custom}
+                                      startingValue={analysed.defaultQuantity}
+                                      reportWeeks={reportWeeks}
+                                      onChange={(annual, basis) => { setCustomQuantity(annual); setHourBasis("custom", basis); }}
+                                      testId="custom-hours"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center gap-3">
+                                      {analysed.unit === "pound" ? (
+                                        <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary">
+                                          <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
+                                          <NumberInput
+                                            min="1"
+                                            value={customQuantity}
+                                            onChange={e => setCustomQuantity(Number(e.target.value))}
+                                            className="w-20 py-2.5 pr-2.5 bg-transparent text-base font-semibold text-center focus:outline-none"
+                                          />
+                                        </div>
+                                      ) : (
                                         <NumberInput
                                           min="1"
                                           value={customQuantity}
                                           onChange={e => setCustomQuantity(Number(e.target.value))}
-                                          className="w-20 py-2.5 pr-2.5 bg-transparent text-base font-semibold text-center focus:outline-none"
+                                          className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
                                         />
-                                      </div>
-                                    ) : (
-                                      <NumberInput
-                                        min="1"
-                                        value={customQuantity}
-                                        onChange={e => setCustomQuantity(Number(e.target.value))}
-                                        className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                                      />
-                                    )}
-                                    <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
-                                  </div>
+                                      )}
+                                      <span className="text-sm text-muted-foreground">{analysed.unitLabel}</span>
+                                    </div>
+                                  )}
 
                                   {/* Proxy match badge */}
                                   {analysed.proxyMatch && (
@@ -1090,7 +1101,7 @@ export default function ActivitiesStep() {
 
                       <div className="bg-muted/30 rounded-lg p-4">
                         <p className="text-sm font-medium text-foreground mb-3">
-                          {currentActivity.friendlyQuestion}
+                          {currentActivity.unit === "hour" ? withoutYearPhrase(currentActivity.friendlyQuestion) : currentActivity.friendlyQuestion}
                         </p>
 
                         {currentActivity.unit === "household" ? (
@@ -1101,68 +1112,17 @@ export default function ActivitiesStep() {
                             <span className="text-sm text-foreground">Yes, I do this</span>
                           </div>
                         ) : currentActivity.unit === "hour" ? (
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <NumberInput
-                                min="1"
-                                value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20}
-                                onChange={e => setQuantities(q => ({ ...q, [currentActivity.id]: Number(e.target.value) }))}
-                                className="w-28 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                              />
-                              <span className="text-sm text-muted-foreground">hours per year</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              That's roughly {Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20) / 52 * 10) / 10} hours a week
-                            </p>
-                            {!showSessionCalc ? (
-                              <button
-                                type="button"
-                                onClick={() => setShowSessionCalc(true)}
-                                className="mt-2 text-xs text-primary/70 hover:text-primary underline underline-offset-2 transition-colors"
-                              >
-                                Calculate from sessions instead
-                              </button>
-                            ) : (
-                              <div className="mt-3 bg-white border border-border rounded-md p-3 space-y-2">
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Sessions per year</p>
-                                <div className="flex flex-wrap items-center gap-2 text-sm">
-                                  <NumberInput min="0.5" step="0.5"
-                                    value={sessionHrs}
-                                    onChange={e => {
-                                      const v = Number(e.target.value);
-                                      setSessionHrs(v);
-                                      setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(v * sessionsPerWeek * weeksPerYear) }));
-                                    }}
-                                    className="bg-white w-16 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                                  />
-                                  <span className="text-muted-foreground text-xs">hrs/session ×</span>
-                                  <NumberInput min="1"
-                                    value={sessionsPerWeek}
-                                    onChange={e => {
-                                      const v = Number(e.target.value);
-                                      setSessionsPerWeek(v);
-                                      setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * v * weeksPerYear) }));
-                                    }}
-                                    className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                                  />
-                                  <span className="text-muted-foreground text-xs">×</span>
-                                  <NumberInput min="1" max="52"
-                                    value={weeksPerYear}
-                                    onChange={e => {
-                                      const v = Number(e.target.value);
-                                      setWeeksPerYear(v);
-                                      setQuantities(q => ({ ...q, [currentActivity.id]: Math.round(sessionHrs * sessionsPerWeek * v) }));
-                                    }}
-                                    className="bg-white w-14 p-1.5 rounded border border-border text-sm font-semibold text-center focus:border-primary outline-none"
-                                  />
-                                  <span className="text-muted-foreground text-xs">weeks =</span>
-                                  <span className="font-bold text-foreground text-sm">
-                                    {Math.round(sessionHrs * sessionsPerWeek * weeksPerYear)} hrs/yr
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <HoursEstimator
+                            value={quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 20}
+                            basis={hourBases[currentActivity.id]}
+                            startingValue={currentActivity.defaultQuantity ?? 20}
+                            reportWeeks={reportWeeks}
+                            onChange={(annual, basis) => {
+                              setQuantities(q => ({ ...q, [currentActivity.id]: annual }));
+                              setHourBasis(currentActivity.id, basis);
+                            }}
+                            testId="activity-hours"
+                          />
                         ) : (
                           <div>
                             <div className="flex items-center gap-3">
@@ -1184,18 +1144,20 @@ export default function ActivitiesStep() {
                             )}
                             <div className="mt-4">
                               <p className="text-sm font-medium text-foreground mb-2">
-                                Approximate hours per year
+                                Approximate hours
                               </p>
-                              <div className="flex items-center gap-3">
-                                <NumberInput
-                                  min="1"
-                                  value={hours[currentActivity.id] ?? Math.max(1, Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1) * 2))}
-                                  onChange={e => setHours(h => ({ ...h, [currentActivity.id]: Number(e.target.value) }))}
-                                  className="w-24 p-2.5 rounded-md bg-white border border-border text-base font-semibold text-center focus:border-primary outline-none"
-                                />
-                                <span className="text-sm text-muted-foreground">hours per year</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <HoursEstimator
+                                value={hours[currentActivity.id] ?? Math.max(1, Math.round((quantities[currentActivity.id] ?? currentActivity.defaultQuantity ?? 1) * 2))}
+                                basis={hourBases[currentActivity.id]}
+                                startingValue={Math.max(1, Math.round((currentActivity.defaultQuantity ?? 1) * 2))}
+                                reportWeeks={reportWeeks}
+                                onChange={(annual, basis) => {
+                                  setHours(h => ({ ...h, [currentActivity.id]: annual }));
+                                  setHourBasis(currentActivity.id, basis);
+                                }}
+                                testId="activity-hours"
+                              />
+                              <p className="text-xs text-muted-foreground mt-2">
                                 Used to track volunteering hours for your DofE record
                               </p>
                             </div>
@@ -1236,11 +1198,23 @@ export default function ActivitiesStep() {
                         <div className="flex items-start gap-2 mb-3">
                           <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand-orange)" }} />
                           <p className="text-sm font-medium text-foreground leading-snug">
-                            {pendingItem.analysed.friendlyQuestion}
+                            {pendingItem.analysed.unit === "hour" ? withoutYearPhrase(pendingItem.analysed.friendlyQuestion) : pendingItem.analysed.friendlyQuestion}
                           </p>
                         </div>
 
-                        {pendingItem.analysed.unit === "pound" ? (
+                        {pendingItem.analysed.unit === "hour" ? (
+                          <HoursEstimator
+                            value={pendingCustomQuantities[pendingIndex] ?? pendingItem.analysed.defaultQuantity}
+                            basis={hourBases[`pending_${pendingIndex}`]}
+                            startingValue={pendingItem.analysed.defaultQuantity}
+                            reportWeeks={reportWeeks}
+                            onChange={(annual, basis) => {
+                              setPendingCustomQuantities(q => ({ ...q, [pendingIndex]: annual }));
+                              setHourBasis(`pending_${pendingIndex}`, basis);
+                            }}
+                            testId="activity-hours"
+                          />
+                        ) : pendingItem.analysed.unit === "pound" ? (
                           <div className="flex items-center border border-border rounded-md bg-white focus-within:border-primary w-fit">
                             <span className="pl-2.5 pr-1 text-base font-semibold text-foreground">£</span>
                             <NumberInput

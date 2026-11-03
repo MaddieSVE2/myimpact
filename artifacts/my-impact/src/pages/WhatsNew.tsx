@@ -25,7 +25,7 @@ import {
   ShieldCheck, MessageSquare, Map, Activity, Globe, Lock, Wrench,
   Languages, Mic, Film, Camera,
   CalendarRange, ThumbsUp, MapPin, LineChart, FileSpreadsheet, Search,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, UserX,
 } from "lucide-react";
 
 const C = {
@@ -113,6 +113,11 @@ const RELEASES: Release[] = [
             title: "Preview before you save",
             desc: "Photo Quick Log lets you check or retake your picture before attaching it to your activity.",
           },
+          {
+            icon: <CalendarRange className="w-5 h-5" />,
+            title: "Estimate hours by week or month",
+            desc: "Your impact report now takes hours by the week, month or year, asks how much of the year that covers, and works out the yearly total for you.",
+          },
         ],
       },
       {
@@ -151,6 +156,16 @@ const RELEASES: Release[] = [
             icon: <Building2 className="w-5 h-5" />,
             title: "Clearer organisation actions",
             desc: "Organisation members now get plainer guidance on recording for themselves, sharing evidence, answering pulses and joining challenges.",
+          },
+          {
+            icon: <UserPlus className="w-5 h-5" />,
+            title: "Approve new members automatically",
+            desc: "Organisations can now let people join straight away with their join link, so nobody waits for a manager to come back online.",
+          },
+          {
+            icon: <UserX className="w-5 h-5" />,
+            title: "Deactivate members",
+            desc: "Managers can now deactivate a member from the Members list. They lose access and can't rejoin with the join link, the hours they've logged stay in your totals, and you can reactivate them at any time.",
           },
           {
             icon: <Share2 className="w-5 h-5" />,

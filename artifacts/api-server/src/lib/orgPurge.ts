@@ -2,6 +2,7 @@ import {
   db,
   organisationsTable,
   orgMembersTable,
+  orgDeactivatedMembersTable,
   orgRegistrationsTable,
   orgMemberConsentsTable,
   orgInvitesTable,
@@ -36,7 +37,7 @@ import { deleteAttachment } from "./objectStorage.js";
  * eligible for deletion. This job enforces that promise.
  *
  * What gets purged (org-owned data):
- *   the organisations row, memberships, consents, invites, match rates,
+ *   the organisations row, memberships (+ deactivated ones), consents, invites, match rates,
  *   share links, API keys, webhooks (+ pending deliveries), subscriptions,
  *   SSO configs, surveys (+ responses and opt-outs), record verifications,
  *   migrations (+ migrated activities), the org audit log, org-scoped
@@ -93,6 +94,7 @@ export async function purgeOrganisation(org: Organisation, opts: { dryRun?: bool
   const outcome = await db.transaction(async (tx) => {
     // ── Collect every org-owned row ─────────────────────────────────────
     const members = await tx.select().from(orgMembersTable).where(eq(orgMembersTable.orgId, org.id));
+    const deactivatedMembers = await tx.select().from(orgDeactivatedMembersTable).where(eq(orgDeactivatedMembersTable.orgId, org.id));
     // The approval flow stamps the registration with the org's invite code —
     // that row keeps the org's name/contact PII, so it is purged too.
     const registrations = await tx
@@ -145,6 +147,7 @@ export async function purgeOrganisation(org: Organisation, opts: { dryRun?: bool
       organisation: org,
       orgRegistrations: registrations,
       orgMembers: members,
+      orgDeactivatedMembers: deactivatedMembers,
       orgMemberConsents: consents,
       orgInvites: invites,
       orgMatchRates: matchRates,
@@ -210,6 +213,7 @@ export async function purgeOrganisation(org: Organisation, opts: { dryRun?: bool
     await tx.delete(orgInvitesTable).where(eq(orgInvitesTable.orgId, org.id));
     await tx.delete(orgMemberConsentsTable).where(eq(orgMemberConsentsTable.orgId, org.id));
     await tx.delete(orgMembersTable).where(eq(orgMembersTable.orgId, org.id));
+    await tx.delete(orgDeactivatedMembersTable).where(eq(orgDeactivatedMembersTable.orgId, org.id));
     await tx.delete(orgAuditLogTable).where(eq(orgAuditLogTable.orgId, org.id));
     // Verifications reference impact records — delete them before the twins.
     await tx.delete(recordVerificationsTable).where(eq(recordVerificationsTable.orgId, org.id));

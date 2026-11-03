@@ -17,6 +17,7 @@ import { createRateLimiter } from "../lib/rateLimiter.js";
 import { checkAgeGate } from "./auth.js";
 import { trackServerEvent } from "../lib/analytics.js";
 import { recordAuditEvent } from "../lib/auditLog.js";
+import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom } from "../lib/orgDeactivation.js";
 
 const router: IRouter = Router();
 
@@ -644,7 +645,9 @@ router.get("/:provider/callback", async (req, res) => {
   renderResultPage(res, {
     ok: true,
     title: "Signed in",
-    message: `Welcome, ${identity.name ?? identity.email}. Taking you to ${linked.name}…`,
+    message: linked.deactivated
+      ? `Welcome, ${identity.name ?? identity.email}. ${DEACTIVATED_MEMBER_MESSAGE}`
+      : `Welcome, ${identity.name ?? identity.email}. Taking you to ${linked.name}…`,
     redirectTo: payload.returnTo ?? "/",
   });
 });
@@ -652,13 +655,14 @@ router.get("/:provider/callback", async (req, res) => {
 /**
  * Verify the org still exists and link the user as a member (if not already
  * a member elsewhere). Renders an error page and returns null on failure;
- * returns the org row on success.
+ * returns the org row on success. Someone deactivated from the org isn't linked,
+ * but still signs in: their account is theirs, and SSO may be the only way in.
  */
 async function linkUserToOrg(
   res: Response,
   user: { id: string },
   orgId: string,
-): Promise<{ id: string; name: string } | null> {
+): Promise<{ id: string; name: string; deactivated?: boolean } | null> {
   const org = await db.query.organisationsTable.findFirst({
     where: eq(organisationsTable.id, orgId),
   });
@@ -672,12 +676,16 @@ async function linkUserToOrg(
   });
 
   if (!existingMembership) {
+    if (await isDeactivatedFrom(org.id, user.id)) {
+      return { ...org, deactivated: true };
+    }
     // Auto-join as a member (role = 'member' per task spec).
     try {
       await db.insert(orgMembersTable).values({
         orgId: org.id,
         userId: user.id,
         role: "member",
+        status: org.autoApproveMembers ? "active" : "pending",
       });
     } catch (err) {
       console.error("Failed to auto-link SSO user to org:", err);
@@ -860,7 +868,7 @@ router.post("/complete-signup", async (req, res) => {
   renderResultPage(res, {
     ok: true,
     title: "Signed in",
-    message: linked
+    message: linked && !linked.deactivated
       ? `Welcome, ${pending.name ?? pending.email}. Taking you to ${linked.name}…`
       : `Welcome, ${pending.name ?? pending.email}.`,
     redirectTo: (isSafePath(pending.returnTo) ? pending.returnTo : null) ?? "/",

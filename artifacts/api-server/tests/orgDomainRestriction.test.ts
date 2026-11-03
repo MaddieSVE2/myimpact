@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   // calls it twice (existing membership in this org, then any membership in
   // another org) and the settings route calls it once.
   membershipQueue: [] as Array<Record<string, unknown> | null>,
+  // db.query.orgDeactivatedMembersTable.findFirst() result.
+  deactivated: null as Record<string, unknown> | null,
   // db.query.organisationsTable.findFirst() result (the org being joined).
   organisation: null as Record<string, unknown> | null,
   // db.query.orgRegistrationsTable.findFirst() result.
@@ -43,10 +45,13 @@ vi.mock("@workspace/db", () => {
     return b;
   }
 
-  const db = {
+  const db: Record<string, unknown> = {
     query: {
       orgMembersTable: {
         findFirst: vi.fn(async () => state.membershipQueue.shift() ?? null),
+      },
+      orgDeactivatedMembersTable: {
+        findFirst: vi.fn(async () => state.deactivated),
       },
       organisationsTable: {
         findFirst: vi.fn(async () => state.organisation),
@@ -87,13 +92,15 @@ vi.mock("@workspace/db", () => {
     delete: (_table: { __tableName: string }) => ({
       where: () => Promise.resolve(undefined),
     }),
-    transaction: async (cb: (tx: unknown) => unknown) => cb({}),
+    execute: async () => undefined,
+    transaction: async (cb: (tx: unknown) => unknown): Promise<unknown> => cb(db),
   };
 
   return {
     db,
     organisationsTable: tableTag("organisations"),
     orgMembersTable: tableTag("org_members"),
+    orgDeactivatedMembersTable: tableTag("org_deactivated_members"),
     impactRecordsTable: tableTag("impact_records"),
     orgRegistrationsTable: tableTag("org_registrations"),
     orgMatchRatesTable: tableTag("org_match_rates"),
@@ -196,12 +203,14 @@ const fullOrgRow = {
   sroiCostAdmin: null,
   summaryYearStart: "01-01",
   autoVerifyActivities: false,
+  autoApproveMembers: false,
   evidencePolicy: "optional",
 };
 
 beforeEach(() => {
   state.authUser = null;
   state.membershipQueue.length = 0;
+  state.deactivated = null;
   state.organisation = null;
   state.registration = null;
   state.inserts.length = 0;
@@ -307,6 +316,78 @@ describe("PATCH /api/org/my/settings — allowedDomain", () => {
     const res = await request(makeApp())
       .patch("/api/org/my/settings")
       .send({ allowedDomain: "acme.org" });
+    expect(res.status).toBe(403);
+    expect(state.updates).toHaveLength(0);
+  });
+});
+
+describe("POST /api/org/join — new member approval", () => {
+  const joinBody = { inviteCode: "ACME1234", orgId: "org-1" };
+
+  async function join(organisation: Record<string, unknown>, email = "volunteer@anywhere.net") {
+    state.authUser = { id: "user-1", email };
+    state.organisation = organisation;
+    state.membershipQueue.push(null, null);
+    return request(makeApp()).post("/api/org/join").send(joinBody);
+  }
+
+  it("leaves a new member pending by default", async () => {
+    const res = await join({ ...baseOrg, autoApproveMembers: false });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("pending");
+    expect(state.inserts.find((i) => i.table === "org_members")?.values).toMatchObject({ role: "member", status: "pending" });
+  });
+
+  it("stops someone a manager deactivated from rejoining, even with auto-approval on", async () => {
+    state.deactivated = { userId: "user-1" };
+    const res = await join({ ...baseOrg, autoApproveMembers: true });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/deactivated/);
+    expect(state.inserts.find((i) => i.table === "org_members")).toBeUndefined();
+  });
+
+  it("makes a new member active straight away when the org auto-approves", async () => {
+    const res = await join({ ...baseOrg, autoApproveMembers: true });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("active");
+    expect(state.inserts.find((i) => i.table === "org_members")?.values).toMatchObject({ role: "member", status: "active" });
+  });
+
+  it("still enforces allowedDomain when the org auto-approves", async () => {
+    state.authUser = { id: "user-1", email: "intruder@evil.com" };
+    state.organisation = { ...baseOrg, autoApproveMembers: true, allowedDomain: "acme.org" };
+    const res = await request(makeApp()).post("/api/org/join").send(joinBody);
+    expect(res.status).toBe(403);
+    expect(state.inserts.filter((i) => i.table === "org_members")).toHaveLength(0);
+  });
+});
+
+describe("PATCH /api/org/my/settings — autoApproveMembers", () => {
+  function asManager() {
+    state.authUser = { id: "mgr-1", email: "owner@acme.org" };
+    state.membershipQueue.push({ orgId: "org-1", userId: "mgr-1", role: "manager", status: "active" });
+  }
+
+  it("stores the setting and returns it", async () => {
+    asManager();
+    state.updateReturning = [{ ...fullOrgRow, autoApproveMembers: true }];
+    const res = await request(makeApp()).patch("/api/org/my/settings").send({ autoApproveMembers: true });
+    expect(res.status).toBe(200);
+    expect((state.updates[0].values as { autoApproveMembers?: boolean }).autoApproveMembers).toBe(true);
+    expect(res.body.org.autoApproveMembers).toBe(true);
+  });
+
+  it("rejects a non-boolean value with 400", async () => {
+    asManager();
+    const res = await request(makeApp()).patch("/api/org/my/settings").send({ autoApproveMembers: "yes" });
+    expect(res.status).toBe(400);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it("rejects non-managers with 403", async () => {
+    state.authUser = { id: "user-1", email: "volunteer@anywhere.net" };
+    state.membershipQueue.push({ orgId: "org-1", userId: "user-1", role: "member", status: "active" });
+    const res = await request(makeApp()).patch("/api/org/my/settings").send({ autoApproveMembers: true });
     expect(res.status).toBe(403);
     expect(state.updates).toHaveLength(0);
   });

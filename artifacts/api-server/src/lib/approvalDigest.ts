@@ -6,8 +6,9 @@ import {
   recordVerificationsTable,
   aiAlertStateTable,
   usersTable,
+  orgDeactivatedMembersTable,
 } from "@workspace/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getUncachableResendClient } from "./resend.js";
 import { orgVisibleMemberRecordsCondition } from "./orgSharing.js";
 
@@ -39,14 +40,17 @@ interface OrgPendingSummary {
 }
 
 // Mirrors the eligibility rules used by GET /api/org/verifications/pending:
-// records logged by current members since they joined, with no verification
-// row for this org yet.
+// records logged by current members since they joined, and by deactivated
+// members until they were deactivated, with no verification row for this org yet.
 async function getPendingSummary(orgId: string, orgName: string): Promise<OrgPendingSummary | null> {
   const members = await db.query.orgMembersTable.findMany({
     where: eq(orgMembersTable.orgId, orgId),
   });
   if (members.length === 0) return null;
-  const memberMap = new Map(members.map(m => [m.userId, m]));
+  const former = await db.query.orgDeactivatedMembersTable.findMany({
+    where: and(eq(orgDeactivatedMembersTable.orgId, orgId), isNull(orgDeactivatedMembersTable.hoursWithdrawnAt)),
+  });
+  const joinedAt = new Map([...members, ...former].map(m => [m.userId, m.joinedAt]));
 
   const records = await db
     .select({
@@ -55,11 +59,11 @@ async function getPendingSummary(orgId: string, orgName: string): Promise<OrgPen
       createdAt: impactRecordsTable.createdAt,
     })
     .from(impactRecordsTable)
-    .where(orgVisibleMemberRecordsCondition(orgId, members.map(m => m.userId))!);
+    .where(orgVisibleMemberRecordsCondition(orgId, members.map(m => m.userId), new Map(former.map(f => [f.userId, f.deactivatedAt])))!);
 
   const eligible = records.filter(r => {
-    const m = memberMap.get(r.userId);
-    return m && new Date(r.createdAt) >= new Date(m.joinedAt);
+    const joined = joinedAt.get(r.userId);
+    return joined && new Date(r.createdAt) >= new Date(joined);
   });
   if (eligible.length === 0) return null;
 

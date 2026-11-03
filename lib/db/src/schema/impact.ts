@@ -1,4 +1,5 @@
 import { pgTable, text, serial, numeric, integer, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -143,6 +144,7 @@ export const impactRecordsTable = pgTable("impact_records", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   userEntryDateIdx: index("impact_records_user_entry_date_idx").on(t.userId, t.entryDate),
+  submittedToOrgIdx: index("impact_records_submitted_to_org_idx").on(t.submittedToOrgId).where(sql`${t.submittedToOrgId} IS NOT NULL`),
 }));
 
 export const insertImpactRecordSchema = createInsertSchema(impactRecordsTable).omit({ id: true, createdAt: true });

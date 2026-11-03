@@ -197,9 +197,10 @@ router.post("/create-org", async (req, res) => {
   const type = typeof req.body?.type === "string" ? req.body.type : "charity";
   const contactName = typeof req.body?.contactName === "string" ? req.body.contactName : null;
   const contactEmail = typeof req.body?.contactEmail === "string" ? req.body.contactEmail.toLowerCase() : null;
+  const dataSharingMode = req.body?.dataSharingMode === "consented_logging" ? "consented_logging" : "explicit_submission";
   const orgId = `e2e-org-${randomUUID().slice(0, 8)}`;
   const inviteCode = `E2E-${randomBytes(3).toString("hex").toUpperCase()}`;
-  await db.insert(organisationsTable).values({ id: orgId, name, type, inviteCode, contactName, contactEmail });
+  await db.insert(organisationsTable).values({ id: orgId, name, type, inviteCode, contactName, contactEmail, dataSharingMode });
   res.json({ ok: true, orgId, inviteCode, orgName: name });
 });
 
