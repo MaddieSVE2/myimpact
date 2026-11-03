@@ -276,7 +276,7 @@ export default function OrgExport() {
   }
 
   // ----- Live preview --------------------------------------------------------
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewPdf, setPreviewPdf] = useState<Blob | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewSeq = useRef(0);
@@ -284,10 +284,7 @@ export default function OrgExport() {
   useEffect(() => {
     if (!pdfArgs) return;
     if (filtered.length === 0) {
-      setPreviewUrl(prev => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+      setPreviewPdf(null);
       setPreviewError(null);
       setPreviewLoading(false);
       return;
@@ -318,11 +315,7 @@ export default function OrgExport() {
           setPreviewLoading(false);
           return;
         }
-        const url = URL.createObjectURL(blob);
-        setPreviewUrl(prev => {
-          if (prev) URL.revokeObjectURL(prev);
-          return url;
-        });
+        setPreviewPdf(blob);
         setPreviewLoading(false);
       } catch {
         if (mySeq !== previewSeq.current) return;
@@ -333,15 +326,6 @@ export default function OrgExport() {
     return () => window.clearTimeout(handle);
   }, [pdfArgs, filtered.length]);
 
-  const previewUrlRef = useRef<string | null>(null);
-  useEffect(() => {
-    previewUrlRef.current = previewUrl;
-  }, [previewUrl]);
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, []);
 
   if (isLoading) {
     return <div className="max-w-6xl mx-auto px-4 py-16 flex justify-center">
@@ -513,8 +497,8 @@ export default function OrgExport() {
             <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-foreground">
               No activities in this range, adjust the filters above to see a preview.
             </div>
-          ) : previewUrl ? (
-            <PdfPager src={previewUrl} height={500} />
+          ) : previewPdf ? (
+            <PdfPager pdf={previewPdf} height={500} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />

@@ -12,15 +12,18 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 type PdfDoc = Awaited<ReturnType<typeof pdfjsLib.getDocument>["promise"]>;
 
 interface PdfPagerProps {
-  /** Object URL or http(s) URL pointing at the PDF. */
-  src: string;
+  /**
+   * The PDF itself. pdf.js gets its bytes: loading it from a blob: URL is a
+   * connection the site's Content-Security-Policy (serve.mjs) blocks.
+   */
+  pdf: Blob;
   /** Display height of the main page viewport in pixels. */
   height?: number;
 }
 
 const THUMB_WIDTH = 96;
 
-export function PdfPager({ src, height = 520 }: PdfPagerProps) {
+export function PdfPager({ pdf, height = 520 }: PdfPagerProps) {
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,16 +32,23 @@ export function PdfPager({ src, height = 520 }: PdfPagerProps) {
   const mainContainerRef = useRef<HTMLDivElement | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void; promise: Promise<void> } | null>(null);
 
-  // Load the document whenever the src changes.
+  // Load the document whenever the PDF changes.
   useEffect(() => {
     let cancelled = false;
+    let task: ReturnType<typeof pdfjsLib.getDocument> | null = null;
     setDoc(null);
     setNumPages(0);
     setCurrentPage(1);
     setLoadError(null);
-    const task = pdfjsLib.getDocument({ url: src });
-    task.promise
+    pdf
+      .arrayBuffer()
+      .then((buffer) => {
+        if (cancelled) return null;
+        task = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+        return task.promise;
+      })
       .then((loaded) => {
+        if (!loaded) return;
         if (cancelled) {
           loaded.destroy();
           return;
@@ -51,9 +61,9 @@ export function PdfPager({ src, height = 520 }: PdfPagerProps) {
       });
     return () => {
       cancelled = true;
-      task.destroy();
+      task?.destroy();
     };
-  }, [src]);
+  }, [pdf]);
 
   // Tear down the document when it changes or unmounts.
   useEffect(() => {
