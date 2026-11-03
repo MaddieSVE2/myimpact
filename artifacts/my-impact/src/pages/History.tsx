@@ -48,6 +48,11 @@ function saveLocalHistory(records: LocalRecord[]) {
   localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(records));
 }
 
+// Hours a manager approved are locked; the server says the same.
+function approvedHoursText(orgName: string): string {
+  return `${orgName} approved these hours, so they can't be changed. To correct them, delete this entry and log it again.`;
+}
+
 interface LocalRecord {
   id: string;
   name: string;
@@ -543,6 +548,11 @@ export default function History() {
   // along so the edit doesn't silently relabel it.
   const handleEditActivities = (r: AnyRecord) => {
     if (!r.impactResult) return;
+    const lockedBy = (r as { hoursLockedBy?: string | null }).hoursLockedBy;
+    if (lockedBy) {
+      toast({ title: "These hours are approved", description: approvedHoursText(lockedBy) });
+      return;
+    }
     const activities = ((r as { activities?: SelectedActivity[] }).activities ?? []) as SelectedActivity[];
     // Recover the contribution inputs the entry was saved with. The raw inputs
     // aren't stored, but both are derivable from the saved result:
@@ -1168,6 +1178,7 @@ export default function History() {
             {records.map((record, i) => {
               const isOpen = expandedId === record.id;
               const isEditing = editingId === record.id;
+              const hoursLockedBy = (record as { hoursLockedBy?: string | null }).hoursLockedBy ?? null;
               const isDeleting = deletingId === record.id;
               const isWithdrawingShare = withdrawingShareId === record.id;
               const activityCount = record.impactResult?.activityBreakdowns?.length ?? 0;
@@ -1220,7 +1231,7 @@ export default function History() {
                                 className="text-xs border border-primary/40 rounded px-2 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 w-36"
                                 aria-label="Edit period label"
                               />
-                              <input
+                              {!hoursLockedBy && <input
                                 type="date"
                                 max={todayIso}
                                 value={editDate}
@@ -1232,7 +1243,7 @@ export default function History() {
                                 className="text-xs border border-primary/40 rounded px-2 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                 aria-label="Edit entry date"
                                 data-testid={`input-edit-entry-date-${record.id}`}
-                              />
+                              />}
                               <button
                                 onClick={() => handleSaveEdit(record.id)}
                                 className="p-1 rounded text-green-600 hover:bg-green-50 transition-colors"
@@ -1697,7 +1708,12 @@ export default function History() {
                           />
                         </div>
                         <div className="px-4 py-3 border-t border-border bg-muted/5 flex items-center justify-end gap-2 flex-wrap">
-                          {isAuthenticated && record.impactResult && (
+                          {isAuthenticated && record.impactResult && hoursLockedBy && (
+                            <p className="text-xs text-muted-foreground mr-auto" data-testid={`text-hours-locked-${record.id}`}>
+                              {approvedHoursText(hoursLockedBy)}
+                            </p>
+                          )}
+                          {isAuthenticated && record.impactResult && !hoursLockedBy && (
                             <button
                               onClick={() => handleEditActivities(record)}
                               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all"

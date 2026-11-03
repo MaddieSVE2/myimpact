@@ -107,10 +107,10 @@ function AllowedDomainField({ initialDomain, isDemoOrg }: { initialDomain: strin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ allowedDomain: domain.trim() || null }),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? "Failed to save");
-      }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((j as { error?: string }).error ?? "Failed to save");
+      // Shows the domains as saved, tidied into "a.org, b.org".
+      setDomain((j as { org?: { allowedDomain?: string | null } }).org?.allowedDomain ?? "");
       qc.invalidateQueries({ queryKey: ["my-org"] });
       flash("Domain restriction saved.");
     } catch (e) {
@@ -142,19 +142,19 @@ function AllowedDomainField({ initialDomain, isDemoOrg }: { initialDomain: strin
 
   return (
     <div className="mt-4 pt-4 border-t border-border">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Restrict to email domain (optional)</p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Restrict to email domains (optional)</p>
       <p className="text-[11px] text-muted-foreground mb-2">
-        If set, only users whose email ends with this domain can join via the invite link.
+        If set, only people whose email ends with one of these domains can join via the invite link. Separate domains with commas.
       </p>
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center rounded-md border border-border overflow-hidden focus-within:border-primary">
-          <span className="px-2 py-1.5 text-xs text-muted-foreground bg-muted/40">@</span>
+        <div className="flex items-center rounded-md border border-border overflow-hidden focus-within:border-primary w-full sm:w-auto">
           <input
             type="text"
             value={domain}
-            onChange={e => setDomain(e.target.value.replace(/^@/, ""))}
-            placeholder="organisation.org"
-            className="px-2 py-1.5 text-xs focus:outline-none min-w-0 w-48"
+            onChange={e => setDomain(e.target.value)}
+            placeholder="organisation.org, partner.org"
+            aria-label="Email domains allowed to join"
+            className="px-2 py-1.5 text-xs focus:outline-none min-w-0 w-full sm:w-72"
             data-testid="input-allowed-domain"
           />
         </div>

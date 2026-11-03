@@ -44,7 +44,7 @@ import {
   computeCurrentOccurrence,
 } from "../lib/recurringSchedule.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
-import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, oneOffValuation } from "../lib/recordHelpers.js";
+import { approvedHoursMessage, autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, managerApprovedBy, oneOffValuation } from "../lib/recordHelpers.js";
 import { yearImpactResult } from "../lib/yearResult.js";
 import { resolveReportScope, groupCondition, type ReportScope } from "../lib/orgReportScope.js";
 
@@ -502,6 +502,11 @@ router.post("/save", authenticate, async (req: AuthenticatedRequest, res) => {
       res.status(404).json({ error: "Target record not found" });
       return;
     }
+    const approvedBy = (await managerApprovedBy([owned.id])).get(owned.id);
+    if (approvedBy) {
+      res.status(409).json({ error: approvedHoursMessage(approvedBy), code: "approved_hours_locked" });
+      return;
+    }
     // CRITICAL: when editing a habit-generated entry (the canonical
     // conflict-resolution path), keep its `source` and `habitTemplateId`
     // intact. Otherwise the row would lose its habit identity and a
@@ -792,6 +797,15 @@ router.patch("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
   if (!record) {
     res.status(404).json({ error: "Record not found" });
     return;
+  }
+
+  // The date decides which period approved hours count in, so it's locked with them.
+  if (hasEntryDateEdit && (body.entryDate as string).slice(0, 10) !== record.entryDate.toISOString().slice(0, 10)) {
+    const approvedBy = (await managerApprovedBy([record.id])).get(record.id);
+    if (approvedBy) {
+      res.status(409).json({ error: approvedHoursMessage(approvedBy), code: "approved_hours_locked" });
+      return;
+    }
   }
 
   if (hasEntryDateEdit) {
@@ -1204,6 +1218,7 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
   const streak = { ...streakInfo, lastAckedMilestone: profile?.lastAckedStreakMilestone ?? 0 };
 
   const recordIds = deduped.map(r => r.id);
+  const hoursLockedBy = await managerApprovedBy(recordIds);
   const verifMap = new Map<number, { status: string; reason: string | null; orgName: string; decidedAt: string | null }>();
   if (recordIds.length > 0) {
     const verifs = await db
@@ -1253,6 +1268,8 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
     // Personal record's own verification takes priority; fall back to the
     // suppressed twin's verification so "Verified by X" badges don't regress.
     verification: verifMap.get(r.id) ?? inheritedVerifMap.get(r.id) ?? null,
+    // The organisation whose manager approved this record, which locks its hours.
+    hoursLockedBy: hoursLockedBy.get(r.id) ?? null,
     tags: r.tags ?? [],
     // Present when a member-submitted twin was suppressed for this record.
     // twinId is the org-side record id needed for the withdraw endpoint.

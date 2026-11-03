@@ -1255,7 +1255,7 @@ export default function Results() {
       // user can either replace the existing entry's quantity (the
       // task's required edit-existing flow) or explicitly opt-in to log
       // an additional entry anyway via `force`.
-      const apiErr = err as { status?: number; data?: { error?: string; existingRecordId?: string; period?: string } };
+      const apiErr = err as { status?: number; data?: { error?: string; code?: string; existingRecordId?: string; period?: string } };
       if (apiErr?.status === 409 && apiErr?.data?.error === "habit_entry_conflict") {
         const existingId = apiErr.data.existingRecordId ?? "";
         const periodLabel = apiErr.data.period ?? "this month";
@@ -1264,6 +1264,10 @@ export default function Results() {
           period: periodLabel,
           attemptedPeriod: period,
         });
+        return;
+      }
+      if (apiErr?.status === 409 && apiErr?.data?.code === "approved_hours_locked") {
+        toast({ title: "These hours are approved", description: apiErr.data.error, variant: "destructive" });
         return;
       }
       toast({ title: "Unable to save", description: "Something went wrong. Are you logged in?", variant: "destructive" });

@@ -24,6 +24,8 @@ import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } fr
 import { canUseGroup, defaultGroupFor, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
 import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom, lockMembershipChanges } from "../lib/orgDeactivation.js";
+import { approvedHoursMessage, managerApprovedBy } from "../lib/recordHelpers.js";
+import { MAX_ALLOWED_DOMAINS, describeDomains, emailMatchesDomains, invalidDomain, parseAllowedDomains, splitDomains } from "../lib/orgDomains.js";
 import { orgMemberConsentsTable, orgMigrationsTable, orgMigratedActivitiesTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -206,6 +208,7 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     orgName: org.name,
     orgId: org.id,
     allowedDomain: org.allowedDomain ?? null,
+    allowedDomains: parseAllowedDomains(org.allowedDomain),
     dataSharingMode: org.dataSharingMode ?? "explicit_submission",
   });
 });
@@ -274,15 +277,13 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     }
   }
 
-  // Domain restriction: if the org has allowedDomain set, reject emails that don't match.
-  if (org.allowedDomain) {
-    const emailDomain = userEmail.split("@")[1]?.toLowerCase() ?? "";
-    if (emailDomain !== org.allowedDomain.toLowerCase()) {
-      res.status(403).json({
-        error: `This organisation only accepts members with an @${org.allowedDomain} email address.`,
-      });
-      return;
-    }
+  // Domain restriction: if the org has allowed domains set, reject emails that don't match one.
+  const allowedDomains = parseAllowedDomains(org.allowedDomain);
+  if (allowedDomains.length > 0 && !emailMatchesDomains(userEmail, allowedDomains)) {
+    res.status(403).json({
+      error: `This organisation only accepts members with an ${describeDomains(allowedDomains)} email address.`,
+    });
+    return;
   }
 
   const shouldBeManager = await isOrgContact(org, userEmail);
@@ -551,6 +552,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       } : { recruitment: null, onboarding: null, support: null, admin: null },
       summaryYearStart: org.summaryYearStart ?? "01-01",
       allowedDomain: org.allowedDomain ?? null,
+      allowedDomains: parseAllowedDomains(org.allowedDomain),
       dataSharingMode: org.dataSharingMode ?? "explicit_submission",
       dashboardSections: normalizeDashboardSections(org.dashboardSections),
       fullTierEnabled: org.fullTierEnabled ?? false,
@@ -983,12 +985,17 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
     if (allowedDomain === null || allowedDomain === "" || allowedDomain === undefined) {
       updates.allowedDomain = null;
     } else if (typeof allowedDomain === "string") {
-      const cleaned = allowedDomain.trim().toLowerCase().replace(/^@/, "");
-      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(cleaned)) {
-        res.status(400).json({ error: "allowedDomain must be a valid domain (e.g. organisation.org) without the @ symbol." });
+      const domains = splitDomains(allowedDomain);
+      const bad = invalidDomain(domains);
+      if (bad !== undefined) {
+        res.status(400).json({ error: `"${bad}" isn't a valid domain. Enter domains like organisation.org, separated by commas.` });
         return;
       }
-      updates.allowedDomain = cleaned;
+      if (domains.length > MAX_ALLOWED_DOMAINS) {
+        res.status(400).json({ error: `You can add up to ${MAX_ALLOWED_DOMAINS} domains.` });
+        return;
+      }
+      updates.allowedDomain = domains.length > 0 ? domains.join(", ") : null;
     } else {
       res.status(400).json({ error: "allowedDomain must be a domain string or null." });
       return;
@@ -1129,6 +1136,7 @@ router.patch("/my/settings", authenticate, async (req: AuthenticatedRequest, res
       },
       summaryYearStart: updated.summaryYearStart ?? "01-01",
       allowedDomain: updated.allowedDomain ?? null,
+      allowedDomains: parseAllowedDomains(updated.allowedDomain),
       autoVerifyActivities: updated.autoVerifyActivities ?? false,
       autoApproveMembers: updated.autoApproveMembers ?? false,
       evidencePolicy: updated.evidencePolicy ?? "optional",
@@ -3928,6 +3936,11 @@ router.patch("/member-submissions/:recordId", authenticate, async (req: Authenti
     const submittedAtMs = (record.submittedToOrgAt ?? record.createdAt).getTime();
     if (Date.now() - submittedAtMs > MEMBER_SUBMISSION_EDIT_WINDOW_MS) {
       res.status(403).json({ error: "This submission is more than 24 hours old and can no longer be edited. Ask an organisation manager to withdraw it if it's wrong." });
+      return;
+    }
+    const approvedBy = (await managerApprovedBy([record.id])).get(record.id);
+    if (approvedBy) {
+      res.status(409).json({ error: approvedHoursMessage(approvedBy), code: "approved_hours_locked" });
       return;
     }
 

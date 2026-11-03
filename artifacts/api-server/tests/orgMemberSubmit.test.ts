@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   authUser: null as { id: string; email: string } | null,
   // db.query.orgMembersTable.findFirst() result.
   membership: null as { orgId: string; userId: string; role: string } | null,
+  // Record ids a manager has approved, which locks their hours.
+  approvedByManager: [] as number[],
   // Records inserted via db.insert(table).values(...). Each entry is
   // { table: "impact_records" | "record_verifications" | "org_audit_log", values }.
   inserts: [] as Array<{ table: string; values: unknown }>,
@@ -159,6 +161,10 @@ vi.mock("../src/lib/resend.js", () => ({
     fromEmail: "test@example.com",
   })),
 }));
+vi.mock("../src/lib/recordHelpers.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/recordHelpers.js")>()),
+  managerApprovedBy: vi.fn(async (ids: number[]) => new Map(ids.filter((id) => state.approvedByManager.includes(id)).map((id) => [id, "Example Org"]))),
+}));
 vi.mock("@react-pdf/renderer", () => ({ renderToBuffer: vi.fn(async () => Buffer.from("")) }));
 vi.mock("../src/lib/orgPdf.js", () => ({ buildOrgDocument: vi.fn(() => null) }));
 vi.mock("../src/lib/rateLimiter.js", () => ({
@@ -209,6 +215,7 @@ function makeApp() {
 beforeEach(() => {
   state.authUser = null;
   state.membership = null;
+  state.approvedByManager = [];
   state.inserts.length = 0;
   state.selectQueue.length = 0;
   state.enqueued.length = 0;
@@ -1030,6 +1037,22 @@ describe("PATCH /api/org/member-submissions/:recordId", () => {
     const payload = state.enqueued[0].payload as Record<string, unknown>;
     expect(payload.recordId).toBe("7");
     expect(payload.previousHours).toBe(10);
+  });
+
+  it("refuses to change a submission a manager has approved", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.impactRecord = memberRecord();
+    state.approvedByManager = [7];
+
+    const res = await request(makeApp())
+      .patch("/api/org/member-submissions/7")
+      .send({ activities: [{ activityId: "tree_planting", quantity: 2 }] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("approved_hours_locked");
+    expect(res.body.error).toMatch(/^Example Org approved these hours/);
+    expect(state.updates).toHaveLength(0);
   });
 
   it("blocks edits after the 24h window with 403", async () => {

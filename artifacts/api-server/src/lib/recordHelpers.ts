@@ -24,6 +24,31 @@ export function extractActivityIds(raw: unknown): string[] {
   return ids;
 }
 
+// Automatic approvals carry one of these reasons. Any other approval was a
+// manager's decision.
+const AUTOMATIC_APPROVAL_REASONS = ["auto-verified", "member-submitted"];
+
+/**
+ * The organisation whose manager approved each of these records. A member
+ * can't change the hours, activities or date of a record a manager approved;
+ * they can delete it and log it again, and the new entry needs approving.
+ */
+export async function managerApprovedBy(recordIds: number[]): Promise<Map<number, string>> {
+  if (recordIds.length === 0) return new Map();
+  const rows = await db
+    .select({ recordId: recordVerificationsTable.recordId, reason: recordVerificationsTable.reason, orgName: organisationsTable.name })
+    .from(recordVerificationsTable)
+    .innerJoin(organisationsTable, eq(organisationsTable.id, recordVerificationsTable.orgId))
+    .where(and(inArray(recordVerificationsTable.recordId, recordIds), eq(recordVerificationsTable.status, "approved")));
+  return new Map(
+    rows.filter((r) => !AUTOMATIC_APPROVAL_REASONS.includes(r.reason ?? "")).map((r) => [r.recordId, r.orgName]),
+  );
+}
+
+export function approvedHoursMessage(orgName: string): string {
+  return `${orgName} approved these hours, so they can't be changed. To correct them, delete this entry and log it again.`;
+}
+
 // Auto-verification hook. Some organisations (e.g. universities) count every
 // member activity toward their totals without a manager approval step. For
 // each org the user actively belongs to where `autoVerifyActivities` is true,

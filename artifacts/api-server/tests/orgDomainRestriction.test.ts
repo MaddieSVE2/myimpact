@@ -300,6 +300,36 @@ describe("PATCH /api/org/my/settings — allowedDomain", () => {
     },
   );
 
+  it("stores several domains, however they were separated", async () => {
+    asManager();
+    state.updateReturning = [{ ...fullOrgRow, allowedDomain: "student.loucoll.ac.uk, socialvalueengine.com" }];
+    const res = await request(makeApp())
+      .patch("/api/org/my/settings")
+      .send({ allowedDomain: "student.loucoll.ac.uk; @SocialValueEngine.com,student.loucoll.ac.uk" });
+    expect(res.status).toBe(200);
+    expect((state.updates[0].values as { allowedDomain?: string }).allowedDomain).toBe("student.loucoll.ac.uk, socialvalueengine.com");
+    expect(res.body.org.allowedDomains).toEqual(["student.loucoll.ac.uk", "socialvalueengine.com"]);
+  });
+
+  it("names the entry that isn't a domain, without internal field names", async () => {
+    asManager();
+    const res = await request(makeApp())
+      .patch("/api/org/my/settings")
+      .send({ allowedDomain: "acme.org, acme" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("\"acme\" isn't a valid domain. Enter domains like organisation.org, separated by commas.");
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it("rejects more than 10 domains", async () => {
+    asManager();
+    const res = await request(makeApp())
+      .patch("/api/org/my/settings")
+      .send({ allowedDomain: Array.from({ length: 11 }, (_, i) => `d${i}.org`).join(", ") });
+    expect(res.status).toBe(400);
+    expect(state.updates).toHaveLength(0);
+  });
+
   it("rejects non-string, non-null allowedDomain with 400", async () => {
     asManager();
     const res = await request(makeApp())
@@ -441,6 +471,24 @@ describe("POST /api/org/join — allowedDomain enforcement", () => {
     const res = await request(makeApp()).post("/api/org/join").send(joinBody);
     expect(res.status).toBe(200);
     expect(state.inserts.filter((i) => i.table === "org_members")).toHaveLength(1);
+  });
+
+  it("accepts an email at any of several allowed domains", async () => {
+    state.authUser = { id: "user-1", email: "lorna@socialvalueengine.com" };
+    state.organisation = { ...baseOrg, allowedDomain: "student.loucoll.ac.uk, socialvalueengine.com" };
+    state.membershipQueue.push(null, null);
+    const res = await request(makeApp()).post("/api/org/join").send(joinBody);
+    expect(res.status).toBe(200);
+    expect(state.inserts.filter((i) => i.table === "org_members")).toHaveLength(1);
+  });
+
+  it("rejects an email at none of several allowed domains, listing them", async () => {
+    state.authUser = { id: "user-1", email: "someone@loucoll.ac.uk" };
+    state.organisation = { ...baseOrg, allowedDomain: "student.loucoll.ac.uk, socialvalueengine.com" };
+    const res = await request(makeApp()).post("/api/org/join").send(joinBody);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("This organisation only accepts members with an @student.loucoll.ac.uk or @socialvalueengine.com email address.");
+    expect(state.inserts.filter((i) => i.table === "org_members")).toHaveLength(0);
   });
 
   it("rejects an email with no domain part when a restriction is set", async () => {

@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 import { MyGroupsCard } from "@/components/org/MyGroupsCard";
 import { BASE, apiJson } from "@/lib/api";
+import { describeDomains } from "@/lib/email-domains";
 
 
 interface OrgBranding {
@@ -830,10 +831,11 @@ function JoinOrgPanel() {
     setRejectedOrgName(null);
   }
   const [orgName, setOrgName] = useState("");
-  const [allowedDomain, setAllowedDomain] = useState<string | null>(null);
+  const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
   const { user } = useAuth();
   const userEmailDomain = user?.email?.split("@")[1]?.toLowerCase() ?? null;
-  const domainMismatch = !!(allowedDomain && userEmailDomain && userEmailDomain !== allowedDomain.toLowerCase());
+  const domainMismatch = !!(allowedDomains.length > 0 && userEmailDomain && !allowedDomains.includes(userEmailDomain));
+  const allowedDomainText = describeDomains(allowedDomains);
   const [dataSharingMode, setDataSharingMode] = useState<"explicit_submission" | "consented_logging">("explicit_submission");
   const [consentScope, setConsentScope] = useState<"from_join" | "historic">("from_join");
   const [consentHistoricFrom, setConsentHistoricFrom] = useState("");
@@ -887,14 +889,14 @@ function JoinOrgPanel() {
         ok: boolean;
         orgId: string;
         orgName: string;
-        allowedDomain: string | null;
+        allowedDomains?: string[];
         dataSharingMode?: "explicit_submission" | "consented_logging";
       };
     },
     onSuccess: (data) => {
       setSelectedOrg({ id: data.orgId, name: data.orgName });
       setOrgName(data.orgName);
-      setAllowedDomain(data.allowedDomain ?? null);
+      setAllowedDomains(data.allowedDomains ?? []);
       setDataSharingMode(data.dataSharingMode ?? "explicit_submission");
       setStep("consent");
     },
@@ -985,16 +987,16 @@ function JoinOrgPanel() {
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">Join {orgName}?</h2>
           <p className="text-sm text-muted-foreground">Before you confirm, here's exactly what will and won't be shared:</p>
         </div>
-        {allowedDomain && (
+        {allowedDomains.length > 0 && (
           domainMismatch ? (
             <div className="mx-6 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800" data-testid="notice-domain-mismatch">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
-              <span>This organisation only accepts members with an <strong>@{allowedDomain}</strong> email address. You're signed in as <strong>{user?.email}</strong>, which doesn't match — so you won't be able to join with this account. Sign in with your @{allowedDomain} email to join.</span>
+              <span>This organisation only accepts members with an <strong>{allowedDomainText}</strong> email address. You're signed in as <strong>{user?.email}</strong>, which doesn't match — so you won't be able to join with this account. Sign in with your {allowedDomainText} email to join.</span>
             </div>
           ) : (
             <div className="mx-6 mb-2 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-800">
               <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-blue-500" />
-              <span>This organisation restricts membership to <strong>@{allowedDomain}</strong> email addresses. Your account email must match to be accepted.</span>
+              <span>This organisation restricts membership to <strong>{allowedDomainText}</strong> email addresses. Your account email must match to be accepted.</span>
             </div>
           )
         )}

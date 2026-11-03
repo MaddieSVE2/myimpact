@@ -91,6 +91,9 @@ test.describe("Spec 18 — leave organisation & superadmin member removal", () =
     // A regular member must NOT see the sole-manager warning.
     await expect(memberPage.getByTestId("text-sole-manager-warning")).toHaveCount(0);
     await memberPage.getByTestId("button-confirm-leave-org").click();
+    // The confirmation closes once the server has finished; the Leave button
+    // is already hidden while it's open, so it can't tell us that.
+    await expect(memberPage.getByTestId("panel-leave-org-confirm")).toHaveCount(0, { timeout: 10_000 });
     await expect(memberPage.getByTestId("button-leave-org")).toHaveCount(0, { timeout: 10_000 });
 
     // After leaving, /api/org/my reports no organisation.
