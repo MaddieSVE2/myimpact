@@ -1724,13 +1724,14 @@ export default function History() {
                               Edit activities
                             </button>
                           )}
-                          {record.impactResult && (record as LocalRecord).activities?.length > 0 && (
+                          {record.impactResult && (
                             <button
                               onClick={() => {
                                 const lr = record as LocalRecord;
                                 const histRecord: HistoryRecord = {
                                   impactResult: record.impactResult,
-                                  activities: lr.activities,
+                                  // Empty when every activity was described in the user's own words.
+                                  activities: lr.activities ?? [],
                                   region: lr.region ?? null,
                                   outwardCode: lr.outwardCode ?? null,
                                   lat: lr.lat ?? null,
@@ -1739,7 +1740,8 @@ export default function History() {
                                   location: (record as { location?: HistoryRecord["location"] }).location ?? null,
                                 };
                                 loadFromRecord(histRecord);
-                                navigate("/results");
+                                // Tells the report this entry is already saved.
+                                navigate(`/results?record=${encodeURIComponent(record.id)}`);
                               }}
                               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-medium transition-all"
                               style={{ borderColor: "#213547", color: "#213547" }}

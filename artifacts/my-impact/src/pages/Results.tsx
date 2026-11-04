@@ -21,10 +21,12 @@ import {
   useSaveImpact,
   useGetAnnualRecap,
   useGetImpactHistory,
+  useGetProfile,
   getGetAnnualRecapQueryKey,
   getGetImpactHistoryQueryKey,
+  getGetProfileQueryKey,
 } from "@workspace/api-client-react";
-import type { SavedImpact } from "@workspace/api-client-react";
+import type { ImpactResult, SavedImpact } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const CHALLENGE_CONTEXT_KEY = "wizard:challenge-context";
@@ -897,6 +899,324 @@ function PersonaTransferableSkills({ interests, careerBreak, situation }: { inte
   );
 }
 
+/**
+ * The report for one result: a single entry's, or the year's on My impact.
+ * The methodology panel needs each activity's proxy, which only an entry has.
+ */
+function ReportSections({
+  result,
+  interests,
+  careerBreak,
+  situation,
+  isVeteran,
+  showMethodology = false,
+}: {
+  result: ImpactResult;
+  interests: string[];
+  careerBreak: boolean;
+  situation: string | null;
+  isVeteran: boolean;
+  showMethodology?: boolean;
+}) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const gamificationEnabled = user?.gamificationEnabled ?? true;
+  const earnedBadges = computeBadges(
+    { totalValue: result.totalValue, activityBreakdowns: result.activityBreakdowns },
+    true
+  ).filter(b => b.earned);
+  const nextMilestone = getNextMilestone(result.totalValue);
+  const situationCopy = getSituationCopy(situation);
+
+  return (
+    <>
+      {/* Donut charts */}
+      {(result.activityBreakdowns.length > 0 || result.sdgBreakdowns.length > 0) && (
+        <motion.div
+          className="mb-8 grid grid-cols-2 gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+        >
+          {/* Activity donut */}
+          {result.activityBreakdowns.length > 0 && (
+            <figure className="bg-white border border-border rounded-xl p-4 m-0">
+              <figcaption className="text-xs font-semibold text-muted-foreground mb-3">By activity</figcaption>
+              <div role="img" aria-label="Donut chart showing social value breakdown by activity">
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={result.activityBreakdowns.map((a: any) => ({
+                        name: a.activityName,
+                        value: a.impactValue,
+                        color: a.sdgColor || "var(--brand-orange-bright)",
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {result.activityBreakdowns.map((a: any, i: number) => (
+                        <Cell key={i} fill={a.sdgColor || "var(--brand-orange-bright)"} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val: number) => formatCurrency(val)}
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-1 mt-1">
+                {result.activityBreakdowns.map((a: any) => (
+                  <div key={a.activityId} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "var(--brand-orange-bright)" }} aria-hidden="true" />
+                    <span className="truncate flex-1">{a.activityName}</span>
+                    <span className="font-medium text-foreground shrink-0">{formatCurrency(a.impactValue)}</span>
+                  </div>
+                ))}
+              </div>
+            </figure>
+          )}
+
+          {/* SDG donut */}
+          {result.sdgBreakdowns.length > 0 && (
+            <figure className="bg-white border border-border rounded-xl p-4 m-0">
+              <figcaption className="mb-3">
+                <p className="text-xs font-semibold text-muted-foreground">UN Sustainable Development Goals (SDGs)</p>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">The 17 global goals set by the United Nations that your volunteering contributes to</p>
+              </figcaption>
+              <div role="img" aria-label="Donut chart showing social value breakdown by Sustainable Development Goal">
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={result.sdgBreakdowns.map((s: any) => ({
+                        name: `SDG ${s.sdg}`,
+                        value: s.value,
+                        color: s.sdgColor,
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {result.sdgBreakdowns.map((s: any, i: number) => (
+                        <Cell key={i} fill={s.sdgColor} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val: number) => formatCurrency(val)}
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-1 mt-1">
+                {result.sdgBreakdowns.map((s: any) => (
+                  <div key={s.sdg} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span
+                      className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shrink-0"
+                      style={{ backgroundColor: s.sdgColor }}
+                    >
+                      {s.sdg}
+                    </span>
+                    <span className="truncate flex-1">{s.sdgName || `SDG ${s.sdg}`}</span>
+                    <span className="font-medium text-foreground shrink-0">{formatCurrency(s.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </figure>
+          )}
+        </motion.div>
+      )}
+
+      {/* Metric tiles */}
+      <motion.div
+        className="grid grid-cols-2 gap-3 mb-8"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <MetricTile
+          icon={TrendingUp} iconColour="var(--brand-orange-bright)"
+          label="Impact" value={result.impactValue}
+          subtitle="The impact of your activities"
+          explanation={result.explanations.impact}
+        />
+        <MetricTile
+          icon={UserPlus} iconColour="#3b82f6"
+          label="Contribution" value={result.contributionValue}
+          subtitle={`Value of ${Math.round(result.totalHours)} hours contributed`}
+          explanation={result.explanations.contribution}
+        />
+        <MetricTile
+          icon={HandCoins} iconColour="#22c55e"
+          label="Donations" value={result.donationsValue}
+          subtitle="Money donated to good causes"
+          explanation={result.explanations.donations}
+        />
+        <MetricTile
+          icon={Trophy} iconColour="#f59e0b"
+          label="Personal Development" value={result.personalDevelopmentValue}
+          subtitle={`Skill development from ${Math.round(result.totalHours)} hrs`}
+          explanation={result.explanations.personalDevelopment}
+        />
+      </motion.div>
+
+      {/* Personal development detail */}
+      <PersonalDevelopmentDetail
+        value={result.personalDevelopmentValue}
+        totalHours={result.totalHours}
+        breakdowns={result.activityBreakdowns}
+        skillsSubheading={situationCopy.skillsSubheading}
+      />
+
+      {/* Proxy methodology */}
+      {showMethodology && result.activityBreakdowns.length > 0 && (
+        <ProxyMethodology breakdowns={result.activityBreakdowns} />
+      )}
+
+      {/* Milestones earned */}
+      {gamificationEnabled && earnedBadges.length > 0 && (
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones earned</p>
+            <Link href="/milestones" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Award className="w-3 h-3" aria-hidden="true" /> All milestones
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {earnedBadges.map(badge => (
+              <div
+                key={badge.id}
+                className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
+              >
+                <BrandedArtwork
+                  file={badge.artwork}
+                  fallback={badge.emoji}
+                  className="w-10 h-10 shrink-0 flex items-center justify-center text-xl"
+                  imageClassName="w-full h-full object-contain"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Milestone progress */}
+      {gamificationEnabled && nextMilestone && (
+        <motion.div
+          className="bg-white border border-border rounded-xl p-4 mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+              <BrandedArtwork
+                file={nextMilestone.milestone.artwork}
+                fallback={nextMilestone.milestone.emoji}
+                className="w-8 h-8 flex items-center justify-center text-base"
+                imageClassName="w-full h-full object-contain"
+              />
+              <span>Next milestone: {nextMilestone.milestone.label}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go
+            </p>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "var(--brand-orange-bright)" }}
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Use case sections */}
+      <motion.div
+        className="mb-4 space-y-3"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22 }}
+      >
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Use your impact</p>
+
+        {/* Impact evidence summary */}
+        <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-4 h-4 shrink-0" style={{ color: "#C5192D" }} aria-hidden="true" />
+              <p className="text-sm font-semibold text-foreground">Your impact evidence</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              Use this summary to check your logged hours, activities, skills, and estimated social value. Write and verify any application in your own words. UCAS prohibits submitting AI-written personal-statement text, and employers may have their own AI policies.
+            </p>
+            <CopyField
+              value={generateCVText(result, interests, careerBreak, situation)}
+              multiline
+              copyLabel="Copy evidence"
+              copiedLabel="Copied!"
+              ariaLabel="impact evidence"
+              onCopyError={() => toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" })}
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Persona-specific transferable skills */}
+      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
+
+      {/* Duke of Edinburgh panel, hidden for veterans */}
+      {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
+    </>
+  );
+}
+
+function SidekickPrompt() {
+  const { setOpen: openSidekick } = useSidekick();
+  return (
+    <motion.div
+      className="mb-6 rounded-xl border border-border overflow-hidden"
+      style={{ background: "linear-gradient(135deg, #f0f9ff 0%, #fefce8 100%)" }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25 }}
+    >
+      <div className="px-5 py-4 flex items-center gap-4">
+        <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--brand-orange-bright)" }}>
+          <MessageSquare className="w-5 h-5 text-white" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground mb-0.5">Want help putting this into your own words?</p>
+          <p className="text-xs text-muted-foreground leading-snug">Ask the sidekick to tailor your impact for a specific job, course, or statement.</p>
+        </div>
+        <button
+          onClick={() => openSidekick(true)}
+          className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
+          style={{ background: "var(--brand-orange)", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" }}
+        >
+          Ask sidekick <ArrowRight className="w-3 h-3" aria-hidden="true" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Results() {
   const [, setLocation] = useLocation();
   const { result: wizardResult, input, customActivities, locationMeta, interests, careerBreak, situations, entryDate, reportPeriod, editRecordId, editPeriod, setEditRecordId, activityLocation } = useWizard();
@@ -905,19 +1225,26 @@ export default function Results() {
   const saveMutation = useSaveImpact();
   const { toast } = useToast();
   const { isLoggedIn, user } = useAuth();
-  const { open: sidekickOpen, setOpen: openSidekick } = useSidekick();
+  const { open: sidekickOpen } = useSidekick();
   const isDesktop = useIsDesktop();
-  const [saved, setSaved] = useState(false);
+  // Set when History's "View full report" opened an entry that is already saved.
+  const [viewedRecordId] = useState(() =>
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("record") : null,
+  );
+  const [saved, setSaved] = useState(viewedRecordId != null);
   // Whether the completed save was an in-place edit of an existing record.
   // editRecordId itself is cleared right after a successful edit-save (so a
   // follow-up save creates a new entry), so this keeps the CTA reading
   // "Updated!" instead of flipping to "Saved!".
-  const [savedRecordId, setSavedRecordId] = useState<number | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<number | null>(() => {
+    const id = Number(viewedRecordId);
+    return viewedRecordId != null && Number.isFinite(id) ? id : null;
+  });
   // Entry date the server actually persisted on the last successful save
   // (ISO YYYY-MM-DD). Once set, it is the authoritative anchor for the hero
   // year — it survives editRecordId being cleared post-save, so a completed
   // edit of a cross-year report keeps showing the year the record lives in.
-  const [savedEntryDate, setSavedEntryDate] = useState<string | null>(null);
+  const [savedEntryDate, setSavedEntryDate] = useState<string | null>(() => (viewedRecordId != null ? entryDate || null : null));
   const [conflictInfo, setConflictInfo] = useState<{
     existingRecordId: string;
     period: string;
@@ -967,8 +1294,9 @@ export default function Results() {
         ? entryDate
         : new Date().toISOString().slice(0, 10);
     // ISO date strings compare lexicographically, so plain string comparison
-    // reproduces the server's inclusive clamp-into-period rule.
-    const clamped = isIso(start) && isIso(end)
+    // reproduces the server's inclusive clamp-into-period rule. A reopened
+    // entry's date is already the stored one, and reportPeriod isn't its period.
+    const clamped = isIso(start) && isIso(end) && viewedRecordId == null
       ? (rawDate < start ? start : rawDate > end ? end : rawDate)
       : rawDate;
     const y = parseInt(clamped.slice(0, 4), 10);
@@ -984,6 +1312,10 @@ export default function Results() {
   const annualBase = isLoggedIn && recapQuery.data ? recapQuery.data.totalValue : null;
   // /impact's report actions cover the year so far, not one calculation.
   const yearResultQuery = useYearResult(heroYear, isLoggedIn && viewingSavedDashboard);
+  // The year report words its skills and evidence for the person's saved situation.
+  const profileQuery = useGetProfile({
+    query: { queryKey: getGetProfileQueryKey(), enabled: isLoggedIn && viewingSavedDashboard },
+  });
   // Until this calculation is saved it isn't in the server total yet; edits of
   // an existing record are already counted (at their pre-edit value).
   const annualTotal = annualBase != null
@@ -1311,6 +1643,24 @@ export default function Results() {
           )}
         </motion.div>
 
+        {yearResultQuery.data && yearResultQuery.data.recordCount > 0 && (() => {
+          const profile = profileQuery.data?.profile;
+          const profileSituations = profile?.situation ?? [];
+          const profileInterests = profile?.interests ?? [];
+          return (
+            <div data-testid="impact-year-report">
+              <ReportSections
+                result={yearResultQuery.data.result}
+                interests={profileInterests}
+                careerBreak={profileSituations.includes("career_break")}
+                situation={profileSituations[0] ?? null}
+                isVeteran={profileSituations.includes("armed_forces") || profileInterests.includes("military")}
+              />
+              <SidekickPrompt />
+            </div>
+          );
+        })()}
+
         <section aria-labelledby="running-record-heading" data-testid="impact-running-record">
           <div className="flex items-end justify-between gap-4 mb-4">
             <div>
@@ -1413,15 +1763,6 @@ export default function Results() {
     );
   }
 
-  const gamificationEnabled = user?.gamificationEnabled ?? true;
-  const earnedBadges = computeBadges(
-    { totalValue: result.totalValue, activityBreakdowns: result.activityBreakdowns },
-    true
-  ).filter(b => b.earned);
-
-  const nextMilestone = getNextMilestone(result.totalValue);
-
-
   const situationCopy = getSituationCopy(situation);
 
   return (
@@ -1466,259 +1807,14 @@ export default function Results() {
         )}
       </motion.div>
 
-      {/* Donut charts */}
-      {(result.activityBreakdowns.length > 0 || result.sdgBreakdowns.length > 0) && (
-        <motion.div
-          className="mb-8 grid grid-cols-2 gap-3"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-        >
-          {/* Activity donut */}
-          {result.activityBreakdowns.length > 0 && (
-            <figure className="bg-white border border-border rounded-xl p-4 m-0">
-              <figcaption className="text-xs font-semibold text-muted-foreground mb-3">By activity</figcaption>
-              <div role="img" aria-label="Donut chart showing social value breakdown by activity">
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={result.activityBreakdowns.map((a: any) => ({
-                        name: a.activityName,
-                        value: a.impactValue,
-                        color: a.sdgColor || "var(--brand-orange-bright)",
-                      }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {result.activityBreakdowns.map((a: any, i: number) => (
-                        <Cell key={i} fill={a.sdgColor || "var(--brand-orange-bright)"} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: number) => formatCurrency(val)}
-                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-1 mt-1">
-                {result.activityBreakdowns.map((a: any) => (
-                  <div key={a.activityId} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.sdgColor || "var(--brand-orange-bright)" }} aria-hidden="true" />
-                    <span className="truncate flex-1">{a.activityName}</span>
-                    <span className="font-medium text-foreground shrink-0">{formatCurrency(a.impactValue)}</span>
-                  </div>
-                ))}
-              </div>
-            </figure>
-          )}
-
-          {/* SDG donut */}
-          {result.sdgBreakdowns.length > 0 && (
-            <figure className="bg-white border border-border rounded-xl p-4 m-0">
-              <figcaption className="mb-3">
-                <p className="text-xs font-semibold text-muted-foreground">UN Sustainable Development Goals (SDGs)</p>
-                <p className="text-[11px] text-muted-foreground/80 mt-0.5">The 17 global goals set by the United Nations that your volunteering contributes to</p>
-              </figcaption>
-              <div role="img" aria-label="Donut chart showing social value breakdown by Sustainable Development Goal">
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={result.sdgBreakdowns.map((s: any) => ({
-                        name: `SDG ${s.sdg}`,
-                        value: s.value,
-                        color: s.sdgColor,
-                      }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {result.sdgBreakdowns.map((s: any, i: number) => (
-                        <Cell key={i} fill={s.sdgColor} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: number) => formatCurrency(val)}
-                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-1 mt-1">
-                {result.sdgBreakdowns.map((s: any) => (
-                  <div key={s.sdg} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span
-                      className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shrink-0"
-                      style={{ backgroundColor: s.sdgColor }}
-                    >
-                      {s.sdg}
-                    </span>
-                    <span className="truncate flex-1">{s.sdgName || `SDG ${s.sdg}`}</span>
-                    <span className="font-medium text-foreground shrink-0">{formatCurrency(s.value)}</span>
-                  </div>
-                ))}
-              </div>
-            </figure>
-          )}
-        </motion.div>
-      )}
-
-      {/* Metric tiles */}
-      <motion.div
-        className="grid grid-cols-2 gap-3 mb-8"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
-        <MetricTile
-          icon={TrendingUp} iconColour="var(--brand-orange-bright)"
-          label="Impact" value={result.impactValue}
-          subtitle="The impact of your activities"
-          explanation={result.explanations.impact}
-        />
-        <MetricTile
-          icon={UserPlus} iconColour="#3b82f6"
-          label="Contribution" value={result.contributionValue}
-          subtitle={`Value of ${Math.round(result.totalHours)} hours contributed`}
-          explanation={result.explanations.contribution}
-        />
-        <MetricTile
-          icon={HandCoins} iconColour="#22c55e"
-          label="Donations" value={result.donationsValue}
-          subtitle="Money donated to good causes"
-          explanation={result.explanations.donations}
-        />
-        <MetricTile
-          icon={Trophy} iconColour="#f59e0b"
-          label="Personal Development" value={result.personalDevelopmentValue}
-          subtitle={`Skill development from ${Math.round(result.totalHours)} hrs`}
-          explanation={result.explanations.personalDevelopment}
-        />
-      </motion.div>
-
-      {/* Personal development detail */}
-      <PersonalDevelopmentDetail
-        value={result.personalDevelopmentValue}
-        totalHours={result.totalHours}
-        breakdowns={result.activityBreakdowns}
-        skillsSubheading={situationCopy.skillsSubheading}
+      <ReportSections
+        result={result}
+        interests={interests}
+        careerBreak={careerBreak}
+        situation={situation}
+        isVeteran={isVeteran}
+        showMethodology
       />
-
-      {/* Proxy methodology */}
-      {result.activityBreakdowns.length > 0 && (
-        <ProxyMethodology breakdowns={result.activityBreakdowns} />
-      )}
-
-      {/* Milestones earned */}
-      {gamificationEnabled && earnedBadges.length > 0 && (
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones earned</p>
-            <Link href="/milestones" className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Award className="w-3 h-3" aria-hidden="true" /> All milestones
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {earnedBadges.map(badge => (
-              <div
-                key={badge.id}
-                className="bg-white border border-border rounded-xl p-3.5 flex items-start gap-3"
-              >
-                <BrandedArtwork
-                  file={badge.artwork}
-                  fallback={badge.emoji}
-                  className="w-10 h-10 shrink-0 flex items-center justify-center text-xl"
-                  imageClassName="w-full h-full object-contain"
-                />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground leading-snug">{badge.name}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{badge.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Milestone progress */}
-      {gamificationEnabled && nextMilestone && (
-        <motion.div
-          className="bg-white border border-border rounded-xl p-4 mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-              <BrandedArtwork
-                file={nextMilestone.milestone.artwork}
-                fallback={nextMilestone.milestone.emoji}
-                className="w-8 h-8 flex items-center justify-center text-base"
-                imageClassName="w-full h-full object-contain"
-              />
-              <span>Next milestone: {nextMilestone.milestone.label}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(nextMilestone.milestone.threshold - result.totalValue)} to go
-            </p>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{ width: `${nextMilestone.progress}%`, backgroundColor: "var(--brand-orange-bright)" }}
-            />
-          </div>
-        </motion.div>
-      )}
-
-      {/* Use case sections */}
-      <motion.div
-        className="mb-4 space-y-3"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.22 }}
-      >
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Use your impact</p>
-
-        {/* Impact evidence summary */}
-        <div className="bg-white border border-border rounded-xl overflow-hidden">
-          <div className="px-5 pt-5 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="w-4 h-4 shrink-0" style={{ color: "#C5192D" }} aria-hidden="true" />
-              <p className="text-sm font-semibold text-foreground">Your impact evidence</p>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Use this summary to check your logged hours, activities, skills, and estimated social value. Write and verify any application in your own words. UCAS prohibits submitting AI-written personal-statement text, and employers may have their own AI policies.
-            </p>
-            <CopyField
-              value={generateCVText(result, interests, careerBreak, situation)}
-              multiline
-              copyLabel="Copy evidence"
-              copiedLabel="Copied!"
-              ariaLabel="impact evidence"
-              onCopyError={() => toast({ title: "Could not copy", description: "Please select the text manually and copy it.", variant: "destructive" })}
-            />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Persona-specific transferable skills */}
-      <PersonaTransferableSkills interests={interests} careerBreak={careerBreak} situation={situation} />
-
-      {/* Duke of Edinburgh panel, hidden for veterans */}
-      {!isVeteran && <DofEPanel breakdowns={result.activityBreakdowns} />}
 
       {/* Photo & receipt attachments, only after the record is saved */}
       {displayedRecordId != null && (
@@ -1739,37 +1835,13 @@ export default function Results() {
           </p>
           <Attachments
             recordId={displayedRecordId}
-            allowReceipt={viewingSavedDashboard ? result.donationsValue > 0 : (input.donationsGBP ?? 0) > 0}
+            allowReceipt={viewingSavedDashboard || viewedRecordId != null ? result.donationsValue > 0 : (input.donationsGBP ?? 0) > 0}
             compact
           />
         </motion.div>
       )}
 
-      {/* Sidekick prompt */}
-      <motion.div
-        className="mb-6 rounded-xl border border-border overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #f0f9ff 0%, #fefce8 100%)" }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-      >
-        <div className="px-5 py-4 flex items-center gap-4">
-          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--brand-orange-bright)" }}>
-            <MessageSquare className="w-5 h-5 text-white" aria-hidden="true" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground mb-0.5">Want help putting this into your own words?</p>
-            <p className="text-xs text-muted-foreground leading-snug">Ask the sidekick to tailor your impact for a specific job, course, or statement.</p>
-          </div>
-          <button
-            onClick={() => openSidekick(true)}
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:-translate-y-px"
-            style={{ background: "var(--brand-orange)", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange-bright) 19%, transparent)" }}
-          >
-            Ask sidekick <ArrowRight className="w-3 h-3" aria-hidden="true" />
-          </button>
-        </div>
-      </motion.div>
+      <SidekickPrompt />
 
       {/* Fixed action bar */}
       <div

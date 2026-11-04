@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { getGetAnnualRecapQueryKey } from "@workspace/api-client-react";
-import type { ReportResult } from "@/components/results/ReportActions";
+import { getGetAnnualRecapQueryKey, type ImpactResult } from "@workspace/api-client-react";
 import { apiJson } from "@/lib/api";
 
 
 export interface YearResult {
   year: number;
   recordCount: number;
-  result: ReportResult;
+  result: ImpactResult;
 }
 
 /**

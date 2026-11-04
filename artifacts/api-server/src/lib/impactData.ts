@@ -1063,6 +1063,18 @@ export interface ValuationOptions {
   householdsCountedThisYear?: ReadonlySet<string>;
 }
 
+/** What each of the four values means, shown under its tile. */
+export const RESULT_EXPLANATIONS = {
+  impact:
+    "This is the direct social value created by your activities — calculated using Social Value Engine proxy values based on academic research and government data. Each activity is matched to a recognised outcome and multiplied by how much you did.",
+  contribution:
+    "This is the value of your time. Every hour you volunteer is worth the National Living Wage (£12.21/hr). This recognises that your time has real economic value when given freely to others.",
+  donations:
+    "The direct monetary value of the money you've donated to good causes over the last year. Every pound donated creates real change for charities and communities.",
+  personalDevelopment:
+    "Volunteering doesn't just help others — it builds your skills too. This reflects the employer-valued skills premium from your volunteering hours, based on NCVO's Time Well Spent research (2023), which found employers value volunteering experience at an average £1,500/year — equivalent to £15 per hour.",
+};
+
 export function calculateImpact(
   activities: Array<{ activityId: string; quantity: number; hoursPerYear: number }>,
   donationsGBP: number,
@@ -1198,15 +1210,6 @@ export function calculateImpact(
     totalHours,
     activityBreakdowns,
     sdgBreakdowns,
-    explanations: {
-      impact:
-        "This is the direct social value created by your activities — calculated using Social Value Engine proxy values based on academic research and government data. Each activity is matched to a recognised outcome and multiplied by how much you did.",
-      contribution:
-        "This is the value of your time. Every hour you volunteer is worth the National Living Wage (£12.21/hr). This recognises that your time has real economic value when given freely to others.",
-      donations:
-        "The direct monetary value of the money you've donated to good causes over the last year. Every pound donated creates real change for charities and communities.",
-      personalDevelopment:
-        "Volunteering doesn't just help others — it builds your skills too. This reflects the employer-valued skills premium from your volunteering hours, based on NCVO's Time Well Spent research (2023), which found employers value volunteering experience at an average £1,500/year — equivalent to £15 per hour.",
-    },
+    explanations: RESULT_EXPLANATIONS,
   };
 }

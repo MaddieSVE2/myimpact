@@ -10,6 +10,7 @@
  * up to the total.
  */
 import { PERSONAL_DEV_RATE_PER_HOUR, VOLUNTEER_RATE } from "./contributionModel.js";
+import { RESULT_EXPLANATIONS } from "./impactData.js";
 
 export interface YearActivity {
   activityId: string;
@@ -59,5 +60,6 @@ export function yearImpactResult(y: YearAggregate) {
       .map((s) => ({ ...s, value: round2(s.value) }))
       .filter((s) => s.value > 0)
       .sort((a, b) => b.value - a.value),
+    explanations: RESULT_EXPLANATIONS,
   };
 }

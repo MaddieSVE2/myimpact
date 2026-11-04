@@ -541,6 +541,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       donationsGBP: 0,
       additionalVolunteerHours: 0,
     });
+    // This record's own "describe your own" activities, never another session's.
+    setCustomActivities(restoreCustomActivities(record.impactResult));
     const recs = record.situation ? [record.situation] : [];
     setSituationsState(recs);
     setCareerBreakState(record.situation === 'career_break');
