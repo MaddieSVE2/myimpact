@@ -18,7 +18,7 @@ describe("yearImpactResult", () => {
       totalPersonalDevelopment: 45,
       activityMap: new Map([["coaching", activity("coaching", 150, 3)]]),
       sdgMap: new Map([["SDG 3", { sdg: "SDG 3", sdgColor: "#4C9F38", value: 150 }]]),
-      recon: { hoursExcess: 0, activities: [] },
+      recon: { hoursExcess: 0, contributionExcess: 0, activities: [] },
     };
     const r = yearImpactResult(y);
     expect(r).toMatchObject({ totalValue: 251.63, impactValue: 150, contributionValue: 36.63, personalDevelopmentValue: 45, donationsValue: 20, totalHours: 3 });
@@ -36,7 +36,7 @@ describe("yearImpactResult", () => {
       totalPersonalDevelopment: 60,
       activityMap: new Map([["coaching", activity("coaching", 200, 2)]]),
       sdgMap: new Map(),
-      recon: { hoursExcess: 2, activities: [{ excessValue: 100 }] },
+      recon: { hoursExcess: 2, contributionExcess: 24.42, activities: [{ excessValue: 100 }] },
     };
     const r = yearImpactResult(y);
     expect(r.impactValue).toBe(200);
@@ -56,7 +56,7 @@ describe("yearImpactResult", () => {
       totalPersonalDevelopment: 0,
       activityMap: new Map(),
       sdgMap: new Map(),
-      recon: { hoursExcess: 0, activities: [] },
+      recon: { hoursExcess: 0, contributionExcess: 0, activities: [] },
     };
     const r = yearImpactResult(y);
     expect(r.donationsValue).toBe(0);
@@ -72,7 +72,7 @@ describe("yearImpactResult", () => {
       totalPersonalDevelopment: 0,
       activityMap: new Map([["gone", activity("gone", 0, 0)]]),
       sdgMap: new Map([["SDG 1", { sdg: "SDG 1", sdgColor: "#000", value: 0 }]]),
-      recon: { hoursExcess: 1, activities: [{ excessValue: 5 }] },
+      recon: { hoursExcess: 1, contributionExcess: 12.21, activities: [{ excessValue: 5 }] },
     };
     const r = yearImpactResult(y);
     expect(Math.min(r.impactValue, r.contributionValue, r.personalDevelopmentValue, r.donationsValue)).toBeGreaterThanOrEqual(0);

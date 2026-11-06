@@ -10,6 +10,7 @@ import { and, eq, inArray, gte, lte } from "drizzle-orm";
 import { authenticateApiKey, requireScope, createApiKeyRateLimiter, type ApiKeyRequest } from "../middleware/apiKeyAuth.js";
 import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
+import { ONE_OFF_HOURLY_VALUE } from "../lib/impactData.js";
 import { getOrgSharingContext, sharedRecordsCondition } from "../lib/orgSharing.js";
 import { defaultGroupFor } from "../lib/orgGroups.js";
 
@@ -189,14 +190,14 @@ interface HoursPushBody {
   activityName?: unknown;
   description?: unknown;
   externalRef?: unknown;
-  // £ value per hour to use; if absent, falls back to a conservative national
-  // volunteer-time placeholder (£17/hour).
+  // £ value per hour to use; if absent, falls back to the hourly value of
+  // volunteering the built-in activities use (£15/hour).
   valuePerHourGBP?: unknown;
   donationsGBP?: unknown;
   periodLabel?: unknown;
 }
 
-const FALLBACK_VOLUNTEER_RATE_GBP_PER_HOUR = 17;
+const FALLBACK_VOLUNTEER_RATE_GBP_PER_HOUR = ONE_OFF_HOURLY_VALUE;
 
 router.post("/hours", requireScope("hours.write"), async (req: ApiKeyRequest, res) => {
   const body = req.body as HoursPushBody;

@@ -8,6 +8,7 @@
 import {
   calculateImpact,
   ONE_OFF_KINDS,
+  pricingFromResult,
   YEARLY_HOUSEHOLD_ACTIVITY_IDS,
   YEARLY_PER_PERSON_ACTIVITY_IDS,
 } from "./impactData.js";
@@ -59,6 +60,9 @@ function activitiesOf(record: RevalueRecord) {
     .map((a) => ({ activityId: a.activityId, quantity: num(a.quantity), hoursPerYear: num(a.hoursPerYear) }));
 }
 
+/** Valued per person a year until November 2026, so its one-off lines are corrected too. */
+const FORMERLY_YEARLY_PER_PERSON_IDS: ReadonlySet<string> = new Set(["family_caring"]);
+
 /** Custom lines rebuilt from the stored breakdowns so they keep their value. */
 function customActivitiesOf(result: Record<string, unknown>) {
   const breakdowns = (Array.isArray(result.activityBreakdowns) ? result.activityBreakdowns : []) as Breakdown[];
@@ -97,7 +101,7 @@ export function planRevaluation(records: RevalueRecord[]): RevalueChange[] {
   const changes: RevalueChange[] = [];
   for (const record of ordered) {
     const ids = extractActivityIds(record.activitiesJson);
-    if (!ids.some((id) => YEARLY_PER_PERSON_ACTIVITY_IDS.has(id) || YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(id))) continue;
+    if (!ids.some((id) => YEARLY_PER_PERSON_ACTIVITY_IDS.has(id) || FORMERLY_YEARLY_PER_PERSON_IDS.has(id) || YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(id))) continue;
     const key = `${record.userId}:${record.entryDate.getUTCFullYear()}`;
     const countedThisYear = counted.get(key) ?? new Set<string>();
     counted.set(key, countedThisYear);
@@ -107,9 +111,18 @@ export function planRevaluation(records: RevalueRecord[]): RevalueChange[] {
     const custom = customActivitiesOf(old);
     const lineHours = activities.reduce((s, a) => s + a.hoursPerYear, 0) + custom.reduce((s, a) => s + a.hoursPerYear, 0);
     const extraHours = Math.max(0, num(old.totalHours) - lineHours);
+    // The entry keeps the values it was saved with; only how yearly
+    // activities count changes.
+    const stored = pricingFromResult(old);
     const calc = calculateImpact(activities, num(record.donationsValue), extraHours, custom, {
       oneOff: true,
       householdsCountedThisYear: record.isOrgCopy ? new Set() : new Set(countedThisYear),
+      pricing: {
+        ...stored,
+        activities: new Map(
+          [...stored.activities].filter(([id, p]) => !(FORMERLY_YEARLY_PER_PERSON_IDS.has(id) && p.unit !== "hour")),
+        ),
+      },
     });
     if (!record.isOrgCopy) for (const id of ids) if (YEARLY_HOUSEHOLD_ACTIVITY_IDS.has(id)) countedThisYear.add(id);
 

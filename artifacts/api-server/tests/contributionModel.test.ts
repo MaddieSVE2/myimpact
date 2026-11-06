@@ -13,10 +13,10 @@ import {
   deriveReportingYear,
   parseRecordKind,
   RECORD_KINDS,
+  VOLUNTEER_RATE,
   type ReconcilableRecord,
 } from "../src/lib/contributionModel.js";
 
-const VOLUNTEER_RATE = 12.21;
 const PD_RATE = 15;
 
 function record(opts: {
@@ -26,20 +26,24 @@ function record(opts: {
   reportingYear?: number | null;
   activities?: Array<{ activityId: string; impactValue: number; hours: number; category?: string; sdg?: string }>;
   donationsValue?: number;
+  /** The National Living Wage the entry was saved with. */
+  volunteerRate?: number;
 }): ReconcilableRecord {
   const activities = opts.activities ?? [];
   const impact = activities.reduce((s, a) => s + a.impactValue, 0);
   const hours = activities.reduce((s, a) => s + a.hours, 0);
   const donations = opts.donationsValue ?? 0;
+  const rate = opts.volunteerRate ?? VOLUNTEER_RATE;
   return {
     userId: opts.userId ?? "u1",
     kind: opts.kind ?? "legacy",
     entryDate: new Date(opts.entryDate ?? "2026-06-15T00:00:00Z"),
     reportingYear: opts.reportingYear,
     resultJson: {
-      totalValue: impact + donations + hours * (VOLUNTEER_RATE + PD_RATE),
+      totalValue: impact + donations + hours * (rate + PD_RATE),
       totalHours: hours,
       impactValue: impact,
+      contributionValue: hours * rate,
       donationsValue: donations,
       activityBreakdowns: activities.map((a) => ({
         activityId: a.activityId,
@@ -186,6 +190,19 @@ describe("computeEstimateActualReconciliation", () => {
     expect(raw.totalHours - recon.hoursExcess).toBeCloseTo(30, 6);
     expect(raw.totalValue - recon.valueExcess).toBeCloseTo(693 + 30 * (VOLUNTEER_RATE + PD_RATE), 6);
     expect(recon.activities[0].countedValue).toBeCloseTo(693, 2);
+  });
+
+  it("takes overlapping hours off at the National Living Wage their own entry was saved with", () => {
+    // An estimate saved at £12.21 an hour, then quick logs at £12.71.
+    const records = [
+      record({ kind: "annual_estimate", volunteerRate: 12.21, activities: [{ activityId: "community_garden", impactValue: 721.5, hours: 50 }] }),
+      record({ kind: "quick_log", volunteerRate: 12.71, activities: [{ activityId: "community_garden", impactValue: 75, hours: 5 }] }),
+    ];
+    const recon = computeEstimateActualReconciliation(records);
+    expect(recon.contributionExcess).toBeCloseTo(5 * 12.71, 6);
+    expect(recon.valueExcess).toBeCloseTo(75 + 5 * (12.71 + PD_RATE), 6);
+    // The estimate is counted, at its own rate.
+    expect(rawTotals(records).totalValue - recon.valueExcess).toBeCloseTo(721.5 + 50 * (12.21 + PD_RATE), 6);
   });
 
   it("different activities never reconcile against each other", () => {

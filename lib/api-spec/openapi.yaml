@@ -688,7 +688,7 @@ paths:
       summary: Record hours the organisation attests for a member
       description: |
         Adds a verified record to the member's account, valued at
-        `valuePerHourGBP` per hour (£17 if omitted) plus `donationsGBP`, and
+        `valuePerHourGBP` per hour (£15 if omitted) plus `donationsGBP`, and
         sends the `hours.logged` and `hours.attested` webhook events. The
         member must already have a My Impact account and belong to the
         organisation. Each call adds a new record: `externalRef` is stored and

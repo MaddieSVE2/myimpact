@@ -540,7 +540,7 @@ function MetricsPage({ data }: { data: PdfData }) {
     {
       label: "TIME CONTRIBUTED",
       value: data.contributionValue,
-      subtitle: `${Math.round(data.totalHours)} volunteer hours at \u00a312.21/hr`,
+      subtitle: `${Math.round(data.totalHours)} volunteer hours at the National Living Wage`,
     },
     {
       label: "DONATIONS",

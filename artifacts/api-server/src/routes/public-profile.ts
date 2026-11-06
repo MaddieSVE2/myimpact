@@ -15,6 +15,7 @@ const router: IRouter = Router();
 const EMPTY_RECON: ReconciliationResult = {
   valueExcess: 0,
   hoursExcess: 0,
+  contributionExcess: 0,
   donationExcess: 0,
   activities: [],
 };

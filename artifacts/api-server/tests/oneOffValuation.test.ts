@@ -13,15 +13,15 @@ const line = (activityId: string, quantity: number, hoursPerYear: number) => ({ 
 describe("one-off valuation of yearly activities", () => {
   it("values a yearly per-person activity as volunteering time in a one-off entry", () => {
     const r = calculateImpact([line("befriending", 1, 2)], 0, 0, [], { oneOff: true });
-    expect(r.activityBreakdowns[0]).toMatchObject({ activityId: "befriending", impactValue: 34, hours: 2, unit: "hour", valuePerUnit: 17 });
+    expect(r.activityBreakdowns[0]).toMatchObject({ activityId: "befriending", impactValue: 30, hours: 2, unit: "hour", valuePerUnit: 15 });
     expect(r.activityBreakdowns[0]!.proxy).toMatch(/single occasion/);
-    // 34 for the hours + 2h of volunteering (12.21) and personal development (15).
-    expect(r.totalValue).toBe(34 + 2 * 12.21 + 2 * 15);
+    // 30 for the hours + 2h of volunteering (12.71) and personal development (15).
+    expect(r.totalValue).toBe(30 + 2 * 12.71 + 2 * 15);
   });
 
   it("leaves yearly estimates and other entries as they were", () => {
-    expect(calculateImpact([line("befriending", 1, 2)], 0, 0, []).activityBreakdowns[0]!.impactValue).toBe(8040);
-    expect(calculateImpact([line("befriending", 1, 2)], 0, 0, [], { oneOff: false }).activityBreakdowns[0]!.impactValue).toBe(8040);
+    expect(calculateImpact([line("befriending", 1, 2)], 0, 0, []).activityBreakdowns[0]!.impactValue).toBe(6429);
+    expect(calculateImpact([line("befriending", 1, 2)], 0, 0, [], { oneOff: false }).activityBreakdowns[0]!.impactValue).toBe(6429);
   });
 
   it("doesn't change activities that are already per occasion", () => {

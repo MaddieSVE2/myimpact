@@ -74,7 +74,7 @@ const SECTIONS: CollapsibleSection[] = [
             <strong>Impact of activities</strong>: the proxy value for each activity multiplied by how much you did. Hour-based activities use the per-hour proxy; count-based activities (e.g. trees planted, bags donated) use the per-unit proxy.
           </li>
           <li>
-            <strong>Time contributed</strong>: total volunteer hours across all activities, valued at <strong>£12.21/hour</strong> (<CitationLink id="living-wage">GOV.UK National Living Wage rates</CitationLink>, 2025/26). This recognises that freely given time has real economic value.
+            <strong>Time contributed</strong>: total volunteer hours across all activities, valued at <strong>£12.71/hour</strong> (<CitationLink id="living-wage">GOV.UK National Living Wage rates</CitationLink>, 2026/27). This recognises that freely given time has real economic value.
           </li>
           <li>
             <strong>Donations</strong>: the direct monetary value of charitable donations you have logged.
@@ -84,8 +84,9 @@ const SECTIONS: CollapsibleSection[] = [
           </li>
         </ol>
         <p style={{ marginTop: 14 }}>The four pillars are reported separately so funders, employers and individuals can see exactly which kind of value is being claimed and avoid double counting.</p>
+        <p style={{ marginTop: 14 }}>We update proxy values when their sources change. Each saved entry keeps the values it was calculated with.</p>
         <p style={{ marginTop: 14, fontSize: 14, color: "var(--brand-muted-text)", fontStyle: "italic" }}>
-          Worked example: 50 hours of community gardening at £14.43/hour = £721.50 of impact value, plus £610.50 of contribution value (50 × £12.21), plus £750 of personal growth value (50 × £15). Total: £2,082 from a single activity.
+          Worked example: 50 hours of community gardening at £15/hour = £750 of impact value, plus £635.50 of contribution value (50 × £12.71), plus £750 of personal growth value (50 × £15). Total: £2,135.50 from a single activity.
         </p>
       </>
     ),
@@ -99,18 +100,16 @@ const SECTIONS: CollapsibleSection[] = [
         <p>My Impact does not invent values. Every proxy is sourced from one of the following:</p>
         <ul style={{ marginTop: 14, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           <li>
-            <strong><CitationLink id="sve">The Social Value Engine</CitationLink></strong>: a platform for social value measurement used by councils, universities and charities. Its approach draws on <CitationLink id="green-book">HM Treasury's Green Book</CitationLink> and <CitationLink id="svi">Social Value International principles</CitationLink>.
+            <strong><CitationLink id="sve">The Social Value Engine</CitationLink></strong>: a platform for social value measurement used by councils, universities and charities. Its approach draws on <CitationLink id="green-book">HM Treasury's Green Book</CitationLink> and <CitationLink id="svi">Social Value International principles</CitationLink>. Most activity values come from its proxy list, which names the original source for each: for example <CitationLink id="power-to-change">Power to Change's value of volunteering</CitationLink>, <CitationLink id="dcms-loneliness">DCMS's loneliness research</CitationLink>, <CitationLink id="sport">Sport England's social value research</CitationLink>, <CitationLink id="pbe">Pro Bono Economics' community asset transfer research</CitationLink> and <CitationLink id="volunteer-scotland">Volunteer Scotland's wellbeing research</CitationLink>.
           </li>
           <li>
-            <strong>Government and public-sector data</strong>: <CitationLink id="landfill">UK Landfill Tax rates</CitationLink>, <CitationLink id="living-wage">National Living Wage rates</CitationLink>, and the <CitationLink id="gmca">Greater Manchester Combined Authority unit-cost database</CitationLink>.
+            <strong>Government and public-sector data</strong>: <CitationLink id="landfill">UK Landfill Tax rates</CitationLink>, <CitationLink id="living-wage">National Living Wage rates</CitationLink>, <CitationLink id="nhsbt">NHS Blood and Transplant's price list</CitationLink>, and the <CitationLink id="gmca">Greater Manchester Combined Authority unit-cost database</CitationLink>.
           </li>
           <li>
-            <strong>UK research and evaluations</strong>: <CitationLink id="pssru">PSSRU unit costs</CitationLink>, <CitationLink id="sport">Sport England's social value research</CitationLink>, <CitationLink id="refuge">NEF Consulting's Refuge SROI</CitationLink>, <CitationLink id="pbe">Pro Bono Economics' community asset transfer research</CitationLink>, <CitationLink id="volunteer-scotland">Volunteer Scotland's wellbeing research</CitationLink>, and <CitationLink id="fareshare">FareShare's impact research</CitationLink>. These sources have different methods and are not all peer-reviewed journal articles.
-          </li>
-          <li>
-            <strong>Sector-specific reports</strong>: <CitationLink id="wildlife">The Wildlife Trusts' Network for Nature</CitationLink>, <CitationLink id="ncvo">NCVO's Time Well Spent</CitationLink>, and an <CitationLink id="action">Action for Children evaluation cited in the activity library</CitationLink>.
+            <strong>Other UK sources</strong>: <CitationLink id="coram">Coram Family and Childcare's Holiday Childcare Survey</CitationLink>, <CitationLink id="bhf">the British Heart Foundation's estimate for a donated bag</CitationLink>, and <CitationLink id="ncvo">NCVO's Time Well Spent</CitationLink>.
           </li>
         </ul>
+        <p style={{ marginTop: 14 }}>These sources have different methods and are not all peer-reviewed journal articles.</p>
         <p style={{ marginTop: 14 }}>Each activity stores its proxy source string and the year of the value. The citations below link to the source documents where publicly available. A publisher overview is marked as such when the exact underlying evaluation could not be located; it should not be taken as verification of a particular proxy figure.</p>
       </>
     ),
@@ -128,7 +127,7 @@ const SECTIONS: CollapsibleSection[] = [
             <strong>Single primary SDG per activity</strong>: every activity is tagged with the one Goal it contributes to most directly. We do not double-count an activity across multiple Goals, even when it is plausibly relevant to several.
           </li>
           <li>
-            <strong>Proxy and Goal must align</strong>: the proxy value must measure an outcome the SDG is concerned with. Conservation volunteering, for example, uses a wage-replacement proxy attributed to <CitationLink id="wildlife">The Wildlife Trusts</CitationLink> and is tagged Life on Land, not Decent Work.
+            <strong>Proxy and Goal must align</strong>: the proxy value must measure an outcome the SDG is concerned with. Conservation volunteering, for example, is valued with <CitationLink id="power-to-change">Power to Change's hourly value of volunteering</CitationLink>, a wage-replacement value, and is tagged Life on Land, the Goal the work serves.
           </li>
         </ul>
         <p style={{ marginTop: 14 }}>This is deliberately conservative. Many activities have spillover benefits to other SDGs (a community garden creates both Life on Land and Good Health and Well-Being value), but counting only the primary Goal keeps headline figures defensible to funders and auditors.</p>
@@ -191,18 +190,18 @@ const CITATIONS: { id: string; label: string; href: string; note?: string }[] = 
   { id: "sve", label: "Social Value Engine — social value measurement platform.", href: "https://www.socialvalueengine.com" },
   { id: "green-book", label: "HM Treasury, The Green Book: appraisal and evaluation in central government (publication page; current and previous editions).", href: "https://www.gov.uk/government/publications/the-green-book-appraisal-and-evaluation-in-central-government" },
   { id: "svi", label: "Social Value International, Principles of Social Value.", href: "https://www.socialvalueint.org/principles" },
-  { id: "living-wage", label: "GOV.UK, National Minimum Wage and National Living Wage rates; £12.21/hour for ages 21+ in 2025/26.", href: "https://www.gov.uk/national-minimum-wage-rates" },
-  { id: "landfill", label: "HMRC, rates and allowances: Landfill Tax (standard rate £126.15/tonne from April 2025).", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
+  { id: "living-wage", label: "GOV.UK, National Minimum Wage and National Living Wage rates; £12.71/hour for ages 21+ in 2026/27.", href: "https://www.gov.uk/national-minimum-wage-rates" },
+  { id: "landfill", label: "HMRC, rates and allowances: Landfill Tax (standard rate £130.75/tonne from April 2026).", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
+  { id: "nhsbt", label: "NHS Blood and Transplant, blood components price list 2026 to 2027 (standard red cells £196.07 a unit).", href: "https://hospital.blood.co.uk/components/portfolio-and-prices/" },
   { id: "gmca", label: "Greater Manchester Combined Authority, cost-benefit analysis and Unit Cost Database (downloadable workbook; current version published November 2025).", href: "https://www.greatermanchester-ca.gov.uk/what-we-do/research/research-cost-benefit-analysis/", note: "Activity proxies may cite an earlier edition; the linked page hosts the latest workbook and methodology." },
-  { id: "pssru", label: "PSSRU, Unit Costs of Health and Social Care 2022: A Manual (Kent Academic Repository, DOI 10.22024/UniKent/01.02.100519).", href: "https://kar.kent.ac.uk/100519/", note: "Cited for informal-carer replacement costs." },
   { id: "sport", label: "Sport England, Social value and return on investment of sport and physical activity (model and Active Lives data; results first published 2024).", href: "https://www.sportengland.org/research-and-data/research/social-value-and-return-investment-sport-and-physical-activity", note: "Cited for physical-activity and children's wellbeing proxies." },
   { id: "ncvo", label: "NCVO, Time Well Spent 2023: Volunteer experience and impact, section 5 (27 June 2023).", href: "https://www.ncvo.org.uk/news-and-insights/news-index/time-well-spent-2023/volunteer-experience-impact", note: "Describes reported benefits, not the £15/hour personal-growth rate used in our illustrative calculation." },
   { id: "volunteer-scotland", label: "Volunteer Scotland and State of Life, The social value of volunteering in Scotland — Technical Report (2025, PDF).", href: "https://www.volunteerscotland.net/wp-content/uploads/2025/03/The-social-value-of-volunteering-in-Scotland-%E2%80%93-Technical-Report.pdf", note: "Cited for volunteer wellbeing proxies." },
-  { id: "fareshare", label: "FareShare, Impact Report (September 2023, PDF).", href: "https://fareshare.org.uk/wp-content/uploads/2023/09/FareShare-Impact-Report_Sep2023.pdf", note: "The activity-library £185/visit figure attributed to a 2018 report is not verified by this later report." },
-  { id: "wildlife", label: "The Wildlife Trusts, Network for Nature Annual Report Year 1 (May 2022, PDF).", href: "https://www.wildlifetrusts.org/sites/default/files/2024-06/N4N%20Annual%20Report%20Y1%20FINAL%2006-07-2022.pdf", note: "The activity-library attribution says 2025; the publisher's Year 1 report is dated 2022. The £9.50/hour proxy has not been verified against this report." },
-  { id: "pbe", label: "Pro Bono Economics, Our assets, our future: the economics, outcomes and sustainability of assets in community ownership (2017, via Power to Change project page).", href: "https://pbe.co.uk/impact_stories/power-to-change", note: "The activity-library £5,176/person attribution has not been verified against this report." },
-  { id: "action", label: "Action for Children, impact and evaluation overview.", href: "https://www.actionforchildren.org.uk/our-work-and-impact/our-impact", note: "The cited Wheatley Children's Centre evaluation (2023) and £3,159/child proxy could not be located publicly; this overview is not that evaluation." },
-  { id: "refuge", label: "NEF Consulting for Refuge, Social Return on Investment: updated SROI model (16 March 2021, PDF).", href: "https://refuge.org.uk/wp-content/uploads/2021/04/NEF-Consulting-Refuge-updated-SROI-Model-Report-FINAL_16.03.21.pdf", note: "The activity library attributes its social-connection proxy to this model; the £8,040/person figure has not been verified against the report." },
+  { id: "pbe", label: "Pro Bono Economics, Our assets, our future: the economics, outcomes and sustainability of assets in community ownership (2017, via Power to Change project page).", href: "https://pbe.co.uk/impact_stories/power-to-change", note: "The £2,972/person value comes from the Social Value Engine's proxy list and has not been verified against this report." },
+  { id: "power-to-change", label: "Nicol Economics for Power to Change, Assessing the value of volunteers in community businesses (2020, PDF).", href: "https://www.powertochange.org.uk/wp-content/uploads/2020/06/Value_of_Volunteering_Working_Paper_Final.pdf", note: "Cited for the £15/hour value of volunteering time." },
+  { id: "dcms-loneliness", label: "Department for Digital, Culture, Media and Sport, Loneliness monetisation report (2020).", href: "https://www.gov.uk/government/publications/loneliness-monetisation-report", note: "Cited for visiting, befriending and social club activities." },
+  { id: "coram", label: "Coram Family and Childcare, Holiday Childcare Survey 2026 (average holiday club place £190.77 a week in Great Britain).", href: "https://www.coramfamilyandchildcare.org.uk/research/holiday-childcare-survey-2026/" },
+  { id: "bhf", label: "University of Bath, on the British Heart Foundation's estimate of a donated bag's value to its shops.", href: "https://www.bath.ac.uk/announcements/bath-students-unwanted-items-raise-over-half-a-million-pounds-for-the-british-heart-foundation/", note: "The British Heart Foundation's estimates have ranged from £14 to £20 a bag; we use £20." },
   { id: "sdg", label: "United Nations, The 17 Sustainable Development Goals.", href: "https://sdgs.un.org/goals" },
 ];
 

@@ -9,7 +9,7 @@
  * report-share copy leaves over comes off donations, so the parts always add
  * up to the total.
  */
-import { PERSONAL_DEV_RATE_PER_HOUR, VOLUNTEER_RATE } from "./contributionModel.js";
+import { PERSONAL_DEV_RATE_PER_HOUR } from "./contributionModel.js";
 import { RESULT_EXPLANATIONS } from "./impactData.js";
 
 export interface YearActivity {
@@ -33,7 +33,7 @@ export interface YearAggregate {
   /** Already reconciled per activity / SDG. */
   activityMap: Map<string, YearActivity>;
   sdgMap: Map<string, { sdg: string; sdgColor: string; value: number }>;
-  recon: { hoursExcess: number; activities: { excessValue: number }[] };
+  recon: { hoursExcess: number; contributionExcess: number; activities: { excessValue: number }[] };
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -41,7 +41,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function yearImpactResult(y: YearAggregate) {
   const impactExcess = y.recon.activities.reduce((s, a) => s + a.excessValue, 0);
   const impactValue = Math.max(0, round2(y.totalImpact - impactExcess));
-  const contributionValue = Math.max(0, round2(y.totalContribution - y.recon.hoursExcess * VOLUNTEER_RATE));
+  const contributionValue = Math.max(0, round2(y.totalContribution - y.recon.contributionExcess));
   const personalDevelopmentValue = Math.max(0, round2(y.totalPersonalDevelopment - y.recon.hoursExcess * PERSONAL_DEV_RATE_PER_HOUR));
   const totalValue = Math.max(0, round2(y.totalValue));
   const donationsValue = Math.max(0, round2(totalValue - impactValue - contributionValue - personalDevelopmentValue));

@@ -14,7 +14,7 @@ activity in the same year.
 
 - **Schema** — `lib/db/src/schema/impact.ts`: one `impact_records` table. Each
   row stores the *whole* server-calculated result (`resultJson` with
-  `totalValue = impactValue + contributionValue (£12.21/hr NLW) +
+  `totalValue = impactValue + contributionValue (NLW: £12.71/hr, £12.21 before November 2026) +
   donationsValue (pound-for-pound) + personalDevelopmentValue (£15/hr)`), an
   `entryDate` deciding calendar-year membership, `source`
   (`user | retrospective | habit | member-submitted | org-attested`), and
@@ -83,9 +83,9 @@ BOTH `annual_estimate` rows and `quick_log` rows:
   logged-so-far** (validated against existing calculations: equivalent to
   subtracting the overlap `min(estimate, logged)` from the raw sum).
 
-Excluded hours also surrender their derived NLW (£12.21/hr) and
-personal-development (£15/hr) components, since those live inside every stored
-`totalValue`. Donations follow the same max rule at the year level. Records of
+Excluded hours also surrender their derived NLW (at the rate their own
+entry was saved with) and personal-development (£15/hr) components, since
+those live inside every stored `totalValue`. Donations follow the same max rule at the year level. Records of
 any other kind never participate, so an all-`legacy` dataset produces a zero
 adjustment — regression tests assert historical aggregation is unchanged
 (`tests/contributionModel.test.ts`).

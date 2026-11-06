@@ -15,7 +15,7 @@ import { enqueueOrgEvent } from "../lib/webhookDispatcher.js";
 import { trackServerEvent } from "../lib/analytics.js";
 import { featureCap } from "../lib/featureFlags.js";
 import { generateOrgLogoKey, getUploadURL, getDownloadURL, deleteAttachment, getObjectMetadata, readObjectBuffer } from "../lib/objectStorage.js";
-import { calculateImpact, ACTIVITIES, ONE_OFF_KINDS, YEARLY_HOUSEHOLD_ACTIVITY_IDS } from "../lib/impactData.js";
+import { calculateImpact, ACTIVITIES, ONE_OFF_KINDS, pricingFromResult, YEARLY_HOUSEHOLD_ACTIVITY_IDS } from "../lib/impactData.js";
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { endOfDay, getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
@@ -3278,7 +3278,13 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         sdg: c.custom!.sdg,
         sdgColor: c.custom!.sdgColor,
       })),
-      sourceReport?.kind && ONE_OFF_KINDS.has(sourceReport.kind) ? oneOffShareValuation(sourceReport.resultJson) : {},
+      sourceReport
+        ? {
+            ...(sourceReport.kind && ONE_OFF_KINDS.has(sourceReport.kind) ? oneOffShareValuation(sourceReport.resultJson) : {}),
+            // Valued as the report was, whatever today's values are.
+            pricing: pricingFromResult(sourceReport.resultJson),
+          }
+        : {},
     );
 
     const now = new Date();

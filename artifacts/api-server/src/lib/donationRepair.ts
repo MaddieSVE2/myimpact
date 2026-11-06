@@ -6,6 +6,8 @@
 // New entries are handled at analyse time (see routes/custom-activity.ts);
 // repairInflatedDonations fixes records saved before that fix.
 
+import { contributionRate, PERSONAL_DEV_RATE_PER_HOUR } from "./contributionModel.js";
+
 const FUNDRAISING_RE = /fund[\s-]?rais/i;
 const MONEY_RE = /£\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:pounds?|quid|gbp)\b/i;
 const DONATION_CUE_RE = /\bdonat\w*|\bgiv(?:e|es|ing)\b|\bgave\b|\bsponsor\w*|\btithe\w*|\bto\s+(?:\w+\s+){0,3}?(?:charit\w*|church|mosque|temple|good\s+cause|cause\b)/i;
@@ -74,8 +76,6 @@ interface BreakdownLike {
   unitLabel?: string;
 }
 
-const VOLUNTEER_RATE = 12.21;          // keep in sync with calculateImpact
-const PERSONAL_DEV_RATE_PER_HOUR = 15; // keep in sync with calculateImpact
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -131,7 +131,8 @@ export function repairInflatedDonations(result: Record<string, unknown>): Record
   const totalHours = Math.max(0, oldTotalHours - removedHours);
   const impactValue = fixed.reduce((sum, b) => sum + (typeof b.impactValue === "number" ? b.impactValue : 0), 0);
   const donationsValue = typeof result.donationsValue === "number" ? result.donationsValue : 0;
-  const contributionValue = totalHours * VOLUNTEER_RATE;
+  // At the National Living Wage the record was saved with.
+  const contributionValue = totalHours * contributionRate(result);
   const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
   const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
 

@@ -162,8 +162,8 @@ const PILLARS = [
   },
   {
     title: "2. Time contributed",
-    formula: "Total volunteer hours × £12.21/hour",
-    body: "Volunteer time is valued at the National Living Wage rate (GOV.UK, 2024/25). This recognises that freely given time has real economic value.",
+    formula: "Total volunteer hours × £12.71/hour",
+    body: "Volunteer time is valued at the National Living Wage rate (GOV.UK, 2026/27). This recognises that freely given time has real economic value.",
   },
   {
     title: "3. Donations",
@@ -216,18 +216,18 @@ const CITATIONS: { text: string; href?: string }[] = [
   { text: "Social Value Engine — UK accredited platform for social value measurement.", href: "https://www.socialvalueengine.com" },
   { text: "HM Treasury — The Green Book: Central Government Guidance on Appraisal and Evaluation (2022)." },
   { text: "Social Value International — Principles of Social Value and SROI accreditation framework.", href: "https://www.socialvalue.org.uk" },
-  { text: "GOV.UK — National Living Wage rates (2024/25), £12.21/hour.", href: "https://www.gov.uk/national-minimum-wage-rates" },
-  { text: "GOV.UK — Standard UK Landfill Tax (2025), £126.15/tonne.", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
+  { text: "GOV.UK — National Living Wage rates (2026/27), £12.71/hour.", href: "https://www.gov.uk/national-minimum-wage-rates" },
+  { text: "GOV.UK — Standard UK Landfill Tax (2026), £130.75/tonne.", href: "https://www.gov.uk/government/publications/rates-and-allowances-landfill-tax" },
+  { text: "NHS Blood and Transplant — Blood components price list 2026 to 2027.", href: "https://hospital.blood.co.uk/components/portfolio-and-prices/" },
   { text: "Greater Manchester Combined Authority — Unit Cost Database (2024)." },
-  { text: "PSSRU / Carers UK — Unit Costs of Health and Social Care, informal carer estimates (2022).", href: "https://www.pssru.ac.uk" },
   { text: "Sport England — Active Lives data and social value research summary." },
   { text: "NCVO — Time Well Spent: Diversity and Volunteering (2023).", href: "https://www.ncvo.org.uk/" },
   { text: "Volunteer Scotland — Technical Report on the Wellbeing Value of Volunteering (2025)." },
-  { text: "FareShare — Value of being supported by a food bank, £185/visit (2018).", href: "https://fareshare.org.uk" },
-  { text: "The Wildlife Trusts — Network for Nature Annual Report Y1 (2025)." },
+  { text: "Nicol Economics for Power to Change — Assessing the value of volunteers in community businesses (2020).", href: "https://www.powertochange.org.uk/wp-content/uploads/2020/06/Value_of_Volunteering_Working_Paper_Final.pdf" },
   { text: "Pro Bono Economics — The Economics of CATs: Power to Change (2020), TNL Community Fund." },
-  { text: "Action for Children — Wheatley Children's Centre social value evaluation (2023)." },
-  { text: "NEF / Refuge — Refuge SROI updated model findings (2021)." },
+  { text: "DCMS — Loneliness monetisation report (2020).", href: "https://www.gov.uk/government/publications/loneliness-monetisation-report" },
+  { text: "Coram Family and Childcare — Holiday Childcare Survey (2026).", href: "https://www.coramfamilyandchildcare.org.uk/research/holiday-childcare-survey-2026/" },
+  { text: "British Heart Foundation — estimated value of a donated bag to its shops." },
   { text: "United Nations — The 17 Sustainable Development Goals.", href: "https://sdgs.un.org/goals" },
 ];
 
@@ -335,10 +335,9 @@ function SourcesPage({ page, total }: { page: number; total: number }) {
         <Text style={s.sectionEyebrow}>WHERE THE PROXIES COME FROM</Text>
         <Text style={s.sectionH2}>Sourced, never invented.</Text>
         <View style={{ marginBottom: 16 }}>
-          <Bullet><Text style={{ fontWeight: "bold" }}>The Social Value Engine</Text> — UK accredited platform, grounded in HM Treasury Green Book methodology and Social Value International standards.</Bullet>
-          <Bullet><Text style={{ fontWeight: "bold" }}>GOV.UK and HM Treasury sources</Text> — Standard UK Landfill Tax, National Living Wage, GMCA unit-cost database.</Bullet>
-          <Bullet><Text style={{ fontWeight: "bold" }}>Peer-reviewed UK research</Text> — PSSRU informal carer costs, Sport England, NEF Refuge SROI, Pro Bono Economics, Volunteer Scotland, FareShare.</Bullet>
-          <Bullet><Text style={{ fontWeight: "bold" }}>Sector-specific reports</Text> — The Wildlife Trusts' Network for Nature, NCVO Time Well Spent, Action for Children.</Bullet>
+          <Bullet><Text style={{ fontWeight: "bold" }}>The Social Value Engine</Text> — UK accredited platform, grounded in HM Treasury Green Book methodology and Social Value International standards. Most activity values come from its proxy list, which names the original source for each: Power to Change, DCMS, Sport England, Pro Bono Economics and Volunteer Scotland among them.</Bullet>
+          <Bullet><Text style={{ fontWeight: "bold" }}>GOV.UK and public-sector sources</Text> — Standard UK Landfill Tax, National Living Wage, NHS Blood and Transplant's price list, GMCA unit-cost database.</Bullet>
+          <Bullet><Text style={{ fontWeight: "bold" }}>Other UK sources</Text> — Coram Family and Childcare's Holiday Childcare Survey, the British Heart Foundation's estimate for a donated bag, NCVO Time Well Spent.</Bullet>
         </View>
 
         <Text style={s.sectionEyebrow}>UN SDG MAPPING</Text>

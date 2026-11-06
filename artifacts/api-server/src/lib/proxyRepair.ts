@@ -16,6 +16,7 @@ import { db, impactRecordsTable } from "@workspace/db";
 import { eq, sql, gt, and, asc } from "drizzle-orm";
 import { getProxyMapByTitle, type StoredProxy } from "./proxyStore.js";
 import { deflateProxyValue } from "./proxyValuation.js";
+import { contributionRate, PERSONAL_DEV_RATE_PER_HOUR } from "./contributionModel.js";
 
 interface BreakdownLike {
   activityId?: string;
@@ -33,8 +34,6 @@ interface BreakdownLike {
   unitLabel?: string;
 }
 
-const VOLUNTEER_RATE = 12.21;          // keep in sync with calculateImpact
-const PERSONAL_DEV_RATE_PER_HOUR = 15; // keep in sync with calculateImpact
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -94,7 +93,8 @@ export function repairOverstatedProxies(
   const totalHours = typeof result.totalHours === "number" ? result.totalHours : 0;
   const impactValue = fixed.reduce((sum, b) => sum + (typeof b.impactValue === "number" ? b.impactValue : 0), 0);
   const donationsValue = typeof result.donationsValue === "number" ? result.donationsValue : 0;
-  const contributionValue = totalHours * VOLUNTEER_RATE;
+  // At the National Living Wage the record was saved with.
+  const contributionValue = totalHours * contributionRate(result);
   const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
   const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
 

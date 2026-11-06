@@ -33,11 +33,14 @@ export function parseRecordKind(raw: unknown): RecordKind | null {
   return typeof raw === "string" && KIND_SET.has(raw) ? (raw as RecordKind) : null;
 }
 
-// Rates mirrored from calculateImpact (lib/impactData.ts). An hour excluded
-// from the headline total must also surrender its contribution (NLW) and
-// personal-development (£15/hr) components, since those are derived from
-// hours inside every stored resultJson.totalValue.
-export const VOLUNTEER_RATE = 12.21;
+// The rates calculateImpact (lib/impactData.ts) values hours at. An hour
+// excluded from the headline total must also surrender its contribution
+// (NLW) and personal-development (£15/hr) components, since those are
+// derived from hours inside every stored resultJson.totalValue. Entries keep
+// the National Living Wage they were saved with (£12.21 before November
+// 2026), so excluded hours surrender their own entry's rate.
+/** National Living Wage from April 2026 (GOV.UK). */
+export const VOLUNTEER_RATE = 12.71;
 export const PERSONAL_DEV_RATE_PER_HOUR = 15;
 
 // ── Activity location ──────────────────────────────────────────────────────
@@ -302,6 +305,8 @@ export interface ReconciliationResult {
   valueExcess: number;
   /** Amount to subtract from the raw sum of resultJson.totalHours. */
   hoursExcess: number;
+  /** Contribution value of hoursExcess (included in valueExcess). */
+  contributionExcess: number;
   /** Donation overlap included inside valueExcess (already counted there). */
   donationExcess: number;
   /** Per-activity estimate-vs-logged detail (only activities present in BOTH). */
@@ -312,6 +317,8 @@ interface LoggedEntry {
   t: number;
   value: number;
   hours: number;
+  /** £ an hour this entry's time contributed was valued at. */
+  rate: number;
   inWindow: boolean;
 }
 
@@ -332,6 +339,13 @@ function num(v: unknown): number {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** The National Living Wage a saved result valued its hours at. */
+export function contributionRate(result: Record<string, unknown>): number {
+  const hours = num(result.totalHours);
+  const contribution = num(result.contributionValue);
+  return hours > 0 && contribution > 0 ? round2(contribution / hours) : VOLUNTEER_RATE;
+}
 
 /**
  * Computes the double-count adjustment for a set of impact records.
@@ -386,6 +400,7 @@ export function computeEstimateActualReconciliation(
   }
   let duplicateValueExcess = 0;
   let duplicateHoursExcess = 0;
+  let duplicateContributionExcess = 0;
   // Per-activity share of the duplicate excess, so aggregators that adjust
   // activity/category/SDG maps via recon.activities dedupe those maps too,
   // not just the headline totals. Keyed by user|activityId.
@@ -413,6 +428,7 @@ export function computeEstimateActualReconciliation(
           : {};
         duplicateValueExcess += num(result.totalValue);
         duplicateHoursExcess += num(result.totalHours);
+        duplicateContributionExcess += num(result.contributionValue);
         const breakdowns = Array.isArray(result.activityBreakdowns)
           ? (result.activityBreakdowns as BreakdownEntry[])
           : [];
@@ -517,6 +533,7 @@ export function computeEstimateActualReconciliation(
     const breakdowns = Array.isArray(result.activityBreakdowns)
       ? (result.activityBreakdowns as BreakdownEntry[])
       : [];
+    const rate = contributionRate(result);
     for (const b of breakdowns) {
       const activityId =
         typeof b.activityId === "string" && b.activityId
@@ -549,6 +566,7 @@ export function computeEstimateActualReconciliation(
           t: r.entryDate.getTime(),
           value: num(b.impactValue),
           hours: num(b.hours),
+          rate,
           inWindow: recordInWindow,
         });
       }
@@ -557,6 +575,7 @@ export function computeEstimateActualReconciliation(
 
   let impactExcess = 0;
   let hoursExcess = 0;
+  let contributionExcess = 0;
   let donationExcess = 0;
   const activities: ReconciledActivity[] = [];
 
@@ -591,6 +610,7 @@ export function computeEstimateActualReconciliation(
         if (e.inWindow) {
           excessValue += usedV;
           excessHours += usedH;
+          contributionExcess += usedH * e.rate;
         }
       }
       // An in-window estimate whose logs (anywhere in the period) exceed it
@@ -653,11 +673,13 @@ export function computeEstimateActualReconciliation(
   const valueExcess =
     impactExcess +
     donationExcess +
-    hoursExcess * (VOLUNTEER_RATE + PERSONAL_DEV_RATE_PER_HOUR);
+    contributionExcess +
+    hoursExcess * PERSONAL_DEV_RATE_PER_HOUR;
 
   return {
     valueExcess: valueExcess + duplicateValueExcess,
     hoursExcess: hoursExcess + duplicateHoursExcess,
+    contributionExcess: contributionExcess + duplicateContributionExcess,
     donationExcess,
     activities,
   };

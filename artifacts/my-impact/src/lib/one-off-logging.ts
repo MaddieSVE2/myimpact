@@ -13,7 +13,6 @@
  */
 export const YEARLY_PER_PERSON_ACTIVITY_IDS: ReadonlySet<string> = new Set([
   "befriending",
-  "family_caring",
   "helping_neighbours",
   "career_break_school_liaison",
   "coding_education_child",

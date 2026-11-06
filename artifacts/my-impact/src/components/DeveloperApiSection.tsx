@@ -543,7 +543,7 @@ function LiveDeveloperApiSection() {
     "occurredAt": "2026-04-12T10:00:00Z",
     "category": "Education",
     "activityName": "Reading mentor session",
-    "valuePerHourGBP": 17,
+    "valuePerHourGBP": 15,
     "externalRef": "shift-12345"
   }'`} />
           </div>

@@ -1,5 +1,5 @@
 import { db, impactRecordsTable, journalEntriesTable, orgMembersTable } from "@workspace/db";
-import { computeEstimateActualReconciliation } from "./contributionModel.js";
+import { computeEstimateActualReconciliation, PERSONAL_DEV_RATE_PER_HOUR } from "./contributionModel.js";
 import { and, eq, gte, lt, desc } from "drizzle-orm";
 import { ACTIVITIES } from "./impactData.js";
 import { computeBadges } from "./badges.js";
@@ -188,10 +188,13 @@ export async function buildMonthlyDigest(
   totals.totalValue -= monthRecon.valueExcess;
   totals.totalHours -= monthRecon.hoursExcess;
   totals.donationsValue -= monthRecon.donationExcess;
-  totals.contributionValue -= monthRecon.hoursExcess * 12.21;
-  totals.personalDevelopmentValue -= monthRecon.hoursExcess * 15;
+  totals.contributionValue -= monthRecon.contributionExcess;
+  totals.personalDevelopmentValue -= monthRecon.hoursExcess * PERSONAL_DEV_RATE_PER_HOUR;
   totals.impactValue -=
-    monthRecon.valueExcess - monthRecon.donationExcess - monthRecon.hoursExcess * (12.21 + 15);
+    monthRecon.valueExcess -
+    monthRecon.donationExcess -
+    monthRecon.contributionExcess -
+    monthRecon.hoursExcess * PERSONAL_DEV_RATE_PER_HOUR;
   for (const a of monthRecon.activities) {
     if (a.activityName && activityValueMap.has(a.activityName)) {
       activityValueMap.set(

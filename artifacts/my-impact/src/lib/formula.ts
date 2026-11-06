@@ -119,9 +119,16 @@ export function detectInflatedDonations(result: unknown): number {
   }, 0);
 }
 
-const VOLUNTEER_RATE = 12.21;          // keep in sync with server calculateImpact
+const VOLUNTEER_RATE = 12.71;          // keep in sync with server calculateImpact
 const PERSONAL_DEV_RATE_PER_HOUR = 15; // keep in sync with server calculateImpact
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** The National Living Wage a saved result valued its hours at (server: contributionRate). */
+function contributionRate(result: ResultLike): number {
+  const hours = result.totalHours ?? 0;
+  const contribution = result.contributionValue ?? 0;
+  return hours > 0 && contribution > 0 ? round2(contribution / hours) : VOLUNTEER_RATE;
+}
 
 // Repairs a locally-stored (signed-out) impact result in place-style: returns
 // a new result object with the inflated donation breakdowns re-valued
@@ -155,7 +162,8 @@ export function repairLocalInflatedDonations<T extends ResultLike>(result: T): T
   const totalHours = Math.max(0, (result.totalHours ?? 0) - removedHours);
   const impactValue = fixed.reduce((sum, b) => sum + (b.impactValue ?? 0), 0);
   const donationsValue = result.donationsValue ?? 0;
-  const contributionValue = totalHours * VOLUNTEER_RATE;
+  // At the National Living Wage the record was saved with.
+  const contributionValue = totalHours * contributionRate(result);
   const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
   const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
 
