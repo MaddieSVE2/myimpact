@@ -18,6 +18,7 @@ import { checkAgeGate } from "./auth.js";
 import { trackServerEvent } from "../lib/analytics.js";
 import { recordAuditEvent } from "../lib/auditLog.js";
 import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom } from "../lib/orgDeactivation.js";
+import { applyPendingPlacements } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
 
@@ -687,6 +688,10 @@ async function linkUserToOrg(
         role: "member",
         status: org.autoApproveMembers ? "active" : "pending",
       });
+      if (org.autoApproveMembers) {
+        const account = await db.query.usersTable.findFirst({ where: eq(usersTable.id, user.id), columns: { email: true } });
+        await applyPendingPlacements(org.id, user.id, account?.email);
+      }
     } catch (err) {
       console.error("Failed to auto-link SSO user to org:", err);
       renderResultPage(res, { ok: false, title: "Sign-in failed", message: "We couldn't add you to your organisation. Please contact support." });

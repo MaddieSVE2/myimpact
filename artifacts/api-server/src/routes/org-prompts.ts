@@ -11,7 +11,8 @@ import {
 } from "@workspace/db";
 import { and, eq, isNull, desc, inArray, gte, lte } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
-import { resolveScaleLabels } from "./org-surveys.js";
+import { resolveScaleLabels, surveyGroups, surveyIsFor } from "./org-surveys.js";
+import { activeGroupIdsFor } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
 
@@ -82,7 +83,9 @@ router.get("/prompts", authenticate, async (req: AuthenticatedRequest, res) => {
         where: eq(orgSurveyResponsesTable.userId, userId),
       });
       const responded = new Set(responses.map(r => `${r.surveyId}::${r.windowKey}`));
+      const [groupsBySurvey, myGroupIds] = await Promise.all([surveyGroups(surveys.map(s => s.id)), activeGroupIdsFor(userId)]);
       surveysOut = surveys
+        .filter(s => surveyIsFor(groupsBySurvey.get(s.id), myGroupIds))
         .map(s => ({ s, windowKey: currentWindowKey(s.schedule as Schedule) }))
         .filter(({ s, windowKey }) => !responded.has(`${s.id}::${windowKey}`))
         .map(({ s, windowKey }) => ({

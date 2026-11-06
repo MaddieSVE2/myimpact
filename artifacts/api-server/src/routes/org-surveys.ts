@@ -5,12 +5,15 @@ import {
   orgSurveysTable,
   orgSurveyResponsesTable,
   orgSurveyOptOutsTable,
+  orgSurveyGroupsTable,
+  orgGroupsTable,
   organisationsTable,
 } from "@workspace/db";
 import { and, eq, isNull, desc, asc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getOrgSharingContext, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { AUDIENCE_ERROR, activeGroupIdsFor, parseAudience } from "../lib/orgGroups.js";
 
 const router: IRouter = Router();
 
@@ -104,6 +107,27 @@ function describeWindow(schedule: Schedule, key: string): string {
   return key.replace("-", " ");
 }
 
+type SurveyGroup = { id: string; name: string };
+
+/** The groups each survey is for, by survey id. None = the whole organisation. */
+export async function surveyGroups(surveyIds: string[]): Promise<Map<string, SurveyGroup[]>> {
+  const bySurvey = new Map<string, SurveyGroup[]>();
+  if (surveyIds.length === 0) return bySurvey;
+  const rows = await db
+    .select({ surveyId: orgSurveyGroupsTable.surveyId, id: orgGroupsTable.id, name: orgGroupsTable.name })
+    .from(orgSurveyGroupsTable)
+    .innerJoin(orgGroupsTable, eq(orgGroupsTable.id, orgSurveyGroupsTable.groupId))
+    .where(inArray(orgSurveyGroupsTable.surveyId, surveyIds))
+    .orderBy(asc(orgGroupsTable.name));
+  for (const r of rows) bySurvey.set(r.surveyId, [...(bySurvey.get(r.surveyId) ?? []), { id: r.id, name: r.name }]);
+  return bySurvey;
+}
+
+/** True when a survey is for everyone, or for a group in `myGroupIds`. */
+export function surveyIsFor(groups: SurveyGroup[] | undefined, myGroupIds: string[]): boolean {
+  return !groups || groups.some((g) => myGroupIds.includes(g.id));
+}
+
 async function requireMembership(req: AuthenticatedRequest, res: Response) {
   const userId = req.user!.id;
   const membership = await db.query.orgMembersTable.findFirst({
@@ -186,6 +210,7 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
     }
   }
 
+  const groupsBySurvey = await surveyGroups(surveys.map(s => s.id));
   res.json({
     surveys: surveys.map(s => ({
       id: s.id,
@@ -193,6 +218,7 @@ router.get("/surveys", authenticate, async (req: AuthenticatedRequest, res) => {
       question: s.question,
       schedule: s.schedule,
       anonymous: s.anonymous,
+      groups: groupsBySurvey.get(s.id) ?? [],
       createdAt: s.createdAt.toISOString(),
       archivedAt: s.archivedAt ? s.archivedAt.toISOString() : null,
       scaleLabels: resolveScaleLabels(s.template, s.scaleLabels),
@@ -251,6 +277,13 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
     scaleLabels = validated.value;
   }
 
+  // Optional groups the survey is for; none = the whole organisation.
+  const groupIds = await parseAudience(m.orgId, body.groupIds);
+  if (!groupIds) {
+    res.status(400).json({ error: AUDIENCE_ERROR });
+    return;
+  }
+
   const id = randomUUID();
   await db.insert(orgSurveysTable).values({
     id,
@@ -262,6 +295,9 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
     scaleLabels,
     createdBy: req.user!.id,
   });
+  if (groupIds.length > 0) {
+    await db.insert(orgSurveyGroupsTable).values(groupIds.map(groupId => ({ surveyId: id, groupId })));
+  }
 
   res.status(201).json({
     id,
@@ -269,6 +305,7 @@ router.post("/surveys", authenticate, async (req: AuthenticatedRequest, res) => 
     question,
     schedule,
     anonymous,
+    groups: (await surveyGroups([id])).get(id) ?? [],
     scaleLabels: resolveScaleLabels(template, scaleLabels),
     createdAt: new Date().toISOString(),
     archivedAt: null,
@@ -468,6 +505,7 @@ router.get("/surveys/:id/results", authenticate, async (req: AuthenticatedReques
       question: survey.question,
       schedule: survey.schedule,
       anonymous: survey.anonymous,
+      groups: (await surveyGroups([survey.id])).get(survey.id) ?? [],
       scaleLabels: resolveScaleLabels(survey.template, survey.scaleLabels),
       createdAt: survey.createdAt.toISOString(),
       archivedAt: survey.archivedAt ? survey.archivedAt.toISOString() : null,
@@ -511,13 +549,19 @@ router.get("/surveys/active", authenticate, async (req: AuthenticatedRequest, re
     orderBy: (t) => [desc(t.createdAt)],
   });
 
-  if (surveys.length === 0) {
+  // Surveys for chosen groups go to those groups' members only.
+  const [groupsBySurvey, myGroupIds] = await Promise.all([
+    surveyGroups(surveys.map(s => s.id)),
+    activeGroupIdsFor(req.user!.id),
+  ]);
+  const forMe = surveys.filter(s => surveyIsFor(groupsBySurvey.get(s.id), myGroupIds));
+  if (forMe.length === 0) {
     res.json({ surveys: [], optedOut: false });
     return;
   }
 
   // Find responses by this user for the current windows
-  const surveyWithWindow = surveys.map(s => ({
+  const surveyWithWindow = forMe.map(s => ({
     survey: s,
     windowKey: currentWindowKey(s.schedule as Schedule),
   }));
@@ -572,7 +616,7 @@ router.post("/surveys/:id/respond", authenticate, async (req: AuthenticatedReque
       isNull(orgSurveysTable.archivedAt),
     ),
   });
-  if (!survey) {
+  if (!survey || !surveyIsFor((await surveyGroups([survey.id])).get(survey.id), await activeGroupIdsFor(req.user!.id))) {
     res.status(404).json({ error: "Survey not found or no longer active." });
     return;
   }

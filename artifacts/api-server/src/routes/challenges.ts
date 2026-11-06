@@ -2,19 +2,22 @@ import { Router, type IRouter } from "express";
 import {
   db,
   challengesTable,
+  challengeGroupsTable,
   challengeParticipantsTable,
   impactRecordsTable,
   orgDeactivatedMembersTable,
+  orgGroupsTable,
   orgMembersTable,
   organisationsTable,
   usersTable,
 } from "@workspace/db";
-import { eq, and, inArray, gte, lte, desc } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, desc, asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import crypto from "crypto";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { isDeactivatedFrom } from "../lib/orgDeactivation.js";
+import { AUDIENCE_ERROR, activeGroupIdsFor, activeMembersOfGroups, parseAudience } from "../lib/orgGroups.js";
 import {
   getOrgSharingContext,
   sharedRecordsCondition,
@@ -65,6 +68,34 @@ async function getOrgManagerMembership(userId: string) {
   return await db.query.orgMembersTable.findFirst({
     where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.role, "manager"), eq(orgMembersTable.status, "active")),
   });
+}
+
+type ChallengeGroup = { id: string; name: string };
+
+/** The groups each organisation challenge is for, by challenge id. None = everyone. */
+async function challengeGroups(challengeIds: string[]): Promise<Map<string, ChallengeGroup[]>> {
+  const byChallenge = new Map<string, ChallengeGroup[]>();
+  if (challengeIds.length === 0) return byChallenge;
+  const rows = await db
+    .select({ challengeId: challengeGroupsTable.challengeId, id: orgGroupsTable.id, name: orgGroupsTable.name })
+    .from(challengeGroupsTable)
+    .innerJoin(orgGroupsTable, eq(orgGroupsTable.id, challengeGroupsTable.groupId))
+    .where(inArray(challengeGroupsTable.challengeId, challengeIds))
+    .orderBy(asc(orgGroupsTable.name));
+  for (const r of rows) byChallenge.set(r.challengeId, [...(byChallenge.get(r.challengeId) ?? []), { id: r.id, name: r.name }]);
+  return byChallenge;
+}
+
+/**
+ * Whether an active member of the challenge's organisation may see and join
+ * it: managers always, others when it's for everyone or one of their groups.
+ */
+async function inChallengeAudience(challengeId: string, membership: { role: string }, userId: string): Promise<boolean> {
+  if (membership.role === "manager") return true;
+  const groups = (await challengeGroups([challengeId])).get(challengeId);
+  if (!groups) return true;
+  const mine = await activeGroupIdsFor(userId);
+  return groups.some((g) => mine.includes(g.id));
 }
 
 async function ensureParticipant(challengeId: string, userId: string) {
@@ -243,12 +274,16 @@ router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
     }
 
     let orgId: string | null = null;
+    let groupIds: string[] = [];
     if (scope === "org") {
       const membership = await getOrgManagerMembership(userId);
       if (!membership) {
         res.status(403).json({ error: "Only organisation managers can create org challenges" }); return;
       }
       orgId = membership.orgId;
+      const audience = await parseAudience(orgId, body.groupIds);
+      if (!audience) { res.status(400).json({ error: AUDIENCE_ERROR }); return; }
+      groupIds = audience;
     }
 
     let inviteCode = generateInviteCode();
@@ -282,18 +317,25 @@ router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
     if (scope === "personal") {
       await ensureParticipant(id, userId);
     } else if (scope === "org" && orgId) {
-      const members = await db.query.orgMembersTable.findMany({
-        where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
-      });
-      if (members.length > 0) {
+      // A challenge for chosen groups is for their members, and for people
+      // who join them later (lib/orgGroups.ts joinGroupChallenges).
+      if (groupIds.length > 0) {
+        await db.insert(challengeGroupsTable).values(groupIds.map((groupId) => ({ challengeId: id, groupId })));
+      }
+      const memberIds = groupIds.length > 0
+        ? await activeMembersOfGroups(orgId, groupIds)
+        : (await db.query.orgMembersTable.findMany({
+          where: and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")),
+        })).map((m) => m.userId);
+      if (memberIds.length > 0) {
         await db
           .insert(challengeParticipantsTable)
-          .values(members.map((m) => ({ challengeId: id, userId: m.userId })))
+          .values(memberIds.map((memberId) => ({ challengeId: id, userId: memberId })))
           .onConflictDoNothing();
       }
     }
 
-    res.json({ challenge: serializeChallenge(created) });
+    res.json({ challenge: { ...serializeChallenge(created), groups: (await challengeGroups([id])).get(id) ?? [] } });
   } catch (err) {
     console.error("Create challenge error:", err);
     res.status(500).json({ error: "Failed to create challenge" });
@@ -331,9 +373,18 @@ router.get("/org", authenticate, async (req: AuthenticatedRequest, res) => {
       if (p.userId === userId) enrolledSet.add(p.challengeId);
     }
 
+    // Members see challenges for everyone, for their groups, and ones they
+    // take part in; managers see them all.
+    const groupsByChallenge = await challengeGroups(allIds);
+    const myGroupIds = membership.role === "manager" ? [] : await activeGroupIdsFor(userId);
+    const visible = orgChallenges.filter((c) => {
+      const groups = groupsByChallenge.get(c.id);
+      return membership.role === "manager" || !groups || enrolledSet.has(c.id) || groups.some((g) => myGroupIds.includes(g.id));
+    });
+
     const now = Date.now();
     const summaries = await Promise.all(
-      orgChallenges.map(async (c) => {
+      visible.map(async (c) => {
         const participantIds = partsMap[c.id] ?? [];
         const records = await listChallengeRecords(c, participantIds, sharingCtx);
         let total = 0;
@@ -356,6 +407,8 @@ router.get("/org", authenticate, async (req: AuthenticatedRequest, res) => {
           startDate: c.startDate.toISOString(),
           endDate: c.endDate.toISOString(),
           orgId: c.orgId,
+          groups: groupsByChallenge.get(c.id) ?? [],
+          departmentTag: c.departmentTag ?? null,
           participantCount: participantIds.length,
           progressTotal: Math.round(total * 100) / 100,
           progressPercent: percent,
@@ -429,6 +482,7 @@ router.get("/mine", authenticate, async (req: AuthenticatedRequest, res) => {
       [...new Set(challenges.flatMap((challenge) => challenge.orgId ? [challenge.orgId] : []))]
         .map(async (orgId) => orgSharingContexts.set(orgId, await getOrgSharingContext(orgId)))
     );
+    const groupsByChallenge = await challengeGroups(challenges.map((c) => c.id));
 
     const summaries = await Promise.all(
       challenges.map(async (c) => {
@@ -440,6 +494,7 @@ router.get("/mine", authenticate, async (req: AuthenticatedRequest, res) => {
         );
         return {
           ...serializeChallenge(c),
+          groups: groupsByChallenge.get(c.id) ?? [],
           participantCount: participantIds.length,
           isOwner: c.ownerId === userId,
           progressTotal: progress.total,
@@ -504,7 +559,7 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
           eq(orgMembersTable.status, "active")
         ),
       });
-      if (membership) canView = true;
+      if (membership && (await inChallengeAudience(challenge.id, membership, userId))) canView = true;
     }
     if (!canView) {
       res.status(403).json({ error: "You don't have access to this challenge" }); return;
@@ -528,6 +583,7 @@ router.get("/:id", authenticate, async (req: AuthenticatedRequest, res) => {
     res.json({
       challenge: {
         ...serializeChallenge(challenge),
+        groups: (await challengeGroups([challenge.id])).get(challenge.id) ?? [],
         orgName,
         challengeLeaderboardEnabled,
         participantCount: participantIds.length,
@@ -575,6 +631,9 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       });
       if (!membership) {
         res.status(403).json({ error: "You must be an active member of the organisation to join this challenge" }); return;
+      }
+      if (!(await inChallengeAudience(challenge.id, membership, userId))) {
+        res.status(403).json({ error: "This challenge is for other groups in your organisation." }); return;
       }
     }
 

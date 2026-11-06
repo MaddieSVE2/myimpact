@@ -6,6 +6,8 @@ import { useT } from "@/i18n";
 import { BASE } from "@/lib/api";
 import { DEMO_ORG_ID } from "@/lib/org-demo-mock";
 import { NumberInput } from "@/components/ui/number-input";
+import { GroupAudiencePicker } from "@/components/org/GroupAudiencePicker";
+import { audienceLabel, type AudienceGroup } from "@/lib/org-groups";
 
 interface ApiChallenge {
   id: string;
@@ -17,12 +19,16 @@ interface ApiChallenge {
   endDate: string;
   ownerId: string | null;
   orgId: string | null;
-  scope: "personal" | "org";
-  inviteCode: string;
+  scope?: "personal" | "org";
+  inviteCode?: string;
+  /** The groups it's for; none means everyone. */
+  groups?: AudienceGroup[];
+  /** Set on challenges made before groups could be chosen. */
+  departmentTag?: string | null;
   hasEnded: boolean;
-  hasStarted: boolean;
+  hasStarted?: boolean;
   participantCount: number;
-  isOwner: boolean;
+  isOwner?: boolean;
   progressTotal: number;
   progressPercent: number;
   isActive: boolean;
@@ -91,20 +97,22 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
     const d = new Date(); d.setMonth(d.getMonth() + 1);
     return d.toISOString().slice(0, 10);
   });
-  const [departmentTag, setDepartmentTag] = useState("");
+  const [audience, setAudience] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Every challenge in the organisation, including ones for groups the
+  // manager isn't in.
   const { data, isLoading } = useQuery<{ challenges: ApiChallenge[] }>({
-    queryKey: ["challenges-mine"],
+    queryKey: ["challenges-org"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/challenges/mine`, { credentials: "include" });
+      const res = await fetch(`${BASE}/api/challenges/org`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
   });
 
   const orgChallenges = useMemo(
-    () => (data?.challenges ?? []).filter(c => c.scope === "org" && c.orgId === orgId),
+    () => (data?.challenges ?? []).filter(c => c.orgId === orgId),
     [data?.challenges, orgId],
   );
 
@@ -118,7 +126,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
         scope: "org",
-        ...(departmentTag.trim() ? { departmentTag: departmentTag.trim() } : {}),
+        groupIds: audience ?? [],
       };
       const res = await fetch(`${BASE}/api/challenges`, {
         method: "POST",
@@ -131,12 +139,13 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
       return json;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges-org"] });
       qc.invalidateQueries({ queryKey: ["challenges-mine"] });
       setCreating(false);
       setName("");
       setDescription("");
       setTarget("1000");
-      setDepartmentTag("");
+      setAudience(null);
       setError(null);
     },
     onError: (err: Error) => setError(err.message),
@@ -150,7 +159,10 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
         throw new Error((j as { error?: string }).error ?? "Failed");
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["challenges-mine"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges-org"] });
+      qc.invalidateQueries({ queryKey: ["challenges-mine"] });
+    },
   });
 
   return (
@@ -229,15 +241,12 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
               />
             </div>
           </div>
-          <div>
-            <label className="block text-[13px] font-medium text-foreground mb-1.5">Department tag <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <input
-              type="text" value={departmentTag} onChange={e => setDepartmentTag(e.target.value.slice(0, 60))} maxLength={60}
-              placeholder="e.g. Engineering, HR"
-              className="bg-white w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-primary"
-              data-testid="input-challenge-department-tag"
-            />
-          </div>
+          <GroupAudiencePicker
+            name="challenge"
+            value={audience}
+            onChange={setAudience}
+            hint="Members of these groups take part, and so does anyone who joins them before the challenge ends."
+          />
           {error && <p className="text-[13px] text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -249,7 +258,7 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
             <button
               type="button"
               onClick={() => { setError(null); createMut.mutate(); }}
-              disabled={createMut.isPending || !name.trim() || Number(target) <= 0}
+              disabled={createMut.isPending || !name.trim() || Number(target) <= 0 || audience?.length === 0}
               className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-challenge"
             >
@@ -288,6 +297,11 @@ function LiveOrgChallengesPanel({ orgId }: { orgId: string }) {
                           {c.hasEnded ? t("orgDashboard.challengesEnded") : t("orgDashboard.challengesActive")}
                         </span>
                       </div>
+                      {(audienceLabel(c.groups) ?? c.departmentTag) && (
+                        <p className="text-[12px] font-medium text-primary mt-0.5" data-testid={`challenge-audience-${c.id}`}>
+                          {audienceLabel(c.groups) ?? c.departmentTag}
+                        </p>
+                      )}
                       {c.description && <p className="text-[13px] text-muted-foreground mt-1">{c.description}</p>}
                     </div>
                     <div className="shrink-0 flex items-start gap-2">

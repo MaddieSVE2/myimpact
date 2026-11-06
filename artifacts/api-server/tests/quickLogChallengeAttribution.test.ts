@@ -119,6 +119,9 @@ vi.mock("@workspace/db", () => {
     users: tables.users,
     org_members: tables.orgMembers,
     organisations: tables.organisations,
+    // Challenges here are for everyone, so they have no groups.
+    challenge_groups: [],
+    org_groups: [],
   };
 
   function project(rows: Record<string, unknown>[], cols: unknown): Record<string, unknown>[] {
@@ -156,6 +159,8 @@ vi.mock("@workspace/db", () => {
     };
     const builder: Record<string, unknown> = {
       from(t: TableTag) { _table = t.__table; return builder; },
+      // The only joins here read the group tables, which are empty.
+      innerJoin() { return builder; },
       where(c: unknown) { _where = c; return builder; },
       orderBy(...orders: { __dir?: "asc" | "desc"; __col?: ColRef; col?: ColRef }[]) {
         _orderBy = orders.map((o) => ({
@@ -271,6 +276,8 @@ vi.mock("@workspace/db", () => {
     db,
     challengesTable: tableTag("challenges"),
     challengeParticipantsTable: tableTag("challenge_participants"),
+    challengeGroupsTable: tableTag("challenge_groups"),
+    orgGroupsTable: tableTag("org_groups"),
     impactRecordsTable: tableTag("impact_records"),
     orgMembersTable: tableTag("org_members"),
     orgDeactivatedMembersTable: tableTag("org_deactivated_members"),

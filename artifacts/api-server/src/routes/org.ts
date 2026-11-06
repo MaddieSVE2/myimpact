@@ -7,6 +7,7 @@ import { requireOrgManager } from "../lib/orgManager.js";
 import { customLinesFromResult } from "../lib/customLines.js";
 import { memberArea } from "../lib/profileLocation.js";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { sendOrgInviteEmail } from "../lib/orgInviteEmail.js";
 import { ADMIN_NOTIFICATION_EMAILS } from "../lib/adminEmails.js";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { buildOrgDocument } from "../lib/orgPdf.js";
@@ -21,7 +22,7 @@ import { endOfDay, getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
 import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, notWithdrawnCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
-import { canUseGroup, defaultGroupFor, removeFromOrgGroups } from "../lib/orgGroups.js";
+import { applyPendingPlacements, canUseGroup, defaultGroupFor, forgetPendingPlacements, pendingGroupNames, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
 import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom, lockMembershipChanges } from "../lib/orgDeactivation.js";
 import { approvedHoursMessage, managerApprovedBy } from "../lib/recordHelpers.js";
@@ -64,9 +65,10 @@ const orgRegisterRateLimit = createRateLimiter({
 
 // Once someone actually becomes an active member of an org, any pending
 // email invite for them is stale — remove it so the Pending invites list
-// only shows people who haven't joined yet. Invite emails are stored
-// lowercased, so compare against the lowercased address.
-async function clearPendingInvite(orgId: string, email: string | null | undefined): Promise<void> {
+// only shows people who haven't joined yet — and they go into the groups a
+// manager saved for them. Invite emails are stored lowercased, so compare
+// against the lowercased address.
+async function membershipActivated(orgId: string, userId: string, email: string | null | undefined): Promise<void> {
   const normalized = (email ?? "").trim().toLowerCase();
   if (!normalized) return;
   try {
@@ -74,7 +76,12 @@ async function clearPendingInvite(orgId: string, email: string | null | undefine
       and(eq(orgInvitesTable.orgId, orgId), eq(orgInvitesTable.email, normalized)),
     );
   } catch (err) {
-    console.error("[org.clearPendingInvite] failed to clear invite:", err);
+    console.error("[org.membershipActivated] failed to clear invite:", err);
+  }
+  try {
+    await applyPendingPlacements(orgId, userId, normalized);
+  } catch (err) {
+    console.error("[org.membershipActivated] failed to apply saved group places:", err);
   }
 }
 
@@ -301,7 +308,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
       await db.update(orgMembersTable)
         .set({ role: "manager", status: "active" })
         .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
-      await clearPendingInvite(org.id, userEmail);
+      await membershipActivated(org.id, userId, userEmail);
     }
     res.json({ ok: true, orgName: org.name, alreadyMember: true, status: existing.status });
     return;
@@ -341,7 +348,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
   }
 
   if (memberStatus === "active") {
-    await clearPendingInvite(org.id, userEmail);
+    await membershipActivated(org.id, userId, userEmail);
   }
 
   if (isConsentedOrg && consentScope && consentShareFrom) {
@@ -504,7 +511,7 @@ router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {
       .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     membership.role = "manager";
     membership.status = "active";
-    await clearPendingInvite(org.id, userEmail);
+    await membershipActivated(org.id, userId, userEmail);
   }
 
   let logoUrl: string | null = null;
@@ -1999,7 +2006,7 @@ router.post("/my/members/:userId/approve", authenticate, async (req: Authenticat
     .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId)));
 
   const targetUser = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
-  await clearPendingInvite(membership.orgId, targetUser?.email);
+  await membershipActivated(membership.orgId, userId, targetUser?.email);
   enqueueOrgEvent({
     orgId: membership.orgId,
     eventType: "member.joined",
@@ -2077,6 +2084,8 @@ router.post("/my/members/:userId/reject", authenticate, async (req: Authenticate
 
   await db.delete(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "pending")));
+  const rejectedUser = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId), columns: { email: true } });
+  await forgetPendingPlacements(membership.orgId, rejectedUser?.email);
 
   (async () => {
     try {
@@ -2196,49 +2205,6 @@ async function requireManagerMembership(req: AuthenticatedRequest, res: import("
   return membership;
 }
 
-async function sendOrgInviteEmail(orgId: string, email: string): Promise<{ ok: boolean; error?: string }> {
-  const org = await db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId) });
-  if (!org) return { ok: false, error: "Organisation not found." };
-  const appUrl = process.env.APP_URL ?? "https://myimpact.uk";
-  const joinUrl = `${appUrl}/org?invite=${encodeURIComponent(org.inviteCode)}`;
-  try {
-    const { client, fromEmail } = await getUncachableResendClient("organisation");
-    const { error } = await client.emails.send({
-      from: fromEmail,
-      to: email,
-      subject: `You're invited to join ${org.name} on My Impact`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;background:#f9f9f9;border-radius:8px;">
-          <h2 style="color:#213547;margin-top:0;">Join ${escHtml(org.name)} on My Impact</h2>
-          <p style="color:#444;font-size:15px;line-height:1.5;">
-            A manager at <strong>${escHtml(org.name)}</strong> has invited you to join their organisation
-            on My Impact — a simple way to track your volunteering and giving, and see the difference it makes.
-          </p>
-          <p style="color:#444;font-size:15px;line-height:1.5;">
-            Use the button below to join. If you don't have a My Impact account yet, you can create one first —
-            it only takes a minute.
-          </p>
-          <div style="margin-top:24px;">
-            <a href="${joinUrl}" style="display:inline-block;background:#E8633A;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:600;">Join ${escHtml(org.name)}</a>
-          </div>
-          <p style="color:#888;font-size:12px;margin-top:20px;">
-            Or enter this invite code after signing in: <strong style="letter-spacing:1px;">${escHtml(org.inviteCode)}</strong>
-          </p>
-          <p style="color:#aaa;font-size:11px;margin-top:32px;">My Impact · myimpact.uk</p>
-        </div>
-      `,
-    });
-    if (error) {
-      console.error("[org.invite] Resend rejected invite email:", error);
-      return { ok: false, error: "The email service rejected the invite. Please try again later." };
-    }
-    return { ok: true };
-  } catch (err) {
-    console.error("[org.invite] failed to send invite email:", err);
-    return { ok: false, error: "Could not send the invite email. Please try again later." };
-  }
-}
-
 function serializeInvite(inv: { id: string; email: string; sentAt: Date; resentAt: Date | null }) {
   return {
     id: inv.id,
@@ -2324,7 +2290,7 @@ router.post("/my/invites/:id/resend", authenticate, inviteSendLimiter, async (re
   });
   if (!invite) { res.status(404).json({ error: "Invite not found." }); return; }
 
-  const sendResult = await sendOrgInviteEmail(membership.orgId, invite.email);
+  const sendResult = await sendOrgInviteEmail(membership.orgId, invite.email, await pendingGroupNames(membership.orgId, invite.email));
   if (!sendResult.ok) {
     res.status(502).json({ error: sendResult.error });
     return;
@@ -2344,6 +2310,7 @@ router.post("/my/invites/:id/revoke", authenticate, async (req: AuthenticatedReq
   });
   if (!invite) { res.status(404).json({ error: "Invite not found." }); return; }
   await db.delete(orgInvitesTable).where(eq(orgInvitesTable.id, id));
+  await forgetPendingPlacements(membership.orgId, invite.email);
   res.json({ ok: true });
 });
 

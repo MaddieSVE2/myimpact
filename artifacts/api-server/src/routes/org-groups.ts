@@ -1,22 +1,40 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "crypto";
-import { db, orgGroupsTable, orgGroupMembersTable, orgMembersTable, orgAuditLogTable, usersTable } from "@workspace/db";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import {
+  db,
+  organisationsTable,
+  orgDeactivatedMembersTable,
+  orgGroupsTable,
+  orgGroupMembersTable,
+  orgInvitesTable,
+  orgMembersTable,
+  orgAuditLogTable,
+  usersTable,
+} from "@workspace/db";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import {
   GROUP_DESCRIPTION_MAX,
+  addToGroup,
   canUseGroup,
   cleanGroupName,
   isGroupRole,
+  joinGroupChallenges,
+  savePendingPlacements,
   setRecordGroup,
   setTemplateGroup,
+  type GroupRole,
 } from "../lib/orgGroups.js";
+import { MAX_IMPORT_ROWS, planGroupImport, type ImportPlan, type ImportRow } from "../lib/groupImport.js";
+import { parseAllowedDomains } from "../lib/orgDomains.js";
+import { sendInvitesInBackground } from "../lib/orgInviteEmail.js";
+import { createRateLimiter } from "../lib/rateLimiter.js";
 
 /**
  * Organisation groups (lib/orgGroups.ts). Mounted at /org.
  *
- * Managers: create, rename, archive groups; add and remove members; make
- * someone a lead. Members: see their organisation's groups, join and leave,
+ * Managers: create, rename, archive groups; add and remove members, one at a
+ * time, several at once or from a list; make someone a lead. Members: see their organisation's groups, join and leave,
  * and choose which group an activity counts for. Leads: see their group's
  * members (names only).
  */
@@ -204,6 +222,145 @@ router.get("/groups/memberships", authenticate, async (req: AuthenticatedRequest
   res.json({ memberships });
 });
 
+/** What planGroupImport needs to know about the organisation and the people in a list. */
+async function importContext(orgId: string, rows: ImportRow[]) {
+  const emails = [...new Set(rows.map((r) => (typeof r.email === "string" ? r.email.trim().toLowerCase() : "")).filter(Boolean))];
+  const [groups, org] = await Promise.all([
+    db.select({ id: orgGroupsTable.id, name: orgGroupsTable.name, archivedAt: orgGroupsTable.archivedAt })
+      .from(orgGroupsTable)
+      .where(eq(orgGroupsTable.orgId, orgId)),
+    db.query.organisationsTable.findFirst({ where: eq(organisationsTable.id, orgId), columns: { allowedDomain: true } }),
+  ]);
+  const users = emails.length === 0 ? [] : await db
+    .select({ id: usersTable.id, email: usersTable.email, displayName: usersTable.displayName })
+    .from(usersTable)
+    .where(inArray(sql`lower(${usersTable.email})`, emails));
+  const userIds = users.map((u) => u.id);
+  // inArray needs at least one value; an empty list matches nobody.
+  const ids = userIds.length > 0 ? userIds : [""];
+  const [memberships, deactivated, groupMemberships, invites] = await Promise.all([
+    db.select({ userId: orgMembersTable.userId, status: orgMembersTable.status })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, orgId), inArray(orgMembersTable.userId, ids))),
+    db.select({ userId: orgDeactivatedMembersTable.userId })
+      .from(orgDeactivatedMembersTable)
+      .where(and(eq(orgDeactivatedMembersTable.orgId, orgId), inArray(orgDeactivatedMembersTable.userId, ids))),
+    db.select({ groupId: orgGroupMembersTable.groupId, userId: orgGroupMembersTable.userId, role: orgGroupMembersTable.role })
+      .from(orgGroupMembersTable)
+      .innerJoin(orgGroupsTable, eq(orgGroupsTable.id, orgGroupMembersTable.groupId))
+      .where(and(eq(orgGroupsTable.orgId, orgId), inArray(orgGroupMembersTable.userId, ids))),
+    db.select({ email: orgInvitesTable.email })
+      .from(orgInvitesTable)
+      .where(and(eq(orgInvitesTable.orgId, orgId), inArray(orgInvitesTable.email, emails.length > 0 ? emails : [""]))),
+  ]);
+  const statusOf = new Map(memberships.map((m) => [m.userId, m.status]));
+  const deactivatedIds = new Set(deactivated.map((d) => d.userId));
+  const people = new Map(users.map((u) => {
+    const status = statusOf.get(u.id);
+    return [u.email.trim().toLowerCase(), {
+      userId: u.id,
+      name: u.displayName ?? u.email,
+      status: deactivatedIds.has(u.id) ? "deactivated" as const
+        : status === "active" ? "active" as const
+        : status === "pending" ? "pending" as const
+        : null,
+    }];
+  }));
+  return {
+    groups: groups.map((g) => ({ id: g.id, name: g.name, archived: g.archivedAt !== null })),
+    people,
+    memberships: new Map(groupMemberships.map((m) => [`${m.groupId}:${m.userId}`, (isGroupRole(m.role) ? m.role : "member") as GroupRole])),
+    pendingInvites: new Set(invites.map((i) => i.email)),
+    allowedDomains: parseAllowedDomains(org?.allowedDomain),
+  };
+}
+
+// Checking a list is free; carrying one out can send many invites, so it's limited.
+const importLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "You've added several lists in the last hour. Please try again later.",
+  skip: (req) => (req.body as { dryRun?: unknown } | undefined)?.dryRun !== false,
+});
+
+/**
+ * Adds people to groups from a list of rows { email, group, role? }. With
+ * dryRun (the default) it only says what would happen. Otherwise it creates
+ * groups that don't exist yet, adds active members, saves places for people
+ * who aren't active members yet, and invites the rest.
+ */
+router.post("/groups/import", authenticate, importLimiter, async (req: AuthenticatedRequest, res) => {
+  const me = await activeMembership(req.user!.id);
+  if (me?.role !== "manager") {
+    res.status(403).json({ error: "Only organisation managers can add people to groups." });
+    return;
+  }
+  const raw: unknown = req.body?.rows;
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_IMPORT_ROWS) {
+    res.status(400).json({ error: `Send a list of 1 to ${MAX_IMPORT_ROWS} rows.` });
+    return;
+  }
+  const rows = raw.map((r) => (r && typeof r === "object" ? r : {}) as ImportRow);
+  const ctx = await importContext(me.orgId, rows);
+  const plan: ImportPlan = planGroupImport(rows, ctx);
+  if (req.body?.dryRun !== false) {
+    res.json({ plan, done: false });
+    return;
+  }
+
+  const groupIds = new Map(ctx.groups.map((g) => [g.name.toLowerCase(), g.id]));
+  for (const name of plan.newGroups) {
+    const id = randomUUID();
+    const created = await db.insert(orgGroupsTable).values({ id, orgId: me.orgId, name }).onConflictDoNothing().returning({ id: orgGroupsTable.id });
+    if (created.length > 0) {
+      groupIds.set(name.toLowerCase(), id);
+      await audit(me.orgId, req.user!.id, "group_created", id, { name, fromList: true });
+    } else {
+      const existing = await db.query.orgGroupsTable.findFirst({
+        where: and(eq(orgGroupsTable.orgId, me.orgId), eq(orgGroupsTable.name, name)),
+        columns: { id: true },
+      });
+      if (existing) groupIds.set(name.toLowerCase(), existing.id);
+    }
+  }
+  const idOf = (group: string) => groupIds.get(group.toLowerCase());
+
+  const additions = new Map<string, { groupId: string; role: GroupRole; userIds: string[] }>();
+  for (const a of plan.add) {
+    const groupId = idOf(a.group);
+    if (!groupId) continue;
+    const key = `${groupId}:${a.role}`;
+    const entry = additions.get(key) ?? { groupId, role: a.role, userIds: [] };
+    entry.userIds.push(a.userId);
+    additions.set(key, entry);
+  }
+  for (const { groupId, role, userIds } of additions.values()) {
+    await addToGroup(groupId, userIds, role);
+  }
+
+  const savedNames = new Map<string, string[]>();
+  for (const s of plan.save) {
+    const groupId = idOf(s.group);
+    if (!groupId) continue;
+    await savePendingPlacements(me.orgId, s.email, [{ groupId, role: s.role }]);
+    savedNames.set(s.email, [...(savedNames.get(s.email) ?? []), s.group]);
+  }
+  await sendInvitesInBackground(
+    me.orgId,
+    req.user!.id,
+    plan.invite.map((email) => ({ email, groupNames: savedNames.get(email) ?? [] })),
+  );
+
+  await audit(me.orgId, req.user!.id, "group_list_added", "list", {
+    rows: rows.length,
+    added: plan.add.length,
+    saved: plan.save.length,
+    invited: plan.invite.length,
+    newGroups: plan.newGroups.length,
+  });
+  res.json({ plan, done: true });
+});
+
 router.get("/groups/:groupId/members", authenticate, async (req: AuthenticatedRequest, res) => {
   const me = await activeMembership(req.user!.id);
   const group = me ? await groupInOrg(String(req.params.groupId), me.orgId) : null;
@@ -253,25 +410,39 @@ router.post("/groups/:groupId/members", authenticate, async (req: AuthenticatedR
     res.status(404).json({ error: "Group not found." });
     return;
   }
-  const userId = typeof req.body?.userId === "string" ? req.body.userId : "";
+  // One person (userId), or several at once (userIds).
+  const rawIds: unknown[] = Array.isArray(req.body?.userIds) ? req.body.userIds : [req.body?.userId];
+  const userIds = [...new Set(rawIds.filter((id): id is string => typeof id === "string" && id !== ""))];
   const role = req.body?.role === undefined ? "member" : req.body.role;
   if (!isGroupRole(role)) {
     res.status(400).json({ error: "role must be member or lead." });
     return;
   }
-  const target = await db.query.orgMembersTable.findFirst({
-    where: and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, me.orgId), eq(orgMembersTable.status, "active")),
-  });
-  if (!target) {
+  if (userIds.length === 0 || userIds.length > MAX_IMPORT_ROWS) {
+    res.status(400).json({ error: `Choose between 1 and ${MAX_IMPORT_ROWS} people.` });
+    return;
+  }
+  const targets = await db
+    .select({ userId: orgMembersTable.userId })
+    .from(orgMembersTable)
+    .where(and(inArray(orgMembersTable.userId, userIds), eq(orgMembersTable.orgId, me.orgId), eq(orgMembersTable.status, "active")));
+  if (targets.length !== userIds.length) {
     res.status(400).json({ error: "Only active members of your organisation can join its groups." });
     return;
   }
-  await db
-    .insert(orgGroupMembersTable)
-    .values({ groupId: group.id, userId, role })
-    .onConflictDoUpdate({ target: [orgGroupMembersTable.groupId, orgGroupMembersTable.userId], set: { role } });
-  await audit(me.orgId, req.user!.id, "group_member_added", group.id, { userId, role });
-  res.status(201).json({ ok: true });
+  if (role === "member" && userIds.length === 1) {
+    // One person gets the role asked for, so a lead can be made a member
+    // again. Adding several leaves their leads as leads.
+    await db
+      .update(orgGroupMembersTable)
+      .set({ role })
+      .where(and(eq(orgGroupMembersTable.groupId, group.id), eq(orgGroupMembersTable.userId, userIds[0]!)));
+  }
+  await addToGroup(group.id, userIds, role);
+  for (const userId of userIds) {
+    await audit(me.orgId, req.user!.id, "group_member_added", group.id, { userId, role });
+  }
+  res.status(201).json({ ok: true, added: userIds.length });
 });
 
 router.patch("/groups/:groupId/members/:userId", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -356,6 +527,7 @@ router.post("/my/groups/:groupId/join", authenticate, async (req: AuthenticatedR
     return;
   }
   await db.insert(orgGroupMembersTable).values({ groupId: group.id, userId: req.user!.id }).onConflictDoNothing();
+  await joinGroupChallenges([req.user!.id], [group.id]);
   res.json({ ok: true });
 });
 

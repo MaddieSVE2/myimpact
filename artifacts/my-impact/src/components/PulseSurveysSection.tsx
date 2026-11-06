@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
 import { BASE, apiJson } from "@/lib/api";
+import { GroupAudiencePicker } from "@/components/org/GroupAudiencePicker";
+import { audienceLabel, type AudienceGroup } from "@/lib/org-groups";
 
 
 type Schedule = "one_off" | "monthly" | "quarterly";
@@ -24,6 +26,8 @@ interface SurveyListItem {
   question: string;
   schedule: Schedule;
   anonymous: boolean;
+  /** The groups it's for; none means everyone. */
+  groups?: AudienceGroup[];
   createdAt: string;
   archivedAt: string | null;
   scaleLabels?: string[];
@@ -121,6 +125,7 @@ function LivePulseSurveysSection() {
   const [schedule, setSchedule] = useState<Schedule>("monthly");
   const [anonymous, setAnonymous] = useState(true);
   const [scaleLabels, setScaleLabels] = useState<string[]>([...DEFAULT_SCALE_LABELS]);
+  const [audience, setAudience] = useState<string[] | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -129,6 +134,7 @@ function LivePulseSurveysSection() {
       if (template === "custom") body.question = question.trim();
       else if (question.trim()) body.question = question.trim();
       body.scaleLabels = scaleLabels.map(l => l.trim());
+      body.groupIds = audience ?? [];
       const res = await fetch(`${BASE}/api/org/surveys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,6 +153,7 @@ function LivePulseSurveysSection() {
       setSchedule("monthly");
       setAnonymous(true);
       setScaleLabels([...DEFAULT_SCALE_LABELS]);
+      setAudience(null);
       setCreateError(null);
     },
     onError: (err: Error) => setCreateError(err.message),
@@ -305,6 +312,12 @@ function LivePulseSurveysSection() {
               </label>
             </div>
           </div>
+          <GroupAudiencePicker
+            name="pulse"
+            value={audience}
+            onChange={setAudience}
+            hint="Only members of these groups see this survey."
+          />
           {createError && <p className="text-[13px] text-red-600">{createError}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -317,7 +330,7 @@ function LivePulseSurveysSection() {
             <button
               type="button"
               onClick={() => { setCreateError(null); createMutation.mutate(); }}
-              disabled={createMutation.isPending || (template === "custom" && !question.trim()) || scaleLabelsInvalid}
+              disabled={createMutation.isPending || (template === "custom" && !question.trim()) || scaleLabelsInvalid || audience?.length === 0}
               className="px-3 py-2 rounded-lg bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               data-testid="button-create-pulse-survey"
             >
@@ -432,6 +445,9 @@ function SurveyRow({
               </span>
             )}
           </div>
+          {audienceLabel(survey.groups) && (
+            <p className="text-[12px] font-medium text-primary mt-0.5" data-testid={`survey-audience-${survey.id}`}>{audienceLabel(survey.groups)}</p>
+          )}
           <p className="text-[13px] text-muted-foreground mt-0.5">
             Launched {new Date(survey.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             {isArchived && ` · archived ${new Date(survey.archivedAt!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}

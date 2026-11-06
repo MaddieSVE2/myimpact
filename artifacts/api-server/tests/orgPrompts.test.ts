@@ -18,6 +18,9 @@ const state = vi.hoisted(() => ({
     createdAt: Date;
   }>,
   surveyResponses: [] as Array<{ surveyId: string; userId: string; windowKey: string }>,
+  /** Groups each survey is for; a survey missing here is for everyone. */
+  surveyGroups: new Map<string, Array<{ id: string; name: string }>>(),
+  myGroupIds: [] as string[],
   selectQueue: [] as unknown[][],
 }));
 
@@ -70,6 +73,16 @@ vi.mock("@workspace/db", () => {
   };
 });
 
+vi.mock("../src/routes/org-surveys.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/org-surveys.js")>()),
+  surveyGroups: async () => state.surveyGroups,
+}));
+
+vi.mock("../src/lib/orgGroups.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/orgGroups.js")>()),
+  activeGroupIdsFor: async () => state.myGroupIds,
+}));
+
 vi.mock("../src/middleware/authenticate.js", () => ({
   authenticate: (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!state.authUser) {
@@ -100,6 +113,8 @@ beforeEach(() => {
   state.optOut = null;
   state.surveys = [];
   state.surveyResponses = [];
+  state.surveyGroups = new Map();
+  state.myGroupIds = [];
   state.selectQueue.length = 0;
 });
 
@@ -175,6 +190,33 @@ describe("GET /api/org/prompts", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.surveys).toEqual([]);
+  });
+
+  it("leaves out surveys for groups the member isn't in", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    const survey = (id: string) => ({
+      id,
+      orgId: "org-1",
+      question: "Q?",
+      template: "wellbeing",
+      schedule: "monthly" as const,
+      anonymous: true,
+      archivedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+    });
+    state.surveys = [survey("for-everyone"), survey("for-football"), survey("for-netball")];
+    state.surveyGroups = new Map([
+      ["for-football", [{ id: "g-football", name: "Football club" }]],
+      ["for-netball", [{ id: "g-netball", name: "Netball" }]],
+    ]);
+    state.myGroupIds = ["g-football"];
+    state.selectQueue.push([]); // no challenge participation
+
+    const res = await request(makeApp()).get("/api/org/prompts");
+
+    expect(res.status).toBe(200);
+    expect(res.body.surveys.map((s: { id: string }) => s.id)).toEqual(["for-everyone", "for-football"]);
   });
 
   it("returns no surveys when the member has opted out", async () => {

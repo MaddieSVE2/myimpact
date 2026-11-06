@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { useMyOrg } from "@/lib/org-export";
 import { BASE } from "@/lib/api";
+import { audienceLabel, type AudienceGroup } from "@/lib/org-groups";
 
 interface OrgChallenge {
   id: string;
@@ -14,6 +15,7 @@ interface OrgChallenge {
   startDate: string;
   endDate: string;
   orgId: string | null;
+  groups?: AudienceGroup[];
   participantCount: number;
   progressTotal: number;
   progressPercent: number;
@@ -66,6 +68,9 @@ function ChallengeCard({ c, orgName }: { c: OrgChallenge; orgName: string }) {
             )}
           </div>
           <h3 className="text-base font-display font-semibold text-foreground leading-snug">{c.name}</h3>
+          {audienceLabel(c.groups) && (
+            <p className="text-[12px] font-medium text-primary mt-0.5">{audienceLabel(c.groups)}</p>
+          )}
           {c.description && (
             <p className="text-[13px] text-muted-foreground mt-0.5 leading-snug">{c.description}</p>
           )}

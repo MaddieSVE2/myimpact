@@ -29,6 +29,36 @@ export interface ManagedGroup {
   iLead: boolean;
 }
 
+interface PlannedPlacement {
+  email: string;
+  group: string;
+  role: "member" | "lead";
+}
+
+/** What adding a list of people to groups does (api-server lib/groupImport.ts). */
+export interface GroupListPlan {
+  newGroups: string[];
+  add: (PlannedPlacement & { name: string })[];
+  save: (PlannedPlacement & { reason: "invite" | "invited" | "waiting" })[];
+  invite: string[];
+  alreadyDone: number;
+  /** `row` counts from 1 in the rows sent. */
+  problems: { row: number; email: string; problem: string }[];
+}
+
+/** A challenge or survey's groups; none means the whole organisation. */
+export interface AudienceGroup {
+  id: string;
+  name: string;
+}
+
+/** "For Football club and Netball", or null for the whole organisation. */
+export function audienceLabel(groups: AudienceGroup[] | undefined): string | null {
+  const names = (groups ?? []).map((g) => g.name);
+  if (names.length === 0) return null;
+  return `For ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`}`;
+}
+
 /** The value a report filter uses for activities counted for no group. */
 export const NO_GROUP = "none";
 
@@ -98,6 +128,12 @@ export const groupsApi = {
     }>,
   addMember: (groupId: string, userId: string, role: "member" | "lead" = "member") =>
     send(`/org/groups/${encodeURIComponent(groupId)}/members`, "POST", { userId, role }),
+  /** Adds several people as members; leads stay leads. */
+  addMembers: (groupId: string, userIds: string[]) =>
+    send(`/org/groups/${encodeURIComponent(groupId)}/members`, "POST", { userIds }),
+  /** Checks (dryRun) or carries out adding people to groups from a list. */
+  addFromList: (rows: { email: string; group: string; role: string }[], dryRun: boolean) =>
+    send("/org/groups/import", "POST", { rows, dryRun }) as Promise<{ plan: GroupListPlan; done: boolean }>,
   setRole: (groupId: string, userId: string, role: "member" | "lead") =>
     send(`/org/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, "PATCH", { role }),
   removeMember: (groupId: string, userId: string) =>

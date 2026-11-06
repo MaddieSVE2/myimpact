@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, numeric, primaryKey, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
-import { organisationsTable } from "./org";
+import { organisationsTable, orgGroupsTable } from "./org";
 
 export const challengesTable = pgTable("challenges", {
   id: text("id").primaryKey(),
@@ -33,6 +33,26 @@ export const challengeParticipantsTable = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.challengeId, t.userId] }),
     userIdx: index("challenge_participants_user_idx").on(t.userId),
+  })
+);
+
+/**
+ * The groups an organisation challenge is for. None = the whole organisation.
+ * Members of these groups take part, including people who join them later.
+ */
+export const challengeGroupsTable = pgTable(
+  "challenge_groups",
+  {
+    challengeId: text("challenge_id")
+      .notNull()
+      .references(() => challengesTable.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => orgGroupsTable.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.challengeId, t.groupId] }),
+    groupIdx: index("challenge_groups_group_idx").on(t.groupId),
   })
 );
 

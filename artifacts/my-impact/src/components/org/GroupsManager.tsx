@@ -5,6 +5,10 @@ import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BASE } from "@/lib/api";
 import { groupsApi, useInvalidateGroups, useReportGroups, type ManagedGroup } from "@/lib/org-groups";
+import { GroupListUpload } from "./GroupListUpload";
+
+/** How many people the add list shows at once; searching finds the rest. */
+const SHOWN_CANDIDATES = 50;
 
 interface OrgMember {
   userId: string;
@@ -36,25 +40,55 @@ function GroupMembers({ group, orgMembers }: { group: ManagedGroup; orgMembers: 
   const invalidate = useInvalidateGroups();
   const membersQuery = useQuery({ queryKey: ["org-group-members", group.id], queryFn: () => groupsApi.members(group.id) });
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const members = membersQuery.data?.members ?? [];
   const inGroup = new Set(members.map((m) => m.userId));
-  const candidates = orgMembers
-    .filter((m) => !inGroup.has(m.userId))
-    .filter((m) => !search.trim() || `${m.name} ${m.email}`.toLowerCase().includes(search.trim().toLowerCase()))
-    .slice(0, 8);
+  const notInGroup = orgMembers.filter((m) => !inGroup.has(m.userId));
+  const query = search.trim().toLowerCase();
+  const matching = query ? notInGroup.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(query)) : notInGroup;
+  const allMatchingSelected = matching.length > 0 && matching.every((m) => selected.has(m.userId));
+  const chosen = notInGroup.filter((m) => selected.has(m.userId)).map((m) => m.userId);
 
-  const run = async (action: () => Promise<unknown>, done: string) => {
+  const run = async (action: () => Promise<unknown>, done: string): Promise<boolean> => {
     setBusy(true);
     try {
       await action();
       await membersQuery.refetch();
       invalidate();
       toast({ title: done });
+      return true;
     } catch (err) {
       toast({ title: "Could not update the group", description: (err as Error).message, variant: "destructive" });
+      return false;
     } finally {
       setBusy(false);
+    }
+  };
+
+  const toggle = (userId: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+
+  const toggleAllMatching = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const m of matching) {
+        if (allMatchingSelected) next.delete(m.userId);
+        else next.add(m.userId);
+      }
+      return next;
+    });
+
+  const addChosen = async () => {
+    const n = chosen.length;
+    if (await run(() => groupsApi.addMembers(group.id, chosen), `Added ${n} ${n === 1 ? "person" : "people"} to ${group.name}`)) {
+      setSelected(new Set());
+      setSearch("");
     }
   };
 
@@ -107,35 +141,56 @@ function GroupMembers({ group, orgMembers }: { group: ManagedGroup; orgMembers: 
       {!group.archivedAt && (
         <div>
           <label htmlFor={`add-member-${group.id}`} className="block text-xs font-medium text-foreground mb-1">
-            Add someone from your organisation
+            Add people from your organisation
           </label>
-          <input
-            id={`add-member-${group.id}`}
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email"
-            className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white"
-          />
-          {search.trim() && (
-            <ul className="mt-2 space-y-1">
-              {candidates.length === 0 ? (
-                <li className="text-xs text-muted-foreground">No members match.</li>
+          {notInGroup.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Everyone in your organisation is in this group.</p>
+          ) : (
+            <>
+              <input
+                id={`add-member-${group.id}`}
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or email"
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white"
+              />
+              {matching.length === 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">No members match.</p>
               ) : (
-                candidates.map((c) => (
-                  <li key={c.userId}>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => run(() => groupsApi.addMember(group.id, c.userId), `Added ${c.name}`).then(() => setSearch(""))}
-                      className="w-full text-left px-3 py-2 rounded-lg bg-white border border-border text-sm hover:bg-muted/40 disabled:opacity-60"
-                    >
-                      {c.name} <span className="text-xs text-muted-foreground">{c.email}</span>
-                    </button>
-                  </li>
-                ))
+                <>
+                  <label className="mt-2 flex items-center gap-2 text-xs font-medium text-foreground">
+                    <input type="checkbox" checked={allMatchingSelected} onChange={toggleAllMatching} className="rounded border-border w-4 h-4" />
+                    {query ? `Select all ${matching.length} matching` : `Select everyone not in this group (${matching.length})`}
+                  </label>
+                  <ul className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-border bg-white divide-y divide-border" aria-label={`People to add to ${group.name}`}>
+                    {matching.slice(0, SHOWN_CANDIDATES).map((c) => (
+                      <li key={c.userId}>
+                        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40">
+                          <input type="checkbox" checked={selected.has(c.userId)} onChange={() => toggle(c.userId)} className="rounded border-border w-4 h-4" />
+                          <span className="min-w-0 truncate">{c.name}</span>
+                          <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  {matching.length > SHOWN_CANDIDATES && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Showing {SHOWN_CANDIDATES} of {matching.length}. Search to find others.
+                    </p>
+                  )}
+                </>
               )}
-            </ul>
+              <button
+                type="button"
+                disabled={busy || chosen.length === 0}
+                onClick={() => void addChosen()}
+                className="mt-2 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60"
+                data-testid={`button-add-to-group-${group.id}`}
+              >
+                {chosen.length === 0 ? "Add to group" : `Add ${chosen.length} ${chosen.length === 1 ? "person" : "people"}`}
+              </button>
+            </>
           )}
         </div>
       )}
@@ -240,7 +295,8 @@ function GroupRow({ group, orgMembers }: { group: ManagedGroup; orgMembers: OrgM
 
 /**
  * Managing an organisation's groups (Settings, Groups tab): create, rename,
- * archive and restore groups; add or remove members; make someone a lead.
+ * archive and restore groups; add people, several at a time or from a list;
+ * remove them; make someone a lead.
  * The server allows this for organisation managers only.
  */
 export function GroupsManager() {
@@ -313,6 +369,8 @@ export function GroupsManager() {
           <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Create group
         </button>
       </form>
+
+      <GroupListUpload />
 
       {groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">No groups yet. Create one above, then add people or let members join from their organisation page.</p>

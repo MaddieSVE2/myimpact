@@ -6,6 +6,7 @@ import { Trophy, Plus, Users, Calendar, Target, ChevronRight, Loader2, AlertCirc
 import { formatCurrency } from "@/lib/utils";
 import { OrgPromptsSection } from "@/components/OrgPromptsSection";
 import { NumberInput } from "@/components/ui/number-input";
+import { GroupAudiencePicker } from "@/components/org/GroupAudiencePicker";
 import { BASE, apiJson } from "@/lib/api";
 
 
@@ -129,7 +130,7 @@ interface CreateBody {
   startDate: string;
   endDate: string;
   scope: "personal" | "org";
-  departmentTag?: string | null;
+  groupIds?: string[];
 }
 
 function CreateChallengeForm({
@@ -153,6 +154,7 @@ function CreateChallengeForm({
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(defaultEnd);
   const [scope, setScope] = useState<"personal" | "org">("personal");
+  const [audience, setAudience] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -183,6 +185,7 @@ function CreateChallengeForm({
     if (new Date(endDate).getTime() <= new Date(startDate).getTime()) {
       setError("End date must be after start date"); return;
     }
+    if (scope === "org" && audience?.length === 0) { setError("Tick at least one group"); return; }
     createMutation.mutate({
       name: name.trim(),
       description: description.trim(),
@@ -191,6 +194,7 @@ function CreateChallengeForm({
       startDate,
       endDate,
       scope,
+      ...(scope === "org" ? { groupIds: audience ?? [] } : {}),
     });
   };
 
@@ -301,8 +305,16 @@ function CreateChallengeForm({
               My organisation
             </button>
           </div>
-          {scope === "org" && (
+          {scope === "org" && audience === null && (
             <p className="text-xs text-muted-foreground">All current org members will be auto-included.</p>
+          )}
+          {scope === "org" && (
+            <GroupAudiencePicker
+              name="new-challenge"
+              value={audience}
+              onChange={setAudience}
+              hint="Members of these groups take part, and so does anyone who joins them before the challenge ends."
+            />
           )}
         </div>
       )}

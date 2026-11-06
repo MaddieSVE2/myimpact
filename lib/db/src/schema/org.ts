@@ -478,5 +478,29 @@ export const orgGroupMembersTable = pgTable("org_group_members", {
   userIdx: index("org_group_members_user_idx").on(t.userId),
 }));
 
+/**
+ * Group places saved for someone who isn't an active member yet (invited,
+ * or waiting for approval), by email address. They are put in the groups
+ * when their membership becomes active (lib/orgGroups.ts).
+ */
+export const orgPendingGroupMembersTable = pgTable("org_pending_group_members", {
+  orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  groupId: text("group_id").notNull().references(() => orgGroupsTable.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  placementUnique: unique("org_pending_group_members_unique").on(t.orgId, t.email, t.groupId),
+}));
+
+/** The groups a pulse survey is for. None = the whole organisation. */
+export const orgSurveyGroupsTable = pgTable("org_survey_groups", {
+  surveyId: text("survey_id").notNull().references(() => orgSurveysTable.id, { onDelete: "cascade" }),
+  groupId: text("group_id").notNull().references(() => orgGroupsTable.id, { onDelete: "cascade" }),
+}, (t) => ({
+  surveyGroupUnique: unique("org_survey_groups_unique").on(t.surveyId, t.groupId),
+  groupIdx: index("org_survey_groups_group_idx").on(t.groupId),
+}));
+
 export type OrgGroup = typeof orgGroupsTable.$inferSelect;
 export type OrgGroupMember = typeof orgGroupMembersTable.$inferSelect;
