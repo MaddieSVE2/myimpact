@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, BarChart2, MapPin, Lightbulb, GraduationCap, Briefcase, Flag, ClipboardList, Lock } from "lucide-react";
 import { scrollContentToTop } from "@/lib/scroll-utils";
-import { formatCurrency } from "@/lib/utils";
+import { formatAxisCurrency, formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Cell,
@@ -85,31 +85,33 @@ const BASE_DEMO = {
     membersWithMultipleRoles: 18,
     avgMonthsActive: 14,
   },
+  // Targets and head counts are scaled per example organisation, so each
+  // description is written from the scaled figures.
   challenges: [
     {
       id: "demo-ch-001", name: "Spring community sprint",
-      description: "Hit £3,000 of Community-category social value before the end of June.",
+      describe: (target: number, _people: number) => `Hit ${formatCurrency(target)} of Community-category social value before the end of June.`,
       goalType: "social_value" as const, target: 3000, progressTotal: 2150, progressPercent: 72,
       participantCount: 12, startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-06-30T23:59:59.000Z",
       hasEnded: false, isActive: true,
     },
     {
-      id: "demo-ch-002", name: "150 environmental hours",
-      description: "A combined goal across all members to log 150 hours of environmental work this quarter.",
+      id: "demo-ch-002", name: "Environmental hours",
+      describe: (target: number, _people: number) => `A combined goal across all members to log ${target.toLocaleString("en-GB")} hours of environmental work this quarter.`,
       goalType: "hours" as const, target: 150, progressTotal: 92, progressPercent: 61,
       participantCount: 11, startDate: "2026-05-01T00:00:00.000Z", endDate: "2026-07-31T23:59:59.000Z",
       hasEnded: false, isActive: true,
     },
     {
       id: "demo-ch-003", name: "Reading mentor month",
-      description: "Get 7 members signed up as weekly reading mentors at local primary schools.",
+      describe: (_target: number, people: number) => `Get ${people.toLocaleString("en-GB")} members signed up as weekly reading mentors at local primary schools.`,
       goalType: "social_value" as const, target: 1500, progressTotal: 870, progressPercent: 58,
       participantCount: 7, startDate: "2026-05-01T00:00:00.000Z", endDate: "2026-05-31T23:59:59.000Z",
       hasEnded: false, isActive: true,
     },
     {
       id: "demo-ch-004", name: "Winter fundraising drive",
-      description: "Reach £5,000 of fundraising activity across the organisation.",
+      describe: (target: number, _people: number) => `Reach ${formatCurrency(target)} of fundraising activity across the organisation.`,
       goalType: "social_value" as const, target: 5000, progressTotal: 5240, progressPercent: 100,
       participantCount: 18, startDate: "2025-12-01T00:00:00.000Z", endDate: "2026-02-28T23:59:59.000Z",
       hasEnded: true, isActive: false,
@@ -127,25 +129,30 @@ const BASE_DEMO = {
 
 type SharedDemoType = "charity" | "corporate" | "public";
 
+// Estimated cost to the organisation of recruiting, onboarding and
+// supporting one member, used for the SROI figures.
+const ORG_COST_PER_MEMBER = 475;
+
+// Every example shows over £1m of social value. Each headline is internally
+// consistent: avgPerPerson and avgHoursPerPerson are the totals divided by
+// activeMembers, and the breakdowns are scaled to add up to the totals.
 const DEMO_VARIANTS: Record<SharedDemoType, {
   org: { name: string; type: string; location: string };
   headline: typeof BASE_DEMO.headline;
-  scale: number;
-  insights: string[];
+  insights: (activeMembers: string) => string[];
 }> = {
   charity: {
     org: { name: "Community Action Network", type: "Charity", location: "UK-wide" },
     headline: {
-      totalSocialValue: 684200,
-      members: 486,
-      activeMembers: 438,
-      totalHours: 10240,
+      totalSocialValue: 2008700,
+      members: 1460,
+      activeMembers: 1286,
+      totalHours: 29580,
       avgPerPerson: 1562,
       avgHoursPerPerson: 23,
     },
-    scale: 9.2,
-    insights: [
-      "438 people have logged activity this year, with food support and community outreach attracting the broadest participation.",
+    insights: (activeMembers) => [
+      `${activeMembers} people have logged activity this year, with food support and community outreach attracting the broadest participation.`,
       "Youth mentoring produces the highest social value per hour, making it a strong candidate for further programme investment.",
       "Environmental projects are growing fastest, with participation up 24% since January.",
       "Regular activity across seven UK regions gives the charity strong evidence for funders and annual reporting.",
@@ -154,16 +161,15 @@ const DEMO_VARIANTS: Record<SharedDemoType, {
   corporate: {
     org: { name: "Northstar Group", type: "Corporate", location: "UK offices" },
     headline: {
-      totalSocialValue: 912300,
-      members: 612,
-      activeMembers: 527,
-      totalHours: 14680,
+      totalSocialValue: 3503500,
+      members: 2368,
+      activeMembers: 2024,
+      totalHours: 56670,
       avgPerPerson: 1731,
       avgHoursPerPerson: 28,
     },
-    scale: 11.4,
-    insights: [
-      "527 employees have participated this year, with team volunteering days driving the strongest uptake.",
+    insights: (activeMembers) => [
+      `${activeMembers} employees have participated this year, with team volunteering days driving the strongest uptake.`,
       "Skills-based mentoring creates the highest social value per hour across the programme.",
       "Participation is strongest in the North West and London offices, highlighting an opportunity to expand regional campaigns.",
       "Employee engagement has risen 19% since the spring community challenge launched.",
@@ -172,16 +178,15 @@ const DEMO_VARIANTS: Record<SharedDemoType, {
   public: {
     org: { name: "Rivermere Council", type: "Public Sector", location: "Rivermere, England" },
     headline: {
-      totalSocialValue: 526400,
-      members: 384,
-      activeMembers: 316,
-      totalHours: 8940,
+      totalSocialValue: 1617700,
+      members: 1180,
+      activeMembers: 971,
+      totalHours: 27190,
       avgPerPerson: 1666,
       avgHoursPerPerson: 28,
     },
-    scale: 7.4,
-    insights: [
-      "316 staff and community partners have logged activity across neighbourhood programmes this year.",
+    insights: (activeMembers) => [
+      `${activeMembers} staff and community partners have logged activity across neighbourhood programmes this year.`,
       "Food support and youth mentoring deliver the strongest measured social value.",
       "Environmental participation is spread across every district, supporting place-based reporting.",
       "Community challenge participation is highest where local teams coordinate shared activity days.",
@@ -189,53 +194,87 @@ const DEMO_VARIANTS: Record<SharedDemoType, {
   },
 };
 
+// Scales `values` so they add up to exactly `total`; rounding drift goes on
+// the largest item so a breakdown always matches its headline figure.
+function scaleToTotal(values: number[], total: number): number[] {
+  const sum = values.reduce((s, v) => s + v, 0);
+  const scaled = values.map(v => Math.round((v / sum) * total));
+  const drift = total - scaled.reduce((s, v) => s + v, 0);
+  scaled[scaled.indexOf(Math.max(...scaled))] += drift;
+  return scaled;
+}
+
+function roundToNearest(value: number, step: number): number {
+  return Math.max(step, Math.round(value / step) * step);
+}
+
 function getDemoData(type: SharedDemoType) {
   const variant = DEMO_VARIANTS[type];
-  const scaleCount = (value: number) => Math.max(1, Math.round(value * variant.scale));
-  const scaleValue = (value: number) => Math.round(value * variant.scale);
+  const { totalSocialValue, members, activeMembers, totalHours } = variant.headline;
+  const valueScale = totalSocialValue / BASE_DEMO.headline.totalSocialValue;
+  const memberScale = members / BASE_DEMO.headline.members;
+  const hoursScale = totalHours / BASE_DEMO.valueByCategory.reduce((s, c) => s + c.hours, 0);
+  const scaleCount = (value: number, factor: number) => Math.max(1, Math.round(value * factor));
+
+  const categoryValues = scaleToTotal(BASE_DEMO.valueByCategory.map(c => c.value), totalSocialValue);
+  const categoryHours = scaleToTotal(BASE_DEMO.valueByCategory.map(c => c.hours), totalHours);
+  const sdgValues = scaleToTotal(BASE_DEMO.sdgs.map(s => s.value), totalSocialValue);
+  const regionMembers = scaleToTotal(BASE_DEMO.regions.map(r => r.members), members);
+  const regionHours = scaleToTotal(BASE_DEMO.regions.map(r => r.hours), totalHours);
+  const regionValues = scaleToTotal(BASE_DEMO.regions.map(r => r.value), totalSocialValue);
 
   return {
     ...BASE_DEMO,
     org: variant.org,
     headline: variant.headline,
-    valueByCategory: BASE_DEMO.valueByCategory.map(item => ({
+    valueByCategory: BASE_DEMO.valueByCategory.map((item, i) => ({
       ...item,
-      value: scaleValue(item.value),
-      members: scaleCount(item.members),
-      activities: scaleCount(item.activities),
-      hours: scaleCount(item.hours),
+      value: categoryValues[i]!,
+      members: scaleCount(item.members, memberScale),
+      activities: scaleCount(item.activities, valueScale),
+      hours: categoryHours[i]!,
     })),
+    // `participants` is a percentage of members, so it is not scaled.
     activities: BASE_DEMO.activities.map(item => ({
       ...item,
-      participants: scaleCount(item.participants),
-      hours: scaleCount(item.hours),
-      value: scaleValue(item.value),
+      hours: scaleCount(item.hours, hoursScale),
+      value: Math.round(item.value * valueScale),
     })),
-    sdgs: BASE_DEMO.sdgs.map(item => ({
+    sdgs: BASE_DEMO.sdgs.map((item, i) => ({
       ...item,
-      members: scaleCount(item.members),
-      activities: scaleCount(item.activities),
-      value: scaleValue(item.value),
+      members: scaleCount(item.members, memberScale),
+      activities: scaleCount(item.activities, valueScale),
+      value: sdgValues[i]!,
     })),
-    regions: BASE_DEMO.regions.map(item => ({
+    regions: BASE_DEMO.regions.map((item, i) => ({
       ...item,
-      members: scaleCount(item.members),
-      hours: scaleCount(item.hours),
-      value: scaleValue(item.value),
+      members: regionMembers[i]!,
+      hours: regionHours[i]!,
+      value: regionValues[i]!,
+      sroi: Math.round((regionValues[i]! / (regionMembers[i]! * ORG_COST_PER_MEMBER)) * 100) / 100,
     })),
-    insights: variant.insights,
+    insights: variant.insights(activeMembers.toLocaleString("en-GB")),
     volunteerProgression: {
       ...BASE_DEMO.volunteerProgression,
-      membersWithEmployabilitySkills: Math.round(variant.headline.activeMembers * 0.72),
-      membersWithMultipleRoles: Math.round(variant.headline.activeMembers * 0.38),
+      membersWithEmployabilitySkills: Math.round(activeMembers * 0.72),
+      membersWithMultipleRoles: Math.round(activeMembers * 0.38),
     },
-    challenges: BASE_DEMO.challenges.map(item => ({
-      ...item,
-      participantCount: scaleCount(item.participantCount),
-    })),
+    challenges: BASE_DEMO.challenges.map(item => {
+      const target = item.goalType === "hours"
+        ? roundToNearest(item.target * hoursScale, 50)
+        : roundToNearest(item.target * valueScale, 1000);
+      const participantCount = scaleCount(item.participantCount, memberScale);
+      return {
+        ...item,
+        target,
+        progressTotal: Math.round(target * (item.progressTotal / item.target)),
+        participantCount,
+        description: item.describe(target, participantCount),
+      };
+    }),
     monthlyTimeline: BASE_DEMO.monthlyTimeline.map((item, index, rows) => ({
       ...item,
-      value: Math.round(variant.headline.totalSocialValue * ((index + 1) / rows.length)),
+      value: Math.round(totalSocialValue * ((index + 1) / rows.length)),
     })),
   };
 }
@@ -311,7 +350,7 @@ export default function OrgDemoDashboard({
   useEffect(() => { scrollContentToTop(); }, []);
   const DEMO = getDemoData(demoType);
   const maxActivity = Math.max(...DEMO.activities.map(a => a.value));
-  const orgCostPerVolunteer = 475;
+  const orgCostPerVolunteer = ORG_COST_PER_MEMBER;
   const totalOrgCost = DEMO.headline.members * orgCostPerVolunteer;
   const sroiRatio = (DEMO.headline.totalSocialValue / totalOrgCost).toFixed(2);
 
@@ -361,7 +400,7 @@ export default function OrgDemoDashboard({
             </p>
           </div>
           <StatCard icon={BarChart2} label="SROI ratio" value={`£${sroiRatio}`} rawValue={parseFloat(sroiRatio)} decimals={2} prefix="£" sub="for every £1 invested" />
-          <StatCard icon={Users} label="Members" value={String(DEMO.headline.members)} rawValue={DEMO.headline.members} sub={`${DEMO.headline.activeMembers} with saved records`} />
+          <StatCard icon={Users} label="Members" value={String(DEMO.headline.members)} rawValue={DEMO.headline.members} sub={`${DEMO.headline.activeMembers.toLocaleString("en-GB")} with saved records`} />
           <div className="rounded-xl p-5 border bg-white border-border">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-primary" />
@@ -388,10 +427,10 @@ export default function OrgDemoDashboard({
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For {DEMO.org.name}, the estimated organisational investment (covering member recruitment, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per member</strong>. With <strong className="text-foreground">{DEMO.headline.members} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
+                Social Return on Investment (SROI) measures how much social value is created for every £1 an organisation invests. For {DEMO.org.name}, the estimated organisational investment (covering member recruitment, onboarding, ongoing support, and administrative overhead) is around <strong className="text-foreground">£{orgCostPerVolunteer} per member</strong>. With <strong className="text-foreground">{DEMO.headline.members.toLocaleString("en-GB")} members</strong>, that gives a total investment of <strong className="text-foreground">£{totalOrgCost.toLocaleString("en-GB")}</strong>.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> Demo Organisation invested in its members, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
+                Dividing the total social value of <strong className="text-foreground">{formatCurrency(DEMO.headline.totalSocialValue)}</strong> by that investment gives an SROI of <strong className="text-foreground">£{sroiRatio}</strong>, meaning for every <strong className="text-foreground">£1</strong> {DEMO.org.name} invested in its members, <strong className="text-foreground">£{sroiRatio} of social value</strong> was generated for the community.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -432,7 +471,7 @@ export default function OrgDemoDashboard({
               <BarChart data={DEMO.valueByCategory} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={formatAxisCurrency} width={40} />
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.valueByCategory.map((_, i) => (
@@ -488,7 +527,7 @@ export default function OrgDemoDashboard({
                   <RechartsTooltip
                     formatter={(v: number, _n, payload) => {
                       const p = (payload as unknown as { payload: { number: number; label: string; members: number; activities: number } }).payload;
-                      return [`${v}% · ${p.members} members · ${p.activities} activities`, `SDG ${p.number} ${p.label}`];
+                      return [`${v}% · ${p.members.toLocaleString("en-GB")} members · ${p.activities.toLocaleString("en-GB")} activities`, `SDG ${p.number} ${p.label}`];
                     }}
                     contentStyle={{ borderRadius: 8, fontSize: 12 }}
                   />
@@ -514,7 +553,7 @@ export default function OrgDemoDashboard({
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {idx === 0 && <span className="font-semibold text-foreground">Leading goal · </span>}
-                      {formatCurrency(s.value)} · {s.members} members · {s.activities} activities
+                      {formatCurrency(s.value)} · {s.members.toLocaleString("en-GB")} members · {s.activities.toLocaleString("en-GB")} activities
                     </p>
                   </div>
                 </li>
@@ -548,7 +587,7 @@ export default function OrgDemoDashboard({
                     <div className="h-full rounded-full" style={{ width: `${(c.value / max) * 100}%`, backgroundColor: c.sdgColor }} />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    <span className="font-semibold text-foreground">{c.members}</span> members · <span className="font-semibold text-foreground">{c.activities}</span> activities · <span className="font-semibold text-foreground">{c.hours.toLocaleString("en-GB")}</span> hrs
+                    <span className="font-semibold text-foreground">{c.members.toLocaleString("en-GB")}</span> members · <span className="font-semibold text-foreground">{c.activities.toLocaleString("en-GB")}</span> activities · <span className="font-semibold text-foreground">{c.hours.toLocaleString("en-GB")}</span> hrs
                   </p>
                 </div>
               );
@@ -570,7 +609,7 @@ export default function OrgDemoDashboard({
                 <div key={r.region} className="flex items-center gap-3">
                   <div className="w-28 shrink-0">
                     <p className="text-sm font-medium text-foreground">{r.region}</p>
-                    <p className="text-xs text-muted-foreground">{r.members} members</p>
+                    <p className="text-xs text-muted-foreground">{r.members.toLocaleString("en-GB")} members</p>
                   </div>
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${r.pct}%` }} />
@@ -620,7 +659,7 @@ export default function OrgDemoDashboard({
               <p className="text-3xl font-display font-bold text-primary">
                 <AnimatedNumber value={DEMO.volunteerProgression.pctWithEmployabilitySkills} formatter={v => `${v}%`} />
               </p>
-              <p className="text-xs text-muted-foreground mt-1">{DEMO.volunteerProgression.membersWithEmployabilitySkills} of {DEMO.headline.activeMembers} active members</p>
+              <p className="text-xs text-muted-foreground mt-1">{DEMO.volunteerProgression.membersWithEmployabilitySkills.toLocaleString("en-GB")} of {DEMO.headline.activeMembers.toLocaleString("en-GB")} active members</p>
             </div>
             <div className="bg-muted/30 rounded-xl p-4 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">With multiple roles</p>
@@ -675,8 +714,8 @@ export default function OrgDemoDashboard({
           <div className="space-y-3">
             {DEMO.challenges.map((c) => {
               const pct = Math.min(100, Math.max(0, Math.round(c.progressPercent)));
-              const targetLabel = c.goalType === "social_value" ? formatCurrency(c.target) : `${c.target} hrs`;
-              const progressLabel = c.goalType === "social_value" ? formatCurrency(c.progressTotal) : `${Math.round(c.progressTotal)} hrs`;
+              const targetLabel = c.goalType === "social_value" ? formatCurrency(c.target) : `${c.target.toLocaleString("en-GB")} hrs`;
+              const progressLabel = c.goalType === "social_value" ? formatCurrency(c.progressTotal) : `${Math.round(c.progressTotal).toLocaleString("en-GB")} hrs`;
               const endDate = new Date(c.endDate);
               const endsLabel = `${c.hasEnded ? "Ended" : "Ends"} ${endDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
               return (
@@ -698,7 +737,7 @@ export default function OrgDemoDashboard({
                     <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    <span className="font-semibold text-foreground">{progressLabel}</span> of {targetLabel} · {c.participantCount} members participating · {endsLabel}
+                    <span className="font-semibold text-foreground">{progressLabel}</span> of {targetLabel} · {c.participantCount.toLocaleString("en-GB")} members participating · {endsLabel}
                   </p>
                 </div>
               );
@@ -735,7 +774,7 @@ export default function OrgDemoDashboard({
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-2xl font-display font-bold text-foreground leading-none">{p.totals.average.toFixed(1)}<span className="text-xs text-muted-foreground"> / 5</span></p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{p.totals.responses} responses</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{p.totals.responses.toLocaleString("en-GB")} responses</p>
                     </div>
                   </div>
                   <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">

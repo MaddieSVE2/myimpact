@@ -1,12 +1,16 @@
 import {
   db, pool,
   usersTable, organisationsTable, orgMembersTable, orgMemberConsentsTable,
-  orgSurveysTable, orgSurveyResponsesTable,
+  orgDeactivatedMembersTable, orgSurveysTable, orgSurveyResponsesTable,
   challengesTable, challengeParticipantsTable,
   impactRecordsTable, recordVerificationsTable,
 } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, like, sql } from "drizzle-orm";
 import { calculateImpact } from "../lib/impactData.js";
+import {
+  UNI_SURVEYS, planUniRecords, planUniSurveyResponses, uniStudents,
+  type PlannedActivity,
+} from "../lib/universityDemoData.js";
 
 const DEMO_USER_ID = "demo-user-000000000000";
 const DEMO_ORG_ID = "demo-org-0000000000000";
@@ -481,6 +485,12 @@ export async function seedDemo() {
 // ---------------------------------------------------------------------------
 // My Impact University seed
 // ---------------------------------------------------------------------------
+// A university the size of a real one: 10,240 people registered, a few
+// thousand of them logging activity, and over £1m of social value in each
+// academic year. Who the students are and what they log is planned in
+// lib/universityDemoData.ts; this file writes whatever part of that plan the
+// database does not have yet. It runs on every server start, so the common
+// case (nothing missing) costs a handful of small queries.
 
 const UNI_ORG_ID = "uni-org-0000000000000";
 const UNI_ORG_NAME = "My Impact University";
@@ -494,26 +504,22 @@ const UNI_STUDENT_USER_ID = "uni-student-0000000000";
 const UNI_CONSENT_SHARE_FROM = new Date("2025-09-01T00:00:00.000Z");
 const UNI_CONSENT_GRANTED_AT = new Date("2025-09-15T10:00:00.000Z");
 
-// 25 synthetic university students used to give the dashboard realistic
-// aggregate numbers. Emails match the exclusion pattern in
-// scripts/onboarding-emails.ts so they can never receive real emails.
-const UNI_SYNTH_USERS = Array.from({ length: 25 }, (_, i) => ({
-  id: `uni-synth-u-${String(i + 1).padStart(3, "0")}`,
-  email: `uni-synth-u-${String(i + 1).padStart(3, "0")}@myimpact-university.org`,
-}));
-
-type SeedActivity = { activityId: string; quantity: number; hoursPerYear: number };
+// Every seeded student's id starts this way (lib/universityDemoData.ts).
+const UNI_SYNTH_ID_PATTERN = "uni-synth-u-%";
+// One fixed sign-up moment for all of them, well in the past, so they sit
+// together in the admin user list instead of burying recent real sign-ups.
+const UNI_SYNTH_CREATED_AT = new Date("2025-09-01T09:00:00.000Z");
 
 interface SeedRecordSpec {
   name: string;
   entryDate: Date;
-  activities: SeedActivity[];
+  activities: PlannedActivity[];
   donationsGBP?: number;
 }
 
-// ~6 realistic activities for the student persona across the current
-// academic year (Sep 2025 – Jun 2026), spanning volunteering, personal
-// development, community, and leadership.
+// The student persona's own activities: six across the 2025/26 academic year
+// and two so far in 2026/27, spanning volunteering, personal development,
+// community and leadership.
 const UNI_STUDENT_RECORDS: SeedRecordSpec[] = [
   {
     name: "Freshers' peer mentoring",
@@ -545,88 +551,50 @@ const UNI_STUDENT_RECORDS: SeedRecordSpec[] = [
     entryDate: new Date("2026-05-09T13:00:00.000Z"),
     activities: [{ activityId: "employability_coaching", quantity: 8, hoursPerYear: 8 }],
   },
-];
-
-// Rotation of realistic records for the synthetic students. Combined with
-// the student persona's entries this lands on roughly 185 total hours and
-// £17k–£18k total social value — inside the £15k–£30k / 150–200hr target.
-const UNI_SYNTH_RECORD_SPECS: Array<Omit<SeedRecordSpec, "entryDate"> & { monthOffset: number }> = [
-  { name: "Community food bank support", activities: [{ activityId: "food_bank", quantity: 2, hoursPerYear: 5 }], monthOffset: 0 },
-  { name: "Campus litter pick", activities: [{ activityId: "litter_picking", quantity: 3, hoursPerYear: 5 }], monthOffset: 1 },
-  { name: "Coding taster workshop", activities: [{ activityId: "stem_workshop", quantity: 1, hoursPerYear: 5 }], monthOffset: 2 },
-  { name: "Youth mentoring programme", activities: [{ activityId: "mentoring_youth", quantity: 6, hoursPerYear: 6 }], monthOffset: 3 },
-  { name: "Employability drop-in", activities: [{ activityId: "employability_coaching", quantity: 4, hoursPerYear: 4 }], monthOffset: 4 },
-  { name: "DofE volunteering section", activities: [{ activityId: "dofe", quantity: 8, hoursPerYear: 8 }], monthOffset: 5 },
-  { name: "Peer tutoring", activities: [{ activityId: "tutoring", quantity: 1, hoursPerYear: 5 }], monthOffset: 6 },
-  { name: "Digital skills for older residents", activities: [{ activityId: "digital_coaching", quantity: 1, hoursPerYear: 4 }], monthOffset: 7 },
-];
-
-const UNI_SURVEYS = [
   {
-    id: "uni-ps-001",
-    template: "meaningfulness" as const,
-    question: "How meaningful does your volunteering feel this term?",
-    schedule: "monthly" as const,
-    createdAt: new Date("2025-10-01T09:00:00.000Z"),
+    name: "Freshers' fair volunteer lead",
+    entryDate: new Date("2026-09-21T10:00:00.000Z"),
+    activities: [{ activityId: "mentoring_youth", quantity: 10, hoursPerYear: 10 }],
   },
   {
-    id: "uni-ps-002",
-    template: "custom" as const,
-    question: "How much is volunteering helping you build skills for after graduation?",
-    schedule: "quarterly" as const,
-    createdAt: new Date("2025-10-01T09:05:00.000Z"),
+    name: "Peer tutoring for a first-year",
+    entryDate: new Date("2026-10-17T14:00:00.000Z"),
+    activities: [{ activityId: "tutoring", quantity: 1, hoursPerYear: 12 }],
   },
 ];
 
-const UNI_RESPONSE_WINDOWS: Array<{
-  surveyId: string;
-  windowKey: string;
-  ratings: [number, number, number, number, number];
-  comments?: Array<{ text: string; userOffset: number }>;
-}> = [
-  {
-    surveyId: "uni-ps-001",
-    windowKey: "2025-11",
-    ratings: [0, 1, 4, 7, 4],
-    comments: [
-      { text: "The mentoring scheme has been a highlight of my first term.", userOffset: 2 },
-    ],
-  },
-  {
-    surveyId: "uni-ps-001",
-    windowKey: "2026-02",
-    ratings: [0, 1, 3, 8, 6],
-    comments: [
-      { text: "Would be great to have more weekend options around exams.", userOffset: 5 },
-    ],
-  },
-  {
-    surveyId: "uni-ps-001",
-    windowKey: "2026-04",
-    ratings: [0, 0, 3, 9, 7],
-  },
-  {
-    surveyId: "uni-ps-002",
-    windowKey: "2025-Q4",
-    ratings: [0, 1, 5, 7, 3],
-  },
-  {
-    surveyId: "uni-ps-002",
-    windowKey: "2026-Q1",
-    ratings: [0, 1, 4, 8, 5],
-    comments: [
-      { text: "Ran my first workshop solo, straight onto the CV.", userOffset: 9 },
-    ],
-  },
-];
+function chunked<T>(rows: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size));
+  return chunks;
+}
+
+/** The impact_records row for one personal activity record, valued like a real entry. */
+function uniRecordValues(userId: string, spec: SeedRecordSpec): typeof impactRecordsTable.$inferInsert {
+  const result = calculateImpact(spec.activities, spec.donationsGBP ?? 0, 0, []);
+  return {
+    userId,
+    name: spec.name,
+    periodLabel: spec.entryDate.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }),
+    totalValue: String(result.totalValue),
+    impactValue: String(result.impactValue),
+    contributionValue: String(result.contributionValue),
+    donationsValue: String(result.donationsValue),
+    personalDevelopmentValue: String(result.personalDevelopmentValue),
+    totalHours: result.totalHours,
+    activitiesJson: spec.activities,
+    resultJson: result,
+    entryDate: spec.entryDate,
+    source: "user",
+    createdAt: spec.entryDate,
+  };
+}
 
 // Insert one personal impact record (if missing) and guarantee an approved
 // record_verifications row for the university org. University sharing happens
 // through member consent, not by pre-submitting these personal records.
 // Idempotency key is (userId, name, entryDate) — good enough for fixed seed data.
 async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ inserted: boolean }> {
-  const result = calculateImpact(spec.activities, spec.donationsGBP ?? 0, 0, []);
-
   let existing = await db.query.impactRecordsTable.findFirst({
     where: and(
       eq(impactRecordsTable.userId, userId),
@@ -640,22 +608,7 @@ async function ensureUniRecord(userId: string, spec: SeedRecordSpec): Promise<{ 
   if (!existing) {
     const [created] = await db
       .insert(impactRecordsTable)
-      .values({
-        userId,
-        name: spec.name,
-        periodLabel: spec.entryDate.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }),
-        totalValue: String(result.totalValue),
-        impactValue: String(result.impactValue),
-        contributionValue: String(result.contributionValue),
-        donationsValue: String(result.donationsValue),
-        personalDevelopmentValue: String(result.personalDevelopmentValue),
-        totalHours: result.totalHours,
-        activitiesJson: spec.activities,
-        resultJson: result,
-        entryDate: spec.entryDate,
-        source: "user",
-        createdAt: spec.entryDate,
-      })
+      .values(uniRecordValues(userId, spec))
       .returning({ id: impactRecordsTable.id });
     existing = created;
     inserted = true;
@@ -708,7 +661,202 @@ async function ensureUniversityConsent(userId: string) {
     });
 }
 
-export async function seedUniversity() {
+const countRows = sql<number>`count(*)::int`;
+
+// The seeded students: their accounts, their membership of the university,
+// and consent for the ones who log activity. Students who do not log have
+// registered but share nothing, which is what a real cohort looks like.
+async function seedUniStudents() {
+  const students = uniStudents();
+  const loggers = students.filter((s) => s.logsActivity);
+
+  const [[members], [consents], [deactivated]] = await Promise.all([
+    db.select({ n: countRows }).from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, UNI_ORG_ID), like(orgMembersTable.userId, UNI_SYNTH_ID_PATTERN))),
+    db.select({ n: countRows }).from(orgMemberConsentsTable)
+      .where(and(eq(orgMemberConsentsTable.orgId, UNI_ORG_ID), like(orgMemberConsentsTable.userId, UNI_SYNTH_ID_PATTERN))),
+    db.select({ n: countRows }).from(orgDeactivatedMembersTable)
+      .where(and(eq(orgDeactivatedMembersTable.orgId, UNI_ORG_ID), like(orgDeactivatedMembersTable.userId, UNI_SYNTH_ID_PATTERN))),
+  ]);
+  if (members!.n + deactivated!.n === students.length && consents!.n === loggers.length) {
+    console.log(`  All ${students.length} university students already in place.`);
+    return;
+  }
+
+  // ── Accounts ──
+  const existingUsers = new Set(
+    (await db.select({ id: usersTable.id }).from(usersTable).where(like(usersTable.id, UNI_SYNTH_ID_PATTERN)))
+      .map((u) => u.id),
+  );
+  const newUsers = students.filter((s) => !existingUsers.has(s.id));
+  for (const batch of chunked(newUsers, 1000)) {
+    await db
+      .insert(usersTable)
+      .values(batch.map((s) => ({
+        id: s.id,
+        email: s.email,
+        displayName: s.displayName,
+        createdAt: UNI_SYNTH_CREATED_AT,
+        // No inbox behind these addresses: never opt them in to email.
+        emailDigestOptIn: false,
+        emailRemindersOptIn: false,
+      })))
+      .onConflictDoNothing();
+  }
+  // Students seeded before the cohort grew have no name and the default
+  // email settings. Bring them in line with the rest.
+  await db
+    .update(usersTable)
+    .set({ emailDigestOptIn: false, emailRemindersOptIn: false })
+    .where(and(
+      like(usersTable.id, UNI_SYNTH_ID_PATTERN),
+      or(eq(usersTable.emailDigestOptIn, true), eq(usersTable.emailRemindersOptIn, true)),
+    ));
+  const unnamed = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(like(usersTable.id, UNI_SYNTH_ID_PATTERN), isNull(usersTable.displayName)));
+  const studentById = new Map(students.map((s) => [s.id, s]));
+  for (const { id } of unnamed) {
+    const student = studentById.get(id);
+    if (student) await db.update(usersTable).set({ displayName: student.displayName }).where(eq(usersTable.id, id));
+  }
+
+  // ── Membership ──
+  // A student a manager has deactivated in a demo stays deactivated.
+  const [memberRows, deactivatedRows] = await Promise.all([
+    db.select({ userId: orgMembersTable.userId }).from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, UNI_ORG_ID), like(orgMembersTable.userId, UNI_SYNTH_ID_PATTERN))),
+    db.select({ userId: orgDeactivatedMembersTable.userId }).from(orgDeactivatedMembersTable)
+      .where(and(eq(orgDeactivatedMembersTable.orgId, UNI_ORG_ID), like(orgDeactivatedMembersTable.userId, UNI_SYNTH_ID_PATTERN))),
+  ]);
+  const placed = new Set([...memberRows, ...deactivatedRows].map((m) => m.userId));
+  const newMembers = students.filter((s) => !placed.has(s.id));
+  for (const batch of chunked(newMembers, 1000)) {
+    await db
+      .insert(orgMembersTable)
+      .values(batch.map((s) => ({
+        orgId: UNI_ORG_ID,
+        userId: s.id,
+        role: "member",
+        status: "active",
+        joinedAt: s.joinedAt,
+      })))
+      .onConflictDoNothing();
+  }
+
+  // ── Consent ──
+  // Everyone shares from the same day, so the dashboard's queries match the
+  // whole cohort with one list (lib/orgSharing.ts sharedRecordsCondition).
+  const consented = new Set(
+    (await db.select({ userId: orgMemberConsentsTable.userId }).from(orgMemberConsentsTable)
+      .where(and(eq(orgMemberConsentsTable.orgId, UNI_ORG_ID), like(orgMemberConsentsTable.userId, UNI_SYNTH_ID_PATTERN))))
+      .map((c) => c.userId),
+  );
+  const newConsents = loggers.filter((s) => !consented.has(s.id));
+  for (const batch of chunked(newConsents, 1000)) {
+    await db
+      .insert(orgMemberConsentsTable)
+      .values(batch.map((s) => ({
+        id: `uni-consent-${s.id}`,
+        orgId: UNI_ORG_ID,
+        userId: s.id,
+        status: "active",
+        shareFrom: UNI_CONSENT_SHARE_FROM,
+        shareScope: "historic",
+        grantedAt: s.joinedAt,
+      })))
+      .onConflictDoNothing();
+  }
+
+  console.log(`  University students: ${newUsers.length} accounts, ${newMembers.length} memberships and ${newConsents.length} consents added.`);
+}
+
+// The seeded students' activity up to `now`, each record with an approved
+// verification. Records have no natural unique key, so two servers starting
+// together could both add the same ones: a database lock makes the second
+// wait and then find nothing left to add.
+async function seedUniRecords(now: Date) {
+  const planned = planUniRecords(now);
+  const keyOf = (r: { userId: string; name: string; entryDate: Date }) => `${r.userId}|${r.name}|${r.entryDate.getTime()}`;
+  const missingFrom = (existing: Array<{ userId: string; name: string; entryDate: Date }>) => {
+    const have = new Set(existing.map(keyOf));
+    return planned.filter((r) => !have.has(keyOf(r)));
+  };
+  const seededColumns = {
+    userId: impactRecordsTable.userId,
+    name: impactRecordsTable.name,
+    entryDate: impactRecordsTable.entryDate,
+  };
+
+  const seeded = await db.select(seededColumns).from(impactRecordsTable)
+    .where(like(impactRecordsTable.userId, UNI_SYNTH_ID_PATTERN));
+  if (missingFrom(seeded).length === 0) {
+    console.log(`  All ${planned.length} university activity records already in place.`);
+    return;
+  }
+
+  const added = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('my-impact-university-seed'))`);
+    const missing = missingFrom(
+      await tx.select(seededColumns).from(impactRecordsTable)
+        .where(like(impactRecordsTable.userId, UNI_SYNTH_ID_PATTERN)),
+    );
+    for (const batch of chunked(missing, 200)) {
+      const inserted = await tx
+        .insert(impactRecordsTable)
+        .values(batch.map((r) => uniRecordValues(r.userId, r)))
+        .returning({ id: impactRecordsTable.id, entryDate: impactRecordsTable.entryDate });
+      await tx
+        .insert(recordVerificationsTable)
+        .values(inserted.map((r) => ({
+          recordId: r.id,
+          orgId: UNI_ORG_ID,
+          status: "approved",
+          decidedAt: r.entryDate,
+          reason: "auto-verified",
+        })))
+        .onConflictDoNothing();
+    }
+    return missing.length;
+  });
+  console.log(`  University activity records: ${added} added, ${planned.length - added} already existed (all with approved verifications).`);
+}
+
+async function seedUniSurveys(managerId: string, now: Date) {
+  for (const survey of UNI_SURVEYS) {
+    const existing = await db.query.orgSurveysTable.findFirst({
+      where: eq(orgSurveysTable.id, survey.id),
+    });
+    if (existing) continue;
+    await db.insert(orgSurveysTable).values({
+      id: survey.id,
+      orgId: UNI_ORG_ID,
+      template: survey.template,
+      question: survey.question,
+      schedule: survey.schedule,
+      anonymous: true,
+      createdBy: managerId,
+      createdAt: survey.createdAt,
+    });
+    console.log(`  Survey created: ${survey.id} — "${survey.question}"`);
+  }
+
+  // Each planned answer has a fixed id, so answers already there are skipped.
+  const planned = planUniSurveyResponses(now);
+  const have = new Set(
+    (await db.select({ id: orgSurveyResponsesTable.id }).from(orgSurveyResponsesTable)
+      .where(inArray(orgSurveyResponsesTable.surveyId, UNI_SURVEYS.map((s) => s.id))))
+      .map((r) => r.id),
+  );
+  const missing = planned.filter((r) => !have.has(r.id));
+  for (const batch of chunked(missing, 500)) {
+    await db.insert(orgSurveyResponsesTable).values(batch).onConflictDoNothing();
+  }
+  console.log(`  University survey responses: ${missing.length} added, ${planned.length - missing.length} already existed.`);
+}
+
+export async function seedUniversity(now: Date = new Date()) {
   console.log("Seeding My Impact University…");
 
   // ── Org ───────────────────────────────────────────────────────────────────
@@ -744,124 +892,17 @@ export async function seedUniversity() {
   // Dual membership: the student persona also belongs to the Demo Organisation.
   await ensureMembership(DEMO_ORG_ID, studentId, "member");
 
-  // ── Synthetic students ────────────────────────────────────────────────────
-  const existingSynth = await db.query.usersTable.findMany({
-    where: inArray(usersTable.id, UNI_SYNTH_USERS.map((u) => u.id)),
-  });
-  const existingSynthIds = new Set(existingSynth.map((u) => u.id));
-  const newSynth = UNI_SYNTH_USERS.filter((u) => !existingSynthIds.has(u.id));
-  if (newSynth.length > 0) {
-    await db.insert(usersTable).values(newSynth);
-    console.log(`  Inserted ${newSynth.length} synthetic university students.`);
-  } else {
-    console.log("  All synthetic university students already exist.");
-  }
-  for (const synth of UNI_SYNTH_USERS) {
-    await db
-      .insert(orgMembersTable)
-      .values({ orgId: UNI_ORG_ID, userId: synth.id, role: "member", status: "active" })
-      .onConflictDoNothing();
-  }
-
-  // Seed historic, active consent for every member whose personal activity is
-  // part of the university demo. This preserves the dashboard's realistic
-  // aggregate while keeping the student account ready to demonstrate the same
-  // automatic-sharing behaviour for newly logged activity.
-  for (const userId of [studentId, ...UNI_SYNTH_USERS.map((user) => user.id)]) {
-    await ensureUniversityConsent(userId);
-  }
-
-  // ── Student persona activities (pre-approved) ─────────────────────────────
-  let recordsInserted = 0;
-  let recordsSkipped = 0;
+  // The student persona shares historically too, so the account is ready to
+  // show the same automatic sharing for anything newly logged in a demo.
+  await ensureUniversityConsent(studentId);
   for (const spec of UNI_STUDENT_RECORDS) {
-    const { inserted } = await ensureUniRecord(studentId, spec);
-    inserted ? recordsInserted++ : recordsSkipped++;
+    if (spec.entryDate <= now) await ensureUniRecord(studentId, spec);
   }
 
-  // ── Synthetic student activities (pre-approved) ───────────────────────────
-  for (let i = 0; i < UNI_SYNTH_USERS.length; i++) {
-    const synth = UNI_SYNTH_USERS[i]!;
-    const spec = UNI_SYNTH_RECORD_SPECS[i % UNI_SYNTH_RECORD_SPECS.length]!;
-    // Spread entries across Oct 2025 – May 2026, staggering the day so the
-    // timeline looks organic.
-    const month = 9 + ((spec.monthOffset + i) % 8); // Oct (9) .. May (16 → wraps)
-    const year = month > 11 ? 2026 : 2025;
-    const entryDate = new Date(Date.UTC(year, month % 12, 3 + ((i * 7) % 24), 10 + (i % 7)));
-    const { inserted } = await ensureUniRecord(synth.id, { ...spec, entryDate });
-    inserted ? recordsInserted++ : recordsSkipped++;
-  }
-  console.log(`  Impact records: ${recordsInserted} inserted, ${recordsSkipped} already existed (all with approved verifications).`);
-
-  // ── Pulse surveys ─────────────────────────────────────────────────────────
-  for (const survey of UNI_SURVEYS) {
-    const existing = await db.query.orgSurveysTable.findFirst({
-      where: eq(orgSurveysTable.id, survey.id),
-    });
-    if (existing) {
-      console.log(`  Survey ${survey.id} already exists, skipping.`);
-      continue;
-    }
-    await db.insert(orgSurveysTable).values({
-      id: survey.id,
-      orgId: UNI_ORG_ID,
-      template: survey.template,
-      question: survey.question,
-      schedule: survey.schedule,
-      anonymous: true,
-      createdBy: managerId,
-      createdAt: survey.createdAt,
-    });
-    console.log(`  Survey created: ${survey.id} — "${survey.question}"`);
-  }
-
-  let respInserted = 0;
-  let respSkipped = 0;
-  for (const window of UNI_RESPONSE_WINDOWS) {
-    const ratingValues: number[] = [];
-    for (let r = 1; r <= 5; r++) {
-      for (let i = 0; i < window.ratings[r - 1]!; i++) ratingValues.push(r);
-    }
-    const commentMap = new Map<number, string>();
-    for (const c of window.comments ?? []) {
-      commentMap.set(c.userOffset % UNI_SYNTH_USERS.length, c.text);
-    }
-    for (let i = 0; i < ratingValues.length; i++) {
-      const userIdx = i % UNI_SYNTH_USERS.length;
-      const user = UNI_SYNTH_USERS[userIdx]!;
-      const existingResp = await db.query.orgSurveyResponsesTable.findFirst({
-        where: and(
-          eq(orgSurveyResponsesTable.surveyId, window.surveyId),
-          eq(orgSurveyResponsesTable.userId, user.id),
-          eq(orgSurveyResponsesTable.windowKey, window.windowKey),
-        ),
-      });
-      if (existingResp) {
-        respSkipped++;
-        continue;
-      }
-      const [year, monthOrQ] = window.windowKey.split("-");
-      let responseDate: Date;
-      if (window.windowKey.includes("Q")) {
-        const qNum = parseInt(monthOrQ!.replace("Q", ""), 10);
-        const month = (qNum - 1) * 3 + 1 + Math.floor(i / 8);
-        responseDate = new Date(`${year}-${String(Math.min(month, 12)).padStart(2, "0")}-${String(4 + (i % 20)).padStart(2, "0")}T${String(9 + (i % 9)).padStart(2, "0")}:00:00.000Z`);
-      } else {
-        responseDate = new Date(`${window.windowKey}-${String(4 + (i % 20)).padStart(2, "0")}T${String(9 + (i % 9)).padStart(2, "0")}:00:00.000Z`);
-      }
-      await db.insert(orgSurveyResponsesTable).values({
-        id: `seed-${window.surveyId}-${window.windowKey}-u${userIdx}`,
-        surveyId: window.surveyId,
-        userId: user.id,
-        windowKey: window.windowKey,
-        rating: ratingValues[i]!,
-        comment: commentMap.get(userIdx) ?? null,
-        createdAt: responseDate,
-      });
-      respInserted++;
-    }
-  }
-  console.log(`  Survey responses: ${respInserted} inserted, ${respSkipped} already existed.`);
+  // ── Seeded students, their activity and their survey answers ──────────────
+  await seedUniStudents();
+  await seedUniRecords(now);
+  await seedUniSurveys(managerId, now);
 
   console.log("University seed complete.");
   console.log(`  Manager email:  ${UNI_MANAGER_EMAIL}`);

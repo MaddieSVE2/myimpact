@@ -91,7 +91,7 @@ export const DEMO_PENDING_REQUESTS: DemoPendingRequest[] = [
 
 // Raw activity rows used to build the demo dataset. Tuple form keeps the file
 // readable while we ship a credible year of impact spanning 12
-// months, 285 members and 10 categories.
+// months, 1,247 members and 10 categories.
 type RawActivity = readonly [
   memberId: string,
   occurredAt: string,
@@ -227,8 +227,12 @@ const _DESCS: Record<ActivityCategory, string[]> = {
   ],
 };
 
-// ── Synthetic cohort: m-033 … m-285 ──────────────────────────────────────
-// Deterministically generated so the demo always renders the same 285 members.
+// ── Synthetic cohort: m-033 … m-1247 ─────────────────────────────────────
+// Deterministically generated so the demo always renders the same 1,247
+// members. Each has two activities in 2025 and two in 2026, which puts every
+// reporting year on the dashboard above £2m of social value. The first and
+// last name pools give 1,600 distinct names, so keep the cohort below that.
+const SYNTHETIC_COHORT_SIZE = 1215;
 const _SF = [
   "Alex","Jordan","Morgan","Casey","Taylor","Riley","Cameron","Avery","Skyler","Peyton",
   "Reese","Finley","Hayden","Quinn","Sawyer","Rowan","Emery","Elliot","Logan","River",
@@ -249,11 +253,20 @@ const _SC: ActivityCategory[] = [
   "Environment","Community","Health","Education","Sport & Active",
   "Fundraising","Mentoring","Arts & Culture","Animal Welfare","Emergency Response",
 ];
-const _SA = [
-  "Volunteering session","Team fundraiser","Community event helper","Skills workshop",
-  "Mentoring session","Awareness campaign","Environmental project","Charity run",
-  "Community garden day","Digital skills support",
-];
+// Activity names by category, so a generated activity always sits under a
+// category it belongs to.
+const _SA: Record<ActivityCategory, string[]> = {
+  "Environment":        ["Environmental project", "Community garden day", "Litter pick and clean-up"],
+  "Community":          ["Community event helper", "Food bank shift", "Volunteering session"],
+  "Health":             ["Wellbeing walk leader", "Hospital volunteering", "Befriending visits"],
+  "Education":          ["Skills workshop", "Digital skills support", "Reading and homework club"],
+  "Sport & Active":     ["Junior sports coaching", "Charity run", "Inclusive sports session"],
+  "Fundraising":        ["Team fundraiser", "Charity bake sale", "Sponsored challenge"],
+  "Mentoring":          ["Mentoring session", "Careers mentoring", "Apprentice buddy scheme"],
+  "Arts & Culture":     ["Community arts workshop", "Festival stewarding", "Heritage open day"],
+  "Animal Welfare":     ["Animal shelter volunteering", "Wildlife survey", "Dog walking for a rescue"],
+  "Emergency Response": ["Community first aid cover", "Flood response support", "Resilience training day"],
+};
 const _SJM = [
   "2025-01","2025-02","2025-03","2025-04","2025-05",
   "2025-06","2025-07","2025-08","2025-09","2025-10",
@@ -264,7 +277,7 @@ const _SAM = [
 ];
 const _S26M = ["2026-01","2026-02","2026-03","2026-04","2026-05"];
 const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
-  Array.from({ length: 253 }, (_, k) => {
+  Array.from({ length: SYNTHETIC_COHORT_SIZE }, (_, k) => {
     const n        = k + 33;
     const id       = `m-${String(n).padStart(3, "0")}`;
     const first    = _SF[k % _SF.length]!;
@@ -292,10 +305,10 @@ const SYNTHETIC_COHORT: { member: DemoMember; activities: RawActivity[] }[] =
     const value2   = 700 + (k % 7) * 130;
     const value3   = 450 + (k % 6) * 100;
     const value4   = 400 + (k % 5) * 100;
-    const actName  = _SA[k % _SA.length]!;
-    const actName2 = _SA[(k + 5) % _SA.length]!;
-    const actName3 = _SA[(k + 3) % _SA.length]!;
-    const actName4 = _SA[(k + 7) % _SA.length]!;
+    const actName  = _SA[cat][k % _SA[cat].length]!;
+    const actName2 = _SA[cat2][Math.floor(k / 2) % _SA[cat2].length]!;
+    const actName3 = _SA[cat3][Math.floor(k / 3) % _SA[cat3].length]!;
+    const actName4 = _SA[cat4][Math.floor(k / 4) % _SA[cat4].length]!;
     const _SPC = [
       "M1","LS1","B1","E1","RH10","BS1","NE1","NG1","CV1","G1",
       "PR1","N1","TN1","W1T","EX1","CB1","OL1","EC1V","WV1","SA1",
@@ -754,7 +767,8 @@ export interface DemoPulseSurvey {
 
 export const DEMO_COMMENT_PRIVACY_THRESHOLD = 3;
 
-export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
+// Written at the scale of a 285-member organisation; scaled up below.
+const BASE_PULSE_SURVEYS: DemoPulseSurvey[] = [
   {
     id: "demo-ps-001",
     template: "meaningfulness",
@@ -954,6 +968,22 @@ export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = [
     ],
   },
 ];
+
+// Response counts scaled to the 1,247-member demo organisation. Multiplying
+// every bucket by the same whole number leaves each average unchanged.
+const PULSE_RESPONSE_SCALE = 6;
+const scaleBuckets = (buckets: Array<{ rating: number; count: number }>) =>
+  buckets.map(b => ({ ...b, count: b.count * PULSE_RESPONSE_SCALE }));
+export const DEMO_PULSE_SURVEYS: DemoPulseSurvey[] = BASE_PULSE_SURVEYS.map(survey => ({
+  ...survey,
+  totals: { ...survey.totals, responses: survey.totals.responses * PULSE_RESPONSE_SCALE },
+  distribution: scaleBuckets(survey.distribution),
+  trend: survey.trend.map(window => ({
+    ...window,
+    count: window.count * PULSE_RESPONSE_SCALE,
+    distribution: scaleBuckets(window.distribution),
+  })),
+}));
 
 // Pre-computed summary used by `OrgPulseSummaryCard` for the demo org.
 export interface DemoPulseSummary {

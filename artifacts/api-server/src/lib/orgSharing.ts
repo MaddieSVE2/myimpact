@@ -163,14 +163,35 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
     return orgVisibleMemberRecordsCondition(ctx.orgId, ctx.memberIds, ctx.formerMembers);
   }
   const parts: SQL[] = [];
+  // Current members who share from the same day are matched together with
+  // one IN list. One clause per member would have Postgres test thousands of
+  // separate conditions against every record in a large organisation.
+  const currentMembersByShareDay = new Map<number, string[]>();
   for (const userId of [...ctx.memberIds, ...ctx.formerMembers.keys()]) {
     const from = ctx.shareFromByUser.get(userId);
     if (!from) continue;
+    const shareDay = startOfActivityDay(from);
     const deactivatedAt = ctx.formerMembers.get(userId);
+    if (deactivatedAt) {
+      // A deactivated member has a cut-off of their own, so stays separate.
+      const cond = and(
+        eq(impactRecordsTable.userId, userId),
+        gte(impactRecordsTable.entryDate, shareDay),
+        lte(impactRecordsTable.createdAt, deactivatedAt),
+      );
+      if (cond) parts.push(cond);
+      continue;
+    }
+    const sameDay = currentMembersByShareDay.get(shareDay.getTime());
+    if (sameDay) sameDay.push(userId);
+    else currentMembersByShareDay.set(shareDay.getTime(), [userId]);
+  }
+  for (const [shareDay, userIds] of currentMembersByShareDay) {
     const cond = and(
-      eq(impactRecordsTable.userId, userId),
-      gte(impactRecordsTable.entryDate, startOfActivityDay(from)),
-      deactivatedAt ? lte(impactRecordsTable.createdAt, deactivatedAt) : undefined,
+      userIds.length === 1
+        ? eq(impactRecordsTable.userId, userIds[0]!)
+        : inArray(impactRecordsTable.userId, userIds),
+      gte(impactRecordsTable.entryDate, new Date(shareDay)),
     );
     if (cond) parts.push(cond);
   }

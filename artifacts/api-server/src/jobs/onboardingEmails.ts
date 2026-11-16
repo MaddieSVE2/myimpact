@@ -39,42 +39,12 @@ import {
   onboardingSignupWindow,
 } from "../lib/onboardingEmails.js";
 import { ACTIVITIES } from "../lib/impactData.js";
+import { isDemoOrSyntheticEmail } from "../lib/demoAccounts.js";
 import { computeEstimateActualReconciliation } from "../lib/contributionModel.js";
 import {
   buildUnsubscribeUrl,
   buildOneClickUnsubscribeUrl,
 } from "../lib/unsubscribeToken.js";
-
-// Emails we never enrol in the sequence — demo personas used in screenshots
-// and the like. Mirror of PERSONA_ACCOUNTS in routes/auth.ts plus the seeded
-// demo user.
-const PERSONA_EMAILS = new Set<string>([
-  "demo@demo.org",
-  "volunteer@volunteer.org",
-  "student@student.org",
-  "carer@carer.org",
-  "veteran@veteran.org",
-  "apprentice@apprentice.org",
-  "jobseeker@jobseeker.org",
-  "organisation@organisation.org",
-  "university@university.org",
-]);
-
-// Synthetic seeded accounts (never real inboxes) are excluded by pattern.
-function isSyntheticSeedEmail(email: string): boolean {
-  const e = email.toLowerCase();
-  return (
-    e.startsWith("synth-member-") ||
-    e.startsWith("uni-synth-") ||
-    e.endsWith("@demo-organisation.org") ||
-    e.endsWith("@myimpact-university.org")
-  );
-}
-
-/** Demo personas and seeded accounts: never real inboxes, never emailed. */
-export function isDemoOrSyntheticEmail(email: string): boolean {
-  return PERSONA_EMAILS.has(email.toLowerCase()) || isSyntheticSeedEmail(email);
-}
 
 const ACTIVITY_BY_ID = new Map(ACTIVITIES.map((a) => [a.id, a]));
 

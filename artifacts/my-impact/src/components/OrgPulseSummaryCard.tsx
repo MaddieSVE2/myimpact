@@ -144,7 +144,7 @@ function LiveOrgPulseSummaryCard() {
             </div>
             <div className="rounded-lg bg-muted/30 px-3 py-2.5">
               <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("orgDashboard.pulseSummaryResponses")}</p>
-              <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{totals.responses}</p>
+              <p className="text-lg font-display font-bold text-foreground mt-0.5" data-testid="pulse-summary-responses">{totals.responses.toLocaleString("en-GB")}</p>
             </div>
           </div>
           <div className="min-w-0">

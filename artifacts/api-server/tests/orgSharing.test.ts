@@ -104,6 +104,58 @@ describe("sharedRecordsCondition", () => {
     expect(q.params).not.toContain("user-2");
   });
 
+  it("consented mode: members sharing from the same day are matched with one IN list", () => {
+    // Different times on the same day are the same share window.
+    const ctx = makeCtx({
+      memberIds: ["user-1", "user-2", "user-3"],
+      shareFromByUser: new Map([
+        ["user-1", new Date("2025-09-01T00:00:00Z")],
+        ["user-2", new Date("2025-09-01T16:45:00Z")],
+        ["user-3", new Date("2025-09-01T09:00:00Z")],
+      ]),
+    });
+    const q = render(sharedRecordsCondition(ctx)!);
+    expect(q.sql).toContain(`"user_id" in (`);
+    expect(q.sql).not.toContain(`"user_id" = `);
+    expect(q.sql.match(/"entry_date" >= /g)).toHaveLength(1);
+    expect(q.params).toEqual(expect.arrayContaining(["user-1", "user-2", "user-3", "2025-09-01T00:00:00.000Z"]));
+  });
+
+  it("consented mode: members sharing from different days keep their own window", () => {
+    const ctx = makeCtx({
+      memberIds: ["user-1", "user-2", "user-3"],
+      shareFromByUser: new Map([
+        ["user-1", new Date("2025-09-01T00:00:00Z")],
+        ["user-2", new Date("2025-09-01T00:00:00Z")],
+        ["user-3", new Date("2026-02-10T00:00:00Z")],
+      ]),
+    });
+    const q = render(sharedRecordsCondition(ctx)!);
+    // user-1 and user-2 together from 1 September; user-3 alone from 10 February.
+    expect(q.sql).toMatch(/"user_id" in \(\$\d+, \$\d+\) and [^)]*"entry_date" >= \$\d+/);
+    expect(q.sql).toMatch(/"user_id" = \$\d+ and [^)]*"entry_date" >= \$\d+/);
+    const user3 = q.params.indexOf("user-3");
+    expect(q.params[user3 + 1]).toBe("2026-02-10T00:00:00.000Z");
+    const user2 = q.params.indexOf("user-2");
+    expect(q.params[user2 + 1]).toBe("2025-09-01T00:00:00.000Z");
+  });
+
+  it("consented mode: a deactivated member is not folded into a same-day group", () => {
+    const deactivatedAt = new Date("2026-06-01T12:00:00.000Z");
+    const shareFrom = new Date("2025-09-01T00:00:00Z");
+    const ctx = makeCtx({
+      memberIds: ["user-1", "user-2"],
+      shareFromByUser: new Map([["user-1", shareFrom], ["user-2", shareFrom], ["former-1", shareFrom]]),
+      formerMembers: new Map([["former-1", deactivatedAt]]),
+    });
+    const q = render(sharedRecordsCondition(ctx)!);
+    // The cut-off sits directly after the former member's own id and window.
+    const former = q.params.indexOf("former-1");
+    expect(q.params.slice(former, former + 3)).toEqual(["former-1", "2025-09-01T00:00:00.000Z", deactivatedAt.toISOString()]);
+    expect(q.sql.match(/"created_at" <= /g)).toHaveLength(1);
+    expect(q.sql).toMatch(/"user_id" in \(\$\d+, \$\d+\)/);
+  });
+
   it("explicit mode: keeps legacy member filter but still excludes twins", () => {
     const cond = sharedRecordsCondition(makeCtx({ mode: "explicit_submission", shareFromByUser: new Map() }));
     const q = render(cond!);

@@ -2,7 +2,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { formatCurrency } from "@/lib/utils";
+import { formatAxisCurrency, formatCurrency } from "@/lib/utils";
 
 export interface MonthlyDataPoint {
   month: string;
@@ -52,7 +52,7 @@ export function ImpactTimeline({ data, isLoading }: ImpactTimelineProps) {
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            tickFormatter={v => `£${(v / 1000).toFixed(0)}k`}
+            tickFormatter={formatAxisCurrency}
             width={44}
           />
           <RechartsTooltip
