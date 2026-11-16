@@ -30,6 +30,7 @@ function canonicalName(name: string): string {
 }
 
 function formatCurrencyShort(v: number): string {
+  if (v >= 1_000_000) return `£${(v / 1_000_000).toFixed(2)}m`;
   if (v >= 1000) return `£${(v / 1000).toFixed(1)}k`;
   return `£${v.toLocaleString("en-GB")}`;
 }
@@ -60,7 +61,7 @@ function buildPopupElement(region: RegionData): HTMLElement {
     rows.appendChild(row);
   }
 
-  addRow("Members", String(region.members), "var(--brand-orange-bright)");
+  addRow("Members", region.members.toLocaleString("en-GB"), "var(--brand-orange-bright)");
   if (region.hours !== undefined) addRow("Hours given", region.hours.toLocaleString("en-GB"));
   if (region.value !== undefined) addRow("Social value", formatCurrencyShort(region.value));
   if (region.sroi != null) addRow("SROI", `£${region.sroi.toFixed(2)} per £1`);

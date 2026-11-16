@@ -10,7 +10,7 @@ import {
   PieChart, Pie,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { formatCurrency } from "@/lib/utils";
+import { formatAxisCurrency, formatCurrency } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 import { OrgPeriodNavigator } from "@/components/OrgPeriodNavigator";
@@ -200,7 +200,7 @@ export default function OrgUniversityDashboard({
             <p className="text-2xl font-display font-bold text-foreground">
               <AnimatedNumber value={totalMembers} />
             </p>
-            <p className="text-xs mt-1 text-muted-foreground">{activeMembers} actively logging</p>
+            <p className="text-xs mt-1 text-muted-foreground">{activeMembers.toLocaleString("en-GB")} actively logging</p>
           </div>
           <div className="rounded-xl p-5 border bg-white border-border" data-testid="card-total-hours">
             <div className="flex items-center gap-2 mb-3">
@@ -210,7 +210,7 @@ export default function OrgUniversityDashboard({
             <p className="text-2xl font-display font-bold text-foreground">
               <AnimatedNumber value={totalHours} formatter={v => v.toLocaleString("en-GB")} />
             </p>
-            <p className="text-xs mt-1 text-muted-foreground">{totalActivities} activities logged</p>
+            <p className="text-xs mt-1 text-muted-foreground">{totalActivities.toLocaleString("en-GB")} activities logged</p>
           </div>
         </div>
 
@@ -244,7 +244,7 @@ export default function OrgUniversityDashboard({
                 <BarChart data={valueByCategory} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={formatAxisCurrency} width={40} />
                   <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                     {valueByCategory.map((_, i) => (
@@ -277,7 +277,7 @@ export default function OrgUniversityDashboard({
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[11px] text-muted-foreground">students</p>
-                    <p className="text-sm font-semibold text-foreground">{a.participants.size}</p>
+                    <p className="text-sm font-semibold text-foreground">{a.participants.size.toLocaleString("en-GB")}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[11px] text-muted-foreground">hours</p>
@@ -326,7 +326,7 @@ export default function OrgUniversityDashboard({
                     <RechartsTooltip
                       formatter={(v: number, _n, payload) => {
                         const p = (payload as unknown as { payload: { number: number; label: string; pct: number } }).payload;
-                        return [`£${v.toLocaleString("en-GB")} · ${p.pct}%`, `SDG ${p.number} ${p.label}`];
+                        return [`${formatCurrency(v)} · ${p.pct}%`, `SDG ${p.number} ${p.label}`];
                       }}
                       contentStyle={{ borderRadius: 8, fontSize: 12 }}
                     />
@@ -349,7 +349,7 @@ export default function OrgUniversityDashboard({
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {idx === 0 && <span className="font-semibold text-foreground">Leading · </span>}
-                        £{s.value.toLocaleString("en-GB")} · {s.members} students · {s.activities} activities
+                        {formatCurrency(s.value)} · {s.members.toLocaleString("en-GB")} students · {s.activities.toLocaleString("en-GB")} activities
                       </p>
                     </div>
                   </li>

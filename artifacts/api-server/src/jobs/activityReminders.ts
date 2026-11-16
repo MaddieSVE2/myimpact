@@ -26,7 +26,7 @@ import { buildActivityReminderEmail } from "../lib/activityReminderEmail.js";
 import { getsPushReminders, occurrenceToRemind, REMINDER_FROM_UK_HOUR, ukHour } from "../lib/activityReminders.js";
 import { startOfDayUTC } from "../lib/recurringSchedule.js";
 import { buildOneClickUnsubscribeUrl, buildUnsubscribeUrl } from "../lib/unsubscribeToken.js";
-import { isDemoOrSyntheticEmail } from "./onboardingEmails.js";
+import { isDemoOrSyntheticEmail } from "../lib/demoAccounts.js";
 
 function getAppUrl(): string {
   const appUrl =

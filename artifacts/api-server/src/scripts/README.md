@@ -102,6 +102,31 @@ Demo accounts created/updated by this script (and recognised by
   where all manager-only sections (members list, invite link, SSO config,
   surveys, billing) are visible.
 
+- `university@university.org` — **manager** of My Impact University, and
+  `student@student.org`, one of its students.
+
+### My Impact University
+
+The university is seeded at the size of a real one: 10,240 people registered,
+a few thousand of them logging activity, and over £1m of social value in each
+academic year (about £4.1m in 2025/26). Its dashboard runs on real rows, so
+the figures behave exactly as a customer's would.
+
+- The plan (who the students are, what they log each month, how they answer
+  pulse surveys) lives in `src/lib/universityDemoData.ts` and is covered by
+  `tests/universityDemoData.test.ts`. It is worked out from fixed numbers, so
+  every run plans the same data and the seed only writes what is missing.
+- Activity is planned up to today. Each server start adds whatever has become
+  due since the last one, so the current academic year keeps filling in. A new
+  academic year starts from nothing each September and passes £1m during
+  October; the previous year stays available from the period arrows.
+- Seeded students have ids starting `uni-synth-u-` and addresses at
+  `@myimpact-university.org`. `src/lib/demoAccounts.ts` keeps them (and the
+  demo sign-ins) out of every email and push job. Keep any new job that
+  contacts users behind the same check.
+- Treat the plan as fixed once it is live: changing its numbers adds new rows
+  on top of the ones already seeded.
+
 Other persona logins (individual side, no org membership):
 
 - `volunteer@volunteer.org`, `student@student.org`, `carer@carer.org`,

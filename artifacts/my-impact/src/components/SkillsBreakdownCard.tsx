@@ -59,7 +59,7 @@ export function SkillsBreakdownCard({
                   <AnimatedBar pct={s.pct} delay={idx * 80} />
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  {s.students} {peopleNoun} · {s.hours.toLocaleString("en-GB")} hours · {s.activities} activities
+                  {s.students.toLocaleString("en-GB")} {peopleNoun} · {s.hours.toLocaleString("en-GB")} hours · {s.activities.toLocaleString("en-GB")} activities
                 </p>
               </div>
             </div>

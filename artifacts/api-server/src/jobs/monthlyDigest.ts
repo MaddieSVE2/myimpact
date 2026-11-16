@@ -30,6 +30,7 @@ import { eq, and, sql, inArray, isNotNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getUncachableResendClient } from "../lib/resend.js";
 import { sendPushSafely } from "../lib/push.js";
+import { isDemoOrSyntheticEmail } from "../lib/demoAccounts.js";
 import {
   buildMonthlyDigest,
   previousMonthRange,
@@ -155,6 +156,9 @@ async function loadEligibleUsers(opts: Options, monthStart: Date) {
         inArray(usersTable.id, userIdsWithRecords),
       ),
     );
+
+  // Demo personas and seeded students have records but no real inbox.
+  rows = rows.filter((u) => !isDemoOrSyntheticEmail(u.email));
 
   if (opts.singleUserEmail) {
     const target = opts.singleUserEmail.trim().toLowerCase();

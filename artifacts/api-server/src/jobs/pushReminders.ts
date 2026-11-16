@@ -22,6 +22,7 @@ import { db, usersTable, impactRecordsTable, recurringTemplatesTable } from "@wo
 import { eq, sql, isNotNull } from "drizzle-orm";
 import { sendPushToUser } from "../lib/push.js";
 import { dueOccurrence } from "../lib/recurringSchedule.js";
+import { isSyntheticSeedEmail } from "../lib/demoAccounts.js";
 
 interface Options {
   dryRun: boolean;
@@ -42,7 +43,9 @@ function startOfDay(d: Date): Date {
 }
 
 async function loadCandidateUsers(opts: Options) {
-  let rows = await db.select().from(usersTable);
+  // Seeded students never sign in, so they have no device to push to. With
+  // thousands of them, checking each one's streak would dominate the run.
+  let rows = (await db.select().from(usersTable)).filter((u) => !isSyntheticSeedEmail(u.email));
   if (opts.singleUserEmail) {
     const target = opts.singleUserEmail.trim().toLowerCase();
     rows = rows.filter((u) => u.email.toLowerCase() === target);

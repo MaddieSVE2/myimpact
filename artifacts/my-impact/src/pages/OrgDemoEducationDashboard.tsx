@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, GraduationCap, Lightbulb, BookOpen, Coins } from "lucide-react";
 import { scrollContentToTop } from "@/lib/scroll-utils";
-import { formatCurrency } from "@/lib/utils";
+import { formatAxisCurrency, formatCurrency } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Cell,
@@ -12,33 +12,36 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { UKRegionMap, type RegionData } from "@/components/UKRegionMap";
 import { ImpactTimeline, type MonthlyDataPoint } from "@/components/ImpactTimeline";
 
+// A mid-sized university: about 10,000 students registered, 40% of them
+// logging activity. Every breakdown below adds up to the headline totals.
 const DEMO = {
   org: { name: "Northfield University, Student Services", type: "Education", location: "Midlands, England" },
   headline: {
-    totalSocialValue: 218650,
-    members: 312,
-    activeMembers: 247,
-    totalHours: 3820,
-    avgPerPerson: 885,
+    totalSocialValue: 3628400,
+    members: 10240,
+    activeMembers: 4096,
+    totalHours: 61440,
+    avgPerPerson: 886,
     avgHoursPerPerson: 15,
-    studentsWithEvidencedActivity: 247,
-    pctWithEvidence: 79,
+    studentsWithEvidencedActivity: 4096,
+    pctWithEvidence: 40,
   },
   valueByCategory: [
-    { category: "Volunteering", value: 84300 },
-    { category: "Personal Dev", value: 62100 },
-    { category: "Community", value: 38400 },
-    { category: "Leadership", value: 21850 },
-    { category: "Environment", value: 12000 },
+    { category: "Volunteering", value: 1398900 },
+    { category: "Personal Dev", value: 1030500 },
+    { category: "Community", value: 637200 },
+    { category: "Leadership", value: 362600 },
+    { category: "Environment", value: 199200 },
   ],
+  // `participants` is the percentage of registered students.
   activities: [
-    { name: "Duke of Edinburgh (Gold / Silver)", participants: 38, hours: 920, value: 58400 },
-    { name: "Peer tutoring & mentoring", participants: 52, hours: 760, value: 47200 },
-    { name: "Society treasurer / committee role", participants: 44, hours: 540, value: 36100 },
-    { name: "Sports team captain", participants: 29, hours: 480, value: 28800 },
-    { name: "Charity fundraising events", participants: 61, hours: 320, value: 22600 },
-    { name: "Community volunteering", participants: 57, hours: 450, value: 18300 },
-    { name: "Environmental projects", participants: 33, hours: 210, value: 7250 },
+    { name: "Duke of Edinburgh (Gold / Silver)", participants: 19, hours: 14800, value: 969100 },
+    { name: "Peer tutoring & mentoring", participants: 26, hours: 12220, value: 783300 },
+    { name: "Society treasurer / committee role", participants: 22, hours: 8690, value: 599100 },
+    { name: "Sports team captain", participants: 15, hours: 7720, value: 477900 },
+    { name: "Charity fundraising events", participants: 31, hours: 5150, value: 375000 },
+    { name: "Community volunteering", participants: 29, hours: 7240, value: 303700 },
+    { name: "Environmental projects", participants: 17, hours: 3380, value: 120300 },
   ],
   topSkills: [
     { skill: "Teamwork", pct: 78 },
@@ -51,53 +54,53 @@ const DEMO = {
     { skill: "Public speaking", pct: 22 },
   ],
   activityByYear: [
-    { year: "Year 1", students: 68, value: 51200 },
-    { year: "Year 2", students: 104, value: 86400 },
-    { year: "Year 3", students: 75, value: 81050 },
+    { year: "Year 1", students: 1128, value: 849600 },
+    { year: "Year 2", students: 1725, value: 1433800 },
+    { year: "Year 3", students: 1243, value: 1345000 },
   ],
   employabilitySignals: {
-    studentsWithLeadershipRole: 102,
-    studentsWithCommunityActivity: 189,
-    studentsWithAward: 84,
+    studentsWithLeadershipRole: 1691,
+    studentsWithCommunityActivity: 3134,
+    studentsWithAward: 1393,
     avgActivitiesLogged: 3.8,
   },
   insights: [
-    "79% of registered students have logged at least one activity, giving them portable evidence to include in UCAS statements or graduate applications.",
-    "Peer tutoring delivers the highest social value per hour at £62.10, while also being the activity most cited by students in employability reflections.",
+    "40% of registered students have logged at least one activity, giving 4,096 students portable evidence to include in UCAS statements or graduate applications.",
+    "Peer tutoring delivers the highest social value per hour at £64.10, while also being the activity most cited by students in employability reflections.",
     "Students who log a leadership role (society committee, team captain) average 2.4× more hours of logged activity than those who do not.",
     "Year 2 students generate the highest total social value, driven by higher uptake of structured programmes like Duke of Edinburgh Gold.",
   ],
   regions: [
-    { region: "West Midlands", members: 96, hours: 1180, value: 67300, sroi: 1.48, pct: 31 },
-    { region: "East Midlands", members: 68, hours: 836, value: 47700, sroi: 1.48, pct: 22 },
-    { region: "Yorkshire and The Humber", members: 46, hours: 565, value: 32000, sroi: 1.46, pct: 15 },
-    { region: "London", members: 40, hours: 492, value: 27900, sroi: 1.47, pct: 13 },
-    { region: "South East", members: 31, hours: 380, value: 21700, sroi: 1.47, pct: 10 },
-    { region: "North West", members: 21, hours: 258, value: 14700, sroi: 1.47, pct: 7 },
-    { region: "South West", members: 10, hours: 109, value: 7350, sroi: 1.55, pct: 3 },
+    { region: "West Midlands", members: 3151, hours: 18979, value: 1116800, pct: 31 },
+    { region: "East Midlands", members: 2232, hours: 13446, value: 791600, pct: 22 },
+    { region: "Yorkshire and The Humber", members: 1510, hours: 9087, value: 531000, pct: 15 },
+    { region: "London", members: 1313, hours: 7913, value: 463000, pct: 13 },
+    { region: "South East", members: 1017, hours: 6112, value: 360100, pct: 10 },
+    { region: "North West", members: 689, hours: 4150, value: 243900, pct: 7 },
+    { region: "South West", members: 328, hours: 1753, value: 122000, pct: 3 },
   ] satisfies RegionData[],
   monthlyTimeline: [
-    { month: "Jan", value: 7200 },
-    { month: "Feb", value: 14600 },
-    { month: "Mar", value: 24100 },
-    { month: "Apr", value: 36800 },
-    { month: "May", value: 52400 },
-    { month: "Jun", value: 74900 },
-    { month: "Jul", value: 91200 },
-    { month: "Aug", value: 107500 },
-    { month: "Sep", value: 132800 },
-    { month: "Oct", value: 158200 },
-    { month: "Nov", value: 186400 },
-    { month: "Dec", value: 218650 },
+    { month: "Jan", value: 119500 },
+    { month: "Feb", value: 242300 },
+    { month: "Mar", value: 399900 },
+    { month: "Apr", value: 610700 },
+    { month: "May", value: 869600 },
+    { month: "Jun", value: 1242900 },
+    { month: "Jul", value: 1513400 },
+    { month: "Aug", value: 1783900 },
+    { month: "Sep", value: 2203800 },
+    { month: "Oct", value: 2625300 },
+    { month: "Nov", value: 3093200 },
+    { month: "Dec", value: 3628400 },
   ] satisfies MonthlyDataPoint[],
   sdgs: [
-    { number: 4, label: "Quality Education", color: "#C5192D", pct: 26, members: 142, activities: 312, value: 56849 },
-    { number: 8, label: "Decent Work & Growth", color: "#A21942", pct: 18, members: 98, activities: 204, value: 39357 },
-    { number: 10, label: "Reduced Inequalities", color: "#DD1367", pct: 14, members: 76, activities: 152, value: 30611 },
-    { number: 3, label: "Good Health", color: "#4C9F38", pct: 13, members: 71, activities: 143, value: 28425 },
-    { number: 5, label: "Gender Equality", color: "#FF3A21", pct: 11, members: 60, activities: 122, value: 24052 },
-    { number: 11, label: "Sustainable Cities", color: "#FD9D24", pct: 10, members: 55, activities: 110, value: 21865 },
-    { number: 17, label: "Partnerships", color: "#19486A", pct: 8, members: 44, activities: 88, value: 17492 },
+    { number: 4, label: "Quality Education", color: "#C5192D", pct: 26, members: 2355, activities: 5174, value: 943384 },
+    { number: 8, label: "Decent Work & Growth", color: "#A21942", pct: 18, members: 1625, activities: 3383, value: 653112 },
+    { number: 10, label: "Reduced Inequalities", color: "#DD1367", pct: 14, members: 1260, activities: 2521, value: 507976 },
+    { number: 3, label: "Good Health", color: "#4C9F38", pct: 13, members: 1177, activities: 2371, value: 471692 },
+    { number: 5, label: "Gender Equality", color: "#FF3A21", pct: 11, members: 995, activities: 2023, value: 399124 },
+    { number: 11, label: "Sustainable Cities", color: "#FD9D24", pct: 10, members: 912, activities: 1824, value: 362840 },
+    { number: 17, label: "Partnerships", color: "#19486A", pct: 8, members: 730, activities: 1459, value: 290272 },
   ],
 };
 
@@ -209,7 +212,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
             <p className="text-2xl font-display font-bold text-foreground">
               <AnimatedNumber value={DEMO.headline.members} />
             </p>
-            <p className="text-xs mt-1 text-muted-foreground">{DEMO.headline.activeMembers} actively logging</p>
+            <p className="text-xs mt-1 text-muted-foreground">{DEMO.headline.activeMembers.toLocaleString("en-GB")} actively logging</p>
           </div>
           <div className="rounded-xl p-5 border bg-white border-border">
             <div className="flex items-center gap-2 mb-3">
@@ -277,7 +280,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
               <BarChart data={DEMO.valueByCategory} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={formatAxisCurrency} width={40} />
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.valueByCategory.map((_, i) => (
@@ -326,7 +329,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
               <BarChart data={DEMO.activityByYear} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} width={40} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={formatAxisCurrency} width={40} />
                 <RechartsTooltip formatter={(v: number) => [formatCurrency(v), "Social Value"]} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={900} animationEasing="ease-out">
                   {DEMO.activityByYear.map((_, i) => (
@@ -362,7 +365,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                 <div key={r.region} className="flex items-center gap-3">
                   <div className="w-28 shrink-0">
                     <p className="text-sm font-medium text-foreground">{r.region}</p>
-                    <p className="text-xs text-muted-foreground">{r.members} students</p>
+                    <p className="text-xs text-muted-foreground">{r.members.toLocaleString("en-GB")} students</p>
                   </div>
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${r.pct}%` }} />
@@ -416,7 +419,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                   <RechartsTooltip
                     formatter={(v: number, _n, payload) => {
                       const p = (payload as unknown as { payload: { number: number; label: string; members: number; activities: number } }).payload;
-                      return [`${v}% · ${p.members} students · ${p.activities} activities`, `SDG ${p.number} ${p.label}`];
+                      return [`${v}% · ${p.members.toLocaleString("en-GB")} students · ${p.activities.toLocaleString("en-GB")} activities`, `SDG ${p.number} ${p.label}`];
                     }}
                     contentStyle={{ borderRadius: 8, fontSize: 12 }}
                   />
@@ -437,7 +440,7 @@ export default function OrgDemoEducationDashboard({ hideBanner }: { hideBanner?:
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {idx === 0 && <span className="font-semibold text-foreground">Leading goal · </span>}
-                      {formatCurrency(s.value)} · {s.members} students · {s.activities} activities
+                      {formatCurrency(s.value)} · {s.members.toLocaleString("en-GB")} students · {s.activities.toLocaleString("en-GB")} activities
                     </p>
                   </div>
                 </li>

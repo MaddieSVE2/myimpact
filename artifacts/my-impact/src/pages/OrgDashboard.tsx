@@ -547,8 +547,8 @@ export default function OrgDashboard() {
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <StatCard icon={TrendingUp} label="Total social value" value={headlineStats.totalSocialValue} prefix="£" sub={`£${headlineStats.verifiedSocialValue.toLocaleString("en-GB")} verified`} highlight />
         {showSroi && <StatCard icon={BarChart2} label={t("orgDashboard.sroiCardLabel")} value={sroiRatio} prefix="£" decimals={2} sub={t("orgDashboard.sroiCardSub")} />}
-        <StatCard icon={Users} label="Active members" value={headlineStats.activeMembers} sub={`of ${headlineStats.totalMembers} total`} />
-        <StatCard icon={Clock} label="Hours logged" value={headlineStats.totalHours} sub={`${headlineStats.totalActivities} activities`} />
+        <StatCard icon={Users} label="Active members" value={headlineStats.activeMembers} sub={`of ${headlineStats.totalMembers.toLocaleString("en-GB")} total`} />
+        <StatCard icon={Clock} label="Hours logged" value={headlineStats.totalHours} sub={`${headlineStats.totalActivities.toLocaleString("en-GB")} activities`} />
       </motion.div>
       <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         {showValuePerMember && <StatCard icon={BadgeCheck} label="Avg per member" value={headlineStats.averagePerMember} prefix="£" sub={t("orgDashboard.avgPerMemberSub")} />}
@@ -565,7 +565,7 @@ export default function OrgDashboard() {
           <p className="text-[13px] text-muted-foreground leading-relaxed">
             {t("orgDashboard.sroiBody", {
               costPerVolunteer: `£${sroiCostPerVolunteer.toLocaleString("en-GB")}`,
-              members: headlineStats.totalMembers,
+              members: headlineStats.totalMembers.toLocaleString("en-GB"),
               totalInvestment: `£${totalInvestment.toLocaleString("en-GB")}`,
               socialValue: `£${headlineStats.totalSocialValue.toLocaleString("en-GB")}`,
               ratio: `£${sroiRatio.toFixed(2)}`,
@@ -685,7 +685,7 @@ export default function OrgDashboard() {
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {idx === 0 && <span className="font-semibold text-foreground">{t("orgDashboard.sdgLeading")} · </span>}
-                      £{s.value.toLocaleString("en-GB")} · <span data-testid={`sdg-members-${s.number}`}>{s.members}</span> {t("orgDashboard.sdgMembers")} · {s.activities} {t("orgDashboard.sdgActivities")}
+                      £{s.value.toLocaleString("en-GB")} · <span data-testid={`sdg-members-${s.number}`}>{s.members.toLocaleString("en-GB")}</span> {t("orgDashboard.sdgMembers")} · {s.activities.toLocaleString("en-GB")} {t("orgDashboard.sdgActivities")}
                     </p>
                   </div>
                 </li>
@@ -756,7 +756,7 @@ export default function OrgDashboard() {
                   </div>
                   {isDemoOrg && (
                     <p className="text-[12px] text-muted-foreground">
-                      <span className="font-semibold text-foreground">{c.members}</span> {t("orgDashboard.categoriesMembers")} · <span className="font-semibold text-foreground">{c.activities}</span> {t("orgDashboard.categoriesActivities")} · <span className="font-semibold text-foreground">{Math.round(c.hours)}</span> {t("orgDashboard.categoriesHours")}
+                      <span className="font-semibold text-foreground">{c.members.toLocaleString("en-GB")}</span> {t("orgDashboard.categoriesMembers")} · <span className="font-semibold text-foreground">{c.activities.toLocaleString("en-GB")}</span> {t("orgDashboard.categoriesActivities")} · <span className="font-semibold text-foreground">{Math.round(c.hours).toLocaleString("en-GB")}</span> {t("orgDashboard.categoriesHours")}
                     </p>
                   )}
                   {items.length > 0 && (
