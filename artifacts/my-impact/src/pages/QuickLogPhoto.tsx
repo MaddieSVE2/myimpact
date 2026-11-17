@@ -18,6 +18,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useQueryClient } from "@tanstack/react-query";
 import { BASE } from "@/lib/api";
+import { customActivityHours } from "@/lib/custom-activity-hours";
 
 
 type Stage = "camera" | "preview" | "details" | "saving" | "done";
@@ -45,6 +46,8 @@ interface AnalysedActivity {
   friendlyQuestion: string;
   unit: string;
   unitLabel: string;
+  /** Time behind each unit that isn't an hour; some answers give none. */
+  hoursPerUnit?: number;
   defaultQuantity: number;
   sdgHint: string;
   proxyMatch: ProxyMatch | null;
@@ -373,7 +376,7 @@ export default function QuickLogPhoto() {
         activityId: `custom_${Date.now()}`,
         name: description.trim(),
         quantity: isHourUnit ? 1 : enteredQuantity,
-        hoursPerYear: isHourUnit ? enteredQuantity : analysed.unit === "pound" ? 0 : Math.max(1, Math.round(enteredQuantity * 2)),
+        hoursPerYear: customActivityHours(analysed.unit, enteredQuantity, analysed.hoursPerUnit),
         valuePerUnit: analysed.proxyMatch?.valuePerUnit ?? 0,
         unit: analysed.unit,
         proxy: analysed.proxyMatch?.title ?? "",

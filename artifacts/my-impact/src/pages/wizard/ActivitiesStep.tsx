@@ -13,6 +13,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { HoursEstimator } from "@/components/HoursEstimator";
 import { weeksInPeriod, withoutYearPhrase, type HoursBasis } from "@/lib/hours-estimate";
 import { CONTENT_CONTAINER } from "@/lib/layout";
+import { customActivityHours } from "@/lib/custom-activity-hours";
 
 interface PreviousActivity {
   activityId: string;
@@ -52,6 +53,8 @@ interface AnalysedActivity {
   friendlyQuestion: string;
   unit: string;
   unitLabel: string;
+  /** Time behind each unit that isn't an hour; some answers give none. */
+  hoursPerUnit?: number;
   defaultQuantity: number;
   sdgHint: string;
   proxyMatch: ProxyMatch | null;
@@ -287,9 +290,9 @@ export default function ActivitiesStep() {
       const confirmedQty = pendingCustomQuantities[i] ?? p.analysed.defaultQuantity;
       const activityId = `custom_${Date.now()}_${i}`;
       const { sdg, sdgColor } = sdgFromHint(p.analysed.sdgHint);
-      // Pound-unit entries are money, not time — they must not generate
-      // volunteer hours (which would inflate contribution/skills values).
-      const hrs = p.analysed.unit === "hour" ? confirmedQty : p.analysed.unit === "pound" ? 0 : Math.max(1, Math.round(confirmedQty * 2));
+      // Money is not time, and an everyday habit takes none: neither may
+      // generate volunteer hours (which would inflate contribution/skills values).
+      const hrs = customActivityHours(p.analysed.unit, confirmedQty, p.analysed.hoursPerUnit);
       const qty = p.analysed.unit === "hour" ? 1 : confirmedQty;
       const detail: CustomActivityDetail = {
         activityId,
@@ -375,7 +378,11 @@ export default function ActivitiesStep() {
     if (!customName.trim() || !analysed) return;
     const activityId = `custom_${Date.now()}`;
     const { sdg, sdgColor } = sdgFromHint(analysed.sdgHint);
-    const hrs = analysed.unit === "hour" ? customQuantity : analysed.unit === "pound" ? 0 : customHours;
+    // Without an estimate of the time each one takes, a flat ten hours.
+    const hrs =
+      analysed.unit === "hour" || analysed.unit === "pound" || analysed.hoursPerUnit != null
+        ? customActivityHours(analysed.unit, customQuantity, analysed.hoursPerUnit)
+        : customHours;
     const qty = analysed.unit === "hour" ? 1 : customQuantity;
 
     const detail: CustomActivityDetail = {
@@ -966,7 +973,11 @@ export default function ActivitiesStep() {
                                   )}
 
                                   {!analysed.proxyMatch && (
-                                    <p className="text-xs text-muted-foreground italic">No proxy match found. This activity will count towards your volunteer hours.</p>
+                                    <p className="text-xs text-muted-foreground italic">
+                                      {analysed.unit !== "hour" && analysed.hoursPerUnit === 0
+                                        ? "We don't have a recognised value for this yet, so it's saved to your record without a £ value."
+                                        : "No proxy match found. This activity will count towards your volunteer hours."}
+                                    </p>
                                   )}
 
                                   {analysed.sdgHint && (
@@ -1254,7 +1265,11 @@ export default function ActivitiesStep() {
                         )}
 
                         {!pendingItem.analysed.proxyMatch && (
-                          <p className="text-xs text-muted-foreground italic mt-2">No proxy match found, this activity will count towards your volunteer hours but not your social value total.</p>
+                          <p className="text-xs text-muted-foreground italic mt-2">
+                            {pendingItem.analysed.unit !== "hour" && pendingItem.analysed.hoursPerUnit === 0
+                              ? "We don't have a recognised value for this yet, so it's saved to your record without a £ value."
+                              : "No proxy match found, this activity will count towards your volunteer hours but not your social value total."}
+                          </p>
                         )}
                       </div>
 

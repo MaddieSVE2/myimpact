@@ -45,6 +45,7 @@ import { GroupPicker } from "@/components/org/GroupPicker";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import type { ImpactResult } from "@workspace/api-client-react";
 import { BASE } from "@/lib/api";
+import { customActivityHours } from "@/lib/custom-activity-hours";
 
 const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
@@ -97,6 +98,8 @@ interface AnalysedActivity {
   friendlyQuestion: string;
   unit: string;
   unitLabel: string;
+  /** Time behind each unit that isn't an hour; some answers give none. */
+  hoursPerUnit?: number;
   defaultQuantity: number;
   sdgHint: string;
   proxyMatch: ProxyMatch | null;
@@ -496,8 +499,8 @@ export default function QuickLogActivity() {
       const { sdg, sdgColor } = sdgFromHint(a.sdgHint);
       const isHourUnit = a.unit === "hour";
       const qty = Math.max(1, Number(quantity) || a.defaultQuantity || 1);
-      // Pound-unit entries are money, not time — no derived volunteer hours.
-      const hrs = isHourUnit ? qty : a.unit === "pound" ? 0 : Math.max(1, Math.round(qty * 2));
+      // Money is not time, and an everyday habit takes none.
+      const hrs = customActivityHours(a.unit, qty, a.hoursPerUnit);
       const customId = `custom_${Date.now()}`;
       customActivities = [{
         activityId: customId,
@@ -1345,7 +1348,9 @@ function CustomQuantityPanel({ name, analysed, quantity, setQuantity, onChange }
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic mt-2">
-            No proxy match found, this activity will count towards your volunteer hours but not your social value total.
+            {analysed.unit !== "hour" && analysed.hoursPerUnit === 0
+              ? "We don't have a recognised value for this yet, so it's saved to your record without a £ value."
+              : "No proxy match found, this activity will count towards your volunteer hours but not your social value total."}
           </p>
         )}
       </div>
