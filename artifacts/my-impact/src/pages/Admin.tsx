@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import AdminFunnels from "@/components/AdminFunnels";
 import AdminOrganisations from "@/components/AdminOrganisations";
 import AdminRevalueOneOff from "@/components/AdminRevalueOneOff";
+import AdminCustomValues from "@/components/AdminCustomValues";
 import { BASE } from "@/lib/api";
 
 const ADMIN_EMAILS = [
@@ -390,6 +391,8 @@ export default function Admin() {
       </p>
 
       <AdminRevalueOneOff />
+
+      <AdminCustomValues />
 
       {error && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 text-sm mb-6">

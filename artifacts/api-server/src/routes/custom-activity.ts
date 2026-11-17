@@ -4,47 +4,9 @@ import { createRateLimiter } from "../lib/rateLimiter.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { textAiQuota } from "../lib/textAiUsage.js";
 import { ACTIVITIES } from "../lib/impactData";
-import { getEnabledProxies, type StoredProxy } from "../lib/proxyStore.js";
+import { getEnabledProxies } from "../lib/proxyStore.js";
 import { deflateProxyValue } from "../lib/proxyValuation.js";
-
-const STOP_WORDS = new Set([
-  "a","an","the","and","or","of","in","at","to","for","is","are","by","with",
-  "my","i","do","that","this","it","on","from","up","be","as","we","not",
-]);
-
-function extractKeywords(name: string): string[] {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, " ")
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
-}
-
-function candidateProxies(proxies: StoredProxy[], activityName: string, limit = 20): StoredProxy[] {
-  const keywords = extractKeywords(activityName);
-  if (keywords.length === 0) return proxies.slice(0, limit);
-
-  const scored = proxies.map(p => {
-    const titleLower = p.title.toLowerCase();
-    const hits = keywords.filter(k => titleLower.includes(k)).length;
-    return { proxy: p, hits };
-  });
-
-  const withHits = scored.filter(s => s.hits > 0).sort((a, b) => b.hits - a.hits);
-  if (withHits.length >= 3) return withHits.slice(0, limit).map(s => s.proxy);
-
-  // Fallback: partial stem matching (first 4 chars)
-  const stems = keywords.map(k => k.slice(0, 4));
-  return proxies
-    .map(p => ({
-      proxy: p,
-      hits: stems.filter(s => p.title.toLowerCase().includes(s)).length,
-    }))
-    .filter(s => s.hits > 0)
-    .sort((a, b) => b.hits - a.hits)
-    .slice(0, limit)
-    .map(s => s.proxy);
-}
+import { candidateProxies, safeHoursPerUnit, unitFitsProxy } from "../lib/proxyMatch.js";
 
 const UNIT_LABELS: Record<string, string> = {
   hour: "hours per year",
@@ -175,7 +137,10 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
     }
     const candidates = candidateProxies(enabledProxies, name.trim());
     const candidateList = candidates
-      .map((p, i) => `${i + 1}. "${p.title}" | £${p.value} per ${p.unit}`)
+      .map((p, i) => {
+        const units = p.allowedUnits.length > 0 ? ` | unit must be: ${p.allowedUnits.join(" or ")}` : "";
+        return `${i + 1}. "${p.title}" | £${p.value} per: ${p.unit.trim()}${units}`;
+      })
       .join("\n");
 
     const parsed = (await completeJson(
@@ -190,8 +155,13 @@ router.post("/analyse", authenticate, customActivityRateLimit, textAiQuota, asyn
 
 If the best matching proxy is valued per household, set unit to "household" and phrase friendlyQuestion in plain terms about how many households benefit or make use of the area — never echo cost/welfare-cost jargon from the proxy title.
 - defaultQuantity (number): sensible default for a typical volunteer or community contributor
+- hoursPerUnit (number): hours of the person's own time that ONE unit takes (one session, one person helped, one item), given up to help others or the environment. Use 0 for everyday habits and choices that take no real extra time, such as reusing bags, recycling, buying second-hand or turning lights off. Never more than 8. Use 1 when unit is "hour".
 - sdgHint (string): most relevant UN SDG, e.g. "SDG 3: Good Health and Well-Being"
-- proxyIndex (number | null): 1-based index of the BEST matching proxy below, or null if none are a reasonable match. Prefer specific outcome matches over generic ones.
+- proxyIndex (number | null): 1-based index of the proxy below that prices this activity, or null. Many everyday activities have NO proxy below, and null is then the right answer: a wrong proxy overstates someone's impact, which is worse than giving no value. Choose a proxy only when BOTH of these are true:
+  1. Its title describes the outcome this activity itself directly produces, not one that merely shares a word or a theme with it.
+  2. It is priced per the same thing the person counts. Each candidate line ends with what it is priced per: one of your unit must be one of that. A proxy priced per household, per person, per tonne, per hectare or per incident must never be applied to each small item or action (each bag, each journey, each meal). Where a line says "unit must be", use one of those units, and make friendlyQuestion and unitLabel ask about that unit.
+  Example: reusing 75 carrier bags is not 75 households, 75 people or 75 tonnes of plastic, so proxyIndex is null.
+- proxyFit ("strong" | "weak"): "strong" only if you are confident both conditions hold for the proxy you chose; otherwise "weak".
 
 MILITARY TERMINOLOGY GUIDE — map these to civilian proxies:
 - Patrol commander / section commander / platoon sergeant -> team leadership, supervision, community safety
@@ -214,8 +184,11 @@ ${candidateList || "No candidates found."}`,
       2000,
     )) ?? {};
 
-    let matchedUnit = typeof parsed.unit === "string" ? parsed.unit : "hour";
-    let unitLabel = typeof parsed.unitLabel === "string" ? parsed.unitLabel : "hours per year";
+    const matchedUnit = typeof parsed.unit === "string" ? parsed.unit : "hour";
+    const unitLabel =
+      typeof parsed.unitLabel === "string" && parsed.unitLabel.trim()
+        ? parsed.unitLabel
+        : (UNIT_LABELS[matchedUnit] ?? `${matchedUnit}s per year`);
 
     let proxyMatch:
       | {
@@ -229,16 +202,13 @@ ${candidateList || "No candidates found."}`,
           horizon: string;
         }
       | null = null;
-    if (typeof parsed.proxyIndex === "number" && parsed.proxyIndex >= 1) {
+    const confident = typeof parsed.proxyFit === "string" && parsed.proxyFit.trim().toLowerCase() === "strong";
+    if (confident && typeof parsed.proxyIndex === "number" && parsed.proxyIndex >= 1) {
       const picked = candidates[parsed.proxyIndex - 1];
-      if (picked) {
-        // Respect admin-configured allowed units: if the AI's chosen unit
-        // isn't permitted for this proxy, fall back to the proxy's first
-        // allowed unit.
-        if (picked.allowedUnits.length > 0 && !picked.allowedUnits.includes(matchedUnit)) {
-          matchedUnit = picked.allowedUnits[0];
-          unitLabel = UNIT_LABELS[matchedUnit] ?? `${matchedUnit}s per year`;
-        }
+      // The proxy must be priced per what the person is counting. If it
+      // isn't, the activity goes unvalued: swapping the unit would leave a
+      // question about bags answered as a number of households.
+      if (picked && unitFitsProxy(picked, matchedUnit, unitLabel)) {
         const valuation = deflateProxyValue(picked, matchedUnit);
         proxyMatch = {
           title: picked.title,
@@ -261,6 +231,9 @@ ${candidateList || "No candidates found."}`,
       unit: matchedUnit,
       unitLabel,
       defaultQuantity: typeof parsed.defaultQuantity === "number" ? parsed.defaultQuantity : 20,
+      // Time behind each unit, for units that aren't hours (the client
+      // multiplies it by the quantity).
+      hoursPerUnit: safeHoursPerUnit(parsed.hoursPerUnit),
       sdgHint: typeof parsed.sdgHint === "string" ? parsed.sdgHint : "",
       proxyMatch,
     });

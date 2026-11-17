@@ -16,7 +16,7 @@ import { db, impactRecordsTable } from "@workspace/db";
 import { eq, sql, gt, and, asc } from "drizzle-orm";
 import { getProxyMapByTitle, type StoredProxy } from "./proxyStore.js";
 import { deflateProxyValue } from "./proxyValuation.js";
-import { contributionRate, PERSONAL_DEV_RATE_PER_HOUR } from "./contributionModel.js";
+import { retotalResult } from "./resultTotals.js";
 
 interface BreakdownLike {
   activityId?: string;
@@ -91,34 +91,7 @@ export function repairOverstatedProxies(
 
   // Hours are unchanged by this repair — only proxy-valued impact shifts.
   const totalHours = typeof result.totalHours === "number" ? result.totalHours : 0;
-  const impactValue = fixed.reduce((sum, b) => sum + (typeof b.impactValue === "number" ? b.impactValue : 0), 0);
-  const donationsValue = typeof result.donationsValue === "number" ? result.donationsValue : 0;
-  // At the National Living Wage the record was saved with.
-  const contributionValue = totalHours * contributionRate(result);
-  const personalDevelopmentValue = totalHours * PERSONAL_DEV_RATE_PER_HOUR;
-  const totalValue = impactValue + contributionValue + donationsValue + personalDevelopmentValue;
-
-  const sdgMap = new Map<string, { sdg: string; sdgColor: string; value: number }>();
-  for (const b of fixed) {
-    const sdg = b.sdg ?? "Good Health and Well-Being";
-    if (!sdgMap.has(sdg)) {
-      sdgMap.set(sdg, { sdg, sdgColor: b.sdgColor ?? "#4C9F38", value: 0 });
-    }
-    sdgMap.get(sdg)!.value += typeof b.impactValue === "number" ? b.impactValue : 0;
-  }
-  const sdgBreakdowns = Array.from(sdgMap.values()).map((s) => ({ ...s, value: round2(s.value) }));
-
-  return {
-    ...result,
-    activityBreakdowns: fixed,
-    totalHours,
-    impactValue: round2(impactValue),
-    contributionValue: round2(contributionValue),
-    donationsValue: round2(donationsValue),
-    personalDevelopmentValue: round2(personalDevelopmentValue),
-    totalValue: round2(totalValue),
-    sdgBreakdowns,
-  };
+  return retotalResult(result, fixed, totalHours);
 }
 
 // One-shot startup sweep over saved impact records. Only records whose JSON

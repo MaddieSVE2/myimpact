@@ -47,7 +47,8 @@ export function extractSourceYear(title: string): string {
 }
 
 // Derive which logging units the matcher may pair with this proxy, from the
-// unit text SVE publishes. Empty array = any unit is acceptable.
+// unit text SVE publishes. Empty array = not classified: the matcher then
+// checks the unit text itself (lib/proxyMatch.ts, unitFitsProxy).
 export function deriveAllowedUnits(unit: string): string[] {
   const u = unit.toLowerCase();
   const allowed = new Set<string>();

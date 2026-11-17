@@ -15,7 +15,8 @@ import { pgTable, serial, text, numeric, real, boolean, timestamp, uniqueIndex }
  *   is used to price a single contribution, so long-horizon outcomes are
  *   scaled to a defensible per-contribution share.
  * - allowedUnits: units the matcher may pair with this proxy
- *   (e.g. ["person"], ["hour","session"]). Empty = any unit.
+ *   (e.g. ["person"], ["hour","session"]). Empty = not classified: the
+ *   matcher checks the unit text itself (api-server lib/proxyMatch.ts).
  * - enabled: disabled proxies are never offered by the AI matcher.
  */
 export const proxiesTable = pgTable("proxies", {
