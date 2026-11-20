@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { joinGroup, leaveGroup, useInvalidateGroups, useMyGroups } from "@/lib/org-groups";
+import { joinGroup, leaveGroup, linkGroupParam, useInvalidateGroups, useMyGroups } from "@/lib/org-groups";
 
 /**
  * The member's view of their organisation's groups: join or leave each one,
@@ -15,13 +15,18 @@ export function MyGroupsCard() {
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const hasGroups = Boolean(groups && groups.length > 0);
+  // Someone already in the organisation who opened a group's invite link
+  // (?group=) is asked to join that group, unless they are in it.
+  const [linkGroupId] = useState(linkGroupParam);
+  const invitedTo = groups?.find((g) => g.id === linkGroupId && !g.joined) ?? null;
+  const hasInvite = invitedTo !== null;
 
-  // Arriving from the "Your groups" link in the organisation bar.
+  // Arriving from the "Your groups" link in the organisation bar, or from a group's invite link.
   useEffect(() => {
-    if (hasGroups && window.location.hash === "#your-groups") {
+    if (hasGroups && (window.location.hash === "#your-groups" || hasInvite)) {
       document.getElementById("your-groups")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [hasGroups]);
+  }, [hasGroups, hasInvite]);
 
   if (!groups || groups.length === 0) return null;
 
@@ -52,6 +57,22 @@ export function MyGroupsCard() {
       <p className="text-sm text-muted-foreground mb-4">
         Join the groups you take part in. Each activity you log counts for one of them, so every group can report what its members do.
       </p>
+      {invitedTo && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3" data-testid="notice-group-invite">
+          <p className="text-sm text-foreground">
+            You've been invited to join <strong>{invitedTo.name}</strong>.
+          </p>
+          <button
+            type="button"
+            onClick={() => toggle(invitedTo.id, invitedTo.name, false)}
+            disabled={busy === invitedTo.id}
+            className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+            data-testid="button-accept-group-invite"
+          >
+            Join {invitedTo.name}
+          </button>
+        </div>
+      )}
       <ul className="divide-y divide-border">
         {groups.map((g) => (
           <li key={g.id} className="flex flex-wrap items-center justify-between gap-3 py-3">

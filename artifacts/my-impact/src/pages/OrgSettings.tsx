@@ -7,7 +7,7 @@ import { OrgSsoConfigPanel } from "@/components/OrgSsoConfig";
 import { DeveloperApiSection } from "@/components/DeveloperApiSection";
 import { ShareLinkManager } from "@/components/ShareLinkManager";
 import { GroupsManager } from "@/components/org/GroupsManager";
-import { useGroupMemberships, type GroupMembership } from "@/lib/org-groups";
+import { inviteLink as inviteLinkFor, useGroupMemberships, useReportGroups, type GroupMembership } from "@/lib/org-groups";
 import CopyField from "@/components/CopyField";
 import {
   DEMO_ORG_ID, DEMO_ORG_NAME, DEMO_ORG_TYPE, DEMO_INVITE_CODE,
@@ -221,7 +221,12 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
   const [liveLoading, setLiveLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
-  const inviteLink = `${window.location.origin}${BASE}/org?invite=${encodeURIComponent(inviteCode)}`;
+  // The invite link can put people who join with it in a group.
+  const { data: reportGroups } = useReportGroups(!isDemoOrg);
+  const linkGroups = (reportGroups?.groups ?? []).filter((g) => !g.archivedAt);
+  const [linkGroupId, setLinkGroupId] = useState("");
+  const linkGroup = linkGroups.find((g) => g.id === linkGroupId) ?? null;
+  const inviteLink = inviteLinkFor(inviteCode, linkGroup?.id);
 
   async function fetchLiveMembers(p: number) {
     setLiveLoading(true);
@@ -653,6 +658,28 @@ function MembersTab({ isDemoOrg, orgId, allowedDomain }: { isDemoOrg: boolean; o
               buttonTestId="button-copy-invite-link"
               onCopyError={() => flash("Could not copy, copy it manually.")}
             />
+            {linkGroups.length > 0 && (
+              <div className="mt-2">
+                <label htmlFor="invite-link-group" className="block text-[13px] font-medium text-foreground mb-1">
+                  Put people who join with this link in a group
+                </label>
+                <select
+                  id="invite-link-group"
+                  value={linkGroup?.id ?? ""}
+                  onChange={e => setLinkGroupId(e.target.value)}
+                  className="w-full sm:w-auto border border-border rounded-md px-3 py-2 text-[13px] bg-white"
+                  data-testid="select-invite-link-group"
+                >
+                  <option value="">No group</option>
+                  {linkGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+                <p className="text-[12px] text-muted-foreground mt-1" data-testid="text-invite-link-group-help">
+                  {linkGroup
+                    ? `Anyone who joins with the link above goes into ${linkGroup.name}. Members who open it are asked to join the group.`
+                    : "Choose a group to get a link that adds people to it when they join. Each group has its own link."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
         <AllowedDomainField initialDomain={allowedDomain} isDemoOrg={isDemoOrg} />

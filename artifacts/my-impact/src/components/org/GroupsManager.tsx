@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BASE } from "@/lib/api";
-import { groupsApi, useInvalidateGroups, useReportGroups, type ManagedGroup } from "@/lib/org-groups";
+import { CopyButton } from "@/components/CopyField";
+import { groupsApi, inviteLink, useInvalidateGroups, useOrgInviteCode, useReportGroups, type ManagedGroup } from "@/lib/org-groups";
 import { GroupListUpload } from "./GroupListUpload";
 
 /** How many people the add list shows at once; searching finds the rest. */
@@ -198,7 +199,7 @@ function GroupMembers({ group, orgMembers }: { group: ManagedGroup; orgMembers: 
   );
 }
 
-function GroupRow({ group, orgMembers }: { group: ManagedGroup; orgMembers: OrgMember[] }) {
+function GroupRow({ group, orgMembers, inviteCode }: { group: ManagedGroup; orgMembers: OrgMember[]; inviteCode: string | undefined }) {
   const { toast } = useToast();
   const invalidate = useInvalidateGroups();
   const [open, setOpen] = useState(false);
@@ -268,6 +269,19 @@ function GroupRow({ group, orgMembers }: { group: ManagedGroup; orgMembers: OrgM
           >
             {open ? "Hide members" : "Members"}
           </button>
+          {inviteCode && !group.archivedAt && (
+            <CopyButton
+              value={inviteLink(inviteCode, group.id)}
+              copyLabel="Copy invite link"
+              copiedLabel="Link copied"
+              ariaLabel={`Copy the invite link for ${group.name}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted/40"
+              icon={<Link2 className="w-3.5 h-3.5" aria-hidden="true" />}
+              testId="button-copy-group-invite-link"
+              onCopied={() => toast({ title: `Invite link for ${group.name} copied`, description: "Anyone who joins your organisation with it goes into this group." })}
+              onCopyError={() => toast({ title: "Could not copy the link", description: inviteLink(inviteCode, group.id), variant: "destructive" })}
+            />
+          )}
           {!renaming && !group.archivedAt && (
             <button type="button" onClick={() => setRenaming(true)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted/40">
               Rename
@@ -296,13 +310,15 @@ function GroupRow({ group, orgMembers }: { group: ManagedGroup; orgMembers: OrgM
 /**
  * Managing an organisation's groups (Settings, Groups tab): create, rename,
  * archive and restore groups; add people, several at a time or from a list;
- * remove them; make someone a lead.
+ * remove them; make someone a lead; copy a group's invite link, which puts
+ * people who join the organisation with it straight into the group.
  * The server allows this for organisation managers only.
  */
 export function GroupsManager() {
   const { data, isLoading } = useReportGroups();
   const canManage = data?.canManage === true;
   const { data: orgMembers = [] } = useOrgMembers(canManage);
+  const { data: joinLink } = useOrgInviteCode(canManage);
   const invalidate = useInvalidateGroups();
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -377,7 +393,7 @@ export function GroupsManager() {
       ) : (
         <ul className="space-y-3">
           {groups.map((g) => (
-            <GroupRow key={g.id} group={g} orgMembers={orgMembers} />
+            <GroupRow key={g.id} group={g} orgMembers={orgMembers} inviteCode={joinLink?.inviteCode} />
           ))}
         </ul>
       )}

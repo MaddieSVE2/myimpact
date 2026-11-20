@@ -107,6 +107,30 @@ export function useReportGroups(enabled = true) {
   });
 }
 
+/**
+ * The link people use to join the organisation. With a group, anyone who
+ * joins with it goes into that group too (?group=, read by the join screen).
+ */
+export function inviteLink(inviteCode: string, groupId?: string | null): string {
+  const link = `${window.location.origin}${BASE}/org?invite=${encodeURIComponent(inviteCode)}`;
+  return groupId ? `${link}&group=${encodeURIComponent(groupId)}` : link;
+}
+
+/** The group an invite link in the page address names, or null. */
+export function linkGroupParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("group") || null;
+}
+
+/** The organisation's invite code (managers only), for building invite links. */
+export function useOrgInviteCode(enabled = true) {
+  return useQuery<{ orgId: string; inviteCode: string; orgName: string }>({
+    queryKey: ["org-join-link"],
+    queryFn: async () => (await send("/org/my-join-link", "GET")) as { orgId: string; inviteCode: string; orgName: string },
+    enabled,
+  });
+}
+
 export const joinGroup = (groupId: string) => send(`/org/my/groups/${encodeURIComponent(groupId)}/join`, "POST");
 export const leaveGroup = (groupId: string) => send(`/org/my/groups/${encodeURIComponent(groupId)}/leave`, "POST");
 

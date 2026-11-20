@@ -215,6 +215,36 @@ export async function groupNamesById(groupIds: string[]): Promise<Map<string, st
   return new Map(rows.map((r) => [r.id, r.name]));
 }
 
+/**
+ * The group an invite link names (?group=): an active group of the
+ * organisation, or null. A link for an archived group, or with no group,
+ * still lets people join the organisation.
+ */
+export async function linkGroup(orgId: string, raw: unknown): Promise<{ id: string; name: string } | null> {
+  if (typeof raw !== "string" || !raw) return null;
+  const group = await db.query.orgGroupsTable.findFirst({
+    where: and(eq(orgGroupsTable.id, raw), eq(orgGroupsTable.orgId, orgId), isNull(orgGroupsTable.archivedAt)),
+    columns: { id: true, name: true },
+  });
+  return group ?? null;
+}
+
+/**
+ * Puts someone who joined with a group's invite link in that group: straight
+ * away when their membership is active, otherwise when it becomes active
+ * (their place is saved by email address, like an invite from a list).
+ */
+export async function placeFromLink(
+  orgId: string,
+  userId: string,
+  email: string,
+  status: "active" | "pending",
+  group: { id: string },
+): Promise<void> {
+  if (status === "active") await addToGroup(group.id, [userId]);
+  else await savePendingPlacements(orgId, email, [{ groupId: group.id, role: "member" }]);
+}
+
 export function normaliseEmail(email: string | null | undefined): string {
   return (email ?? "").trim().toLowerCase();
 }
