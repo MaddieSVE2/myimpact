@@ -1,4 +1,5 @@
 import type { MonthlyDigestPayload } from "./digestData.js";
+import { logoBlock } from "./onboardingEmails.js";
 
 function escapeHtml(s: string | number | null | undefined): string {
   if (s === null || s === undefined) return "";
@@ -79,7 +80,7 @@ export function buildDigestEmail({
 
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#ffffff;">
-      <img src="${escapeHtml(appUrl)}/images/myimpact.png" alt="My Impact" style="height:44px;margin-bottom:24px;" />
+      ${logoBlock(escapeHtml(appUrl))}
       <h1 style="margin:0 0 6px;color:#213547;font-size:22px;font-weight:700;">Your ${escapeHtml(payload.monthLabel)} recap</h1>
       <p style="margin:0 0 20px;color:#555;font-size:14px;line-height:1.6;">
         Hi ${escapeHtml(greetingName)} — here's a summary of the difference you made last month.

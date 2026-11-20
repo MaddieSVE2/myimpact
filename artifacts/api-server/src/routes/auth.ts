@@ -4,6 +4,7 @@ import { eq, and, gt, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import { getUncachableResendClient } from "../lib/resend.js";
+import { logoBlock } from "../lib/onboardingEmails.js";
 import { isProviderConfigured, type SsoProvider } from "../lib/oidc.js";
 import { trackServerEvent } from "../lib/analytics.js";
 import { recordAuditEvent } from "../lib/auditLog.js";
@@ -295,7 +296,7 @@ router.post("/request", async (req, res) => {
       subject: "Your My Impact sign-in link",
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
-          <img src="${appUrl}/images/myimpact.png" alt="My Impact" style="height:48px;margin-bottom:24px;" />
+          ${logoBlock(appUrl)}
           <h2 style="margin:0 0 8px;color:#213547;font-size:22px;">Sign in to My Impact</h2>
           <p style="color:#555;margin:0 0 24px;line-height:1.6;">
             Click the button below to sign in. This link expires in 15 minutes and can only be used once.

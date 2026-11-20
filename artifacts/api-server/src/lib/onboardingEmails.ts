@@ -45,8 +45,13 @@ const TEXT = "#213547";
 export const MUTED = "#6b7280";
 export const BORDER = "#e5e7eb";
 
+// Emails sit on a white background, so they need the full-colour logo.
+// `myimpact.png` is the white-text wordmark made for the dark navbar: on
+// white, "Impact" disappears and only the orange "My" is left.
+// The file is flattened onto white so dark-mode mail clients can't hide the
+// grey parts either.
 export function logoBlock(appUrl: string): string {
-  return `<img src="${appUrl}/images/myimpact.png" alt="My Impact" style="height:48px;margin-bottom:24px;" />`;
+  return `<img src="${appUrl}/images/myimpact-email.png" alt="My Impact" width="112" height="64" style="display:block;width:112px;height:64px;margin-bottom:24px;border:0;" />`;
 }
 
 export function shellOpen(): string {
