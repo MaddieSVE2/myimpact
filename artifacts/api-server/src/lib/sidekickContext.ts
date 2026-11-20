@@ -36,7 +36,8 @@ const MAX_FIGURE = 1e12;
 function cleanText(value: unknown, maxChars: number): string | null {
   if (typeof value !== "string") return null;
   const cleaned = value
-    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    // \p{Cc} is every control character, including newlines and tabs.
+    .replace(/\p{Cc}+/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxChars);
