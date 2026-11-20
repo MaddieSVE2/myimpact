@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@workspace/db", () => ({
   emailLogTable: {},
+  emailActivityMessagesTable: {},
   db: {
     insert: () => ({
       values: (row: Record<string, unknown>) => ({
@@ -147,5 +148,25 @@ describe("GET /admin/email-log", () => {
     const res = await request(app).get("/api/admin/email-log?status=bounced");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ entries: [], nextBefore: null, retentionDays: 365 });
+  });
+});
+
+describe("GET /admin/email-activity", () => {
+  const app = express();
+  app.use("/api/admin", adminEmailLogRouter);
+
+  it("is for admins only", async () => {
+    expect((await request(app).get("/api/admin/email-activity")).status).toBe(401);
+    state.authUser = { id: "u1", email: "member@example.org" };
+    expect((await request(app).get("/api/admin/email-activity")).status).toBe(403);
+    expect(state.listCalls).toEqual([]);
+  });
+
+  it("returns a page of activity inbox emails to an admin", async () => {
+    state.authUser = { id: "u2", email: "admin@example.org" };
+    const res = await request(app).get("/api/admin/email-activity");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ emails: [], nextBefore: null });
+    expect(state.listCalls).toEqual([51]);
   });
 });

@@ -195,3 +195,23 @@ export async function listEmailLog(q: EmailLogQuery) {
     .orderBy(desc(emailLogTable.id))
     .limit(q.limit);
 }
+
+/** Emails to the activity inbox, newest first, for the admin email log. */
+export async function listActivityEmails(q: { beforeId?: number; limit: number }) {
+  return db
+    .select({
+      id: emailActivityMessagesTable.id,
+      fromAddress: emailActivityMessagesTable.fromAddress,
+      subject: emailActivityMessagesTable.subject,
+      textBody: emailActivityMessagesTable.textBody,
+      outcome: emailActivityMessagesTable.outcome,
+      note: emailActivityMessagesTable.note,
+      question: emailActivityMessagesTable.question,
+      recordIds: emailActivityMessagesTable.recordIds,
+      receivedAt: emailActivityMessagesTable.receivedAt,
+    })
+    .from(emailActivityMessagesTable)
+    .where(q.beforeId ? lt(emailActivityMessagesTable.id, q.beforeId) : undefined)
+    .orderBy(desc(emailActivityMessagesTable.id))
+    .limit(q.limit);
+}

@@ -4,35 +4,45 @@
  * entry, or they get one short question back. Rules are in
  * lib/emailActivity.ts.
  *
- * Test-only for now: only senders in EMAIL_ACTIVITY_TEST_SENDERS are read,
- * and only into demo accounts (see parseTestSenders). Evidence is never sent
- * by email: when the person's organisation requires it, the reply links to
- * the page where they log in, add a photo and share the entry, and the usual
- * evidence check there applies.
+ * Who is read: senders in EMAIL_ACTIVITY_TEST_SENDERS, into demo accounts
+ * (see parseTestSenders); and, when EMAIL_ACTIVITY_LIVE is "true", members
+ * emailing from their account's address, into their own record. A From
+ * address is easy to forge, so a member's email is only read when Resend's
+ * receiving server confirmed the sender (senderVerified); otherwise nothing
+ * is added and they are pointed to the app.
+ *
+ * Evidence is never sent by email: when the person's organisation requires
+ * it, the reply links to the page where they log in, add a photo and share
+ * the entry, and the usual evidence check there applies.
  */
 import { db, emailActivityMessagesTable, impactRecordsTable, organisationsTable, usersTable } from "@workspace/db";
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { and, desc, eq, gte, lt, ne } from "drizzle-orm";
 import { ACTIVITIES, calculateImpact } from "./impactData.js";
 import { completeJson } from "./aiJson.js";
 import { deriveReportingYear } from "./contributionModel.js";
 import { activeOrgIdFor, defaultGroupFor } from "./orgGroups.js";
 import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, oneOffValuation } from "./recordHelpers.js";
 import { getUncachableResendClient } from "./resend.js";
-import { bareAddress, fetchReceivedText, isForReplyInbox, type ReceivedEmailEvent } from "./emailReplies.js";
+import { bareAddress, fetchReceivedEmail, isForReplyInbox, type ReceivedEmail, type ReceivedEmailEvent } from "./emailReplies.js";
 import { replyInboxAddress } from "./emailLog.js";
 import {
   activityInboxAddress,
+  activityInboxLive,
   addedReply,
   buildInterpretMessages,
+  decideSender,
   isAutomatedEmail,
   itemToEntry,
   newText,
+  noAccountReply,
   ONE_PER_OCCASION_UNITS,
   parseTestSenders,
   questionReply,
   replySubject,
   REVIEW_REPLY,
+  senderVerified,
   storedLocation,
+  unverifiedReply,
   validateInterpretation,
   type AddedLine,
   type ConversationTurn,
@@ -45,6 +55,13 @@ import { isPersonaEmail } from "../routes/auth.js";
 const CONVERSATION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 /** More than this many emails a day from one sender are not read (loops, cost). */
 const DAILY_LIMIT = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** A member whose emails can't be verified is told so at most this often. */
+const UNVERIFIED_NOTICE_EVERY_MS = DAY_MS;
+/** An address with no account is told so at most this often... */
+const NO_ACCOUNT_NOTICE_EVERY_MS = 7 * DAY_MS;
+/** ...and no more than this many such addresses a day, so junk mail can't make us a source of it. */
+const NO_ACCOUNT_NOTICES_PER_DAY = 20;
 export const ENTRY_NAME = "Logged by email";
 
 function appUrl(): string {
@@ -56,14 +73,16 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Swappable for tests and local runs, where neither Resend nor the model is reachable. */
 export interface ActivityInboxDeps {
-  fetchText: (emailId: string) => Promise<string | null>;
+  /** The email's text and Resend's checks on its sender; null when it can't be fetched here. */
+  fetchEmail: (emailId: string) => Promise<ReceivedEmail | null>;
   interpret: (messages: ReturnType<typeof buildInterpretMessages>) => Promise<Record<string, unknown> | null>;
   send: (message: { to: string; subject: string; text: string }) => Promise<void>;
+  /** True for the demo accounts, the only ones a test sender may log into. */
   isAllowedAccount: (email: string) => boolean;
 }
 
 const defaultDeps: ActivityInboxDeps = {
-  fetchText: fetchReceivedText,
+  fetchEmail: fetchReceivedEmail,
   interpret: (messages) => completeJson(messages, 2500),
   send: async ({ to, subject, text }) => {
     const { client, fromEmail } = await getUncachableResendClient("activity-log");
@@ -75,6 +94,54 @@ const defaultDeps: ActivityInboxDeps = {
 };
 
 export type ActivityEmailResult = "ignored" | "duplicate" | "handled";
+
+/** How many of this sender's other emails (everyone's, without `from`) ended as `outcome` since `sinceMs`. */
+async function earlierWith(outcome: string, sinceMs: number, exceptId: number, from?: string): Promise<number> {
+  const rows = await db
+    .select({ id: emailActivityMessagesTable.id })
+    .from(emailActivityMessagesTable)
+    .where(
+      and(
+        eq(emailActivityMessagesTable.outcome, outcome),
+        gte(emailActivityMessagesTable.receivedAt, new Date(sinceMs)),
+        ne(emailActivityMessagesTable.id, exceptId),
+        from ? eq(emailActivityMessagesTable.fromAddress, from) : undefined,
+      ),
+    );
+  return rows.length;
+}
+
+/**
+ * Live mode, and no account has this address. They are told once (they may
+ * have signed up with another address), but only when the sender is
+ * verified, so a forged or junk email never makes us write to a stranger.
+ * Nothing of the email is kept beyond who sent it and its subject.
+ */
+async function noAccount(
+  id: number,
+  emailId: string,
+  from: string,
+  receivedAt: Date,
+  deps: ActivityInboxDeps,
+  reply: (body: string) => Promise<void>,
+): Promise<void> {
+  const at = receivedAt.getTime();
+  let note = "No account has this address.";
+  let tell = false;
+  if ((await earlierWith("no_account", at - NO_ACCOUNT_NOTICE_EVERY_MS, id, from)) > 0) note += " Already told this week.";
+  else if ((await earlierWith("no_account", at - DAY_MS, id)) >= NO_ACCOUNT_NOTICES_PER_DAY) note += " Not told: too many of these today.";
+  else {
+    try {
+      tell = senderVerified((await deps.fetchEmail(emailId))?.authentication);
+    } catch (err) {
+      console.error("[activity-inbox] could not fetch the email:", err);
+    }
+    note += tell ? " Told them." : " Not told: the sender could not be confirmed.";
+  }
+  await finish(id, { outcome: "no_account", note });
+  if (tell) await reply(noAccountReply(appUrl())).catch((err) => console.error("[activity-inbox] notice failed:", err));
+  console.log(`[activity-inbox] ${from}: no account`);
+}
 
 async function finish(id: number, values: Partial<typeof emailActivityMessagesTable.$inferInsert>) {
   await db.update(emailActivityMessagesTable).set(values).where(eq(emailActivityMessagesTable.id, id));
@@ -194,32 +261,61 @@ export async function handleActivityEmail(
     await finish(id, { outcome: "ignored", note: "Automatic or own email." });
     return "handled";
   }
-  const account = parseTestSenders(process.env, deps.isAllowedAccount).get(from);
-  if (!account) {
-    await finish(id, { outcome: "ignored", note: "Sender is not on the test list." });
-    console.log(`[activity-inbox] ignored an email from ${from}: not a test sender`);
-    return "handled";
-  }
-  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, account), columns: { id: true } });
-  if (!user) {
-    await finish(id, { outcome: "ignored", note: `${account} has no account yet (sign in to it once).` });
+  const decision = decideSender(from, {
+    testSenders: parseTestSenders(process.env, deps.isAllowedAccount),
+    live: activityInboxLive(),
+    isDemoAccount: deps.isAllowedAccount,
+  });
+  if (decision.read === "no") {
+    await finish(id, { outcome: "ignored", note: decision.note });
+    console.log(`[activity-inbox] ignored an email from ${from}: ${decision.note}`);
     return "handled";
   }
   const recent = await db
     .select({ id: emailActivityMessagesTable.id })
     .from(emailActivityMessagesTable)
-    .where(and(eq(emailActivityMessagesTable.fromAddress, from), gte(emailActivityMessagesTable.receivedAt, new Date(receivedAt.getTime() - 86_400_000))));
+    .where(and(eq(emailActivityMessagesTable.fromAddress, from), gte(emailActivityMessagesTable.receivedAt, new Date(receivedAt.getTime() - DAY_MS))));
   if (recent.length > DAILY_LIMIT) {
     await finish(id, { outcome: "ignored", note: "Over the daily limit for this sender." });
     return "handled";
   }
+  const reply = async (body: string) => deps.send({ to: from, subject: replySubject(subject), text: body });
 
-  let text = "";
-  try {
-    text = newText((await deps.fetchText(event.email_id)) ?? "");
-  } catch (err) {
-    console.error("[activity-inbox] could not fetch the email text:", err);
+  // A test sender logs into its demo account; a member into the account with their address.
+  const account = decision.read === "test" ? decision.account : from;
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, account), columns: { id: true } });
+  if (!user) {
+    if (decision.read === "test") {
+      await finish(id, { outcome: "ignored", note: `${account} has no account yet (sign in to it once).` });
+    } else {
+      await noAccount(id, event.email_id, from, receivedAt, deps, reply);
+    }
+    return "handled";
   }
+
+  let email: ReceivedEmail | null = null;
+  let fetched = false;
+  try {
+    email = await deps.fetchEmail(event.email_id);
+    fetched = true;
+  } catch (err) {
+    console.error("[activity-inbox] could not fetch the email:", err);
+  }
+  // A member's email is only read once the sender is confirmed. When the
+  // fetch itself failed there is no text to read either, so nothing can be
+  // added; it goes to the team below.
+  if (decision.read === "member" && fetched && !senderVerified(email?.authentication)) {
+    const told = (await earlierWith("unverified", receivedAt.getTime() - UNVERIFIED_NOTICE_EVERY_MS, id, from)) === 0;
+    const a = email?.authentication;
+    await finish(id, {
+      outcome: "unverified",
+      note: `The sender could not be confirmed (${a ? `SPF ${a.spf ?? "?"}, DKIM ${a.dkim ?? "?"}, DMARC ${a.dmarc ?? "?"}` : "no checks from Resend"}). ${told ? "Told them." : "Already told today."}`,
+    });
+    if (told) await reply(unverifiedReply(`${appUrl()}/log`)).catch((err) => console.error("[activity-inbox] notice failed:", err));
+    console.log(`[activity-inbox] ${from}: sender not verified`);
+    return "handled";
+  }
+  const text = newText(email?.text ?? "");
   await finish(id, { userId: user.id, textBody: text.slice(0, 20_000) });
 
   // The open conversation: this sender's emails we asked a question about,
@@ -263,7 +359,6 @@ export async function handleActivityEmail(
     interpretation = { outcome: "needs_review", reason: "The email could not be read automatically." };
   }
 
-  const reply = (body: string) => deps.send({ to: from, subject: replySubject(subject), text: body });
   try {
     switch (interpretation.outcome) {
       case "ignore":
