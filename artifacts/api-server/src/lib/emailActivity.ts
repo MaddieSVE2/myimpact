@@ -4,8 +4,10 @@
  * database or network access, so it can be tested directly; the handler is
  * lib/emailActivityInbox.ts.
  *
- * A test-only feature for now: only senders listed in
- * EMAIL_ACTIVITY_TEST_SENDERS are read, and each must map to a demo account.
+ * Who is read (decideSender): senders listed in EMAIL_ACTIVITY_TEST_SENDERS,
+ * each into a demo account; and, once EMAIL_ACTIVITY_LIVE is "true", any
+ * member emailing from their account's address, into their own record, but
+ * only when the receiving mail server confirmed the sender (senderVerified).
  */
 import type { Activity } from "./impactData.js";
 import type { ChatMessage } from "./aiJson.js";
@@ -36,6 +38,54 @@ export function parseTestSenders(
     }
   }
   return pairs;
+}
+
+/** True when members' own emails are read (EMAIL_ACTIVITY_LIVE=true), not only the test list. */
+export function activityInboxLive(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.EMAIL_ACTIVITY_LIVE ?? "").trim().toLowerCase() === "true";
+}
+
+/**
+ * Resend's checks on a received email ("pass", "fail", "gray", ...). They
+ * are made by its receiving mail server, not read from the message, so the
+ * sender can't forge them.
+ */
+export interface SenderAuthentication {
+  spf?: string | null;
+  dkim?: string | null;
+  dmarc?: string | null;
+}
+
+/**
+ * True when the email provably came from the domain in its From address:
+ * DMARC passed, or DKIM passed (Resend only reports a DKIM pass when the
+ * signing domain matches the From domain). An SPF pass alone is not enough:
+ * it vouches for the envelope sender, which need not be the From address.
+ * Anything missing or unclear counts as not verified.
+ */
+export function senderVerified(auth: SenderAuthentication | null | undefined): boolean {
+  if (!auth || auth.dmarc === "fail") return false;
+  return auth.dmarc === "pass" || auth.dkim === "pass";
+}
+
+/** Whose record an email from `from` may be added to, before any lookup. */
+export type SenderDecision =
+  /** A listed test sender: logs into that demo account. */
+  | { read: "test"; account: string }
+  /** Live: logs into the account with this address, once the sender is verified. */
+  | { read: "member" }
+  | { read: "no"; note: string };
+
+export function decideSender(
+  from: string,
+  opts: { testSenders: Map<string, string>; live: boolean; isDemoAccount: (email: string) => boolean },
+): SenderDecision {
+  const account = opts.testSenders.get(from);
+  if (account) return { read: "test", account };
+  if (!opts.live) return { read: "no", note: "Sender is not on the test list." };
+  // Demo accounts have no mailbox, so mail "from" one is never theirs.
+  if (opts.isDemoAccount(from)) return { read: "no", note: "Demo accounts can't send email." };
+  return { read: "member" };
 }
 
 /** Out-of-office replies, bounces and other machine mail: never answered. */
@@ -414,6 +464,14 @@ export function addedReply(
 export const questionReply = (question: string) => `${question}\n\n${SIGN_OFF}`;
 
 export const REVIEW_REPLY = `Thanks for getting in touch. I couldn't add this one automatically, so I've passed it to the My Impact team and someone will take a look.\n\n${SIGN_OFF}`;
+
+/** To a verified sender whose address has no account. */
+export const noAccountReply = (appLink: string) =>
+  `Thanks for getting in touch. I couldn't find a My Impact account for this email address, so I haven't added anything. If you signed up with a different address, send it from that one, or log it at ${appLink}\n\n${SIGN_OFF}`;
+
+/** To a member whose email could not be confirmed as coming from them. */
+export const unverifiedReply = (logLink: string) =>
+  `Thanks for getting in touch. I couldn't confirm this email came from your address, so I haven't added anything. You can log it at ${logLink}\n\n${SIGN_OFF}`;
 
 export const SUBJECT_PREFIX_RE = /^\s*re:\s*/i;
 export const replySubject = (subject: string) => `Re: ${subject.replace(SUBJECT_PREFIX_RE, "").trim() || "Your activity"}`.slice(0, 200);

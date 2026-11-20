@@ -10,6 +10,7 @@ import { db, emailLogTable, emailRepliesTable, type EmailLogEntry } from "@works
 import { and, desc, eq, lt, ne, sql } from "drizzle-orm";
 import { getUncachableResendClient } from "./resend.js";
 import { replyInboxAddress } from "./emailLog.js";
+import type { SenderAuthentication } from "./emailActivity.js";
 
 export const REPLY_TEXT_LIMIT = 20_000;
 
@@ -52,17 +53,36 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-/** The received email's text from Resend (the webhook carries no body). */
-export async function fetchReceivedText(id: string): Promise<string | null> {
+/** A received email as fetched from Resend: its text, and Resend's checks on the sender. */
+export interface ReceivedEmail {
+  text: string | null;
+  authentication: SenderAuthentication | null;
+}
+
+/** The received email from Resend (the webhook carries no body or sender checks). */
+export async function fetchReceivedEmail(id: string): Promise<ReceivedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (process.env.E2E_TEST_MODE === "1" || !apiKey) return null;
   const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`Resend responded ${res.status} for received email ${id}`);
-  const body = (await res.json()) as { text?: string | null; html?: string | null };
+  const body = (await res.json()) as {
+    text?: string | null;
+    html?: string | null;
+    authentication?: SenderAuthentication | null;
+  };
   const text = body.text?.trim() || (body.html ? htmlToText(body.html) : "");
-  return text ? text.slice(0, REPLY_TEXT_LIMIT) : null;
+  const auth = body.authentication && typeof body.authentication === "object" ? body.authentication : null;
+  return {
+    text: text ? text.slice(0, REPLY_TEXT_LIMIT) : null,
+    authentication: auth ? { spf: auth.spf ?? null, dkim: auth.dkim ?? null, dmarc: auth.dmarc ?? null } : null,
+  };
+}
+
+/** Just the received email's text. */
+export async function fetchReceivedText(id: string): Promise<string | null> {
+  return (await fetchReceivedEmail(id))?.text ?? null;
 }
 
 /** The plain-text copy sent to the team. */

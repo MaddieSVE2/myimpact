@@ -67,13 +67,39 @@ list `activity-reminders`). Members with push set up and on get push only.
 The button opens the app's due prompt; the email never logs anything,
 because mail scanners follow links.
 
-## Activity inbox (test only)
+## Activity inbox
 
 People email what they did to `EMAIL_ACTIVITY_INBOX` (log@myimpact.uk) and
 it is added to their record (`src/lib/emailActivityInbox.ts`, rules in
-`src/lib/emailActivity.ts`). It is not part of any member email yet: only
-senders listed in `EMAIL_ACTIVITY_TEST_SENDERS` are read, and only into demo
-accounts. Everything else sent there is stored and ignored.
+`src/lib/emailActivity.ts`). It is not mentioned in any member email yet.
+
+Three settings decide who is read:
+
+| Setting | Effect |
+| --- | --- |
+| `EMAIL_ACTIVITY_INBOX` | The address. Without it the feature is off. |
+| `EMAIL_ACTIVITY_LIVE` = `true` | Members are read: an email from an account's address is added to that member's own record. |
+| `EMAIL_ACTIVITY_TEST_SENDERS` | `<address>=<demo account>` pairs. These senders are read into the demo account instead, live or not. Optional. |
+
+Without `EMAIL_ACTIVITY_LIVE`, only the test senders are read and everything
+else sent there is stored (sender and subject) and ignored.
+
+**Who an email is really from.** A From address is easy to forge, so a
+member's email is only read when Resend's receiving server confirmed it came
+from that address's domain: DMARC passed, or DKIM passed (the
+`authentication` Resend returns with the received email; an SPF pass alone
+is not enough). Otherwise nothing is added, nothing they wrote is kept, and
+they are told once a day to log it in the app instead. Gmail, Outlook,
+Yahoo and iCloud all pass. A work or university address whose domain signs
+nothing will not; these show as "Sender not confirmed" in the admin view.
+
+**An address with no account** is told so once a week (they may have signed
+up with another address), only when the sender is confirmed, and for at
+most 20 such addresses a day. Mail claiming to be from a demo account is
+ignored.
+
+Admins see every email sent to the inbox and what happened to it at
+**`/admin/email-log`**, Activity inbox.
 
 - The AI reads the sender's new text (quoted history and signature
   dropped) together with the open conversation, and matches it to the
@@ -105,19 +131,24 @@ accounts. Everything else sent there is stored and ignored.
   organisation requires one, and send it. The usual evidence check there
   applies, so email can't skip it.
 - Automatic replies, bounces, our own addresses and more than 30 emails a
-  day from one sender are never answered. Webhook retries are harmless
+  day from one sender are never read or answered. Webhook retries are harmless
   (each email is claimed once).
 - Each email is kept in `email_activity_messages` with its outcome, and
   deleted with the email log (12 months) and with the sender's account.
 
-**To test:**
+**To switch it on for members:**
 
 1. In the Replit Shell run `pnpm --filter @workspace/db run migrate` (adds
    `email_activity_messages`) **before** republishing.
-2. Replit secrets: `EMAIL_ACTIVITY_INBOX` = `log@myimpact.uk`, and
-   `EMAIL_ACTIVITY_TEST_SENDERS` = `<your address>=demo@demo.org` (more
-   pairs comma separated; the account must be a demo persona, or the pair
-   is dropped). Sign in to the demo account once first.
-3. Republish, then email log@myimpact.uk from that address.
+2. Resend: the webhook must include `email.received` (Setup, above).
+3. Replit secrets: `EMAIL_ACTIVITY_INBOX` = `log@myimpact.uk` and
+   `EMAIL_ACTIVITY_LIVE` = `true`.
+4. Republish, then email log@myimpact.uk from the address you sign in with.
 
-To switch it off, remove `EMAIL_ACTIVITY_INBOX`.
+**To try it on a demo account only:** leave `EMAIL_ACTIVITY_LIVE` unset and
+set `EMAIL_ACTIVITY_TEST_SENDERS` = `<your address>=demo@demo.org` (more
+pairs comma separated; the account must be a demo persona, or the pair is
+dropped). Sign in to the demo account once first.
+
+To stop reading members' emails, remove `EMAIL_ACTIVITY_LIVE`. To switch
+the inbox off altogether, remove `EMAIL_ACTIVITY_INBOX`.

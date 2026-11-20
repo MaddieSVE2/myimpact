@@ -1,16 +1,21 @@
 import { describe, it, expect } from "vitest";
 import {
   activityInboxAddress,
+  activityInboxLive,
   addedReply,
   buildInterpretMessages,
+  decideSender,
   isAutomatedEmail,
   itemToEntry,
   newText,
+  noAccountReply,
   parseTestSenders,
   questionReply,
   replySubject,
   REVIEW_REPLY,
+  senderVerified,
   storedLocation,
+  unverifiedReply,
   validateInterpretation,
 } from "../src/lib/emailActivity.js";
 
@@ -36,6 +41,46 @@ describe("activity inbox settings", () => {
     const senders = parseTestSenders(env, (email) => email === "demo@demo.org");
     expect([...senders]).toEqual([["me@example.org", "demo@demo.org"]]);
     expect(parseTestSenders({} as NodeJS.ProcessEnv, () => true).size).toBe(0);
+  });
+
+  it("is live only when EMAIL_ACTIVITY_LIVE is exactly true", () => {
+    expect(activityInboxLive({ EMAIL_ACTIVITY_LIVE: " True " } as NodeJS.ProcessEnv)).toBe(true);
+    expect(activityInboxLive({} as NodeJS.ProcessEnv)).toBe(false);
+    expect(activityInboxLive({ EMAIL_ACTIVITY_LIVE: "1" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(activityInboxLive({ EMAIL_ACTIVITY_LIVE: "false" } as NodeJS.ProcessEnv)).toBe(false);
+  });
+});
+
+describe("decideSender", () => {
+  const testSenders = new Map([["me@example.org", "demo@demo.org"]]);
+  const isDemoAccount = (email: string) => email === "demo@demo.org";
+
+  it("reads only the test list until live", () => {
+    expect(decideSender("me@example.org", { testSenders, live: false, isDemoAccount })).toEqual({ read: "test", account: "demo@demo.org" });
+    expect(decideSender("jo@example.org", { testSenders, live: false, isDemoAccount })).toEqual({ read: "no", note: "Sender is not on the test list." });
+  });
+
+  it("reads members once live, keeping test senders on their demo account", () => {
+    expect(decideSender("jo@example.org", { testSenders, live: true, isDemoAccount })).toEqual({ read: "member" });
+    expect(decideSender("me@example.org", { testSenders, live: true, isDemoAccount })).toEqual({ read: "test", account: "demo@demo.org" });
+    expect(decideSender("demo@demo.org", { testSenders, live: true, isDemoAccount })).toMatchObject({ read: "no" });
+  });
+});
+
+describe("senderVerified", () => {
+  it("needs a DMARC or DKIM pass", () => {
+    expect(senderVerified({ spf: "pass", dkim: "pass", dmarc: "pass" })).toBe(true);
+    expect(senderVerified({ spf: "fail", dkim: "gray", dmarc: "pass" })).toBe(true);
+    expect(senderVerified({ spf: "gray", dkim: "pass", dmarc: "gray" })).toBe(true);
+  });
+
+  it("does not take an SPF pass alone, a failure, or anything unclear", () => {
+    expect(senderVerified({ spf: "pass", dkim: "gray", dmarc: "gray" })).toBe(false);
+    expect(senderVerified({ spf: "pass", dkim: "pass", dmarc: "fail" })).toBe(false);
+    expect(senderVerified({ spf: "pass", dkim: "processing_failed", dmarc: "unknown" })).toBe(false);
+    expect(senderVerified({})).toBe(false);
+    expect(senderVerified(null)).toBe(false);
+    expect(senderVerified(undefined)).toBe(false);
   });
 });
 
@@ -229,6 +274,11 @@ describe("replies", () => {
 
   it("signs questions and the review reply, and never uses em dashes or exclamation marks", () => {
     expect(questionReply("Thanks. When was this?")).toBe("Thanks. When was this?\n\nMy Impact");
+    for (const notice of [noAccountReply("https://x"), unverifiedReply("https://x/log")]) {
+      expect(notice).toMatch(/I haven't added anything/);
+      expect(notice).toMatch(/\n\nMy Impact$/);
+      expect(notice).not.toMatch(/[!—]/);
+    }
     const all = [
       addedReply(ack, [line], [{ name: "X", date: today }], "https://x"),
       REVIEW_REPLY,

@@ -132,10 +132,113 @@ function RepliesList() {
   );
 }
 
+interface ActivityEmail {
+  id: number;
+  fromAddress: string;
+  subject: string;
+  textBody: string | null;
+  outcome: string | null;
+  note: string | null;
+  question: string | null;
+  recordIds: number[] | null;
+  receivedAt: string;
+}
+
+const OUTCOME_LABELS: Record<string, string> = {
+  logged: "Added to their record",
+  asked: "Asked a question",
+  no_activity: "Nothing to add",
+  needs_review: "Sent to the team",
+  ignored: "Ignored",
+  no_account: "No account",
+  unverified: "Sender not confirmed",
+};
+
+/** Outcomes someone on the team may want to follow up. */
+const ATTENTION_OUTCOMES = new Set(["needs_review", "unverified"]);
+
+function ActivityInboxList() {
+  const [, setLocation] = useLocation();
+  const [emails, setEmails] = useState<ActivityEmail[]>([]);
+  const [nextBefore, setNextBefore] = useState<number | null>(null);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(before: number | null) {
+    setFetching(true);
+    try {
+      const params = before ? `?before=${before}` : "";
+      const r = await fetch(`${BASE}/api/admin/email-activity${params}`, { credentials: "include" });
+      if (r.status === 403) {
+        setLocation("/", { replace: true });
+        return;
+      }
+      if (!r.ok) throw new Error("Could not load the activity inbox");
+      const data: { emails: ActivityEmail[]; nextBefore: number | null } = await r.json();
+      setEmails((prev) => (before ? [...prev, ...data.emails] : data.emails));
+      setNextBefore(data.nextBefore);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load the activity inbox");
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  useEffect(() => {
+    void load(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        Emails people sent to the activity inbox to log what they did, and what happened to each.
+      </p>
+      {emails.length === 0 && !fetching && <p className="text-sm text-muted-foreground">No emails yet.</p>}
+      {emails.map((email) => {
+        const added = email.recordIds?.length ?? 0;
+        return (
+          <article key={email.id} className="border rounded p-3 space-y-1">
+            <div className="flex flex-wrap justify-between gap-2 text-sm">
+              <span className="font-medium break-all">{email.fromAddress}</span>
+              <span className="text-muted-foreground">{ukDateTime(email.receivedAt)}</span>
+            </div>
+            <p className="text-sm">{email.subject || "(no subject)"}</p>
+            <p className="text-sm">
+              <span className={ATTENTION_OUTCOMES.has(email.outcome ?? "") ? "font-medium text-red-700" : "font-medium"}>
+                {email.outcome ? OUTCOME_LABELS[email.outcome] ?? email.outcome : "Being handled"}
+              </span>
+              {added > 0 && ` (${added} ${added === 1 ? "entry" : "entries"})`}
+            </p>
+            {email.note && <p className="text-xs text-muted-foreground break-words">{email.note}</p>}
+            {email.question && <p className="text-xs text-muted-foreground break-words">Asked: {email.question}</p>}
+            {email.textBody && (
+              <details>
+                <summary className="text-sm text-primary cursor-pointer">Show message</summary>
+                <pre className="mt-2 whitespace-pre-wrap break-words text-sm font-sans">{email.textBody}</pre>
+              </details>
+            )}
+          </article>
+        );
+      })}
+      {fetching && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {nextBefore && !fetching && (
+        <button type="button" onClick={() => void load(nextBefore)} className="px-3 py-1.5 rounded border text-sm">
+          Load older emails
+        </button>
+      )}
+    </div>
+  );
+}
+
+const VIEW_LABELS = { sent: "Sent", replies: "Replies", activity: "Activity inbox" } as const;
+
 export default function AdminEmailLog() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [view, setView] = useState<"sent" | "replies">("sent");
+  const [view, setView] = useState<keyof typeof VIEW_LABELS>("sent");
 
   const [entries, setEntries] = useState<EmailLogEntry[]>([]);
   const [nextBefore, setNextBefore] = useState<number | null>(null);
@@ -202,7 +305,7 @@ export default function AdminEmailLog() {
       </div>
 
       <div className="flex gap-2" role="group" aria-label="Show">
-        {(["sent", "replies"] as const).map((v) => (
+        {(Object.keys(VIEW_LABELS) as (keyof typeof VIEW_LABELS)[]).map((v) => (
           <button
             key={v}
             type="button"
@@ -210,12 +313,12 @@ export default function AdminEmailLog() {
             onClick={() => setView(v)}
             className={`px-3 py-1.5 rounded border text-sm ${view === v ? "bg-primary text-primary-foreground" : "bg-background"}`}
           >
-            {v === "sent" ? "Sent" : "Replies"}
+            {VIEW_LABELS[v]}
           </button>
         ))}
       </div>
 
-      {view === "replies" ? <RepliesList /> : (<>
+      {view === "replies" ? <RepliesList /> : view === "activity" ? <ActivityInboxList /> : (<>
 
       <form
         className="flex flex-wrap gap-2"
