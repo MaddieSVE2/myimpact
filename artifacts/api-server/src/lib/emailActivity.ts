@@ -9,7 +9,7 @@
  * member emailing from their account's address, into their own record, but
  * only when the receiving mail server confirmed the sender (senderVerified).
  */
-import type { Activity } from "./impactData.js";
+import { YEARLY_PER_PERSON_ACTIVITY_IDS, type Activity } from "./impactData.js";
 import type { ChatMessage } from "./aiJson.js";
 
 const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
@@ -157,11 +157,42 @@ export type Interpretation =
 export type ConversationTurn = { from: "sender" | "my-impact"; text: string; date: string };
 
 /**
- * Units where one occasion is one unit (one session, one event), so an
- * email about doing it once needs no count. Counts of people, trees, bags
- * and the like are never assumed. Hours are always asked for.
+ * Units where one occasion is one unit (one session, one event, a week's
+ * volunteering), so an email about doing it once needs no count. Hours are
+ * always asked for.
  */
-export const ONE_PER_OCCASION_UNITS = new Set(["session", "workshop", "event", "household", "donation"]);
+export const ONE_PER_OCCASION_UNITS = new Set(["session", "workshop", "event", "household", "donation", "week"]);
+
+/**
+ * True when an email has to give a number for this activity (trees, bags,
+ * miles, people trained), which is never assumed. An email records a single
+ * occasion, and a single occasion of an activity valued per person supported
+ * over a year is valued as time (impactData's one-off rule), so those need
+ * hours only, as in Quick Log.
+ */
+export function needsCount(activity: Pick<Activity, "id" | "unit">): boolean {
+  return (
+    activity.unit !== "hour" &&
+    !ONE_PER_OCCASION_UNITS.has(activity.unit) &&
+    !YEARLY_PER_PERSON_ACTIVITY_IDS.has(activity.id)
+  );
+}
+
+/** What is counted, in plain words: "people you helped", "trees", "miles". */
+export function countLabel(activity: Pick<Activity, "unit" | "unitLabel">): string {
+  switch (activity.unit) {
+    case "person":
+    case "young_person":
+    case "participant":
+      return "people you helped";
+    case "child":
+      return "children";
+    case "mile_per_year":
+      return "miles";
+    default:
+      return activity.unitLabel.toLowerCase().replace(/\s*per year$/, "");
+  }
+}
 
 const MAX_HOURS_PER_ITEM = 24;
 const MAX_QUANTITY = 1000;
@@ -187,7 +218,7 @@ export function buildInterpretMessages(
   activities: Pick<Activity, "id" | "shortName" | "category" | "unit" | "unitLabel">[],
 ): ChatMessage[] {
   const list = activities
-    .map((a) => `- id: "${a.id}" | ${a.shortName} | ${a.category} | unit: ${a.unit}${a.unit === "hour" ? "" : ` (${a.unitLabel})`}`)
+    .map((a) => `- id: "${a.id}" | ${a.shortName} | ${a.category}${needsCount(a) ? ` | count needed: ${countLabel(a)}` : ""}`)
     .join("\n");
   const system = `You read emails sent to My Impact by people recording things they did for others (volunteering, helping, donating). Work out what can be added to their record, or the one question needed to do so.
 
@@ -213,15 +244,15 @@ Return a JSON object:
 
 What each activity needs:
 - activityId: from the list below, only when it is clearly what they describe.
-- date: only a date they gave: an actual date, a day ("Tuesday", "last Friday") or a relative word ("yesterday", "this morning", "today"), worked out from the date of the email it appears in. If they gave no date, it is null. Never use the email's date just because it was sent that day.
+- date: only a date they gave: an actual date, a day ("Tuesday", "last Friday") or a relative word ("yesterday", "this morning", "today"), worked out from the date of the email it appears in. Saying they have just done it ("I just finished", "just got back from", "just now", "earlier") means the day of that email. If they gave no date, it is null. Never use the email's date just because it was sent that day.
 - hours: how long they spent, in hours, only when they said it ("2 hours", "half an hour" is 0.5, "90 minutes" is 1.5). Vague answers ("a while", "all afternoon") are not hours: ask. Always needed. Null if not given.
-- quantity: for session, workshop, event, household and donation units, doing it once is 1 (more only if they say so). For any other unit (people, children, trees, bags, miles...) it is the number they give, needed, or null.
+- quantity: only for activities marked "count needed" in the list. It is the number they give of the thing named there (trees, bags, miles, people), or null if they gave none. For every other activity it is null and you never ask for it: each email is one occasion.
 - location: where it happened, if they said ("Leeds Central Food Bank", "in Hackney", "online"). Null if not said. Never guess it.
 - note: any useful detail or outcome they mention, in their words, briefly (for example "now more confident applying for jobs"). Otherwise null.
 - A donation needs the amount in pounds and a date. Money donations are never an activity from the list.
 
 Outcomes:
-- "ready": every item has its activityId, date and hours (and quantity where needed), and every item has a location or they were already asked where it was.
+- "ready": every item has its activityId, date and hours (and its quantity, only where the list says count needed), and every item has a location or they were already asked where it was.
 - "ask": something is missing. Write one short, natural question in "question" covering everything still missing (usually some of when, how long and where), and still list the items you understood.
 - "no_activity": they say there is nothing to record.
 - "needs_review": it can't be resolved with one straightforward question; what they did matches nothing in the list; it is about something other than recording an activity (a support question, a complaint, asking to stop emails or delete their data); or it mentions distress, harm or a safety concern. Put a short reason in "reason" and no question.
@@ -230,9 +261,9 @@ Outcomes:
 - Never invent or assume an activity, date, duration, quantity, amount or place.
 - If one email has several activities, list each.
 
-Writing: warm, friendly and concise, natural rather than formal, UK English. No praise or enthusiasm ("Great job!", "That sounds amazing!", "Well done"). No exclamation marks. Never use em dashes. Speak as My Impact.
-- "question": "Thanks." and then one short question asking only for what is missing, naming what they did in their own words where that helps. Examples: "Thanks. Roughly how long did you spend at the community garden?", "Thanks. When did you do this?", "Thanks. Which food bank was it, and how long were you there?", "Thanks. Could you tell me a little more about what you did?"
-- "acknowledgement" (for "ready" only): one sentence that thanks them and mentions what they did in their own terms, without repeating numbers or dates. Examples: "Thanks for letting me know about your shift at the food bank.", "Thanks for telling me about the litter pick and your donation to the hospice."
+Writing: sound like a friendly person replying to a message, not a system. Conversational, warm and brief, in UK English, speaking as My Impact ("I"). Vary how you open: do not start every reply with "Thanks". A short, natural reaction to what they did is welcome ("Hey, that's great!", "Lovely, thanks for the update."), but keep it to a few words and never gush ("That sounds amazing!", "Incredible work!"). At most one exclamation mark in a reply. Never use em dashes. Use their words for what they did, never the activity names from the list.
+- "question": one or two short sentences. In your first reply, react briefly, then say what you still need to add it to their record, asking only for what is missing. Examples: "Hey, that's great! Thank you for the update. To add it to your record I just need to know when you did it.", "Lovely, thanks for letting me know. Roughly how long did you spend at the community garden?", "Good to hear. Which food bank was it, and how long were you there?", "Thanks for getting in touch. Could you tell me a little more about what you did?" If you have already asked a question in this conversation, skip the reaction and do not thank them again: just ask, for example "Great, and roughly how long were you there?"
+- "acknowledgement" (for "ready" only): one short, friendly sentence about what they did, in their own terms, without repeating numbers or dates. It need not start with "Thanks". Examples: "That's great, thanks for telling me about your shift at the food bank.", "Lovely to hear about the litter pick and your donation to the hospice."
 
 Activities:
 ${list}`;
@@ -252,8 +283,15 @@ const isIsoDate = (s: unknown): s is string => typeof s === "string" && /^\d{4}-
 const positive = (n: unknown, max: number): number | null =>
   typeof n === "number" && Number.isFinite(n) && n > 0 && n <= max ? Math.round(n * 100) / 100 : null;
 const cleanText = (n: unknown, max = 300): string | null => (typeof n === "string" && n.trim() ? n.trim().slice(0, max) : null);
-/** Model-written copy, held to the tone rules it was given. */
-const tidyCopy = (s: string) => s.replace(/\s*—\s*/g, ", ").replace(/!/g, ".").replace(/\.{2,}/g, ".").trim();
+/** Model-written copy, held to the tone rules it was given: no em dashes, and one exclamation mark at most. */
+const tidyCopy = (s: string) => {
+  let marks = 0;
+  return s
+    .replace(/\s*—\s*/g, ", ")
+    .replace(/!+/g, () => (marks++ === 0 ? "!" : "."))
+    .replace(/\.{2,}/g, ".")
+    .trim();
+};
 
 function daysBetween(fromIso: string, toIso: string): number {
   return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86_400_000);
@@ -279,20 +317,30 @@ export const longDate = (iso: string) =>
 
 type Missing = "date" | "hours" | "quantity" | "amount" | "location";
 
-/** Server-side fallback question when the model says "ready" but something is missing. */
-function fallbackQuestion(missing: Set<Missing>, activity: Pick<Activity, "shortName" | "unitLabel"> | null): string {
-  if (!activity) {
-    const parts = [missing.has("amount") ? "how much you donated" : null, missing.has("date") ? "when it was" : null].filter(Boolean);
-    return `Thanks. Could you tell me ${parts.join(" and ")}?`;
-  }
-  const parts = [
-    missing.has("date") ? "when it was" : null,
-    missing.has("hours") ? "roughly how long you spent" : null,
-    missing.has("quantity") ? `how many ${activity.unitLabel.toLowerCase().replace(/ per year$/, "")} it involved` : null,
-    missing.has("location") ? "where it was" : null,
-  ].filter(Boolean) as string[];
+/**
+ * Server-side fallback question when the model says "ready" but something
+ * is missing. In plain words, never the activity list's own names; the
+ * first one thanks them, a later one just asks.
+ */
+function fallbackQuestion(
+  missing: Set<Missing>,
+  activity: Pick<Activity, "unit" | "unitLabel"> | null,
+  followUp: boolean,
+): string {
+  const parts = (
+    activity
+      ? [
+          missing.has("date") ? "when it was" : null,
+          missing.has("hours") ? "roughly how long you spent" : null,
+          missing.has("quantity") ? `how many ${countLabel(activity)}` : null,
+          missing.has("location") ? "where it was" : null,
+        ]
+      : [missing.has("amount") ? "how much you donated" : null, missing.has("date") ? "when it was" : null]
+  ).filter(Boolean) as string[];
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
-  return `Thanks. For the ${activity.shortName.toLowerCase()}, could you tell me ${list}?`;
+  return followUp
+    ? `Nearly there. I just need to know ${list}.`
+    : `Thanks for the update. To add it to your record I just need to know ${list}.`;
 }
 
 /**
@@ -339,7 +387,7 @@ export function validateInterpretation(
     if (item.type === "donation") {
       const amount = positive(item.amountGBP, MAX_DONATION_GBP);
       if (!amount) missing.add("amount");
-      if (missing.size > 0) fallback ??= fallbackQuestion(missing, null);
+      if (missing.size > 0) fallback ??= fallbackQuestion(missing, null, opts.questionsAsked > 0);
       else items.push({ kind: "donation", amountGBP: amount!, date: item.date as string, note: cleanText(item.note) });
       continue;
     }
@@ -347,17 +395,19 @@ export function validateInterpretation(
     if (!activity) return { outcome: "needs_review", reason: "What they did doesn't match an activity in the list." };
     const hours = positive(item.hours, MAX_HOURS_PER_ITEM);
     if (!hours) missing.add("hours");
-    const perOccasion = activity.unit === "hour" || ONE_PER_OCCASION_UNITS.has(activity.unit);
+    // One occasion is one of it, unless it is something counted (needsCount):
+    // then the number has to come from them.
+    const counted = needsCount(activity);
     const quantity =
-      activity.unit === "hour" || activity.unit === "household"
+      activity.unit === "hour" || activity.unit === "household" || YEARLY_PER_PERSON_ACTIVITY_IDS.has(activity.id)
         ? 1
-        : positive(item.quantity, MAX_QUANTITY) ?? (perOccasion ? 1 : null);
+        : positive(item.quantity, MAX_QUANTITY) ?? (counted ? null : 1);
     if (!quantity) missing.add("quantity");
     const location = cleanLocation(item.location);
     // Where it was is asked once, alongside anything else, and never blocks.
     if (!location && opts.questionsAsked === 0) missing.add("location");
     if (missing.size > 0) {
-      fallback ??= fallbackQuestion(missing, activity);
+      fallback ??= fallbackQuestion(missing, activity, opts.questionsAsked > 0);
       continue;
     }
     items.push({ kind: "activity", activityId: activity.id, quantity: quantity!, hours: hours!, date: item.date as string, location, note: cleanText(item.note) });
@@ -497,4 +547,17 @@ export function threadHeaders(messageId: string | null | undefined): Record<stri
 }
 
 export const SUBJECT_PREFIX_RE = /^\s*re:\s*/i;
+
+/** True when the subject marks the email as a reply ("Re: ..."), not a new email. */
+export const isReplySubject = (subject: string) => SUBJECT_PREFIX_RE.test(subject);
+
+/**
+ * What ties emails into one conversation: the subject without its reply
+ * and forward prefixes. Our reply to "Volunteering" is "Re: Volunteering",
+ * and so is their answer to it. An email with no subject is answered as
+ * "Re: Your activity" (replySubject), so it shares that key.
+ */
+export function threadKey(subject: string): string {
+  return subject.replace(/^\s*((re|fwd?)\s*:\s*)+/i, "").trim().toLowerCase() || "your activity";
+}
 export const replySubject = (subject: string) => `Re: ${subject.replace(SUBJECT_PREFIX_RE, "").trim() || "Your activity"}`.slice(0, 200);

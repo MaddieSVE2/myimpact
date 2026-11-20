@@ -342,11 +342,62 @@ describe("live mode (EMAIL_ACTIVITY_LIVE=true)", () => {
 
     // The answer arrives: today's emails, then the open conversation (newest first).
     state.messageSelects = [[], [{ ...state.messages[0], receivedAt: new Date("2026-11-20T10:00:00Z") }]];
-    await handleActivityEmail({ ...event(), email_id: "rcv_2", created_at: "2026-11-20T11:00:00.000Z" }, deps);
+    await handleActivityEmail({ ...event(), email_id: "rcv_2", subject: "Re: Volunteering", created_at: "2026-11-20T11:00:00.000Z" }, deps);
     const conversation = deps.interpret.mock.calls.at(-1)![0];
     expect(conversation.map((m: { role: string }) => m.role)).toEqual(["system", "user", "assistant", "user"]);
     expect(state.records).toHaveLength(1);
     expect(state.messages[1]).toMatchObject({ outcome: "logged" });
+  });
+});
+
+describe("which emails belong to one conversation", () => {
+  beforeEach(() => {
+    process.env.EMAIL_ACTIVITY_LIVE = "true";
+  });
+  const asked = (subject: string) => ({
+    id: 1,
+    subject,
+    outcome: "asked",
+    textBody: "I just finished 2 hours working in a homeless shelter in Dunfermline.",
+    question: "When did you do it?",
+    receivedAt: new Date("2026-11-20T10:00:00Z"),
+  });
+  const roles = (deps: ReturnType<typeof makeDeps>["deps"]) =>
+    deps.interpret.mock.calls.at(-1)![0].map((m: { role: string }) => m.role);
+
+  it("reads a new email on its own, even while an earlier question is unanswered", async () => {
+    // Selects: today's emails from them, then their earlier emails (one still waiting for an answer).
+    state.messageSelects = [[], [asked("volunteering")]];
+    const { deps } = makeDeps(PASS);
+    deps.fetchEmail.mockResolvedValueOnce({ text: "I really fancy some soup tonight. can you send me a recipe?", authentication: PASS });
+    await handleActivityEmail({ ...event(), email_id: "rcv_9", subject: "soup" }, deps);
+    expect(roles(deps)).toEqual(["system", "user"]);
+    const sentToModel = JSON.stringify(deps.interpret.mock.calls.at(-1)![0].slice(1));
+    expect(sentToModel).toContain("soup");
+    expect(sentToModel).not.toContain("homeless shelter");
+  });
+
+  it("reads a new email on its own even when it reuses an earlier subject", async () => {
+    state.messageSelects = [[], [asked("volunteering")]];
+    const { deps } = makeDeps(PASS);
+    await handleActivityEmail({ ...event(), email_id: "rcv_9", subject: "Volunteering" }, deps);
+    expect(roles(deps)).toEqual(["system", "user"]);
+  });
+
+  it("reads a reply together with the question it answers", async () => {
+    state.messageSelects = [[], [asked("volunteering")]];
+    const { deps } = makeDeps(PASS);
+    await handleActivityEmail({ ...event(), email_id: "rcv_9", subject: "RE: volunteering" }, deps);
+    expect(roles(deps)).toEqual(["system", "user", "assistant", "user"]);
+  });
+
+  it("keeps two open conversations apart", async () => {
+    // Newest first: a question about soup, then the one about volunteering.
+    state.messageSelects = [[], [{ ...asked("soup"), id: 2, textBody: "soup please", question: "What did you do?" }, asked("volunteering")]];
+    const { deps } = makeDeps(PASS);
+    await handleActivityEmail({ ...event(), email_id: "rcv_9", subject: "Re: volunteering" }, deps);
+    expect(roles(deps)).toEqual(["system", "user", "assistant", "user"]);
+    expect(JSON.stringify(deps.interpret.mock.calls.at(-1)![0].slice(1))).not.toContain("soup please");
   });
 });
 
