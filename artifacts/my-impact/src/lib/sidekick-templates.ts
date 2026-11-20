@@ -33,6 +33,20 @@ export type SidekickTemplateCategory =
   | "employer"
   | "dofe";
 
+/**
+ * The organisation's dashboard totals for one reporting period. Used in
+ * place of the person's own score when Sidekick is in organisation mode.
+ */
+export interface SidekickOrgFigures {
+  name?: string;
+  /** e.g. "1 Jan 2026 – 31 Dec 2026" */
+  periodLabel?: string;
+  totalSocialValue: number;
+  totalHours: number;
+  /** People with activity counted in the period. */
+  people: number;
+}
+
 export interface SidekickUserContext {
   totalValue?: number;
   totalHours?: number;
@@ -40,6 +54,11 @@ export interface SidekickUserContext {
   recentActivities?: string[];
   topSdg?: string;
   persona: SidekickPersona;
+  /**
+   * Organisation totals, for the org_manager persona. Undefined means the
+   * figures are not known (not loaded, or the request failed).
+   */
+  org?: SidekickOrgFigures;
 }
 
 /** Persona → prompt copy. `default` is required; others fall back to it. */
@@ -53,6 +72,31 @@ export interface SidekickTemplate {
   label: string;
   description: string;
   personaPrompts: SidekickPersonaPrompts;
+  /**
+   * Card copy shown to organisation managers in place of the heading, label
+   * and description above, which are written for one person ("my impact",
+   * "in interviews") and do not describe the organisation prompt.
+   */
+  orgCard?: SidekickTemplateCardCopy;
+}
+
+export interface SidekickTemplateCardCopy {
+  heading: string;
+  label: string;
+  description: string;
+}
+
+/** The heading, label and description to show on a template card. */
+export function templateCardCopy(
+  template: SidekickTemplate,
+  persona: SidekickPersona,
+): SidekickTemplateCardCopy {
+  if (persona === "org_manager" && template.orgCard) return template.orgCard;
+  return {
+    heading: SIDEKICK_CATEGORY_LABELS[template.category],
+    label: template.label,
+    description: template.description,
+  };
 }
 
 /** A database override for a single template (all fields optional). */
@@ -110,8 +154,48 @@ const RECENT_LINE = (ctx: SidekickUserContext) => {
   return ` My most recent logged activities are: ${list}.`;
 };
 
+const JOIN_LIST = (items: string[]) =>
+  items.length <= 1
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+/**
+ * The organisation version of the {numbers} sentence. It never mentions the
+ * manager's own score: an organisation prompt followed by "I have not
+ * generated a score yet" reads as two different people asking.
+ */
+const ORG_NUMBERS_LINE = (ctx: SidekickUserContext) => {
+  const org = ctx.org;
+  if (!org) {
+    return `I do not have our dashboard figures to hand, so ask me for any facts you need.`;
+  }
+  const period = org.periodLabel ? ` for ${org.periodLabel}` : "";
+  const facts: string[] = [];
+  if (org.totalSocialValue > 0) facts.push(`${POUNDS(org.totalSocialValue)} of social value`);
+  if (org.totalHours > 0) {
+    facts.push(`about ${Math.round(org.totalHours).toLocaleString("en-GB")} hours of activity`);
+  }
+  if (facts.length === 0) {
+    return `Our My Impact dashboard has no activity recorded${period} yet, so ask me for any facts you need.`;
+  }
+  if (org.people > 0) {
+    facts.push(
+      `${Math.round(org.people).toLocaleString("en-GB")} ${org.people === 1 ? "person" : "people"} taking part`,
+    );
+  }
+  return `Our My Impact dashboard${period} shows ${JOIN_LIST(facts)}.`;
+};
+
 /** Fill {activity}/{numbers}/{recent} placeholders in a prompt string. */
 export function fillTemplatePlaceholders(prompt: string, ctx: SidekickUserContext): string {
+  // Organisation prompts speak for the organisation, so the manager's own
+  // activities and score must not be mixed into them.
+  if (ctx.persona === "org_manager") {
+    return prompt
+      .replaceAll("{activity}", "our volunteers' activity")
+      .replaceAll("{numbers}", ORG_NUMBERS_LINE(ctx))
+      .replaceAll("{recent}", "");
+  }
   return prompt
     .replaceAll("{activity}", ACTIVITY(ctx))
     .replaceAll("{numbers}", NUMBERS_LINE(ctx))
@@ -148,6 +232,11 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
     category: "linkedin",
     label: "LinkedIn post about my impact",
     description: "A short, sharable post about what you've contributed.",
+    orgCard: {
+      heading: "LinkedIn post",
+      label: "LinkedIn post about our volunteers' impact",
+      description: "A short, sharable post celebrating what your volunteers have contributed.",
+    },
     personaPrompts: {
       default: `Please write a short LinkedIn post (around 100 words, 3 short paragraphs) about the social value I've created through {activity}. {numbers}{recent} Specific, plain English, no humblebrag. British English, first person, no emojis, no hashtags.`,
       veteran: `Please write a short LinkedIn post (around 100 words, 3 short paragraphs) about the social value I've created through {activity}. {numbers}{recent} I'm a forces veteran, frame the leadership and teamwork side without jargon. End with a single quiet line, not a call to action. British English, first person, no emojis, no hashtags.`,
@@ -193,6 +282,11 @@ export const SIDEKICK_TEMPLATES: SidekickTemplate[] = [
     category: "employer",
     label: "One-line summary for an employer",
     description: "A single sentence to introduce your impact in interviews.",
+    orgCard: {
+      heading: "Funder or trustee one-liner",
+      label: "One-line summary for funders or trustees",
+      description: "A single sentence on your organisation's collective volunteer impact.",
+    },
     personaPrompts: {
       default: `Please give me a single sentence I can say in an interview to summarise the impact of {activity}. {numbers} Conversational, not corporate. British English, first person.`,
       veteran: `Please give me a single sentence I can say in an interview to summarise my contribution through {activity}, in plain civilian language. {numbers} British English, first person, conversational not corporate.`,
@@ -277,9 +371,72 @@ const REGENERATE_ANGLES = [
   "This time take a different angle: write it more conversationally, like I'm telling a friend.",
 ];
 
-export function buildRegeneratePrompt(originalPrompt: string, attempt: number): string {
-  const angle = REGENERATE_ANGLES[attempt % REGENERATE_ANGLES.length];
+// The angles above are written for one person ("what I did", "telling a
+// friend"). Organisation drafts need their own so a second attempt does not
+// slip back into the manager's personal voice.
+const ORG_REGENERATE_ANGLES = [
+  "This time take a different angle: lead with what changed for the people we support, not what our volunteers did.",
+  "This time take a different angle: be more concise, cut a third of the words and keep only the most specific detail.",
+  "This time take a different angle: lead with the scale of what our volunteers gave, then what it made possible.",
+  "This time take a different angle: open with one concrete example of our volunteers' work rather than a summary.",
+  "This time take a different angle: write it more warmly, as we would say it to our own supporters.",
+];
+
+export function buildRegeneratePrompt(
+  originalPrompt: string,
+  attempt: number,
+  persona: SidekickPersona = "default",
+): string {
+  const angles = persona === "org_manager" ? ORG_REGENERATE_ANGLES : REGENERATE_ANGLES;
+  const angle = angles[attempt % angles.length];
   return `${originalPrompt}\n\n${angle}`;
+}
+
+// ---- organisation mode --------------------------------------------------
+
+/**
+ * Pages about the signed-in person's own impact. A manager who opens one of
+ * these is looking at their own record, so Sidekick talks to them as an
+ * individual there.
+ */
+const PERSONAL_PAGE_PREFIXES = [
+  "/wizard",
+  "/results",
+  "/suggestions",
+  "/profile",
+  "/history",
+  "/impact",
+  "/journal",
+  "/milestones",
+  "/recap",
+  "/quick-log",
+  "/log",
+  "/challenges",
+  "/org/submit",
+  "/org/share-report",
+  "/org/member",
+];
+
+export function isPersonalImpactPage(location: string): boolean {
+  return PERSONAL_PAGE_PREFIXES.some((p) => location === p || location.startsWith(`${p}/`));
+}
+
+/**
+ * Whether Sidekick should speak to this person as an organisation manager.
+ *
+ * This is the single answer used for the templates on offer, the quick
+ * questions, and the context sent to the server, so the three cannot
+ * disagree. Being a member of an organisation is not enough: only an active
+ * manager speaks for it, and not while they are on their own impact pages.
+ */
+export function isSidekickOrgMode(signals: {
+  role?: string | null;
+  membershipStatus?: string | null;
+  location: string;
+}): boolean {
+  if (signals.role !== "manager") return false;
+  if (signals.membershipStatus && signals.membershipStatus !== "active") return false;
+  return !isPersonalImpactPage(signals.location);
 }
 
 // ---- persona resolution -------------------------------------------------
@@ -288,11 +445,12 @@ export interface PersonaSignals {
   interests: string[];
   situations: string[];
   careerBreak: boolean;
-  isOrgManager: boolean;
+  /** Result of `isSidekickOrgMode`. */
+  orgMode: boolean;
 }
 
 export function resolvePersona(signals: PersonaSignals): SidekickPersona {
-  if (signals.isOrgManager) return "org_manager";
+  if (signals.orgMode) return "org_manager";
   if (signals.interests.includes("military") || signals.situations.includes("armed_forces")) {
     return "veteran";
   }

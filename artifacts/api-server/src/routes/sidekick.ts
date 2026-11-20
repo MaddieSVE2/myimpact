@@ -8,6 +8,11 @@ import {
 } from "@workspace/integrations-openai-ai-server/audio";
 import { createRateLimiter } from "../lib/rateLimiter.js";
 import { recordSidekickChatFailure } from "../lib/sidekickFailureAlert.js";
+import {
+  buildSidekickContextMessage,
+  type OrgSharingMode,
+  type SidekickChatContext,
+} from "../lib/sidekickContext.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { db, organisationsTable, orgMembersTable, usersTable, sidekickTemplateOverridesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -55,11 +60,17 @@ async function requireOrgAiEnabled(req: AuthenticatedRequest, res: Response, nex
     if (!membership) { next(); return; }
     const org = await db.query.organisationsTable.findFirst({
       where: eq(organisationsTable.id, membership.orgId),
-      columns: { aiSidekickEnabled: true },
+      columns: { aiSidekickEnabled: true, dataSharingMode: true },
     });
     if (org && org.aiSidekickEnabled === false) {
       res.status(403).json({ error: "AI features have been turned off by your organisation." });
       return;
+    }
+    // Lets the chat route say exactly what this person's organisation can
+    // see of them. Read from the database rather than taken from the client.
+    if (org) {
+      res.locals.sidekickOrgSharingMode =
+        org.dataSharingMode === "consented_logging" ? "consented_logging" : "explicit_submission";
     }
     next();
   } catch (err) {
@@ -178,13 +189,20 @@ COMMON QUESTIONS — ANSWERS YOU MUST KNOW:
 - "Does informal volunteering count?" — Yes. It doesn't have to be through a registered organisation.
 - "Can I log past activities?" — Yes. Users can log activities from before they joined.
 - "What if my activity isn't on the list?" — Users can describe it in their own words and the AI activity mode will match it to the right activity type.
-- "Who can see my score?" — Only the user, unless they choose to share it. If they're part of an organisation, the org dashboard shows aggregated data only, not individual activity detail.
-- "Is my data shared with anyone?" — No. Data is not sold or shared with third parties.
+- "Who can see my score?" — If the user is not in an organisation: only the user, unless they choose to share it. If they are in an organisation, answer from WHAT AN ORGANISATION CAN SEE OF ITS MEMBERS below.
+- "Is my data shared with anyone?" — Data is not sold and is not used for advertising. The privacy policy lists the services that help run My Impact. If the user is in an organisation, also say what that organisation sees, from WHAT AN ORGANISATION CAN SEE OF ITS MEMBERS below.
 - "Is My Impact free?" — Yes, it is free for individuals.
 - "Is My Impact connected to Social Value Engine?" — Yes. The calculation methodology is built on SVE's accredited research database.
 - "My score feels low. Does that mean I haven't done enough?" — That feeling makes sense, especially at the start. But a small score is a starting point, not a measure of worth. What you are seeing is the beginning of a record that grows with every session you log. Milestones along the way mark the journey, so you can see your progress build over time. There is no minimum score and nothing to prove.
 - "I'm not sure my actions are significant enough to count." — Every act of care, every hour given, every contribution matters and has measurable value. Nothing is too small to log.
 - "Will this help me get an apprenticeship?" — It will not guarantee a place, and it would be dishonest to say otherwise. What it does is give you something concrete and evidenced to point to, rather than having to make a vague claim about yourself. Apprenticeship assessors are looking for commitment, reliability, and teamwork — and consistent voluntary activity is strong evidence of all three. My Impact turns that activity into a specific, exportable record backed by accredited research, which is genuinely different from just saying you have been involved. It gives you material to reference in your supporting statement and something credible to show if you are asked at interview.
+
+WHAT AN ORGANISATION CAN SEE OF ITS MEMBERS:
+People can join an organisation on My Impact. What that organisation sees depends on how it was set up, which is fixed when the organisation is created. There are two kinds.
+- Explicit submission (the default): managers see the activities a member chooses to share with the organisation, shown with the member's name, hours and social value so they can be checked. Activities the member has not shared are not shown to managers, but they do count towards the organisation's anonymous totals.
+- Consented logging: the member is asked for consent when they join and chooses the date sharing starts from. From that date, the activities they log are shared with the organisation automatically, with their name, hours and social value. They can withdraw consent at any time from the organisation page, and new activities stop being shared straight away.
+In both kinds: managers can see each member's name, email address and general area (their town, or the first letters of their postcode), never the full postcode. Group leads can see the named activities of people in their own groups, but not email addresses. Journal entries, notes and reflections are never shared. Pulse survey answers are only ever shown as anonymous totals.
+Never tell a member that their organisation sees only aggregated or anonymous data: managers do see named activities as described above. If you have not been told which kind of organisation the person belongs to, explain both briefly and suggest they check their organisation page or ask their organisation's manager which applies.
 
 SCEPTICISM HANDLING:
 Some users — particularly veterans and people who have been through career support schemes before — will push back with frustration. They may say things like "I've been told my experience is valuable before and nothing ever came of it" or "everyone says that, but it doesn't make any difference."
@@ -356,14 +374,7 @@ router.post(
   try {
     const { messages, context } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
-      context?: {
-        totalValue?: number;
-        activities?: string[];
-        sdgs?: string[];
-        interests?: string[];
-        situation?: string;
-        locale?: string;
-      };
+      context?: SidekickChatContext;
     };
 
     const isWelsh = context?.locale === "cy";
@@ -416,34 +427,14 @@ router.post(
       });
     }
 
-    if (context) {
-      const contextParts: string[] = [];
-      if (context.totalValue !== undefined) {
-        contextParts.push(`The user's current social value score is £${context.totalValue.toLocaleString("en-GB")}.`);
-      }
-      if (context.activities?.length) {
-        contextParts.push(`Their logged activities include: ${context.activities.join(", ")}.`);
-      }
-      if (context.sdgs?.length) {
-        contextParts.push(`Their activities align with these SDGs: ${context.sdgs.join(", ")}.`);
-      }
-      if (context.interests?.includes("military")) {
-        contextParts.push("This user has a military or forces service background. When helping with CV or interview preparation, translate any military experience into civilian-friendly language and frame their skills (leadership, logistics, crisis management, cross-cultural communication, training) in terms a civilian employer will immediately recognise.");
-      }
-      if (context.interests?.includes("career_break")) {
-        contextParts.push("This user is returning to work after a career break. Their break may have involved caring responsibilities, redundancy, a period of poor mental health, or other difficult life circumstances. When helping with CV or interview preparation, frame their career break as a period of active contribution rather than absence, and help them present it positively without over-explaining. If they express doubt or low confidence about what they have been doing, lead with acknowledgment of how that feels before moving to practical help.");
-      }
-      if (context.situation === "apprenticeship" || context.interests?.includes("apprenticeship")) {
-        contextParts.push("This user is applying for an apprenticeship. When helping them, focus on how their community activity and volunteering can be framed as direct evidence of what apprenticeship assessors look for: commitment, reliability, teamwork, and initiative. Help them translate their logged activities into supporting statement language. If they ask whether My Impact will help them get an apprenticeship, be honest — it does not guarantee a place but gives them something specific and evidenced to reference in their application, which is a concrete advantage over making a vague claim.");
-      }
-      if (context.interests?.includes("org_manager")) {
-        contextParts.push("This user is an organisation manager — someone who runs or coordinates a charity, voluntary group, or community organisation and uses My Impact to manage volunteers and report collective impact. They are not logging their own individual activity. Their questions are likely to be about the organisation dashboard, funder reporting, getting volunteers to adopt the platform, and responding to trustee or governance scrutiny. Use the FUNDER REPORTING GUIDANCE, VOLUNTEER ONBOARDING GUIDANCE, and trustee sections of your instructions when relevant. Do not default to individual-user framing.");
-      } else {
-        contextParts.push("This user is asking as an individual about their own personal impact. Talk to them about their own activities, hours, and evidence. For applications, follow the APPLICATION-WRITING SAFETY rules and help them plan wording they will write themselves. LinkedIn posts, interview practice, and DofE records remain allowed. Do not frame answers around running, leading, or managing an organisation. Do not mention funders, trustees, the board, volunteer onboarding, the organisation dashboard, 'your volunteers', 'your charity', 'your organisation', or 'your members'. Do not suggest activities that imply the user is in charge of other volunteers (such as 'coordinate a group of volunteers', 'train your team', 'organise events for your charity'). If the user explicitly says in their message that they are asking on behalf of a charity, voluntary group, or organisation they manage, you may switch to organisation-manager framing for that message — otherwise keep everything firmly focused on what THIS PERSON does.");
-      }
-      if (contextParts.length) {
-        systemMessages.push({ role: "system", content: contextParts.join(" ") });
-      }
+    // Who is asking (an individual, or a manager speaking for their
+    // organisation) and the figures that go with that. See sidekickContext.ts.
+    const contextMessage = buildSidekickContextMessage(
+      context,
+      res.locals.sidekickOrgSharingMode as OrgSharingMode | undefined,
+    );
+    if (contextMessage) {
+      systemMessages.push({ role: "system", content: contextMessage });
     }
 
     // Detect location/"near me" questions on the latest user message and

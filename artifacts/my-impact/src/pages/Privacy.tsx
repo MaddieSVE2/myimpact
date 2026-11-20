@@ -96,10 +96,10 @@ const SECTIONS: Section[] = [
           <li>To personalise the wizard and suggestions to your situation.</li>
           <li>To generate PDF impact reports on your request.</li>
           <li>To send transactional emails (e.g. account confirmation, organisation registration confirmation).</li>
-          <li>To operate the organisation dashboard with aggregated, anonymised member data.</li>
+          <li>To operate the organisation dashboard. If you join an organisation on My Impact, its managers see anonymous totals across all its members, your name, email address and general area (never your full postcode), and the activities you share with it, shown with your name. The lead of a group you are in sees your name and those activities, but not your email address. Which activities are shared depends on how the organisation is set up: either you choose each one (<Link href="/org/types/explicit-submission" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>explicit submission</Link>), or you agree when you join to share what you log from a date you pick (<Link href="/org/types/consented-logging" style={{ color: "var(--brand-orange)", fontWeight: 600, textDecoration: "none" }}>consented logging</Link>). Journal entries are never shared with an organisation.</li>
           <li>To diagnose bugs and improve the reliability of the service.</li>
         </ul>
-        <p style={{ marginTop: 12 }}>We do not sell your data. We do not use your data for advertising. We do not share your data with third parties except as described under "Third-party services" below.</p>
+        <p style={{ marginTop: 12 }}>We do not sell your data. We do not use your data for advertising. We do not share your data with third parties except with an organisation you have joined, as described above, and as described under "Third-party services" below.</p>
       </>
     ),
   },
@@ -255,7 +255,7 @@ export default function Privacy() {
           </p>
 
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 15 August 2026
+            Last updated: 20 November 2026
           </p>
         </div>
       </section>
