@@ -22,6 +22,8 @@ export interface ReceivedEmailEvent {
   to?: string[] | string;
   received_for?: string[];
   subject?: string;
+  /** The email's Message-ID header, which a reply names to sit under it. */
+  message_id?: string;
 }
 
 /** "Jo Bloggs <Jo@Example.org>" -> "jo@example.org". */
@@ -57,6 +59,8 @@ export function htmlToText(html: string): string {
 export interface ReceivedEmail {
   text: string | null;
   authentication: SenderAuthentication | null;
+  /** Its Message-ID header, when Resend gives one. */
+  messageId?: string | null;
 }
 
 /** The received email from Resend (the webhook carries no body or sender checks). */
@@ -71,12 +75,14 @@ export async function fetchReceivedEmail(id: string): Promise<ReceivedEmail | nu
     text?: string | null;
     html?: string | null;
     authentication?: SenderAuthentication | null;
+    message_id?: string | null;
   };
   const text = body.text?.trim() || (body.html ? htmlToText(body.html) : "");
   const auth = body.authentication && typeof body.authentication === "object" ? body.authentication : null;
   return {
     text: text ? text.slice(0, REPLY_TEXT_LIMIT) : null,
     authentication: auth ? { spf: auth.spf ?? null, dkim: auth.dkim ?? null, dmarc: auth.dmarc ?? null } : null,
+    messageId: typeof body.message_id === "string" ? body.message_id : null,
   };
 }
 

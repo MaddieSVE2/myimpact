@@ -100,7 +100,7 @@ vi.mock("../src/lib/resend.js", () => ({
   }),
 }));
 
-import { handleActivityEmail, type ActivityInboxDeps } from "../src/lib/emailActivityInbox.js";
+import { handleActivityEmail, sendActivityReply, type ActivityInboxDeps } from "../src/lib/emailActivityInbox.js";
 import { ACTIVITIES } from "../src/lib/impactData.js";
 
 const INBOX = "log@myimpact.uk";
@@ -114,6 +114,7 @@ const event = (from = MEMBER) => ({
   to: [INBOX],
   subject: "Volunteering",
   created_at: "2026-11-20T10:00:00.000Z",
+  message_id: "<CAF123@mail.gmail.com>",
 });
 
 /** The model reading a complete email: two hours yesterday, online. */
@@ -124,11 +125,11 @@ const readyAnswer = {
 };
 
 function makeDeps(authentication: ActivityInboxDeps["fetchEmail"] extends (id: string) => Promise<infer R> ? NonNullable<R>["authentication"] : never) {
-  const sent: { to: string; subject: string; text: string }[] = [];
+  const sent: { to: string; subject: string; text: string; inReplyTo?: string | null }[] = [];
   const deps = {
     fetchEmail: vi.fn(async () => ({ text: "Did two hours yesterday, online", authentication })),
     interpret: vi.fn(async () => readyAnswer as Record<string, unknown>),
-    send: vi.fn(async (message: { to: string; subject: string; text: string }) => void sent.push(message)),
+    send: vi.fn(async (message: { to: string; subject: string; text: string; inReplyTo?: string | null }) => void sent.push(message)),
     isAllowedAccount: (email: string) => email === "demo@demo.org",
   };
   return { deps, sent };
@@ -210,7 +211,7 @@ describe("live mode (EMAIL_ACTIVITY_LIVE=true)", () => {
     expect(new Date(state.records[0]!.entryDate as Date).toISOString()).toBe("2026-11-19T00:00:00.000Z");
     expect(state.messages[0]).toMatchObject({ outcome: "logged", recordIds: [100], userId: "user-jo" });
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: MEMBER, subject: "Re: Volunteering" });
+    expect(sent[0]).toMatchObject({ to: MEMBER, subject: "Re: Volunteering", inReplyTo: "<CAF123@mail.gmail.com>" });
     expect(sent[0]!.text).toContain("I've added it to your My Impact record");
     expect(sent[0]!.text).toContain("https://myimpact.uk/history");
   });
@@ -336,7 +337,8 @@ describe("live mode (EMAIL_ACTIVITY_LIVE=true)", () => {
     await handleActivityEmail(event(), deps);
     expect(state.records).toHaveLength(0);
     expect(state.messages[0]).toMatchObject({ outcome: "asked", question: "Thanks. How long were you there?" });
-    expect(sent[0]!.text).toBe("Thanks. How long were you there?\n\nMy Impact");
+    // The question goes on its own, as a reply would: no sign-off.
+    expect(sent[0]!.text).toBe("Thanks. How long were you there?");
 
     // The answer arrives: today's emails, then the open conversation (newest first).
     state.messageSelects = [[], [{ ...state.messages[0], receivedAt: new Date("2026-11-20T10:00:00Z") }]];
@@ -345,5 +347,71 @@ describe("live mode (EMAIL_ACTIVITY_LIVE=true)", () => {
     expect(conversation.map((m: { role: string }) => m.role)).toEqual(["system", "user", "assistant", "user"]);
     expect(state.records).toHaveLength(1);
     expect(state.messages[1]).toMatchObject({ outcome: "logged" });
+  });
+});
+
+describe("sendActivityReply", () => {
+  const message = { to: MEMBER, subject: "Re: Volunteering", text: "Thanks. When did you do this?", inReplyTo: "<CAF123@mail.gmail.com>" };
+  const FALLBACK = "My Impact <team@example.org>";
+  const HOUR = 60 * 60 * 1000;
+
+  function fakeClient(refuseInboxSender: { name: string; message: string } | null) {
+    const sends: Row[] = [];
+    const client = {
+      emails: {
+        send: async (payload: Row) => {
+          sends.push(payload);
+          const refused = refuseInboxSender && String(payload.from).includes(INBOX);
+          return refused ? { data: null, error: refuseInboxSender } : { data: { id: "re_1" }, error: null };
+        },
+      },
+    } as unknown as Parameters<typeof sendActivityReply>[0];
+    return { client, sends };
+  }
+
+  it("replies from the inbox's own address, under the member's email", async () => {
+    const { client, sends } = fakeClient(null);
+    await sendActivityReply(client, FALLBACK, message, 100 * HOUR);
+    expect(sends).toEqual([
+      {
+        from: "My Impact <log@myimpact.uk>",
+        to: MEMBER,
+        replyTo: INBOX,
+        subject: "Re: Volunteering",
+        text: "Thanks. When did you do this?",
+        headers: { "In-Reply-To": "<CAF123@mail.gmail.com>", References: "<CAF123@mail.gmail.com>" },
+      },
+    ]);
+  });
+
+  it("still sends, from the usual address, when Resend refuses the inbox's address, and stops trying it for an hour", async () => {
+    const { client, sends } = fakeClient({ name: "validation_error", message: "The myimpact.uk domain is not verified." });
+    await sendActivityReply(client, FALLBACK, message, 200 * HOUR);
+    expect(sends.map((s) => s.from)).toEqual(["My Impact <log@myimpact.uk>", FALLBACK]);
+    expect(sends[1]).toMatchObject({ to: MEMBER, replyTo: INBOX, headers: { "In-Reply-To": "<CAF123@mail.gmail.com>" } });
+
+    await sendActivityReply(client, FALLBACK, message, 200 * HOUR + 60_000);
+    expect(sends.map((s) => s.from)).toEqual(["My Impact <log@myimpact.uk>", FALLBACK, FALLBACK]);
+
+    await sendActivityReply(client, FALLBACK, message, 202 * HOUR);
+    expect(sends.slice(3).map((s) => s.from)).toEqual(["My Impact <log@myimpact.uk>", FALLBACK]);
+  });
+
+  it("keeps trying the inbox's address after a failure that is not about the sender", async () => {
+    const { client, sends } = fakeClient({ name: "rate_limit_exceeded", message: "Too many requests" });
+    await sendActivityReply(client, FALLBACK, message, 300 * HOUR);
+    await sendActivityReply(client, FALLBACK, message, 300 * HOUR + 1000);
+    expect(sends.map((s) => s.from)).toEqual(["My Impact <log@myimpact.uk>", FALLBACK, "My Impact <log@myimpact.uk>", FALLBACK]);
+  });
+
+  it("fails when neither address can send", async () => {
+    const client = { emails: { send: async () => ({ data: null, error: { name: "application_error", message: "Resend is down" } }) } } as unknown as Parameters<typeof sendActivityReply>[0];
+    await expect(sendActivityReply(client, FALLBACK, message, 400 * HOUR)).rejects.toThrow("Resend is down");
+  });
+
+  it("sends without thread headers when the email had no usable message id", async () => {
+    const { client, sends } = fakeClient(null);
+    await sendActivityReply(client, FALLBACK, { ...message, inReplyTo: null }, 500 * HOUR);
+    expect(sends[0]).not.toHaveProperty("headers");
   });
 });

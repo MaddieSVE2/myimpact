@@ -231,7 +231,7 @@ Outcomes:
 - If one email has several activities, list each.
 
 Writing: warm, friendly and concise, natural rather than formal, UK English. No praise or enthusiasm ("Great job!", "That sounds amazing!", "Well done"). No exclamation marks. Never use em dashes. Speak as My Impact.
-- "question": start with a short thanks, then ask. Examples: "Thanks for letting me know. When was this, and roughly how long were you there?", "Thanks. Which food bank was it, and how long did you spend there?", "Thanks. Could you tell me a little more about what you did?"
+- "question": "Thanks." and then one short question asking only for what is missing, naming what they did in their own words where that helps. Examples: "Thanks. Roughly how long did you spend at the community garden?", "Thanks. When did you do this?", "Thanks. Which food bank was it, and how long were you there?", "Thanks. Could you tell me a little more about what you did?"
 - "acknowledgement" (for "ready" only): one sentence that thanks them and mentions what they did in their own terms, without repeating numbers or dates. Examples: "Thanks for letting me know about your shift at the food bank.", "Thanks for telling me about the litter pick and your donation to the hospice."
 
 Activities:
@@ -283,7 +283,7 @@ type Missing = "date" | "hours" | "quantity" | "amount" | "location";
 function fallbackQuestion(missing: Set<Missing>, activity: Pick<Activity, "shortName" | "unitLabel"> | null): string {
   if (!activity) {
     const parts = [missing.has("amount") ? "how much you donated" : null, missing.has("date") ? "when it was" : null].filter(Boolean);
-    return `Thanks for letting me know. Could you tell me ${parts.join(" and ")}?`;
+    return `Thanks. Could you tell me ${parts.join(" and ")}?`;
   }
   const parts = [
     missing.has("date") ? "when it was" : null,
@@ -292,7 +292,7 @@ function fallbackQuestion(missing: Set<Missing>, activity: Pick<Activity, "short
     missing.has("location") ? "where it was" : null,
   ].filter(Boolean) as string[];
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
-  return `Thanks for letting me know about the ${activity.shortName.toLowerCase()}. Could you tell me ${list}?`;
+  return `Thanks. For the ${activity.shortName.toLowerCase()}, could you tell me ${list}?`;
 }
 
 /**
@@ -460,8 +460,11 @@ export function addedReply(
   return lines.join("\n");
 }
 
-/** A question, signed. */
-export const questionReply = (question: string) => `${question}\n\n${SIGN_OFF}`;
+/**
+ * A question, as it is sent: on its own, with no sign-off. It sits under
+ * the member's own email, from My Impact, and reads as a reply to them.
+ */
+export const questionReply = (question: string) => question.trim();
 
 export const REVIEW_REPLY = `Thanks for getting in touch. I couldn't add this one automatically, so I've passed it to the My Impact team and someone will take a look.\n\n${SIGN_OFF}`;
 
@@ -472,6 +475,26 @@ export const noAccountReply = (appLink: string) =>
 /** To a member whose email could not be confirmed as coming from them. */
 export const unverifiedReply = (logLink: string) =>
   `Thanks for getting in touch. I couldn't confirm this email came from your address, so I haven't added anything. You can log it at ${logLink}\n\n${SIGN_OFF}`;
+
+/**
+ * The sender replies go out as: My Impact at the inbox's own address, so a
+ * reply comes from the address the member wrote to. Null when the inbox is off.
+ */
+export function activityReplyFrom(env: NodeJS.ProcessEnv = process.env): string | null {
+  const inbox = activityInboxAddress(env);
+  return inbox ? `${SIGN_OFF} <${inbox}>` : null;
+}
+
+/**
+ * The headers that make a reply sit under the email it answers in the
+ * member's mail app, from that email's Message-ID. Anything that isn't a
+ * plain message id gives no headers, so nothing odd can reach a header.
+ */
+export function threadHeaders(messageId: string | null | undefined): Record<string, string> | undefined {
+  const id = (messageId ?? "").trim().replace(/^<|>$/g, "");
+  if (!id || id.length > 500 || !/^[^\s<>@]+@[^\s<>@]+$/.test(id)) return undefined;
+  return { "In-Reply-To": `<${id}>`, References: `<${id}>` };
+}
 
 export const SUBJECT_PREFIX_RE = /^\s*re:\s*/i;
 export const replySubject = (subject: string) => `Re: ${subject.replace(SUBJECT_PREFIX_RE, "").trim() || "Your activity"}`.slice(0, 200);
