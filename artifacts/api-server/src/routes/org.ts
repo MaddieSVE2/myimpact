@@ -22,7 +22,7 @@ import { endOfDay, getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
 import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, notWithdrawnCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
-import { applyPendingPlacements, canUseGroup, defaultGroupFor, forgetPendingPlacements, pendingGroupNames, removeFromOrgGroups } from "../lib/orgGroups.js";
+import { applyPendingPlacements, canUseGroup, defaultGroupFor, forgetPendingPlacements, linkGroup, pendingGroupNames, placeFromLink, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
 import { DEACTIVATED_MEMBER_MESSAGE, isDeactivatedFrom, lockMembershipChanges } from "../lib/orgDeactivation.js";
 import { approvedHoursMessage, managerApprovedBy } from "../lib/recordHelpers.js";
@@ -217,6 +217,8 @@ router.post("/validate-invite", authenticate, async (req: AuthenticatedRequest, 
     allowedDomain: org.allowedDomain ?? null,
     allowedDomains: parseAllowedDomains(org.allowedDomain),
     dataSharingMode: org.dataSharingMode ?? "explicit_submission",
+    // The group this link puts people in, so the join screen can say so.
+    group: await linkGroup(org.id, req.body.groupId),
   });
 });
 
@@ -351,6 +353,18 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     await membershipActivated(org.id, userId, userEmail);
   }
 
+  // An invite link for a group (?group=) also puts them in that group.
+  let joinedGroup = await linkGroup(org.id, req.body.groupId);
+  if (joinedGroup) {
+    try {
+      await placeFromLink(org.id, userId, userEmail, memberStatus, joinedGroup);
+    } catch (err) {
+      // They have joined the organisation; they can still join the group themselves.
+      console.error("[org.join] failed to put the new member in the link's group:", err);
+      joinedGroup = null;
+    }
+  }
+
   if (isConsentedOrg && consentScope && consentShareFrom) {
     await db.insert(orgMemberConsentsTable).values({
       id: randomUUID(),
@@ -470,7 +484,7 @@ router.post("/join", authenticate, async (req: AuthenticatedRequest, res) => {
     })();
   }
 
-  res.json({ ok: true, orgName: org.name, alreadyMember: false, status: memberStatus });
+  res.json({ ok: true, orgName: org.name, alreadyMember: false, status: memberStatus, group: joinedGroup });
 });
 
 router.get("/my", authenticate, async (req: AuthenticatedRequest, res) => {

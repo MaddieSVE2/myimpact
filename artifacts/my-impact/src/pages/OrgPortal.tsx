@@ -21,6 +21,7 @@ import { VerificationQueue } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 import { MyGroupsCard } from "@/components/org/MyGroupsCard";
+import { linkGroupParam } from "@/lib/org-groups";
 import { BASE, apiJson } from "@/lib/api";
 import { describeDomains } from "@/lib/email-domains";
 
@@ -842,6 +843,9 @@ function JoinOrgPanel() {
   const [error, setError] = useState<string | null>(null);
   const [fromInviteLink, setFromInviteLink] = useState(false);
   const [resolveOrgFromCode, setResolveOrgFromCode] = useState(false);
+  // An invite link for a group (?group=): joining also puts them in the group.
+  const [linkGroupId] = useState(linkGroupParam);
+  const [linkGroup, setLinkGroup] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -881,7 +885,7 @@ function JoinOrgPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ inviteCode, ...(orgId ? { orgId } : {}) }),
+        body: JSON.stringify({ inviteCode, ...(orgId ? { orgId } : {}), ...(linkGroupId ? { groupId: linkGroupId } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid invite code");
@@ -891,11 +895,13 @@ function JoinOrgPanel() {
         orgName: string;
         allowedDomains?: string[];
         dataSharingMode?: "explicit_submission" | "consented_logging";
+        group?: { id: string; name: string } | null;
       };
     },
     onSuccess: (data) => {
       setSelectedOrg({ id: data.orgId, name: data.orgName });
       setOrgName(data.orgName);
+      setLinkGroup(data.group ?? null);
       setAllowedDomains(data.allowedDomains ?? []);
       setDataSharingMode(data.dataSharingMode ?? "explicit_submission");
       setStep("consent");
@@ -918,6 +924,7 @@ function JoinOrgPanel() {
   const joinMutation = useMutation({
     mutationFn: async ({ inviteCode, orgId }: { inviteCode: string; orgId: string }) => {
       const body: Record<string, string> = { inviteCode, orgId };
+      if (linkGroup) body.groupId = linkGroup.id;
       if (dataSharingMode === "consented_logging") {
         body.consentScope = consentScope;
         if (consentScope === "historic") body.consentHistoricFrom = consentHistoricFrom;
@@ -930,11 +937,14 @@ function JoinOrgPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
-      return data as { ok: boolean; orgName: string; alreadyMember: boolean; status: string };
+      return data as { ok: boolean; orgName: string; alreadyMember: boolean; status: string; group?: { id: string; name: string } | null };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-org"] });
       queryClient.invalidateQueries({ queryKey: ["org-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["org-my-groups"] });
+      // What the server did: null when the group could not be used after all.
+      setLinkGroup(data.group ?? null);
       if (data.status === "pending") {
         try { localStorage.setItem(PENDING_JOIN_KEY, data.orgName ?? orgName); } catch { /* ignore */ }
         setStep("pending");
@@ -957,6 +967,11 @@ function JoinOrgPanel() {
         <p className="text-sm text-muted-foreground mb-6">
           Your request to join <strong>{orgName}</strong> has been submitted. An organisation manager will approve or reject it shortly — you'll be able to contribute your activity data once approved.
         </p>
+        {linkGroup && (
+          <p className="text-sm text-muted-foreground mb-6" data-testid="text-pending-group">
+            When it's approved, you'll be in the <strong>{linkGroup.name}</strong> group.
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">You can close this page. Check back later to see if your request has been approved.</p>
       </motion.div>
     );
@@ -969,7 +984,10 @@ function JoinOrgPanel() {
           <ShieldCheck className="w-6 h-6 text-green-600" />
         </div>
         <h2 className="text-lg font-display font-semibold text-foreground mb-2">You've joined {orgName}</h2>
-        <p className="text-sm text-muted-foreground mb-6">Your activity data will now contribute to the organisation dashboard. The page will refresh to show your organisation's impact.</p>
+        <p className="text-sm text-muted-foreground mb-6">
+          {linkGroup && <span data-testid="text-joined-group">You're in the <strong>{linkGroup.name}</strong> group. </span>}
+          Your activity data will now contribute to the organisation dashboard. The page will refresh to show your organisation's impact.
+        </p>
         <button
           onClick={() => window.location.reload()}
           className="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
@@ -987,6 +1005,12 @@ function JoinOrgPanel() {
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">Join {orgName}?</h2>
           <p className="text-sm text-muted-foreground">Before you confirm, here's exactly what will and won't be shared:</p>
         </div>
+        {linkGroup && (
+          <div className="mx-6 mb-2 flex items-start gap-2 bg-muted/40 border border-border rounded-lg px-3 py-2.5 text-xs text-foreground" data-testid="notice-invite-group">
+            <Users className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>This link is for the <strong>{linkGroup.name}</strong> group. When you join {orgName}, you'll be in that group too. You can leave it at any time.</span>
+          </div>
+        )}
         {allowedDomains.length > 0 && (
           domainMismatch ? (
             <div className="mx-6 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800" data-testid="notice-domain-mismatch">

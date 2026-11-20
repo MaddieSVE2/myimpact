@@ -16,6 +16,8 @@ const state = vi.hoisted(() => ({
   organisation: null as Record<string, unknown> | null,
   // db.query.orgRegistrationsTable.findFirst() result.
   registration: null as Record<string, unknown> | null,
+  // db.query.orgGroupsTable.findFirst() result (the group an invite link names).
+  group: null as Record<string, unknown> | null,
   // Records inserted via db.insert(table).values(...).
   inserts: [] as Array<{ table: string; values: unknown }>,
   // Recorded db.update(table).set(values) calls.
@@ -34,6 +36,7 @@ vi.mock("@workspace/db", () => {
     const b: Record<string, unknown> = {};
     const chain = () => b;
     b.from = chain;
+    b.innerJoin = chain;
     b.where = chain;
     b.orderBy = chain;
     b.limit = chain;
@@ -59,6 +62,9 @@ vi.mock("@workspace/db", () => {
       orgRegistrationsTable: {
         findFirst: vi.fn(async () => state.registration),
       },
+      orgGroupsTable: {
+        findFirst: vi.fn(async () => state.group),
+      },
       impactRecordsTable: {
         findFirst: vi.fn(async () => null),
       },
@@ -69,6 +75,7 @@ vi.mock("@workspace/db", () => {
         return {
           returning: async () => [{ id: 1 }],
           onConflictDoUpdate: () => Promise.resolve(undefined),
+          onConflictDoNothing: () => Promise.resolve(undefined),
           then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
             Promise.resolve(undefined).then(resolve, reject),
           catch: (reject: (e: unknown) => unknown) => Promise.resolve(undefined).catch(reject),
@@ -77,6 +84,7 @@ vi.mock("@workspace/db", () => {
       },
     }),
     select: (_cols?: unknown) => builderFor(() => state.selectQueue.shift() ?? []),
+    selectDistinct: (_cols?: unknown) => builderFor(() => state.selectQueue.shift() ?? []),
     update: (table: { __tableName: string }) => ({
       set: (values: unknown) => {
         state.updates.push({ table: table.__tableName, values });
@@ -116,6 +124,13 @@ vi.mock("@workspace/db", () => {
     orgMemberConsentsTable: tableTag("org_member_consents"),
     orgMigrationsTable: tableTag("org_migrations"),
     orgMigratedActivitiesTable: tableTag("org_migrated_activities"),
+    orgGroupsTable: tableTag("org_groups"),
+    orgGroupMembersTable: tableTag("org_group_members"),
+    orgPendingGroupMembersTable: tableTag("org_pending_group_members"),
+    recurringTemplatesTable: tableTag("recurring_templates"),
+    challengesTable: tableTag("challenges"),
+    challengeGroupsTable: tableTag("challenge_groups"),
+    challengeParticipantsTable: tableTag("challenge_participants"),
   };
 });
 
@@ -213,6 +228,7 @@ beforeEach(() => {
   state.deactivated = null;
   state.organisation = null;
   state.registration = null;
+  state.group = null;
   state.inserts.length = 0;
   state.updates.length = 0;
   state.updateReturning = [];
@@ -389,6 +405,77 @@ describe("POST /api/org/join — new member approval", () => {
     const res = await request(makeApp()).post("/api/org/join").send(joinBody);
     expect(res.status).toBe(403);
     expect(state.inserts.filter((i) => i.table === "org_members")).toHaveLength(0);
+  });
+});
+
+describe("Invite links for a group", () => {
+  const football = { id: "group-1", name: "Football club" };
+  const joinBody = { inviteCode: "ACME1234", orgId: "org-1", groupId: "group-1" };
+  const insertsInto = (table: string) => state.inserts.filter((i) => i.table === table);
+
+  async function join(autoApproveMembers: boolean, body: Record<string, unknown> = joinBody) {
+    state.authUser = { id: "user-1", email: "Volunteer@Anywhere.net" };
+    state.organisation = { ...baseOrg, autoApproveMembers };
+    state.membershipQueue.push(null, null);
+    return request(makeApp()).post("/api/org/join").send(body);
+  }
+
+  it("tells the join screen which group the link is for", async () => {
+    state.authUser = { id: "new-user", email: "new@example.com" };
+    state.organisation = baseOrg;
+    state.group = football;
+    state.membershipQueue.push(null);
+    const res = await request(makeApp()).post("/api/org/validate-invite").send({ inviteCode: "ACME1234", groupId: "group-1" });
+    expect(res.status).toBe(200);
+    expect(res.body.group).toEqual(football);
+  });
+
+  it("names no group for a link without one, or one whose group can't be used", async () => {
+    state.authUser = { id: "new-user", email: "new@example.com" };
+    state.organisation = baseOrg;
+    state.membershipQueue.push(null, null);
+    const plain = await request(makeApp()).post("/api/org/validate-invite").send({ inviteCode: "ACME1234" });
+    expect(plain.body.group).toBeNull();
+    // Archived, or another organisation's: the lookup finds nothing.
+    const stale = await request(makeApp()).post("/api/org/validate-invite").send({ inviteCode: "ACME1234", groupId: "gone" });
+    expect(stale.status).toBe(200);
+    expect(stale.body.group).toBeNull();
+  });
+
+  it("puts someone who is active straight away in the group", async () => {
+    state.group = football;
+    const res = await join(true);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "active", group: football });
+    expect(insertsInto("org_group_members").map((i) => i.values)).toEqual([[{ groupId: "group-1", userId: "user-1", role: "member" }]]);
+    expect(insertsInto("org_pending_group_members")).toHaveLength(0);
+  });
+
+  it("saves the place for someone waiting for approval", async () => {
+    state.group = football;
+    const res = await join(false);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "pending", group: football });
+    expect(insertsInto("org_group_members")).toHaveLength(0);
+    expect(insertsInto("org_pending_group_members").map((i) => i.values)).toEqual([
+      { orgId: "org-1", email: "volunteer@anywhere.net", groupId: "group-1", role: "member" },
+    ]);
+  });
+
+  it("still joins the organisation when the link's group can't be used", async () => {
+    const res = await join(true, { ...joinBody, groupId: "gone" });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "active", group: null });
+    expect(insertsInto("org_members")).toHaveLength(1);
+    expect(insertsInto("org_group_members")).toHaveLength(0);
+  });
+
+  it("ignores a group id that isn't text", async () => {
+    state.group = football;
+    const res = await join(true, { ...joinBody, groupId: { id: "group-1" } });
+    expect(res.status).toBe(200);
+    expect(res.body.group).toBeNull();
+    expect(insertsInto("org_group_members")).toHaveLength(0);
   });
 });
 
