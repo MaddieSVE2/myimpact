@@ -67,7 +67,7 @@ export const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Can my organisation use My Impact?",
-    a: "Yes. My Impact works for schools, universities, charities, local authorities, and private sector employers running employee volunteering or community investment programmes. Organisations get a dedicated dashboard showing aggregated, anonymised impact data across their members, ready for programme reporting, funding bids, commissioner returns, and ESG reporting. Get in touch at hello@myimpact.uk or explore the demo dashboard to find out more.",
+    a: "Yes. My Impact works for schools, universities, charities, local authorities, and private sector employers running employee volunteering or community investment programmes. Organisations get a dedicated dashboard showing the collective impact of their members, with anonymous totals and the activities members have agreed to share, ready for programme reporting, funding bids, commissioner returns, and ESG reporting. Get in touch at hello@myimpact.uk or explore the demo dashboard to find out more.",
   },
 ];
 
@@ -269,7 +269,7 @@ export const ORGANISATIONS_META: PageMetadata = {
 export const ORG_REGISTER_META: PageMetadata = {
   title: "Register your Organisation — My Impact",
   description:
-    "Register your school, charity, company, or public-sector body to get an aggregated, anonymised impact dashboard showing the collective social value your members create. Free to try.",
+    "Register your school, charity, company, or public-sector body to get an impact dashboard showing the collective social value your members create. Free to try.",
   canonical: "https://myimpact.uk/org/register",
   robots: "index, follow",
 };

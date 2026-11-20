@@ -12,17 +12,26 @@ import { CopyButton } from "@/components/CopyField";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
   SIDEKICK_TEMPLATES,
-  SIDEKICK_CATEGORY_LABELS,
   applyTemplateOverrides,
   buildRegeneratePrompt,
   buildTemplatePrompt,
+  isSidekickOrgMode,
   resolvePersona,
+  templateCardCopy,
   templatesForPersona,
+  type SidekickPersona,
   type SidekickTemplate,
   type SidekickTemplateCategory,
   type SidekickTemplateOverride,
   type SidekickUserContext,
 } from "@/lib/sidekick-templates";
+import { useSidekickOrgFigures } from "@/lib/sidekick-org-figures";
+import {
+  dataSharingAnswer,
+  sidekickOrgSharingMode,
+  whoCanSeeAnswer,
+  type SidekickOrgSharingMode,
+} from "@/lib/sidekick-org-visibility";
 import {
   useAudioDevices,
   cleanDeviceLabel,
@@ -32,7 +41,18 @@ import { BASE, apiJson } from "@/lib/api";
 
 
 function useMyOrgMembership(enabled: boolean) {
-  return useQuery<{ org: { id: string; name: string; type: string; role?: string; aiSidekickEnabled?: boolean } | null }>({
+  return useQuery<{
+    org: {
+      id: string;
+      name: string;
+      type: string;
+      role?: string;
+      membershipStatus?: string;
+      summaryYearStart?: string;
+      dataSharingMode?: string;
+      aiSidekickEnabled?: boolean;
+    } | null;
+  }>({
     queryKey: ["my-org"],
     enabled,
     queryFn: async () => {
@@ -52,8 +72,18 @@ interface Message {
    */
   templateId?: string;
   templatePrompt?: string;
+  /** Who the template was written for, so a retry keeps the same voice. */
+  templatePersona?: SidekickPersona;
   regenerateAttempt?: number;
 }
+
+// Shown whenever Sidekick is in organisation mode (see isSidekickOrgMode).
+const ORG_MANAGER_QUICK_ACTIONS = [
+  "How do I explain our impact figures to funders?",
+  "How do I get volunteers to start logging?",
+  "What does the organisation dashboard actually show?",
+  "How do I respond if a trustee questions the accuracy of the figures?",
+];
 
 const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
   "/wizard/actions": [
@@ -104,12 +134,6 @@ const PAGE_QUICK_ACTIONS: Record<string, string[]> = {
     "How do I earn more milestones?",
     "Can I use my milestones in a personal statement?",
   ],
-  "/org": [
-    "How do I explain our impact figures to funders?",
-    "How do I get volunteers to start logging?",
-    "What does the organisation dashboard actually show?",
-    "How do I respond if a trustee questions the accuracy of the figures?",
-  ],
   "/org/register": [
     "What are the benefits of registering an organisation?",
     "How does the invite code system work?",
@@ -139,7 +163,11 @@ function normalise(text: string): string {
     .replace(/\s+/g, " ");
 }
 
-const INSTANT_ANSWERS: { patterns: string[]; answer: string }[] = [
+// An answer is a function when it depends on the person's organisation.
+const INSTANT_ANSWERS: {
+  patterns: string[];
+  answer: string | ((mode: SidekickOrgSharingMode) => string);
+}[] = [
   {
     patterns: ["what is my impact", "what is my impact app", "what does my impact do"],
     answer:
@@ -190,8 +218,7 @@ const INSTANT_ANSWERS: { patterns: string[]; answer: string }[] = [
       "is my data private",
       "who sees my information",
     ],
-    answer:
-      "Only you can see your score and activity detail, unless you choose to share it. If you are part of an organisation, the organisation dashboard shows aggregated data only, not your individual activities or score.",
+    answer: whoCanSeeAnswer,
   },
   {
     patterns: [
@@ -201,7 +228,7 @@ const INSTANT_ANSWERS: { patterns: string[]; answer: string }[] = [
       "is my data sold",
       "data privacy",
     ],
-    answer: "No. Your data is not sold or shared with third parties. It is used only to calculate and display your social value within My Impact.",
+    answer: dataSharingAnswer,
   },
   {
     patterns: [
@@ -257,12 +284,12 @@ const INSTANT_ANSWERS: { patterns: string[]; answer: string }[] = [
   },
 ];
 
-function getInstantAnswer(text: string): string | null {
+function getInstantAnswer(text: string, sharingMode: SidekickOrgSharingMode): string | null {
   const normalised = normalise(text);
   for (const entry of INSTANT_ANSWERS) {
     for (const pattern of entry.patterns) {
       if (normalised === pattern) {
-        return entry.answer;
+        return typeof entry.answer === "function" ? entry.answer(sharingMode) : entry.answer;
       }
     }
   }
@@ -407,7 +434,16 @@ export function Sidekick() {
   const { isLoggedIn, user } = useAuth();
   const { locale } = useLocale();
   const { data: orgData } = useMyOrgMembership(isLoggedIn);
-  const isOrgManager = !!(orgData?.org);
+  // One answer to "is this person speaking for their organisation right
+  // now?", used for the templates, the quick questions and the context sent
+  // to the server. Belonging to an organisation is not enough: only an
+  // active manager speaks for it, and not on their own impact pages.
+  const orgMode = isSidekickOrgMode({
+    role: orgData?.org?.role,
+    membershipStatus: orgData?.org?.membershipStatus,
+    location,
+  });
+  const orgFiguresQuery = useSidekickOrgFigures(orgData?.org, orgMode && open);
   // When the user belongs to an org whose manager has disabled AI features,
   // replace the Sidekick with a small dismissible "AI off" notice (see
   // AiDisabledByOrgRail) so members understand why the chat is missing
@@ -547,14 +583,9 @@ export function Sidekick() {
 
   const baseQuickActions = PAGE_QUICK_ACTIONS[location] ?? DEFAULT_QUICK_ACTIONS;
   const quickActions = (() => {
-    if (isOnOrgPage && isOrgManager) {
-      return [
-        "How do I explain our impact figures to funders?",
-        "How do I get volunteers to start logging?",
-        "What does the organisation dashboard actually show?",
-        "How do I respond if a trustee questions the accuracy of the figures?",
-      ];
-    }
+    if (orgMode) return ORG_MANAGER_QUICK_ACTIONS;
+    // Someone browsing the organisation pages who is not in one yet.
+    if (isOnOrgPage && !orgData?.org) return PAGE_QUICK_ACTIONS["/org/register"];
     if (location === "/results") {
       const extras: string[] = [];
       if (interests.includes("military")) {
@@ -580,9 +611,9 @@ export function Sidekick() {
         interests,
         situations,
         careerBreak,
-        isOrgManager,
+        orgMode,
       }),
-    [interests, situations, careerBreak, isOrgManager]
+    [interests, situations, careerBreak, orgMode]
   );
 
   const templateUserContext = useMemo<SidekickUserContext>(() => {
@@ -599,8 +630,9 @@ export function Sidekick() {
       topActivity: top,
       recentActivities: recent.length > 0 ? recent : undefined,
       topSdg,
+      org: orgMode ? orgFiguresQuery.data : undefined,
     };
-  }, [persona, result]);
+  }, [persona, result, orgMode, orgFiguresQuery.data]);
 
   const overridesQuery = useQuery<{ overrides: SidekickTemplateOverride[] }>({
     queryKey: ["sidekick-template-overrides"],
@@ -659,22 +691,33 @@ export function Sidekick() {
 
   const buildContext = useCallback(() => {
     const ctx: Record<string, unknown> = {};
+    if (orgMode) {
+      // Speaking for the organisation: send its figures and nothing about
+      // the manager's own score or activities, so the two are never mixed.
+      ctx.interests = ["org_manager"];
+      ctx.org = { name: orgData?.org?.name, ...orgFiguresQuery.data };
+      return ctx;
+    }
     if (result?.totalValue) ctx.totalValue = result.totalValue;
     if (result?.activityBreakdowns?.length) ctx.activities = result.activityBreakdowns.map((b: { activityName: string }) => b.activityName);
     if (result?.sdgBreakdowns?.length) ctx.sdgs = result.sdgBreakdowns.map((s: { sdg: string }) => s.sdg);
     if (situation) ctx.situation = situation;
-    const effectiveInterests = [...interests, ...customInterests];
-    if (isOrgManager && isOnOrgPage && !effectiveInterests.includes("org_manager")) {
-      effectiveInterests.push("org_manager");
-    }
+    // "org_manager" is set only by organisation mode above, never by a
+    // typed-in interest.
+    const effectiveInterests = [...interests, ...customInterests].filter((i) => i !== "org_manager");
     if (effectiveInterests.length) ctx.interests = effectiveInterests;
     return Object.keys(ctx).length ? ctx : undefined;
-  }, [result, situation, interests, customInterests, isOrgManager, isOnOrgPage]);
+  }, [result, situation, interests, customInterests, orgMode, orgData?.org?.name, orgFiguresQuery.data]);
 
   const sendMessage = useCallback(
     async (
       userText: string,
-      meta?: { templateId?: string; templatePrompt?: string; regenerateAttempt?: number }
+      meta?: {
+        templateId?: string;
+        templatePrompt?: string;
+        templatePersona?: SidekickPersona;
+        regenerateAttempt?: number;
+      }
     ) => {
       if (!userText.trim() || streaming) return;
 
@@ -692,7 +735,7 @@ export function Sidekick() {
 
       // Instant answers only apply to free-typed quick questions, not template prompts.
       if (!meta?.templateId) {
-        const instant = getInstantAnswer(userText);
+        const instant = getInstantAnswer(userText, sidekickOrgSharingMode(orgData?.org));
         if (instant !== null) {
           setMessages((prev) => [...prev, { role: "assistant", content: instant }]);
           return;
@@ -707,6 +750,7 @@ export function Sidekick() {
           content: "",
           templateId: meta?.templateId,
           templatePrompt: meta?.templatePrompt,
+          templatePersona: meta?.templatePersona,
           regenerateAttempt: meta?.regenerateAttempt,
         },
       ]);
@@ -849,26 +893,40 @@ export function Sidekick() {
         quotaQuery.refetch().catch(() => {});
       }
     },
-    [messages, streaming, buildContext, locale, toast, quotaQuery]
+    [messages, streaming, buildContext, locale, toast, quotaQuery, orgData?.org]
   );
 
   const fireTemplate = useCallback(
-    (template: SidekickTemplate) => {
-      const prompt = buildTemplatePrompt(template, templateUserContext);
+    async (template: SidekickTemplate) => {
+      let ctx = templateUserContext;
+      // An organisation draft needs the organisation's figures. If they are
+      // still on their way, wait for them rather than sending a prompt that
+      // says we have none.
+      if (orgMode && !ctx.org) {
+        const { data } = await orgFiguresQuery.refetch({ cancelRefetch: false });
+        if (data) ctx = { ...ctx, org: data };
+      }
+      const prompt = buildTemplatePrompt(template, ctx);
       setTab("chat");
-      sendMessage(prompt, { templateId: template.id, templatePrompt: prompt, regenerateAttempt: 0 });
+      sendMessage(prompt, {
+        templateId: template.id,
+        templatePrompt: prompt,
+        templatePersona: ctx.persona,
+        regenerateAttempt: 0,
+      });
     },
-    [templateUserContext, sendMessage]
+    [templateUserContext, sendMessage, orgMode, orgFiguresQuery]
   );
 
   const regenerateTemplate = useCallback(
     (msg: Message) => {
       if (!msg.templateId || !msg.templatePrompt) return;
       const nextAttempt = (msg.regenerateAttempt ?? 0) + 1;
-      const newPrompt = buildRegeneratePrompt(msg.templatePrompt, nextAttempt - 1);
+      const newPrompt = buildRegeneratePrompt(msg.templatePrompt, nextAttempt - 1, msg.templatePersona);
       sendMessage(newPrompt, {
         templateId: msg.templateId,
         templatePrompt: msg.templatePrompt,
+        templatePersona: msg.templatePersona,
         regenerateAttempt: nextAttempt,
       });
     },
@@ -1161,32 +1219,39 @@ export function Sidekick() {
       <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#FFF7F3" }}>
         <p className="font-medium text-foreground mb-1">One-tap writing prompts</p>
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          Tap a card to draft something with your numbers. We'll personalise it to your situation and let you copy or try a different angle.
+          {orgMode
+            ? "Tap a card to draft something with your organisation's figures. You can copy it or try a different angle."
+            : "Tap a card to draft something with your numbers. We'll personalise it to your situation and let you copy or try a different angle."}
         </p>
       </div>
 
       {Array.from(groupedTemplates.entries()).map(([category, templates]) => (
         <div key={category} className="flex flex-col gap-2">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            {SIDEKICK_CATEGORY_LABELS[category]}
+            {templateCardCopy(templates[0], persona).heading}
           </p>
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => fireTemplate(t)}
-              disabled={streaming}
-              className="text-left px-3.5 py-3 rounded-lg border border-border hover:border-[var(--brand-orange-bright)] hover:bg-[#FFF7F3] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              data-testid={`template-${t.id}`}
-            >
-              <p className="text-[13px] font-medium text-foreground leading-snug">{t.label}</p>
-              <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{t.description}</p>
-            </button>
-          ))}
+          {templates.map((t) => {
+            const card = templateCardCopy(t, persona);
+            return (
+              <button
+                key={t.id}
+                onClick={() => fireTemplate(t)}
+                disabled={streaming}
+                className="text-left px-3.5 py-3 rounded-lg border border-border hover:border-[var(--brand-orange-bright)] hover:bg-[#FFF7F3] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                data-testid={`template-${t.id}`}
+              >
+                <p className="text-[13px] font-medium text-foreground leading-snug">{card.label}</p>
+                <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{card.description}</p>
+              </button>
+            );
+          })}
         </div>
       ))}
 
       <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-        Drafts use your current score and recent activity. AI responses are for guidance only.
+        {orgMode
+          ? "Drafts use your organisation's dashboard figures. AI responses are for guidance only."
+          : "Drafts use your current score and recent activity. AI responses are for guidance only."}
       </p>
     </div>
   );
@@ -1319,7 +1384,9 @@ export function Sidekick() {
                 <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#FFF7F3" }}>
                   <p className="font-medium text-foreground mb-1">Hey! I'm Sidekick 👋</p>
                   <p className="text-muted-foreground text-[13px] leading-relaxed">
-                    I can help you understand your social value, discover new ways to make an impact, and explain how everything is calculated.
+                    {orgMode
+                      ? "I can help you explain your organisation's impact figures, report to funders and trustees, and get volunteers logging."
+                      : "I can help you understand your social value, discover new ways to make an impact, and explain how everything is calculated."}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">

@@ -235,7 +235,7 @@ const doc = new Document({
         bullet("Unique invite code and shareable invite link generated per organisation"),
         bullet("Organisation-contextual login screen shown when users arrive via an invite link"),
         bullet("Users can join an organisation from within their own account"),
-        bullet("Admin dashboard showing aggregated, anonymised social value and hours across all members"),
+        bullet("Admin dashboard showing anonymous totals of social value and hours across all members, plus a named feed of the activities members have agreed to share"),
         bullet("Organisation type switcher in the demo dashboard (charity, school, university, local authority)"),
         bullet("Period selector with calendar year, last 12 months, all time, and custom date ranges"),
         bullet("Bulk member invite functionality"),
