@@ -106,15 +106,23 @@ Admins see every email sent to the inbox and what happened to it at
   activity list. Nothing is assumed: the server checks the answer for a
   known activity, a date they gave (within the last year, not in the
   future; today only if they said "today", "this morning" or similar),
-  how long they spent (always), and a count where the activity is counted
-  (people, trees and so on; sessions, workshops, events and households are
-  one per occasion). Where it happened is asked once and saved on the
+  how long they spent (always), and a number only where a single occasion
+  is valued by one (trees, bags, bins, miles, people trained). Everything
+  else is one per occasion: sessions, events, a week's general
+  volunteering, and support valued per person over a year, which a single
+  occasion values as time, as Quick Log does. "I just finished" counts as
+  today. Where it happened is asked once and saved on the
   entry, but never holds it back. Money donations are valued as donations.
-- Replies: the AI writes the questions and a one-line thanks about what
-  they did (no praise, no exclamation marks, no em dashes); the facts in
+- Replies: the AI writes the questions and a one-line reaction to what
+  they did. They are meant to read like a friendly person replying:
+  conversational, not always opening with "Thanks", a brief reaction
+  ("Hey, that's great!") but no gushing, one exclamation mark at most, no
+  em dashes, and the member's own words for what they did, never the
+  activity list's names; the facts in
   the confirmation (date, hours, place, value, links) are filled in by the
-  server. A question is sent on its own ("Thanks. Roughly how long did
-  you spend at the community garden?"); confirmations and notices are
+  server. A question is sent on its own ("Hey, that's great! Thank you for
+  the update. To add it to your record I just need to know when you did
+  it."); confirmations and notices are
   signed "My Impact".
 - Replies are sent as `My Impact <EMAIL_ACTIVITY_INBOX>` (the address the
   member wrote to) and name the member's email (In-Reply-To), so they sit
@@ -129,7 +137,10 @@ Admins see every email sent to the inbox and what happened to it at
   activity already logged that day is not added again. The reply lists
   each entry with its value.
 - **Missing something:** one short question covering everything missing goes back (Reply-To the
-  activity inbox), and the answer is read with the earlier emails. After
+  activity inbox), and the answer is read with the earlier emails in that
+  conversation. A conversation is a subject and the replies to it
+  ("Re: ..."): a new email is always read on its own, even while an
+  earlier question is unanswered. After
   two unanswered or still-incomplete rounds, or for anything that isn't a
   simple activity (support questions, "stop emailing me", "delete my
   data", anything worrying), it goes to `EMAIL_REPLY_FORWARD_TO` and the

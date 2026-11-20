@@ -35,16 +35,18 @@ import {
   buildInterpretMessages,
   decideSender,
   isAutomatedEmail,
+  isReplySubject,
   itemToEntry,
+  needsCount,
   newText,
   noAccountReply,
-  ONE_PER_OCCASION_UNITS,
   parseTestSenders,
   questionReply,
   replySubject,
   REVIEW_REPLY,
   senderVerified,
   storedLocation,
+  threadKey,
   unverifiedReply,
   validateInterpretation,
   type AddedLine,
@@ -269,7 +271,7 @@ function describeItem(item: LoggableItem): { name: string; detail: string; place
   if (item.kind === "donation") return { name: "Donation", detail: `£${item.amountGBP.toLocaleString("en-GB")}`, place: null };
   const activity = ACTIVITIES.find((a) => a.id === item.activityId)!;
   const hours = `${item.hours} ${item.hours === 1 ? "hour" : "hours"}`;
-  const counted = activity.unit !== "hour" && !ONE_PER_OCCASION_UNITS.has(activity.unit);
+  const counted = needsCount(activity);
   const loc = item.location;
   const place = loc ? (loc.mode === "online" ? "online" : [loc.label, loc.townCity].filter(Boolean).join(", ") || loc.postcode) : null;
   return {
@@ -369,8 +371,10 @@ export async function handleActivityEmail(
   const text = newText(email?.text ?? "");
   await finish(id, { userId: user.id, textBody: text.slice(0, 20_000) });
 
-  // The open conversation: this sender's emails we asked a question about,
-  // since their last finished one.
+  // The open conversation: the emails in this thread we asked a question
+  // about, since its last finished one. A thread is a subject and the
+  // replies to it, so only a reply can continue one. A new email is a new
+  // conversation, even while a question in another is unanswered.
   const earlier = await db
     .select()
     .from(emailActivityMessagesTable)
@@ -383,9 +387,13 @@ export async function handleActivityEmail(
     )
     .orderBy(desc(emailActivityMessagesTable.id));
   const open = [];
-  for (const row of earlier) {
-    if (row.outcome !== "asked") break;
-    open.unshift(row);
+  if (isReplySubject(subject)) {
+    const thread = threadKey(subject);
+    for (const row of earlier) {
+      if (threadKey(row.subject) !== thread) continue;
+      if (row.outcome !== "asked") break;
+      open.unshift(row);
+    }
   }
   const conversation: ConversationTurn[] = [];
   for (const row of open) {
