@@ -25,9 +25,12 @@ import { autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, oneOf
 import { getUncachableResendClient } from "./resend.js";
 import { bareAddress, fetchReceivedEmail, isForReplyInbox, type ReceivedEmail, type ReceivedEmailEvent } from "./emailReplies.js";
 import { replyInboxAddress } from "./emailLog.js";
+import type { Resend } from "resend";
 import {
   activityInboxAddress,
   activityInboxLive,
+  activityReplyFrom,
+  threadHeaders,
   addedReply,
   buildInterpretMessages,
   decideSender,
@@ -76,19 +79,63 @@ export interface ActivityInboxDeps {
   /** The email's text and Resend's checks on its sender; null when it can't be fetched here. */
   fetchEmail: (emailId: string) => Promise<ReceivedEmail | null>;
   interpret: (messages: ReturnType<typeof buildInterpretMessages>) => Promise<Record<string, unknown> | null>;
-  send: (message: { to: string; subject: string; text: string }) => Promise<void>;
+  send: (message: ActivityReply) => Promise<void>;
   /** True for the demo accounts, the only ones a test sender may log into. */
   isAllowedAccount: (email: string) => boolean;
+}
+
+/** One reply to someone who emailed the activity inbox. */
+export interface ActivityReply {
+  to: string;
+  subject: string;
+  text: string;
+  /** The Message-ID of the email being answered, so the reply sits under it. */
+  inReplyTo?: string | null;
+}
+
+/** After Resend refuses the inbox's address as a sender, it is not tried again for this long. */
+const INBOX_SENDER_RETRY_MS = 60 * 60 * 1000;
+let inboxSenderRefusedAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * Sends a reply as My Impact at the inbox's own address (the one the member
+ * wrote to), under their email. Resend only sends from domains verified on
+ * the account, so if it refuses that address the reply still goes, from
+ * the usual sender (`fallbackFrom`).
+ */
+export async function sendActivityReply(
+  client: { emails: Pick<Resend["emails"], "send"> },
+  fallbackFrom: string,
+  message: ActivityReply,
+  now = Date.now(),
+): Promise<void> {
+  const headers = threadHeaders(message.inReplyTo);
+  const payload = {
+    to: message.to,
+    // Answers come back to the activity inbox, keeping the conversation together.
+    replyTo: activityInboxAddress()!,
+    subject: message.subject,
+    text: message.text,
+    ...(headers ? { headers } : {}),
+  };
+  const ownFrom = activityReplyFrom();
+  if (ownFrom && now - inboxSenderRefusedAt > INBOX_SENDER_RETRY_MS) {
+    const { error } = await client.emails.send({ from: ownFrom, ...payload });
+    if (!error) return;
+    // Only a refusal of the sender itself pauses further attempts.
+    if (/domain|verif|from/i.test(`${error.name ?? ""} ${error.message}`)) inboxSenderRefusedAt = now;
+    console.warn(`[activity-inbox] could not send as ${ownFrom} (${error.message}); sending as ${fallbackFrom}`);
+  }
+  const { error } = await client.emails.send({ from: fallbackFrom, ...payload });
+  if (error) throw new Error(error.message);
 }
 
 const defaultDeps: ActivityInboxDeps = {
   fetchEmail: fetchReceivedEmail,
   interpret: (messages) => completeJson(messages, 2500),
-  send: async ({ to, subject, text }) => {
+  send: async (message) => {
     const { client, fromEmail } = await getUncachableResendClient("activity-log");
-    // Answers come back to the activity inbox, keeping the conversation together.
-    const { error } = await client.emails.send({ from: fromEmail, to, replyTo: activityInboxAddress()!, subject, text });
-    if (error) throw new Error(error.message);
+    await sendActivityReply(client, fromEmail, message);
   },
   isAllowedAccount: isPersonaEmail,
 };
@@ -279,7 +326,10 @@ export async function handleActivityEmail(
     await finish(id, { outcome: "ignored", note: "Over the daily limit for this sender." });
     return "handled";
   }
-  const reply = async (body: string) => deps.send({ to: from, subject: replySubject(subject), text: body });
+  // Replies name the member's email, so they sit under it in their mail app.
+  let messageId = event.message_id ?? null;
+  const reply = async (body: string) =>
+    deps.send({ to: from, subject: replySubject(subject), text: body, inReplyTo: messageId });
 
   // A test sender logs into its demo account; a member into the account with their address.
   const account = decision.read === "test" ? decision.account : from;
@@ -298,6 +348,7 @@ export async function handleActivityEmail(
   try {
     email = await deps.fetchEmail(event.email_id);
     fetched = true;
+    messageId ??= email?.messageId ?? null;
   } catch (err) {
     console.error("[activity-inbox] could not fetch the email:", err);
   }

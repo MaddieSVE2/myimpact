@@ -113,7 +113,16 @@ Admins see every email sent to the inbox and what happened to it at
 - Replies: the AI writes the questions and a one-line thanks about what
   they did (no praise, no exclamation marks, no em dashes); the facts in
   the confirmation (date, hours, place, value, links) are filled in by the
-  server. Every reply is signed "My Impact".
+  server. A question is sent on its own ("Thanks. Roughly how long did
+  you spend at the community garden?"); confirmations and notices are
+  signed "My Impact".
+- Replies are sent as `My Impact <EMAIL_ACTIVITY_INBOX>` (the address the
+  member wrote to) and name the member's email (In-Reply-To), so they sit
+  under it in the member's mail app. This needs the inbox's domain to be
+  verified for sending in Resend. If Resend refuses that sender, the
+  reply goes from the usual sender instead, and the inbox's address is not
+  tried again for an hour; the refused send shows as Failed in the email
+  log.
 - **Complete:** each item becomes a Quick Log entry (`kind` quick_log, name
   "Logged by email", `result_json.capturedBy` "email", plus any outcome
   they mention as `emailNote`), valued as Quick Log values it. The same
