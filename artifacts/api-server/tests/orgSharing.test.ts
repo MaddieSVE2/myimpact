@@ -149,11 +149,29 @@ describe("sharedRecordsCondition", () => {
       formerMembers: new Map([["former-1", deactivatedAt]]),
     });
     const q = render(sharedRecordsCondition(ctx)!);
-    // The cut-off sits directly after the former member's own id and window.
+    // The cut-off sits directly after the former member's own id, window and
+    // the saved records they shared with this org.
     const former = q.params.indexOf("former-1");
-    expect(q.params.slice(former, former + 3)).toEqual(["former-1", "2025-09-01T00:00:00.000Z", deactivatedAt.toISOString()]);
+    expect(q.params.slice(former, former + 4)).toEqual(["former-1", "2025-09-01T00:00:00.000Z", "org-1", deactivatedAt.toISOString()]);
     expect(q.sql.match(/"created_at" <= /g)).toHaveLength(1);
     expect(q.sql).toMatch(/"user_id" in \(\$\d+, \$\d+\)/);
+  });
+
+  it("consented mode: a saved record shared from before the member's sharing date counts whatever its date", () => {
+    const q = render(sharedRecordsCondition(makeCtx())!);
+    // Either dated inside the window, or an org copy made by Review & share.
+    expect(q.sql).toMatch(/"entry_date" >= \$\d+\) or \("impact_records"\."user_id" in \(\$\d+\) and \(\s*"impact_records"\."source" = 'member-submitted'\s+AND "impact_records"\."submitted_to_org_id" = \$\d+\s+AND "impact_records"\."source_report_id" IS NOT NULL/);
+  });
+
+  it("consented mode: shared saved records need the member's consent to be active", () => {
+    // user-2 is an active member with no active consent (no shareFrom).
+    const q = render(sharedRecordsCondition(makeCtx({ memberIds: ["user-1", "user-2"] }))!);
+    expect(q.params).not.toContain("user-2");
+  });
+
+  it("explicit mode: no separate clause for shared saved records (members' records already count)", () => {
+    const q = render(sharedRecordsCondition(makeCtx({ mode: "explicit_submission", shareFromByUser: new Map() }))!);
+    expect(q.sql).not.toContain(`"source_report_id" IS NOT NULL`);
   });
 
   it("explicit mode: keeps legacy member filter but still excludes twins", () => {

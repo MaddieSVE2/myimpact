@@ -30,6 +30,8 @@ const state = vi.hoisted(() => ({
   updates: [] as Array<{ table: string; values: unknown }>,
   // Recorded db.delete(table) calls.
   deletes: [] as string[],
+  // db.query.orgMemberConsentsTable.findFirst() result (consented-logging orgs).
+  consent: null as { status: string; shareFrom: Date } | null,
 }));
 
 // ── @workspace/db mock ───────────────────────────────────────────────────────
@@ -83,6 +85,9 @@ vi.mock("@workspace/db", () => {
       },
       organisationsTable: {
         findFirst: vi.fn(async () => state.organisation),
+      },
+      orgMemberConsentsTable: {
+        findFirst: vi.fn(async () => state.consent),
       },
     },
     insert: (table: { __tableName: string }) => insertFor(table),
@@ -225,6 +230,7 @@ beforeEach(() => {
   state.organisation = { revokedAt: null };
   state.updates.length = 0;
   state.deletes.length = 0;
+  state.consent = null;
 });
 
 describe("POST /api/org/member-submit", () => {
@@ -580,16 +586,51 @@ describe("POST /api/org/member-submit with sourceReportId", () => {
     expect(state.inserts).toHaveLength(0);
   });
 
-  it("rejects report shares for consented-logging orgs (report is already automatically visible)", async () => {
+  it("consented-logging org: shares a record dated before the member's sharing date (made before joining)", async () => {
     setupMemberWithReport();
     state.organisation = { revokedAt: null, dataSharingMode: "consented_logging" };
+    // Consent starts after the report's entry date (30 June 2026).
+    state.consent = { status: "active", shareFrom: new Date("2026-09-01T10:00:00Z") };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(201);
+    const rec = state.inserts.find(i => i.table === "impact_records")!.values as Record<string, unknown>;
+    expect(rec.sourceReportId).toBe(777);
+    expect(rec.source).toBe("member-submitted");
+    expect(rec.submittedToOrgId).toBe("org-1");
+    expect(rec.entryDate).toEqual(REPORT.entryDate);
+  });
+
+  it("consented-logging org: rejects a record the organisation already sees automatically", async () => {
+    setupMemberWithReport();
+    state.organisation = { revokedAt: null, dataSharingMode: "consented_logging" };
+    // Consent granted later on the record's own day still covers that day.
+    state.consent = { status: "active", shareFrom: new Date("2026-06-30T15:00:00Z") };
     const app = makeApp();
     const res = await request(app).post("/api/org/member-submit").send({
       sourceReportId: 777,
       activities: [{ activityId: "tree_planting" }],
     });
     expect(res.status).toBe(400);
+    expect(res.body.code).toBe("already_visible");
     expect(res.body.error).toMatch(/automatically/i);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("consented-logging org: rejects a share once the member has withdrawn consent", async () => {
+    setupMemberWithReport();
+    state.organisation = { revokedAt: null, dataSharingMode: "consented_logging" };
+    state.consent = { status: "withdrawn", shareFrom: new Date("2026-09-01T10:00:00Z") };
+    const app = makeApp();
+    const res = await request(app).post("/api/org/member-submit").send({
+      sourceReportId: 777,
+      activities: [{ activityId: "tree_planting" }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("consent_not_active");
     expect(state.inserts).toHaveLength(0);
   });
 
@@ -789,6 +830,131 @@ describe("POST /api/org/member-submit with sourceReportId", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/evidence/i);
     expect(state.inserts).toHaveLength(0);
+  });
+});
+
+// ── Saved records still to share (made before joining, say) ─────────────────
+describe("GET /api/org/my/shareable-records", () => {
+  const base = {
+    userId: "user-1",
+    source: "user",
+    submittedToOrgId: null,
+    attestedAt: null,
+    habitTemplateId: null,
+    sourceReportId: null,
+    reportStartDate: null,
+    reportEndDate: null,
+    totalHours: 26,
+    totalValue: "412.50",
+    resultJson: {},
+    createdAt: new Date("2026-03-01T00:00:00Z"),
+  };
+  const report = {
+    ...base,
+    id: 1,
+    name: "My 2026 report",
+    kind: "annual_estimate",
+    entryDate: new Date("2026-03-01T00:00:00Z"),
+    reportStartDate: new Date("2026-01-01T00:00:00Z"),
+    reportEndDate: new Date("2026-12-31T00:00:00Z"),
+    activitiesJson: [
+      { activityId: "tree_planting", quantity: 12, hoursPerYear: 6 },
+      { activityId: "community_garden", quantity: 0, hoursPerYear: 20 },
+    ],
+  };
+  const quickLog = {
+    ...base,
+    id: 2,
+    name: "Litter pick",
+    kind: "quick_log",
+    entryDate: new Date("2026-08-10T00:00:00Z"),
+    activitiesJson: [{ activityId: "tree_planting", quantity: 3, hoursPerYear: 1 }],
+  };
+
+  function setupMember() {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    state.membership = { orgId: "org-1", userId: "user-1", role: "member" };
+    state.organisation = { id: "org-1", name: "Example Org", revokedAt: null, dataSharingMode: "explicit_submission" };
+  }
+
+  it("returns nothing for someone who is not in an organisation", async () => {
+    state.authUser = { id: "user-1", email: "user1@example.com" };
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ org: null, records: [] });
+  });
+
+  it("lists saved reports and quick logs with their totals, ready to share", async () => {
+    setupMember();
+    state.selectQueue.push([quickLog, report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.status).toBe(200);
+    expect(res.body.org).toEqual({ id: "org-1", name: "Example Org", dataSharingMode: "explicit_submission" });
+    expect(res.body.records).toEqual([
+      { id: 2, name: "Litter pick", kind: "quick_log", entryDate: "2026-08-10", reportPeriod: null, activityCount: 1, totalHours: 26, totalValue: 412.5 },
+      { id: 1, name: "My 2026 report", kind: "annual_estimate", entryDate: "2026-03-01", reportPeriod: { start: "2026-01-01", end: "2026-12-31" }, activityCount: 2, totalHours: 26, totalValue: 412.5 },
+    ]);
+  });
+
+  it("leaves out records already shared with this organisation, and the org copies themselves", async () => {
+    setupMember();
+    const orgCopy = { ...report, id: 50, source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 1 };
+    state.selectQueue.push([orgCopy, quickLog, report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body.records.map((r: { id: number }) => r.id)).toEqual([2]);
+  });
+
+  it("still offers a record shared only with a different organisation", async () => {
+    setupMember();
+    const otherOrgCopy = { ...report, id: 51, source: "member-submitted", submittedToOrgId: "org-other", sourceReportId: 1 };
+    state.selectQueue.push([otherOrgCopy, report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body.records.map((r: { id: number }) => r.id)).toEqual([1]);
+  });
+
+  it("leaves out records that Review & share would refuse or that have nothing an organisation can receive", async () => {
+    setupMember();
+    state.selectQueue.push([
+      // A habit occurrence and a plain dated legacy row are not shareable records.
+      { ...quickLog, id: 3, kind: "recurring_confirmation" },
+      { ...quickLog, id: 4, kind: "legacy" },
+      // Donations only: no activity lines to send.
+      { ...report, id: 5, activitiesJson: [] },
+      // Attested through the organisation API: not a personal record.
+      { ...quickLog, id: 6, attestedAt: new Date("2026-08-11T00:00:00Z") },
+      // A custom line valued in the stored result counts.
+      { ...quickLog, id: 7, activitiesJson: [], resultJson: { activityBreakdowns: [{ activityId: "custom_1", activityName: "Coached the under 9s", hours: 2 }] } },
+    ]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body.records.map((r: { id: number }) => r.id)).toEqual([7]);
+  });
+
+  it("consented-logging org: nothing to share once consent is withdrawn", async () => {
+    setupMember();
+    state.organisation = { id: "org-1", name: "Example Org", revokedAt: null, dataSharingMode: "consented_logging" };
+    state.consent = { status: "withdrawn", shareFrom: new Date("2026-09-01T10:00:00Z") };
+    state.selectQueue.push([report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body.org.dataSharingMode).toBe("consented_logging");
+    expect(res.body.records).toEqual([]);
+  });
+
+  it("consented-logging org: offers records with active consent", async () => {
+    setupMember();
+    state.organisation = { id: "org-1", name: "Example Org", revokedAt: null, dataSharingMode: "consented_logging" };
+    state.consent = { status: "active", shareFrom: new Date("2026-09-01T10:00:00Z") };
+    // The query itself keeps only records dated before the sharing date.
+    state.selectQueue.push([report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body.records.map((r: { id: number }) => r.id)).toEqual([1]);
+  });
+
+  it("returns nothing for a revoked organisation", async () => {
+    setupMember();
+    state.organisation = { id: "org-1", name: "Example Org", revokedAt: new Date(), dataSharingMode: "explicit_submission" };
+    state.selectQueue.push([report]);
+    const res = await request(makeApp()).get("/api/org/my/shareable-records");
+    expect(res.body).toEqual({ org: null, records: [] });
   });
 });
 

@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import Attachments from "@/components/Attachments";
 import { useWizard, type HistoryRecord } from "@/lib/wizard-context";
 import { useMyOrg } from "@/lib/org-export";
+import { SHAREABLE_RECORDS_KEY, useShareableRecords } from "@/lib/shareable-records";
 import { joinedGroups, useMyGroups } from "@/lib/org-groups";
 import { RecordGroupControl } from "@/components/org/RecordGroupControl";
 import { QuickLog } from "@/components/QuickLog";
@@ -350,13 +351,15 @@ export default function History() {
   // Members choose which of their organisation's groups each activity counts for.
   const { data: myGroups } = useMyGroups(shareOrgData?.org?.membershipStatus === "active");
   const memberGroups = joinedGroups(myGroups);
-  // No membershipStatus gate: explicit-submission orgs accept submissions
-  // from pending members too (matching /org/submit), and the server
-  // re-checks eligibility on the share endpoint regardless.
-  const shareOrgEligible =
-    !!shareOrgData?.org &&
-    shareOrgData.org.role !== "manager" &&
-    shareOrgData.org.dataSharingMode !== "consented_logging";
+  // No membershipStatus gate: organisations accept submissions from pending
+  // members too, and the server re-checks eligibility on the share endpoint
+  // regardless. Which records qualify comes from the server, so this never
+  // drifts from its rule: saved reports and Quick Log entries the
+  // organisation has not been sent (in an automatic-sharing organisation,
+  // only those dated before the member's sharing date).
+  const shareOrgEligible = !!shareOrgData?.org && shareOrgData.org.role !== "manager";
+  const { data: shareableData } = useShareableRecords(shareOrgEligible);
+  const shareableRecordIds = new Set((shareableData?.records ?? []).map(r => String(r.id)));
 
   type MatchInfoEntry = { recordId: string; matchedValue: number; hoursMatched: number; donationsMatched: number; cappedAtMonthlyLimit: boolean };
   type MatchInfoResponse = { org: { id: string; name: string } | null; matches: MatchInfoEntry[] };
@@ -418,6 +421,8 @@ export default function History() {
     queryClient.invalidateQueries({
       predicate: q => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/impact/recap/"),
     });
+    // Which saved records can still be sent to the organisation.
+    queryClient.invalidateQueries({ queryKey: SHAREABLE_RECORDS_KEY });
   };
 
   // One-tap repair for entries saved before the donation-inflation fix
@@ -1381,12 +1386,12 @@ export default function History() {
                                 );
                               })()}
                               {(() => {
-                                // Deferred "Review & share": members of an
-                                // explicit-submission org can share a saved
-                                // report from History too — not just from the
-                                // post-save prompt. The server re-checks
-                                // eligibility; this only offers the entry
-                                // point for report-like records.
+                                // Deferred "Review & share": members can
+                                // share a saved record from History too, not
+                                // just from the post-save prompt, so one made
+                                // before joining is never entered again. The
+                                // server decides which records qualify
+                                // (shareableRecordIds) and re-checks on submit.
                                 //
                                 // Hide the link while a live share exists — the member
                                 // must withdraw it first. The link reappears automatically
@@ -1394,22 +1399,7 @@ export default function History() {
                                 const swCheck = (record as { sharedWith?: { orgId: string; orgName: string; twinId: number } | null }).sharedWith;
                                 if (swCheck) return null;
                                 if (!shareOrgEligible) return null;
-                                const rec = record as {
-                                  kind?: string | null; source?: string | null;
-                                  reportStartDate?: string | null; reportEndDate?: string | null;
-                                  habitTemplateId?: number | null;
-                                };
-                                // Same predicate as the server: only saved
-                                // Full Impact Reports qualify. Legacy rows
-                                // qualify ONLY with an authoritative stored
-                                // report period — dated records never do.
-                                const isReport =
-                                  rec.kind === "annual_estimate" ||
-                                  (rec.kind === "legacy" &&
-                                    !!rec.reportStartDate && !!rec.reportEndDate &&
-                                    rec.habitTemplateId == null &&
-                                    (rec.source === "user" || rec.source === "retrospective"));
-                                if (!isReport) return null;
+                                if (!shareableRecordIds.has(String(record.id))) return null;
                                 return (
                                   <Link
                                     href={`/org/share-report/${record.id}`}
