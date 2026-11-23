@@ -55,6 +55,12 @@ export interface SidekickUserContext {
   topSdg?: string;
   persona: SidekickPersona;
   /**
+   * Whether the person is signed in. Sidekick is then given their saved
+   * record by the server, so a prompt can point to it instead of saying
+   * there is no score when no calculation is open in this browser.
+   */
+  signedIn?: boolean;
+  /**
    * Organisation totals, for the org_manager persona. Undefined means the
    * figures are not known (not loaded, or the request failed).
    */
@@ -142,10 +148,18 @@ const HOURS_LINE = (ctx: SidekickUserContext) =>
     ? ` (about ${Math.round(ctx.totalHours)} hours logged)`
     : "";
 
+// With no calculation open in this browser, a signed-in person still has
+// their saved record, which the server gives to Sidekick with each message.
+// The figures are deliberately not fetched into the prompt: the server reads
+// them itself, so they cannot be out of date or altered on the way. This
+// sentence must stay no longer than the "no score" one, so that swapping it
+// in can never push a prompt past the message limit.
 const NUMBERS_LINE = (ctx: SidekickUserContext) =>
   HAS_SCORE(ctx)
     ? `My current My Impact total social value is ${POUNDS(ctx.totalValue)}${HOURS_LINE(ctx)}.`
-    : `I have not generated a score yet, so focus on the activity and ask me for any facts you need.`;
+    : ctx.signedIn
+      ? `Use the activities, hours and social value in my saved record, and ask me for anything else.`
+      : `I have not generated a score yet, so focus on the activity and ask me for any facts you need.`;
 
 const RECENT_LINE = (ctx: SidekickUserContext) => {
   const acts = ctx.recentActivities ?? [];

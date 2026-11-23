@@ -630,9 +630,11 @@ export function Sidekick() {
       topActivity: top,
       recentActivities: recent.length > 0 ? recent : undefined,
       topSdg,
+      // Signed-in people have a saved record the server gives to Sidekick.
+      signedIn: isLoggedIn,
       org: orgMode ? orgFiguresQuery.data : undefined,
     };
-  }, [persona, result, orgMode, orgFiguresQuery.data]);
+  }, [persona, result, isLoggedIn, orgMode, orgFiguresQuery.data]);
 
   const overridesQuery = useQuery<{ overrides: SidekickTemplateOverride[] }>({
     queryKey: ["sidekick-template-overrides"],

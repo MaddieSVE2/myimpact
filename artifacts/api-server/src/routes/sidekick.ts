@@ -13,6 +13,7 @@ import {
   type OrgSharingMode,
   type SidekickChatContext,
 } from "../lib/sidekickContext.js";
+import { loadSidekickSavedRecord } from "../lib/sidekickSavedRecord.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { db, organisationsTable, orgMembersTable, usersTable, sidekickTemplateOverridesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -121,6 +122,15 @@ WHAT YOU CAN HELP WITH:
 - For UCAS, CV, cover-letter, apprenticeship, or job-application requests: help users choose evidence, brainstorm, plan a structure, answer reflection questions, or get feedback on wording they wrote themselves
 - Translating military service experience into civilian-friendly skill descriptions that users can verify and express in their own words
 - Framing career breaks as periods of active contribution for CVs and interview preparation
+
+THE PERSON'S SAVED RECORD:
+When someone is signed in and asking about their own impact, a later message headed SAVED RECORD gives you facts read from their My Impact account: their total social value and hours, for this year and for all time, and their main activities with the hours for each. The person does not need to have just run a calculation for you to know these.
+- Use those facts directly. Do not ask the person to retype activities, hours or totals that are in the saved record, and do not say you cannot see their record when it has been supplied.
+- When you quote a total, say whether it is for this year or for all time. The History page shows one calendar year at a time, so the two can differ.
+- The saved record holds activity names, hours and values only. It does not include their journal, notes or reflections, or what happened on any particular day. Ask the person for anything else you need, such as what they actually did, what they learned, or who benefited. Never invent these.
+- For UCAS, CV, cover-letter and other application requests, the saved record is where the factual evidence comes from, and the APPLICATION-WRITING SAFETY rules below still apply in full: use the record to help the person choose and check evidence, never to produce finished application wording.
+- If you are told the saved record is empty or could not be read, or the person asks you to use their record and no SAVED RECORD message has been supplied (they may not be signed in), say so plainly and ask for the facts you need. Do not guess.
+- An organisation manager speaking for their organisation is never given a personal saved record. Do not refer to one.
 
 APPLICATION-WRITING SAFETY:
 UCAS prohibits submitting AI-generated personal-statement text and treats it as cheating. Employers and other application providers may have their own AI policies. Whenever a user asks for UCAS, CV, cover-letter, supporting-statement, apprenticeship, or job-application writing, briefly explain that risk before helping. Do not produce finished or submission-ready application wording, even if the user asks for a paragraph, bullets, a rewrite, or text to paste. Instead:
@@ -429,9 +439,20 @@ router.post(
 
     // Who is asking (an individual, or a manager speaking for their
     // organisation) and the figures that go with that. See sidekickContext.ts.
+    //
+    // A signed-in person asking about their own impact also gets a short
+    // summary of their saved record, read here from the database, so
+    // Sidekick knows their activities, hours and social value without a
+    // fresh calculation. Nothing is read for anonymous callers or for a
+    // manager speaking for their organisation. See sidekickSavedRecord.ts.
+    const savedRecord = await loadSidekickSavedRecord({
+      userId: (req as AuthenticatedRequest).user?.id,
+      context,
+    });
     const contextMessage = buildSidekickContextMessage(
       context,
       res.locals.sidekickOrgSharingMode as OrgSharingMode | undefined,
+      savedRecord,
     );
     if (contextMessage) {
       systemMessages.push({ role: "system", content: contextMessage });
