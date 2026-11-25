@@ -28,6 +28,50 @@ export interface SidekickChatContext {
   org?: SidekickOrgContext;
 }
 
+/**
+ * Whether this request is a manager speaking for their organisation. The
+ * one answer used both to frame the reply and to decide that nothing about
+ * the manager's own record is read (see sidekickSavedRecord.ts).
+ */
+export function isOrgManagerContext(context: SidekickChatContext | undefined | null): boolean {
+  const interests: unknown = context?.interests;
+  if (Array.isArray(interests)) return interests.includes("org_manager");
+  return typeof interests === "string" && interests.includes("org_manager");
+}
+
+export interface SidekickSavedActivity {
+  name: string;
+  hours: number;
+}
+
+/**
+ * The signed-in person's saved impact record, cut down to a few bounded
+ * facts. Built on the server from the database by sidekickSavedRecord.ts,
+ * never from figures the browser sends.
+ */
+export type SidekickSavedRecord =
+  /** Signed in, with nothing saved yet. */
+  | { status: "empty" }
+  /** Signed in, but the record could not be read for this request. */
+  | { status: "unavailable" }
+  | {
+      status: "saved";
+      /** All years together. */
+      totalValue: number;
+      totalHours: number;
+      /** The current calendar year, the figure History and the recap show. */
+      year: number;
+      yearValue: number;
+      yearHours: number;
+      /** Largest first, capped in number and in the length of each name. */
+      activities: SidekickSavedActivity[];
+      /** Activities left off the list by the cap. */
+      moreActivities: number;
+      /** Month and year of the earliest and latest entry, e.g. "March 2024". */
+      firstEntry: string | null;
+      latestEntry: string | null;
+    };
+
 const MAX_ORG_NAME_CHARS = 120;
 const MAX_PERIOD_LABEL_CHARS = 60;
 const MAX_FIGURE = 1e12;
@@ -51,6 +95,56 @@ function cleanFigure(value: unknown): number | null {
 }
 
 const whole = (n: number) => Math.round(n).toLocaleString("en-GB");
+
+const hoursText = (n: number) => {
+  const rounded = Math.round(n * 10) / 10;
+  return `${rounded.toLocaleString("en-GB", { maximumFractionDigits: 1 })} ${rounded === 1 ? "hour" : "hours"}`;
+};
+
+/**
+ * The saved-record facts for an individual request. How Sidekick should use
+ * them is set out once, in THE PERSON'S SAVED RECORD in the system prompt.
+ */
+function savedRecordLine(saved: SidekickSavedRecord): string {
+  if (saved.status === "unavailable") {
+    return (
+      "SAVED RECORD: this person is signed in, but their saved My Impact record could not be read for this message. " +
+      "If they ask you to use it, say you could not reach it just now and ask them for the facts you need. Do not invent figures."
+    );
+  }
+  if (saved.status === "empty") {
+    return (
+      "SAVED RECORD: this person is signed in and has nothing saved in their My Impact record yet. " +
+      "If they ask you to use their record, say so plainly and ask them for the facts you need. Do not invent figures."
+    );
+  }
+
+  const parts: string[] = [
+    "SAVED RECORD: these facts were read from this person's My Impact account for this message, so treat them as accurate.",
+  ];
+  if (saved.firstEntry && saved.latestEntry) {
+    parts.push(
+      saved.firstEntry === saved.latestEntry
+        ? `Their saved entries are dated ${saved.firstEntry}.`
+        : `Their saved entries are dated from ${saved.firstEntry} to ${saved.latestEntry}.`,
+    );
+  }
+  parts.push(`All time: £${whole(saved.totalValue)} total social value and ${hoursText(saved.totalHours)}.`);
+  parts.push(
+    saved.yearValue > 0 || saved.yearHours > 0
+      ? `In ${saved.year} so far: £${whole(saved.yearValue)} and ${hoursText(saved.yearHours)}.`
+      : `Nothing is dated ${saved.year} so far.`,
+  );
+  if (saved.activities.length > 0) {
+    const list = saved.activities
+      .map((a) => (a.hours > 0 ? `${a.name} (${hoursText(a.hours)})` : a.name))
+      .join("; ");
+    const more = saved.moreActivities > 0 ? `; and ${whole(saved.moreActivities)} more not listed here` : "";
+    parts.push(`Their activities, all time, largest first: ${list}${more}.`);
+  }
+  parts.push("Follow THE PERSON'S SAVED RECORD in your instructions.");
+  return parts.join(" ");
+}
 
 function orgManagerLine(orgName: string | null): string {
   const who = orgName
@@ -125,29 +219,49 @@ function sharingModeLine(mode: OrgSharingMode, asManager: boolean): string {
 
 /**
  * Returns the context system message for this request, or null when there
- * is nothing to say (no client context and no organisation).
+ * is nothing to say (no client context, no organisation and no saved record).
  *
  * `sharingMode` is set when the signed-in caller belongs to an organisation.
+ * `savedRecord` is the signed-in person's own record, for individual
+ * requests only: it is never used in organisation mode, even if passed.
  */
 export function buildSidekickContextMessage(
   context: SidekickChatContext | undefined | null,
   sharingMode?: OrgSharingMode,
+  savedRecord?: SidekickSavedRecord | null,
 ): string | null {
-  if (!context) return sharingMode ? sharingModeLine(sharingMode, false) : null;
+  if (!context) {
+    const parts: string[] = [];
+    if (savedRecord) parts.push(savedRecordLine(savedRecord));
+    if (sharingMode) parts.push(sharingModeLine(sharingMode, false));
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
   const contextParts: string[] = [];
 
-  if (context.interests?.includes("org_manager")) {
+  if (isOrgManagerContext(context)) {
     contextParts.push(orgManagerLine(cleanText(context.org?.name, MAX_ORG_NAME_CHARS)));
     contextParts.push(orgFiguresLine(context.org));
     if (sharingMode) contextParts.push(sharingModeLine(sharingMode, true));
     return contextParts.join(" ");
   }
 
+  if (savedRecord) contextParts.push(savedRecordLine(savedRecord));
+  // What the browser has open is one calculation, which may not be saved.
+  // With a saved record alongside, say which is which so that two totals do
+  // not read as a contradiction.
   if (context.totalValue !== undefined) {
-    contextParts.push(`The user's current social value score is £${context.totalValue.toLocaleString("en-GB")}.`);
+    contextParts.push(
+      savedRecord?.status === "saved"
+        ? `The result open on their screen right now comes to £${context.totalValue.toLocaleString("en-GB")}. That is one calculation, which may or may not be saved, so it can differ from the saved totals.`
+        : `The user's current social value score is £${context.totalValue.toLocaleString("en-GB")}.`,
+    );
   }
   if (context.activities?.length) {
-    contextParts.push(`Their logged activities include: ${context.activities.join(", ")}.`);
+    contextParts.push(
+      savedRecord?.status === "saved"
+        ? `The result open on their screen lists these activities: ${context.activities.join(", ")}.`
+        : `Their logged activities include: ${context.activities.join(", ")}.`,
+    );
   }
   if (context.sdgs?.length) {
     contextParts.push(`Their activities align with these SDGs: ${context.sdgs.join(", ")}.`);

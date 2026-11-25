@@ -131,8 +131,8 @@ const SECTIONS: Section[] = [
       <>
         <p>
           The optional Sidekick AI assistant uses a third-party language model to suggest ideas
-          and summarise your impact. When you send a Sidekick message, the relevant prompt and
-          (where you've enabled it) recent context from your account are sent to the model
+          and summarise your impact. When you send a Sidekick message, your message and, if you
+          are signed in, a short summary of your own saved impact record are sent to the model
           provider so they can generate a reply. Replies are best-effort guidance, not professional
           advice, please use your own judgement.
         </p>
@@ -265,7 +265,7 @@ export default function Terms() {
             What you can expect from us, and what we ask from you, when you use My Impact.
           </p>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 7 May 2026
+            Last updated: 25 November 2026
           </p>
         </div>
       </section>
