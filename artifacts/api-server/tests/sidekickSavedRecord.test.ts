@@ -14,6 +14,7 @@ const aggregation = vi.hoisted(() => ({
 vi.mock("../src/lib/recordAggregation.js", () => aggregation);
 
 import {
+  SIDEKICK_MAX_MESSAGE_CHARS,
   SIDEKICK_TEMPLATES,
   buildRegeneratePrompt,
   buildTemplatePrompt,
@@ -344,20 +345,25 @@ describe("template prompts for someone with a saved record", () => {
   // Prompts are sent as the person's own message, which has a length limit.
   // The new sentence is shorter than the one it replaces, so no prompt can
   // get longer than it already was, whatever the limit is set to.
-  it("are never longer than the prompt they replace", () => {
+  it("are never longer than the prompt they replace, and fit the message limit", () => {
+    // The longest a prompt can get: long activity names, plus a "different
+    // angle" line added on a second attempt.
+    const longName = "Supporting an older neighbour with shopping, appointments and paperwork ".repeat(4);
+    const activities = { topActivity: longName, recentActivities: [longName, longName, longName] };
     let longest = 0;
     for (const persona of PERSONAL) {
       for (const t of SIDEKICK_TEMPLATES) {
-        const signedIn = buildTemplatePrompt(t, { persona, signedIn: true });
-        const signedOut = buildTemplatePrompt(t, { persona });
-        expect(signedIn.length).toBeLessThanOrEqual(signedOut.length);
-        for (let attempt = 0; attempt < 5; attempt++) {
-          longest = Math.max(longest, buildRegeneratePrompt(signedIn, attempt, persona).length);
+        for (const extra of [{}, activities]) {
+          const signedIn = buildTemplatePrompt(t, { persona, signedIn: true, ...extra });
+          const signedOut = buildTemplatePrompt(t, { persona, ...extra });
+          expect(signedIn.length).toBeLessThanOrEqual(signedOut.length);
+          for (let attempt = 0; attempt < 5; attempt++) {
+            longest = Math.max(longest, buildRegeneratePrompt(signedIn, attempt, persona).length);
+          }
         }
       }
     }
-    // Well inside the 600 characters the server accepts for one message.
-    expect(longest).toBeLessThanOrEqual(600);
+    expect(longest).toBeLessThanOrEqual(SIDEKICK_MAX_MESSAGE_CHARS);
   });
 
   // The UCAS, CV and cover-letter prompts ask for evidence and planning, not
