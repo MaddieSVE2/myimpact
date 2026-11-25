@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/CopyField";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import {
+  SIDEKICK_MAX_MESSAGE_CHARS,
   SIDEKICK_TEMPLATES,
   applyTemplateOverrides,
   buildRegeneratePrompt,
@@ -75,6 +76,20 @@ interface Message {
   /** Who the template was written for, so a retry keeps the same voice. */
   templatePersona?: SidekickPersona;
   regenerateAttempt?: number;
+}
+
+/** Most recent messages sent with each request; the server keeps the same number. */
+const SIDEKICK_HISTORY_MESSAGES = 20;
+
+/**
+ * The server answered and refused the request (as opposed to the request
+ * never getting through). `message` is the server's own wording.
+ */
+class SidekickRefusedError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "SidekickRefusedError";
+  }
 }
 
 // Shown whenever Sidekick is in organisation mode (see isSidekickOrgMode).
@@ -764,7 +779,8 @@ export function Sidekick() {
         const res = await fetch(`${base}/api/sidekick/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newMessages.map(({ role, content }) => ({ role, content })), context: { ...buildContext(), locale } }),
+          // The server only reads the most recent messages, so don't send more.
+          body: JSON.stringify({ messages: newMessages.slice(-SIDEKICK_HISTORY_MESSAGES).map(({ role, content }) => ({ role, content })), context: { ...buildContext(), locale } }),
           signal: abortRef.current.signal,
         });
 
@@ -795,7 +811,7 @@ export function Sidekick() {
             quotaQuery.refetch().catch(() => {});
             return;
           }
-          throw new Error(serverMessage || `Request failed (${res.status})`);
+          throw new SidekickRefusedError(serverMessage, res.status);
         }
 
         const reader = res.body?.getReader();
@@ -875,6 +891,13 @@ export function Sidekick() {
         });
       } catch (err: unknown) {
         if (err instanceof Error && err.name !== "AbortError") {
+          // Only blame the connection when the request never got an answer.
+          // If the server answered and said no, say why.
+          const failure = !(err instanceof SidekickRefusedError)
+            ? "Sorry, I couldn't get a response. Please check your connection and try again."
+            : err.status >= 500 || !err.message
+              ? "Sorry, something went wrong on our side. Please try again in a moment."
+              : `Sorry, I couldn't reply to that. ${err.message}`;
           setMessages((prev) => {
             const updated = [...prev];
             const existing = updated[assistantIndex]?.content ?? "";
@@ -884,7 +907,7 @@ export function Sidekick() {
               content: existing
                 ? existing +
                   "\n\n(Sorry, the connection dropped before I finished. Please try again.)"
-                : "Sorry, I couldn't get a response. Please check your connection and try again.",
+                : failure,
             };
             return updated;
           });
@@ -1650,6 +1673,7 @@ export function Sidekick() {
                 ref={textareaRef}
                 rows={1}
                 value={input}
+                maxLength={SIDEKICK_MAX_MESSAGE_CHARS}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
