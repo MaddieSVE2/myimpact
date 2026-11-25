@@ -131,8 +131,21 @@ export const SIDEKICK_PERSONA_LABELS: Record<SidekickPersona, string> = {
 const POUNDS = (n?: number) =>
   typeof n === "number" && n > 0 ? `£${Math.round(n).toLocaleString("en-GB")}` : "(no score yet)";
 
+/**
+ * Longest message Sidekick accepts from a person. Must equal the server's
+ * MAX_USER_MESSAGE_CHARS (api-server `lib/sidekickHistory.ts`); a test
+ * checks the two match and that every template fits inside it.
+ */
+export const SIDEKICK_MAX_MESSAGE_CHARS = 1000;
+
+// Activities described in a person's own words can be any length. Cut them
+// so a template prompt can never grow past the message limit.
+const MAX_ACTIVITY_NAME_CHARS = 60;
+const SHORT = (name: string) =>
+  name.length > MAX_ACTIVITY_NAME_CHARS ? `${name.slice(0, MAX_ACTIVITY_NAME_CHARS - 1).trimEnd()}…` : name;
+
 const ACTIVITY = (ctx: SidekickUserContext) =>
-  ctx.topActivity ?? ctx.recentActivities?.[0] ?? "my volunteering";
+  SHORT(ctx.topActivity ?? ctx.recentActivities?.[0] ?? "my volunteering");
 
 const HAS_SCORE = (ctx: SidekickUserContext) =>
   typeof ctx.totalValue === "number" && ctx.totalValue > 0;
@@ -150,7 +163,7 @@ const NUMBERS_LINE = (ctx: SidekickUserContext) =>
 const RECENT_LINE = (ctx: SidekickUserContext) => {
   const acts = ctx.recentActivities ?? [];
   if (acts.length === 0) return "";
-  const list = acts.slice(0, 3).join(", ");
+  const list = acts.slice(0, 3).map(SHORT).join(", ");
   return ` My most recent logged activities are: ${list}.`;
 };
 
