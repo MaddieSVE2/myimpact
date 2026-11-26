@@ -65,7 +65,8 @@ const unsubscribeRateLimit = createRateLimiter({
  * One-click email unsubscribe. Public (no session) — the signed token in the
  * query string proves the request came from a link we emailed to the user.
  * Single-purpose: only ever switches one kind of email off (the list signed
- * into the token: onboarding emails, or activity reminders). Accepts POST so
+ * into the token: onboarding emails, activity reminders, or the monthly
+ * "anything to add?" email). Accepts POST so
  * mail-scanner GET prefetches can't silently unsubscribe people; RFC 8058
  * one-click unsubscribe also uses POST.
  */
@@ -101,8 +102,11 @@ router.post("/unsubscribe", unsubscribeRateLimit, async (req, res) => {
     columns: { id: true, email: true },
   });
 
-  if (user && result.list === "activity-reminders") {
-    await db.update(usersTable).set({ emailRemindersOptIn: false }).where(eq(usersTable.id, user.id));
+  if (user && (result.list === "activity-reminders" || result.list === "monthly-prompt")) {
+    await db
+      .update(usersTable)
+      .set(result.list === "monthly-prompt" ? { emailActivityPromptOptIn: false } : { emailRemindersOptIn: false })
+      .where(eq(usersTable.id, user.id));
     await recordAuditEvent({
       userId: user.id,
       userEmail: user.email,
@@ -290,6 +294,29 @@ router.patch("/activity-reminder-emails", authenticate, async (req: Authenticate
     .set({ emailRemindersOptIn: enabled })
     .where(eq(usersTable.id, req.user!.id))
     .returning({ enabled: usersTable.emailRemindersOptIn });
+  res.json({ enabled: updated?.enabled ?? enabled });
+});
+
+// The monthly "anything to add?" email (jobs/monthlyActivityPrompt.ts).
+router.get("/monthly-prompt-emails", authenticate, async (req: AuthenticatedRequest, res) => {
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.id, req.user!.id),
+    columns: { emailActivityPromptOptIn: true },
+  });
+  res.json({ enabled: user?.emailActivityPromptOptIn ?? true });
+});
+
+router.patch("/monthly-prompt-emails", authenticate, async (req: AuthenticatedRequest, res) => {
+  const { enabled } = req.body as { enabled?: unknown };
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled must be a boolean" });
+    return;
+  }
+  const [updated] = await db
+    .update(usersTable)
+    .set({ emailActivityPromptOptIn: enabled })
+    .where(eq(usersTable.id, req.user!.id))
+    .returning({ enabled: usersTable.emailActivityPromptOptIn });
   res.json({ enabled: updated?.enabled ?? enabled });
 });
 

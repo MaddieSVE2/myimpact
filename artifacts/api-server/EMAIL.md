@@ -67,6 +67,39 @@ list `activity-reminders`). Members with push set up and on get push only.
 The button opens the app's due prompt; the email never logs anything,
 because mail scanners follow links.
 
+## Monthly "anything to add?" email
+
+`monthly-activity-prompt` (see SCHEDULING.md) emails members mid-month,
+asking whether they have done anything that is not on their record yet
+(`src/jobs/monthlyActivityPrompt.ts`, who gets it in
+`src/lib/monthlyPrompt.ts`, the email in `src/lib/monthlyPromptEmail.ts`).
+When the activity inbox reads members' emails (below), the email invites a
+reply and carries the inbox as Reply-To, so the reply is read and logged
+like any other email to it. Otherwise it only links to `/log`.
+
+It sends nothing until one of these is set on the published app:
+
+| Setting | Effect |
+| --- | --- |
+| `EMAIL_MONTHLY_PROMPT_TEST_TO` | Comma-separated account addresses. Until it is live, only these are emailed, whatever their preference, so the real email can be read first. A test run records nothing, so it can be repeated. |
+| `EMAIL_MONTHLY_PROMPT_LIVE` = `true` | Every eligible member is emailed. |
+
+Live, it goes to every member who has not opted out
+(`users.email_activity_prompt_opt_in`, on by default, switched in Settings
+or by the signed one-click link in each email, unsubscribe token list
+`monthly-prompt`), whose account is at least 14 days old (newer ones are
+still getting the onboarding emails), and who has not had this month's
+(`users.last_activity_prompt_sent_at`). Demo accounts and addresses on the
+suppression list are never emailed.
+
+**To switch it on:** run the database migration (adds the two columns),
+republish, then set `EMAIL_MONTHLY_PROMPT_TEST_TO` to your own account's
+address and, in GitHub, Actions, **Scheduled jobs**, **Run workflow** with
+`monthly-activity-prompt` selected. That sends it now, to you only. When
+the text is right, set `EMAIL_MONTHLY_PROMPT_LIVE` = `true` and republish.
+The scheduler then sends it from the 15th of each month; **Run workflow**
+sends it straight away. To stop it, remove `EMAIL_MONTHLY_PROMPT_LIVE`.
+
 ## Activity inbox
 
 People email what they did to `EMAIL_ACTIVITY_INBOX` (log@myimpact.uk) and

@@ -28,7 +28,9 @@ function getSecret(): string {
  * edited to switch off a different kind. Tokens without one (all issued
  * before reminders existed) mean onboarding.
  */
-export type UnsubscribeList = "onboarding" | "activity-reminders";
+export type UnsubscribeList = "onboarding" | "activity-reminders" | "monthly-prompt";
+
+const NAMED_LISTS: readonly string[] = ["activity-reminders", "monthly-prompt"];
 
 export function createUnsubscribeToken(userId: string, list: UnsubscribeList = "onboarding"): string {
   return jwt.sign({ sub: userId, purpose: PURPOSE, ...(list === "onboarding" ? {} : { list }) }, getSecret(), {
@@ -52,7 +54,7 @@ export function verifyUnsubscribeToken(token: string): UnsubscribeTokenResult {
       return { ok: false, reason: "invalid" };
     }
     const list = (payload as jwt.JwtPayload).list;
-    if (list !== undefined && list !== "activity-reminders") return { ok: false, reason: "invalid" };
+    if (list !== undefined && !NAMED_LISTS.includes(list)) return { ok: false, reason: "invalid" };
     return { ok: true, userId: (payload as jwt.JwtPayload).sub as string, list: list ?? "onboarding" };
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {

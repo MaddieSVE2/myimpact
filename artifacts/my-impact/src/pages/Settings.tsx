@@ -163,6 +163,51 @@ export default function Settings() {
     }
   };
 
+  const [promptOptIn, setPromptOptIn] = useState<boolean | null>(null);
+  const [promptSaving, setPromptSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/profile/monthly-prompt-emails`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
+      .then((data: { enabled: boolean }) => {
+        if (!cancelled) setPromptOptIn(data.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setPromptOptIn(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleTogglePrompt = async () => {
+    if (promptOptIn === null || promptSaving) return;
+    const next = !promptOptIn;
+    setPromptSaving(true);
+    setPromptOptIn(next);
+    try {
+      const res = await fetch(`${BASE}/api/profile/monthly-prompt-emails`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data: { enabled: boolean } = await res.json();
+      setPromptOptIn(data.enabled);
+      toast({
+        title: next ? t("settings.monthlyPromptOnToast") : t("settings.monthlyPromptOffToast"),
+        description: next ? t("settings.monthlyPromptOnDesc") : t("settings.monthlyPromptOffDesc"),
+      });
+    } catch {
+      setPromptOptIn(!next);
+      toast({ title: t("settings.couldNotSave"), description: t("settings.pleaseTryAgain"), variant: "destructive" });
+    } finally {
+      setPromptSaving(false);
+    }
+  };
+
   const handleToggleEmailOptIn = async () => {
     if (emailOptIn === null || emailToggleSaving) return;
     const next = !emailOptIn;
@@ -407,6 +452,27 @@ export default function Settings() {
               <span
                 className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                 style={{ transform: remindersOptIn ? "translateX(16px)" : "translateX(0)" }}
+              />
+            </div>
+          </button>
+          <button
+            onClick={handleTogglePrompt}
+            aria-pressed={promptOptIn === true}
+            disabled={promptOptIn === null || promptSaving}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+            data-testid="toggle-monthly-prompt-emails"
+          >
+            <div className="pr-3">
+              <p className="text-sm font-medium text-foreground">{t("settings.monthlyPrompt")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.monthlyPromptDesc")}</p>
+            </div>
+            <div
+              className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+              style={{ background: promptOptIn ? "var(--brand-orange-bright)" : "#d1d5db" }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: promptOptIn ? "translateX(16px)" : "translateX(0)" }}
               />
             </div>
           </button>
