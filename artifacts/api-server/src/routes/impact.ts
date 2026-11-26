@@ -6,7 +6,7 @@ import {
   SaveImpactBody,
 } from "@workspace/api-zod";
 import { db, impactRecordsTable, orgMembersTable, orgDeactivatedMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable, orgGroupMembersTable } from "@workspace/db";
-import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or, type SQL } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
 import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, startOfActivityDay, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact, ONE_OFF_KINDS } from "../lib/impactData.js";
@@ -46,6 +46,13 @@ import {
 import { defaultGroupFor } from "../lib/orgGroups.js";
 import { approvedHoursMessage, autoVerifyRecordsForUser, calendarMonthLabel, extractActivityIds, managerApprovedBy, oneOffValuation } from "../lib/recordHelpers.js";
 import { yearImpactResult } from "../lib/yearResult.js";
+import {
+  aggregateLifetime,
+  aggregateYear,
+  endOfYearUTC,
+  fetchOverlappingPeriodEstimates,
+  startOfYearUTC,
+} from "../lib/recordAggregation.js";
 import { resolveReportScope, groupCondition, type ReportScope } from "../lib/orgReportScope.js";
 
 const router: IRouter = Router();
@@ -245,83 +252,6 @@ function parseEntryDate(raw: unknown): Date {
     if (!isNaN(d.getTime())) return d;
   }
   return new Date();
-}
-
-function startOfYearUTC(year: number): Date {
-  return new Date(Date.UTC(year, 0, 1, 0, 0, 0));
-}
-
-// Exclusive upper bound for calendar-year queries: midnight on Jan 1 of the
-// next year. All year filters must use this as a strict `<` so that an entry
-// dated 1 Jan of the following year never leaks back into the prior year's
-// totals.
-function endOfYearUTC(year: number): Date {
-  return new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
-}
-
-/**
- * Annual estimates whose authoritative report period overlaps the given
- * window but whose entryDate falls OUTSIDE it (e.g. an academic-year report
- * homed in the prior calendar year). Appending these to a windowed
- * reconciliation input lets quick logs inside the window reconcile against
- * the cross-year estimate; their values are NEVER added to the window's raw
- * sums, so each estimate still counts in exactly one calendar year while the
- * activity itself is counted once across years. Legacy rows have NULL period
- * fields and are never returned — historical aggregates stay byte-identical.
- */
-async function fetchOverlappingPeriodEstimates(
-  scope: string | SQL,
-  windowStart: Date,
-  windowEndExclusive: Date,
-): Promise<(typeof impactRecordsTable.$inferSelect)[]> {
-  // `scope` is either a personal user id or an arbitrary base condition
-  // (e.g. an org's shared-records condition), so personal dashboards and org
-  // stats reconcile cross-window periods with identical logic.
-  const scopeCondition = typeof scope === "string" ? eq(impactRecordsTable.userId, scope) : scope;
-  // ALL estimates whose period overlaps the window — including ones homed
-  // inside it (already in the caller's rows): their in-period quick logs
-  // outside the window must still join as capacity-consuming context.
-  const estimates = await db
-    .select()
-    .from(impactRecordsTable)
-    .where(
-      and(
-        scopeCondition,
-        eq(impactRecordsTable.kind, "annual_estimate"),
-        isNotNull(impactRecordsTable.reportStartDate),
-        isNotNull(impactRecordsTable.reportEndDate),
-        lt(impactRecordsTable.reportStartDate, windowEndExclusive),
-        gte(impactRecordsTable.reportEndDate, windowStart),
-      ),
-    );
-  if (estimates.length === 0) return [];
-  const outOfWindowEstimates = estimates.filter(
-    (e) => e.entryDate < windowStart || e.entryDate >= windowEndExclusive,
-  );
-
-  // The estimates' in-period quick logs OUTSIDE the window must also join
-  // the reconciliation input as context: they consume the estimates'
-  // capacity first (chronological order), so a windowed caller can never
-  // reuse capacity another calendar year has already absorbed.
-  const minStart = new Date(Math.min(...estimates.map((e) => e.reportStartDate!.getTime())));
-  // Inclusive period end → exclusive upper bound one day later.
-  const maxEndExclusive = new Date(Math.max(...estimates.map((e) => e.reportEndDate!.getTime())) + 86_400_000);
-  const contextLogs = await db
-    .select()
-    .from(impactRecordsTable)
-    .where(
-      and(
-        scopeCondition,
-        eq(impactRecordsTable.kind, "quick_log"),
-        gte(impactRecordsTable.entryDate, minStart),
-        lt(impactRecordsTable.entryDate, maxEndExclusive),
-        or(
-          lt(impactRecordsTable.entryDate, windowStart),
-          gte(impactRecordsTable.entryDate, windowEndExclusive),
-        ),
-      ),
-    );
-  return [...outOfWindowEstimates, ...contextLogs];
 }
 
 function startOfMonthOfDate(d: Date): Date {
@@ -1455,170 +1385,6 @@ router.get("/org-stats", authenticate, async (req: AuthenticatedRequest, res) =>
   }
 });
 
-interface RecapBreakdownEntry {
-  activityId?: string;
-  activityName?: string;
-  category?: string;
-  sdg?: string;
-  sdgColor?: string;
-  impactValue?: number;
-  hours?: number;
-}
-
-interface RecapResultJson {
-  totalValue?: number;
-  totalHours?: number;
-  donationsValue?: number;
-  impactValue?: number;
-  contributionValue?: number;
-  personalDevelopmentValue?: number;
-  activityBreakdowns?: RecapBreakdownEntry[];
-}
-
-function parseRecapResult(raw: unknown): RecapResultJson {
-  if (raw === null || typeof raw !== "object") return {};
-  const r = raw as Record<string, unknown>;
-  return {
-    totalValue: typeof r.totalValue === "number" ? r.totalValue : 0,
-    totalHours: typeof r.totalHours === "number" ? r.totalHours : 0,
-    donationsValue: typeof r.donationsValue === "number" ? r.donationsValue : 0,
-    impactValue: typeof r.impactValue === "number" ? r.impactValue : 0,
-    contributionValue: typeof r.contributionValue === "number" ? r.contributionValue : 0,
-    personalDevelopmentValue: typeof r.personalDevelopmentValue === "number" ? r.personalDevelopmentValue : 0,
-    activityBreakdowns: Array.isArray(r.activityBreakdowns) ? (r.activityBreakdowns as RecapBreakdownEntry[]) : [],
-  };
-}
-
-/**
- * One user's calendar year, shared by the recap and the yearly report so
- * both show the same reconciled figures: raw sums of the year's records,
- * minus the estimate-vs-actual and report-share double counts.
- */
-async function aggregateYear(userId: string, yearParam: number) {
-  const start = startOfYearUTC(yearParam);
-  const end = endOfYearUTC(yearParam);
-
-  const yearRecords = await db
-    .select()
-    .from(impactRecordsTable)
-    .where(
-      and(
-        eq(impactRecordsTable.userId, userId),
-        gte(impactRecordsTable.entryDate, start),
-        lt(impactRecordsTable.entryDate, end),
-      ),
-    )
-    .orderBy(desc(impactRecordsTable.entryDate));
-
-  let totalValue = 0;
-  let totalHours = 0;
-  let totalDonations = 0;
-  let totalImpact = 0;
-  let totalContribution = 0;
-  let totalPersonalDevelopment = 0;
-
-  const activityMap = new Map<string, { activityId: string; activityName: string; category: string; sdg: string; sdgColor: string; impactValue: number; hours: number }>();
-  const sdgMap = new Map<string, { sdg: string; sdgColor: string; value: number }>();
-  const categories = new Set<string>();
-
-  let biggestSession: { recordId: string; name: string; period: string | null; totalValue: number; totalHours: number; createdAt: string } | null = null;
-
-  for (const r of yearRecords) {
-    const result = parseRecapResult(r.resultJson);
-    const rTotal = result.totalValue ?? 0;
-    const rHours = result.totalHours ?? 0;
-    totalValue += rTotal;
-    totalHours += rHours;
-    totalDonations += result.donationsValue ?? 0;
-    totalImpact += result.impactValue ?? 0;
-    totalContribution += result.contributionValue ?? 0;
-    totalPersonalDevelopment += result.personalDevelopmentValue ?? 0;
-
-    if (!biggestSession || rTotal > biggestSession.totalValue) {
-      biggestSession = {
-        recordId: String(r.id),
-        name: r.name,
-        period: r.periodLabel ?? null,
-        totalValue: Math.round(rTotal * 100) / 100,
-        totalHours: rHours,
-        createdAt: r.createdAt.toISOString(),
-      };
-    }
-
-    for (const b of result.activityBreakdowns ?? []) {
-      const aId = b.activityId ?? b.activityName ?? "unknown";
-      const aName = b.activityName ?? aId;
-      const cat = b.category ?? "Other";
-      const sdg = b.sdg ?? "";
-      const sdgColor = b.sdgColor ?? "#999";
-      const impactValue = typeof b.impactValue === "number" ? b.impactValue : 0;
-      const hours = typeof b.hours === "number" ? b.hours : 0;
-
-      if (cat) categories.add(cat);
-
-      const existing = activityMap.get(aId);
-      if (existing) {
-        existing.impactValue += impactValue;
-        existing.hours += hours;
-      } else {
-        activityMap.set(aId, {
-          activityId: aId,
-          activityName: aName,
-          category: cat,
-          sdg,
-          sdgColor,
-          impactValue,
-          hours,
-        });
-      }
-
-      if (sdg) {
-        const sdgEntry = sdgMap.get(sdg);
-        if (sdgEntry) {
-          sdgEntry.value += impactValue;
-        } else {
-          sdgMap.set(sdg, { sdg, sdgColor, value: impactValue });
-        }
-      }
-    }
-  }
-
-  // Estimate-vs-actual reconciliation: when this year mixes an annual
-  // estimate and quick-logged actuals for the same activity, the headline
-  // counts each such activity once (the greater of the two) and the
-  // response carries per-activity "Estimated: X / Logged so far: Y" detail.
-  // All-legacy years get a zero adjustment — historical recaps unchanged.
-  // Include cross-year estimates whose authoritative report period overlaps
-  // this calendar year (recon input only — never the raw sums), so quick
-  // logs here reconcile against e.g. an academic-year report homed in the
-  // prior calendar year.
-  const overlappingEstimates = await fetchOverlappingPeriodEstimates(userId, start, end);
-  const recon = computeEstimateActualReconciliation(
-    [...yearRecords, ...overlappingEstimates],
-    { window: { start, endExclusive: end } },
-  );
-  totalValue -= recon.valueExcess;
-  totalHours -= recon.hoursExcess;
-  totalDonations -= recon.donationExcess;
-  for (const a of recon.activities) {
-    const entry = activityMap.get(a.activityId);
-    if (entry) {
-      entry.impactValue -= a.excessValue;
-      entry.hours -= a.excessHours;
-    }
-    if (a.sdg) {
-      const sdgEntry = sdgMap.get(a.sdg);
-      if (sdgEntry) sdgEntry.value -= a.excessValue;
-    }
-  }
-
-  return {
-    start, end, yearRecords, totalValue, totalHours, totalDonations,
-    totalImpact, totalContribution, totalPersonalDevelopment,
-    activityMap, sdgMap, categories, biggestSession, recon,
-  };
-}
-
 // The year so far as one result, for the /impact and History report actions
 // (PNG, share card and the yearly PDF, which posts it to /pdf).
 router.get("/year-result/:year", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -1650,11 +1416,9 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       activityMap, sdgMap, categories, biggestSession, recon,
     } = await aggregateYear(userId, yearParam);
 
-    const lifetimeRecords = await db
-      .select()
-      .from(impactRecordsTable)
-      .where(eq(impactRecordsTable.userId, userId))
-      .orderBy(impactRecordsTable.createdAt);
+    // Same dedupe rule as the yearly totals: estimate-vs-actual overlap and
+    // report-share copies (a report plus its org share) count once lifetime.
+    const { records: lifetimeRecords, totalValue: lifetimeTotalValue } = await aggregateLifetime(userId);
 
     const estimateVsLogged = recon.activities.map((a) => ({
       activityId: a.activityId,
@@ -1713,15 +1477,6 @@ router.get("/recap/:year", authenticate, async (req: AuthenticatedRequest, res) 
       };
     }
 
-    let lifetimeTotalValue = 0;
-    for (const r of lifetimeRecords) {
-      const result = parseRecapResult(r.resultJson);
-      lifetimeTotalValue += result.totalValue ?? 0;
-    }
-    // Same dedupe rule as the yearly totals: estimate-vs-actual overlap and
-    // report-share copies (a report plus its org share) count once lifetime.
-    const lifetimeRecon = computeEstimateActualReconciliation(lifetimeRecords);
-    lifetimeTotalValue -= lifetimeRecon.valueExcess;
     // A share copy of an in-set report is the same underlying report, not an
     // extra record.
     const lifetimeIds = new Set(lifetimeRecords.map(r => r.id));

@@ -13,11 +13,12 @@ import {
   type OrgSharingMode,
   type SidekickChatContext,
 } from "../lib/sidekickContext.js";
+import { loadSidekickSavedRecord } from "../lib/sidekickSavedRecord.js";
 import { attachUserIfPresent, authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { db, organisationsTable, orgMembersTable, usersTable, sidekickTemplateOverridesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Response } from "express";
-import { z } from "zod";
+import { prepareSidekickHistory } from "../lib/sidekickHistory.js";
 import {
   TRANSCRIBE_SECONDS_CAP,
   TTS_CHARACTERS_CAP,
@@ -121,6 +122,15 @@ WHAT YOU CAN HELP WITH:
 - For UCAS, CV, cover-letter, apprenticeship, or job-application requests: help users choose evidence, brainstorm, plan a structure, answer reflection questions, or get feedback on wording they wrote themselves
 - Translating military service experience into civilian-friendly skill descriptions that users can verify and express in their own words
 - Framing career breaks as periods of active contribution for CVs and interview preparation
+
+THE PERSON'S SAVED RECORD:
+When someone is signed in and asking about their own impact, a later message headed SAVED RECORD gives you facts read from their My Impact account: their total social value and hours, for this year and for all time, and their main activities with the hours for each. The person does not need to have just run a calculation for you to know these.
+- Use those facts directly. Do not ask the person to retype activities, hours or totals that are in the saved record, and do not say you cannot see their record when it has been supplied.
+- When you quote a total, say whether it is for this year or for all time. The History page shows one calendar year at a time, so the two can differ.
+- The saved record holds activity names, hours and values only. It does not include their journal, notes or reflections, or what happened on any particular day. Ask the person for anything else you need, such as what they actually did, what they learned, or who benefited. Never invent these.
+- For UCAS, CV, cover-letter and other application requests, the saved record is where the factual evidence comes from, and the APPLICATION-WRITING SAFETY rules below still apply in full: use the record to help the person choose and check evidence, never to produce finished application wording.
+- If you are told the saved record is empty or could not be read, or the person asks you to use their record and no SAVED RECORD message has been supplied (they may not be signed in), say so plainly and ask for the facts you need. Do not guess.
+- An organisation manager speaking for their organisation is never given a personal saved record. Do not refer to one.
 
 APPLICATION-WRITING SAFETY:
 UCAS prohibits submitting AI-generated personal-statement text and treats it as cheating. Employers and other application providers may have their own AI policies. Whenever a user asks for UCAS, CV, cover-letter, supporting-statement, apprenticeship, or job-application writing, briefly explain that risk before helping. Do not produce finished or submission-ready application wording, even if the user asks for a paragraph, bullets, a rewrite, or text to paste. Instead:
@@ -261,8 +271,7 @@ If the user shares their impact data (score, activities, SDGs), use it to make y
 IDENTITY:
 If asked what you are, what model you run on, or what version you are: you are Sidekick, the My Impact assistant. You run on OpenAI's GPT-5 family. Do not say GPT-4, do not mention a knowledge cutoff date, and do not speculate about underlying architecture beyond that. Keep the answer to one sentence.`;
 
-const MAX_MESSAGES = 20;
-const MAX_MESSAGE_CHARS = 2000;
+// Limits on the conversation a client may send live in sidekickHistory.ts.
 const MAX_COMPLETION_TOKENS = 1024;
 
 /**
@@ -272,16 +281,6 @@ const MAX_COMPLETION_TOKENS = 1024;
  * also enforce this limit and truncate per-tool results before re-feed.
  */
 const MAX_TOOL_ITERATIONS = 10;
-/** Strict size cap on the latest user message (validated with zod). */
-const MAX_USER_MESSAGE_CHARS = 600;
-
-/**
- * Zod schema validating the latest user message content. Mounted as a
- * defence-in-depth check on the chat route in addition to the looser
- * per-message MAX_MESSAGE_CHARS cap that protects historic transcript
- * entries.
- */
-const latestUserMessageSchema = z.string().min(1).max(MAX_USER_MESSAGE_CHARS);
 
 // How often to send a lightweight SSE comment line while we wait for the
 // model's first token. This stops the Replit proxy and intermediate networks
@@ -372,45 +371,21 @@ router.post(
   sidekickQuotaGate,
   async (req, res) => {
   try {
-    const { messages, context } = req.body as {
-      messages: { role: "user" | "assistant"; content: string }[];
+    const { messages: rawMessages, context } = req.body as {
+      messages: unknown;
       context?: SidekickChatContext;
     };
 
     const isWelsh = context?.locale === "cy";
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      res.status(400).json({ error: "messages array is required" });
+    // Only the new message is held to a strict limit. Earlier history that
+    // is too long is shortened, never refused: see sidekickHistory.ts.
+    const history = prepareSidekickHistory(rawMessages);
+    if (!history.ok) {
+      res.status(400).json({ error: history.error, message: history.error });
       return;
     }
-
-    if (messages.length > MAX_MESSAGES) {
-      res.status(400).json({ error: `Too many messages: maximum is ${MAX_MESSAGES}.` });
-      return;
-    }
-
-    for (const msg of messages) {
-      if (typeof msg.content !== "string" || msg.content.length > MAX_MESSAGE_CHARS) {
-        res.status(400).json({ error: `Each message must be a string of at most ${MAX_MESSAGE_CHARS} characters.` });
-        return;
-      }
-    }
-
-    // Stricter cap on the *latest* user message via zod: legitimate
-    // questions fit comfortably in 600 chars and the small budget makes
-    // prompt-bomb abuse much less effective. Older transcript entries
-    // keep the looser MAX_MESSAGE_CHARS so existing conversation history
-    // isn't truncated.
-    const latestUser = [...messages].reverse().find((m) => m.role === "user");
-    if (latestUser) {
-      const parsed = latestUserMessageSchema.safeParse(latestUser.content);
-      if (!parsed.success) {
-        res.status(400).json({
-          message: `Your message must be between 1 and ${MAX_USER_MESSAGE_CHARS} characters.`,
-        });
-        return;
-      }
-    }
+    const messages = history.messages;
 
     const systemMessages: { role: "system"; content: string }[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -429,9 +404,20 @@ router.post(
 
     // Who is asking (an individual, or a manager speaking for their
     // organisation) and the figures that go with that. See sidekickContext.ts.
+    //
+    // A signed-in person asking about their own impact also gets a short
+    // summary of their saved record, read here from the database, so
+    // Sidekick knows their activities, hours and social value without a
+    // fresh calculation. Nothing is read for anonymous callers or for a
+    // manager speaking for their organisation. See sidekickSavedRecord.ts.
+    const savedRecord = await loadSidekickSavedRecord({
+      userId: (req as AuthenticatedRequest).user?.id,
+      context,
+    });
     const contextMessage = buildSidekickContextMessage(
       context,
       res.locals.sidekickOrgSharingMode as OrgSharingMode | undefined,
+      savedRecord,
     );
     if (contextMessage) {
       systemMessages.push({ role: "system", content: contextMessage });

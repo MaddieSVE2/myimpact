@@ -230,7 +230,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: "Could AI output expose sensitive information?",
-        a: <p>Sidekick responses are generated from the prompt and the limited context the user explicitly chooses to include (such as their own recent activity totals). It cannot read other members' records, your private settings, or anything outside the user's own scope. We treat AI replies as best-effort guidance, not as authoritative or specialist advice.</p>,
+        a: <p>Sidekick responses are generated from the person's message and a limited summary of their own impact: their saved totals, hours and main activity names, and any result they have open on screen. It cannot read other members' records, your private settings, or anything outside the user's own scope. We treat AI replies as best-effort guidance, not as authoritative or specialist advice.</p>,
       },
     ],
   },
@@ -269,7 +269,7 @@ export default function Security() {
             This page summarises how My Impact protects organisation and member data, from where it's stored, to who can see it, to how we'd handle an incident. If you need a full DPA or our response to a security questionnaire, just <Link href="/contact" style={{ color: C.orange, fontWeight: 700, textDecoration: "none" }}>get in touch</Link>.
           </p>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 9 May 2026
+            Last updated: 25 November 2026
           </p>
         </div>
       </section>

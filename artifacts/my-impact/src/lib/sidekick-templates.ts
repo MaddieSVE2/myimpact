@@ -55,6 +55,12 @@ export interface SidekickUserContext {
   topSdg?: string;
   persona: SidekickPersona;
   /**
+   * Whether the person is signed in. Sidekick is then given their saved
+   * record by the server, so a prompt can point to it instead of saying
+   * there is no score when no calculation is open in this browser.
+   */
+  signedIn?: boolean;
+  /**
    * Organisation totals, for the org_manager persona. Undefined means the
    * figures are not known (not loaded, or the request failed).
    */
@@ -131,8 +137,21 @@ export const SIDEKICK_PERSONA_LABELS: Record<SidekickPersona, string> = {
 const POUNDS = (n?: number) =>
   typeof n === "number" && n > 0 ? `£${Math.round(n).toLocaleString("en-GB")}` : "(no score yet)";
 
+/**
+ * Longest message Sidekick accepts from a person. Must equal the server's
+ * MAX_USER_MESSAGE_CHARS (api-server `lib/sidekickHistory.ts`); a test
+ * checks the two match and that every template fits inside it.
+ */
+export const SIDEKICK_MAX_MESSAGE_CHARS = 1000;
+
+// Activities described in a person's own words can be any length. Cut them
+// so a template prompt can never grow past the message limit.
+const MAX_ACTIVITY_NAME_CHARS = 60;
+const SHORT = (name: string) =>
+  name.length > MAX_ACTIVITY_NAME_CHARS ? `${name.slice(0, MAX_ACTIVITY_NAME_CHARS - 1).trimEnd()}…` : name;
+
 const ACTIVITY = (ctx: SidekickUserContext) =>
-  ctx.topActivity ?? ctx.recentActivities?.[0] ?? "my volunteering";
+  SHORT(ctx.topActivity ?? ctx.recentActivities?.[0] ?? "my volunteering");
 
 const HAS_SCORE = (ctx: SidekickUserContext) =>
   typeof ctx.totalValue === "number" && ctx.totalValue > 0;
@@ -142,15 +161,23 @@ const HOURS_LINE = (ctx: SidekickUserContext) =>
     ? ` (about ${Math.round(ctx.totalHours)} hours logged)`
     : "";
 
+// With no calculation open in this browser, a signed-in person still has
+// their saved record, which the server gives to Sidekick with each message.
+// The figures are deliberately not fetched into the prompt: the server reads
+// them itself, so they cannot be out of date or altered on the way. This
+// sentence must stay no longer than the "no score" one, so that swapping it
+// in can never push a prompt past the message limit.
 const NUMBERS_LINE = (ctx: SidekickUserContext) =>
   HAS_SCORE(ctx)
     ? `My current My Impact total social value is ${POUNDS(ctx.totalValue)}${HOURS_LINE(ctx)}.`
-    : `I have not generated a score yet, so focus on the activity and ask me for any facts you need.`;
+    : ctx.signedIn
+      ? `Use the activities, hours and social value in my saved record, and ask me for anything else.`
+      : `I have not generated a score yet, so focus on the activity and ask me for any facts you need.`;
 
 const RECENT_LINE = (ctx: SidekickUserContext) => {
   const acts = ctx.recentActivities ?? [];
   if (acts.length === 0) return "";
-  const list = acts.slice(0, 3).join(", ");
+  const list = acts.slice(0, 3).map(SHORT).join(", ");
   return ` My most recent logged activities are: ${list}.`;
 };
 

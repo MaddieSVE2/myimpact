@@ -76,7 +76,7 @@ const SECTIONS: Section[] = [
           <li><strong>Profile information</strong>: details you choose to share about your situation (e.g. student, carer, armed forces) to personalise your experience. This is always optional.</li>
           <li><strong>Impact data</strong>: the activities, actions, and contributions you log, along with associated hours and dates.</li>
           <li><strong>Journal entries &amp; attachments</strong>: any written reflections, photos or receipts you save against your impact records.</li>
-          <li><strong>Sidekick AI conversations</strong>: if you use the optional Sidekick assistant, the prompts you send (and any context you choose to include) are processed to generate replies. We don't use these conversations to train any model.</li>
+          <li><strong>Sidekick AI conversations</strong>: if you use the optional Sidekick assistant, the messages you send are processed to generate replies. When you are signed in and asking about your own impact, a short summary of your saved record is included with each message so Sidekick can answer accurately: your total social value and hours, the names of your main activities with the hours for each, and the months your entries cover. Journal entries, notes and reflections are never included. We don't use these conversations to train any model.</li>
           <li><strong>Usage data</strong>: anonymised, aggregated analytics about how pages are used, to help us improve the service. We do not use advertising trackers.</li>
           <li><strong>Organisation data</strong>: if you register an organisation, we collect your organisation's name, type, and contact email.</li>
         </ul>
@@ -172,7 +172,7 @@ const SECTIONS: Section[] = [
         <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
           <li><strong>Resend</strong> (email delivery, USA), receives your email address and the body of transactional emails (magic links, account notifications, deletion confirmations) so they can be delivered. Transfer protected by the EU/UK–US Data Privacy Framework and standard contractual clauses.</li>
           <li><strong>Stripe</strong> (payments, Ireland &amp; USA), for paid organisation plans only, Stripe processes card details directly. We never see or store your card number. Transfer protected by SCCs and the UK addendum.</li>
-          <li><strong>OpenAI</strong> (Sidekick AI assistant, USA), when you use Sidekick, your prompt (and the recent context you've chosen to include, such as your latest activity totals) is sent to OpenAI to generate a reply. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
+          <li><strong>OpenAI</strong> (Sidekick AI assistant, USA), when you use Sidekick, your message is sent to OpenAI to generate a reply. Sent with it are the total, activity names and global goals of any result you have open on screen, and the interests and situation you have chosen in My Impact (for example caring, or returning to work). If you are signed in, a short summary of your saved impact record is sent as well (your total social value and hours, the names of your main activities with their hours, and the months your entries cover). Journal entries, notes and reflections are never sent. Organisation managers asking on behalf of their organisation send the organisation's name and totals instead, and nothing from their own record. We have data-processing terms that prohibit OpenAI from training models on this content. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>Sentry</strong> (error monitoring, USA), receives anonymised error reports (stack traces, browser metadata, your internal user id) so we can fix bugs. Sensitive form values are scrubbed before sending. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>Managed cloud hosting provider</strong> (hosting + PostgreSQL, USA), hosts the application server and our managed PostgreSQL database. Transfer protected by SCCs and the UK addendum.</li>
           <li><strong>Social Value Engine</strong> (methodology, United Kingdom), we use their accredited SROI values to calculate impact scores. No personal data is shared with them.</li>
@@ -255,7 +255,7 @@ export default function Privacy() {
           </p>
 
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 20 November 2026
+            Last updated: 25 November 2026
           </p>
         </div>
       </section>

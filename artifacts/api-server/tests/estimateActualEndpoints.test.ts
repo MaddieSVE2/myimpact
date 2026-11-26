@@ -421,6 +421,7 @@ vi.mock("./org.js", () => ({ getVerifiedTotalsForOrg: vi.fn(async () => ({})) })
 const { default: impactRouter } = await import("../src/routes/impact.js");
 const { default: publicProfileRouter } = await import("../src/routes/public-profile.js");
 const { buildMonthlyDigest } = await import("../src/lib/digestData.js");
+const { loadSidekickSavedRecord } = await import("../src/lib/sidekickSavedRecord.js");
 
 function makeApp() {
   const app = express();
@@ -1163,6 +1164,80 @@ describe("GET /api/public-profile/:slug — public totals reconciled", () => {
     expect(res.body.stats.totalHours).toBe(8);
     expect(res.body.stats.totalSroi).toBeCloseTo(150 + 8 * (NLW + PD), 2);
     expect(res.body.stats.categoryHours.Environment).toBeCloseTo(8, 2);
+  });
+});
+
+// Sidekick is given a summary of the person's saved record. Its figures must
+// be the ones the recap and History show, worked out by the same code, so a
+// person never sees one total on screen and hears another from Sidekick.
+describe("Sidekick's saved record — the same figures as the recap", () => {
+  const NOW = new Date(Date.UTC(2026, 10, 23));
+
+  function seedMixedHistory() {
+    state.impactRecords.push(
+      // Academic-year estimate with quick logs either side of the new year:
+      // the activity must count once, as it does in the recap.
+      makeRecord({
+        kind: "annual_estimate", entryDate: new Date(Date.UTC(2026, 0, 10)),
+        impactValue: 721.5, hours: 50,
+        reportStartDate: new Date(Date.UTC(2025, 8, 1)),
+        reportEndDate: new Date(Date.UTC(2026, 7, 31)),
+        reportPeriodType: "academic",
+      }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2025, 9, 5)), impactValue: 28.86, hours: 2 }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 2, 3)), impactValue: 43.29, hours: 3 }),
+      makeRecord({ kind: "quick_log", entryDate: new Date(Date.UTC(2026, 10, 1)), impactValue: 14.43, hours: 1 }),
+      // An older entry from before estimates existed, with a donation.
+      makeRecord({ entryDate: new Date(Date.UTC(2024, 5, 20)), activityId: "food_bank", impactValue: 100, hours: 8, donations: 40 }),
+      // A report and the copy shared with an organisation: one contribution.
+      makeRecord({ id: 600, entryDate: new Date(Date.UTC(2026, 5, 15)), activityId: "tutoring", impactValue: 200, hours: 10 }),
+      makeRecord({
+        id: 601, entryDate: new Date(Date.UTC(2026, 5, 15)), activityId: "tutoring", impactValue: 200, hours: 10,
+        source: "member-submitted", submittedToOrgId: "org-1", sourceReportId: 600,
+      }),
+      // Somebody else's record must never be counted.
+      { ...makeRecord({ entryDate: new Date(Date.UTC(2026, 3, 1)), impactValue: 5000, hours: 400 }), userId: "user_2" },
+    );
+  }
+
+  it("matches the recap for this year and for all time", async () => {
+    const app = makeApp();
+    seedMixedHistory();
+    const y24 = await request(app).get("/api/impact/recap/2024").expect(200);
+    const y25 = await request(app).get("/api/impact/recap/2025").expect(200);
+    const y26 = await request(app).get("/api/impact/recap/2026").expect(200);
+
+    const saved = await loadSidekickSavedRecord({ userId: USER.id, context: { totalValue: 1 }, now: NOW });
+    if (saved?.status !== "saved") throw new Error("expected a saved record");
+
+    // This year: the figure History and the recap show for 2026.
+    expect(saved.year).toBe(2026);
+    expect(saved.yearValue).toBe(y26.body.totalValue);
+    expect(saved.yearHours).toBe(y26.body.totalHours);
+    // All time: the recap's lifetime figure, which is also the years added up.
+    expect(saved.totalValue).toBe(y26.body.lifetimeTotalValue);
+    expect(saved.totalValue).toBeCloseTo(y24.body.totalValue + y25.body.totalValue + y26.body.totalValue, 2);
+    expect(saved.totalHours).toBeCloseTo(y24.body.totalHours + y25.body.totalHours + y26.body.totalHours, 2);
+    // Estimate (50h) + the out-of-period log (1h) + 2024 (8h) + the report once (10h).
+    expect(saved.totalHours).toBe(69);
+
+    expect(saved.firstEntry).toBe("June 2024");
+    expect(saved.latestEntry).toBe("November 2026");
+    // Hours per activity are reconciled too, highest social value first:
+    // gardening counts 51 hours (not 56), the shared report 10 (not 20),
+    // then the 2024 entry. (makeRecord gives every activity the same name.)
+    expect(saved.activities.map((a) => a.hours)).toEqual([51, 10, 8]);
+    expect(saved.moreActivities).toBe(0);
+  });
+
+  it("reads nothing in organisation mode or for an anonymous caller, even with records saved", async () => {
+    seedMixedHistory();
+    expect(await loadSidekickSavedRecord({ userId: USER.id, context: { interests: ["org_manager"] }, now: NOW })).toBeNull();
+    expect(await loadSidekickSavedRecord({ userId: undefined, context: {}, now: NOW })).toBeNull();
+  });
+
+  it("reports an empty record for someone who has saved nothing", async () => {
+    expect(await loadSidekickSavedRecord({ userId: USER.id, context: {}, now: NOW })).toEqual({ status: "empty" });
   });
 });
 
