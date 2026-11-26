@@ -149,13 +149,16 @@ export async function pruneEmailLog(now = new Date()): Promise<number> {
   return deleted.length;
 }
 
-/** Erases every entry sent to `email` and every reply or activity email from it (account deletion). */
-export async function deleteEmailLogFor(email: string): Promise<void> {
+/**
+ * Erases every entry sent to `email` and every reply or activity email from it (account deletion).
+ * Pass the caller's transaction as `executor` to make this part of it.
+ */
+export async function deleteEmailLogFor(email: string, executor: Pick<typeof db, "delete"> = db): Promise<void> {
   const address = email.trim().toLowerCase();
-  await db.delete(emailRepliesTable).where(eq(emailRepliesTable.fromAddress, address));
-  await db.delete(emailActivityMessagesTable).where(eq(emailActivityMessagesTable.fromAddress, address));
+  await executor.delete(emailRepliesTable).where(eq(emailRepliesTable.fromAddress, address));
+  await executor.delete(emailActivityMessagesTable).where(eq(emailActivityMessagesTable.fromAddress, address));
   // Also team emails that name them, such as forwarded replies.
-  await db
+  await executor
     .delete(emailLogTable)
     .where(
       sql`(${address} = ANY(${emailLogTable.toAddresses}) OR ${emailLogTable.subject} ILIKE ${likePattern(address)})`,
