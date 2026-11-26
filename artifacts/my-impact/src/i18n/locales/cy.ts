@@ -105,7 +105,7 @@ export const cy: Catalogue = {
     activityRemindersOnDesc: "Byddwn yn anfon e-bost atoch ar y diwrnod pan fydd gweithgaredd rheolaidd yn ddyledus.",
     activityRemindersOffDesc: "Ni fyddwch yn derbyn e-byst atgoffa am weithgareddau.",
     monthlyPrompt: "E-bost misol \"unrhyw beth i'w ychwanegu?\"",
-    monthlyPromptDesc: "Un e-bost ganol y mis yn gofyn a ydych wedi gwneud rhywbeth sydd heb ei gofnodi eto.",
+    monthlyPromptDesc: "Un e-bost ar ddiwedd pob mis yn gofyn a ydych wedi gwneud rhywbeth sydd heb ei gofnodi eto.",
     monthlyPromptOnToast: "E-bost misol ymlaen",
     monthlyPromptOffToast: "E-bost misol i ffwrdd",
     monthlyPromptOnDesc: "Byddwn yn gofyn unwaith y mis a oes gennych rywbeth i'w ychwanegu.",

@@ -18,11 +18,13 @@ export type JobSchedule =
    * a failure waits RETRY_BACKOFF_MS before the next try.
    */
   | { kind: "daily"; hourUTC: number; retryBackoff?: boolean }
+  /** Once a month, from the 1st at `hourUTC` until `lastDayOfMonth`. */
+  | { kind: "monthly"; hourUTC: number; lastDayOfMonth: number }
   /**
-   * Once a month, from `firstDayOfMonth` (the 1st unless given) at
-   * `hourUTC` until `lastDayOfMonth`.
+   * Once a month, on its last day (the 28th to the 31st), from `hourUTC`
+   * until midnight. A failure waits RETRY_BACKOFF_MS before the next try.
    */
-  | { kind: "monthly"; hourUTC: number; lastDayOfMonth: number; firstDayOfMonth?: number };
+  | { kind: "monthEnd"; hourUTC: number };
 
 export interface JobHistory {
   lastAttempt: Date | null;
@@ -81,13 +83,10 @@ export const SCHEDULED_JOBS: readonly JobSpec[] = [
   { id: "retention-cleanup", args: () => [], schedule: { kind: "daily", hourUTC: 3 } },
   // Waits for 07:00 UK time itself, and emails each occurrence once.
   { id: "activity-reminders", args: () => [], schedule: { kind: "everyRun" } },
-  // Mid-month, well clear of the recap on the 1st. Sends nothing until it is
+  // The last day of the month, when the question covers the whole month and
+  // what people add is in the recap on the 1st. Sends nothing until it is
   // switched on (lib/monthlyPrompt.ts), and each member at most once a month.
-  {
-    id: "monthly-activity-prompt",
-    args: () => [],
-    schedule: { kind: "monthly", hourUTC: 9, firstDayOfMonth: 15, lastDayOfMonth: 17 },
-  },
+  { id: "monthly-activity-prompt", args: () => [], schedule: { kind: "monthEnd", hourUTC: 9 } },
 ];
 
 export function isScheduledJobId(value: string): value is ScheduledJobId {
@@ -123,14 +122,20 @@ export function isJobDue(schedule: JobSchedule, history: JobHistory, now: Date):
       );
     }
     case "monthly": {
-      const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), schedule.firstDayOfMonth ?? 1));
-      const slot = atHourUTC(firstDay, schedule.hourUTC);
+      const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const slot = atHourUTC(firstOfMonth, schedule.hourUTC);
       return (
         now.getTime() >= slot.getTime() &&
         now.getUTCDate() <= schedule.lastDayOfMonth &&
         !succeededSince(history, slot) &&
         !inBackoff(history, now)
       );
+    }
+    case "monthEnd": {
+      // Day 0 of next month is the last day of this one.
+      const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+      const slot = atHourUTC(lastDay, schedule.hourUTC);
+      return now.getTime() >= slot.getTime() && !succeededSince(history, slot) && !inBackoff(history, now);
     }
   }
 }

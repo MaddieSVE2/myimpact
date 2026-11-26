@@ -103,7 +103,7 @@ export const en = {
     activityRemindersOnDesc: "We'll email you on the day a regular activity is due.",
     activityRemindersOffDesc: "You won't receive activity reminder emails.",
     monthlyPrompt: "Monthly \"anything to add?\" email",
-    monthlyPromptDesc: "One email mid-month asking if you've done anything that isn't on your record yet.",
+    monthlyPromptDesc: "One email at the end of each month asking if you've done anything that isn't on your record yet.",
     monthlyPromptOnToast: "Monthly email on",
     monthlyPromptOffToast: "Monthly email off",
     monthlyPromptOnDesc: "We'll ask once a month if you have anything to add.",

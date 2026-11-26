@@ -15,33 +15,48 @@ describe("when it is due", () => {
   const { schedule } = SCHEDULED_JOBS.find((j) => j.id === "monthly-activity-prompt")!;
   const never = { lastAttempt: null, lastSuccess: null };
 
-  it("is due from 09:00 on the 15th until the end of the 17th", () => {
+  it("is due on the last day of the month, from 09:00 until midnight", () => {
     expect(isJobDue(schedule, never, utc("2026-12-01T09:00:00"))).toBe(false);
-    expect(isJobDue(schedule, never, utc("2026-12-14T23:00:00"))).toBe(false);
-    expect(isJobDue(schedule, never, utc("2026-12-15T08:00:00"))).toBe(false);
-    expect(isJobDue(schedule, never, utc("2026-12-15T09:00:00"))).toBe(true);
-    expect(isJobDue(schedule, never, utc("2026-12-17T23:00:00"))).toBe(true);
-    expect(isJobDue(schedule, never, utc("2026-12-18T00:00:00"))).toBe(false);
+    expect(isJobDue(schedule, never, utc("2026-12-15T09:00:00"))).toBe(false);
+    expect(isJobDue(schedule, never, utc("2026-12-30T23:00:00"))).toBe(false);
+    expect(isJobDue(schedule, never, utc("2026-12-31T08:00:00"))).toBe(false);
+    expect(isJobDue(schedule, never, utc("2026-12-31T09:00:00"))).toBe(true);
+    expect(isJobDue(schedule, never, utc("2026-12-31T23:59:00"))).toBe(true);
+    // Midnight is the 1st of the next month, whose last day is weeks away.
+    expect(isJobDue(schedule, never, utc("2027-01-01T00:00:00"))).toBe(false);
+  });
+
+  it("knows how long each month is", () => {
+    const lastDays = ["2026-11-30", "2027-02-28", "2028-02-29", "2027-04-30", "2027-01-31"];
+    for (const day of lastDays) expect(isJobDue(schedule, never, utc(`${day}T09:00:00`)), day).toBe(true);
+    const notLast = ["2026-11-29", "2027-02-27", "2028-02-28", "2027-04-29", "2027-01-30"];
+    for (const day of notLast) expect(isJobDue(schedule, never, utc(`${day}T12:00:00`)), day).toBe(false);
   });
 
   it("runs once a month", () => {
-    const done = { lastAttempt: utc("2026-12-15T09:05:00"), lastSuccess: utc("2026-12-15T09:06:00") };
-    expect(isJobDue(schedule, done, utc("2026-12-15T10:05:00"))).toBe(false);
-    expect(isJobDue(schedule, done, utc("2026-12-16T09:05:00"))).toBe(false);
-    expect(isJobDue(schedule, done, utc("2027-01-15T09:05:00"))).toBe(true);
+    const done = { lastAttempt: utc("2026-12-31T09:05:00"), lastSuccess: utc("2026-12-31T09:06:00") };
+    expect(isJobDue(schedule, done, utc("2026-12-31T10:05:00"))).toBe(false);
+    expect(isJobDue(schedule, done, utc("2027-01-30T09:05:00"))).toBe(false);
+    expect(isJobDue(schedule, done, utc("2027-01-31T09:05:00"))).toBe(true);
   });
 
-  it("waits before retrying a failed run", () => {
-    const failedAt = utc("2026-12-15T09:05:00");
+  it("is not put off by a test run made earlier in the month", () => {
+    const tested = { lastAttempt: utc("2026-12-10T14:00:00"), lastSuccess: utc("2026-12-10T14:00:01") };
+    expect(isJobDue(schedule, tested, utc("2026-12-31T09:05:00"))).toBe(true);
+  });
+
+  it("waits before retrying a failed run, and gives up at the end of the day", () => {
+    const failedAt = utc("2026-12-31T09:05:00");
     const failed = { lastAttempt: failedAt, lastSuccess: null };
     expect(isJobDue(schedule, failed, new Date(failedAt.getTime() + 60 * 60 * 1000))).toBe(false);
     expect(isJobDue(schedule, failed, new Date(failedAt.getTime() + RETRY_BACKOFF_MS))).toBe(true);
+    expect(isJobDue(schedule, failed, utc("2027-01-01T03:05:00"))).toBe(false);
   });
 
   it("leaves the monthly recap on the 1st", () => {
     const digest = SCHEDULED_JOBS.find((j) => j.id === "monthly-digest")!.schedule;
     expect(isJobDue(digest, never, utc("2026-12-01T08:00:00"))).toBe(true);
-    expect(isJobDue(digest, never, utc("2026-12-15T09:00:00"))).toBe(false);
+    expect(isJobDue(digest, never, utc("2026-12-31T09:00:00"))).toBe(false);
   });
 });
 
