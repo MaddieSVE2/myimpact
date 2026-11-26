@@ -27,9 +27,10 @@ import { deleteEmailLogFor } from "./emailLog.js";
 /**
  * Erase every row in the database that is personal to the given user, then
  * delete the users row itself. Tables that retain rows for organisation
- * aggregates (org_audit_log, org_match_rates, challenges, record_verifications)
- * have their FK columns set to NULL via the ON DELETE SET NULL constraint
- * configured in migration 0018; nothing extra is required here.
+ * aggregates (org_audit_log, org_match_rates, challenges, record_verifications,
+ * org_invites, org_migrations) have their FK columns set to NULL via the
+ * ON DELETE SET NULL constraints configured in migrations 0018, 0019 and
+ * 0063; nothing extra is required here.
  *
  * Order matters where FK constraints exist: dependants first, parent last.
  *

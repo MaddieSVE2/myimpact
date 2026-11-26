@@ -135,11 +135,13 @@ export const orgDeactivatedMembersTable = pgTable("org_deactivated_members", {
 // Each row is one pending invite; the recipient receives a join link
 // containing the org's invite code. Revoking deletes the row. `resentAt`
 // tracks the most recent re-send for display in the manager UI.
+// `invitedByUserId` goes blank if the manager who sent it deletes their
+// account (migration 0063); the invite itself stays pending.
 export const orgInvitesTable = pgTable("org_invites", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
-  invitedByUserId: text("invited_by_user_id").notNull().references(() => usersTable.id),
+  invitedByUserId: text("invited_by_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
   resentAt: timestamp("resent_at"),
 }, (t) => ({
@@ -354,6 +356,9 @@ export const recordVerificationsTable = pgTable("record_verifications", {
 // organisation. Records provenance (source org), who imported, and a
 // snapshot of non-restorable aggregates (e.g. survey aggregates) so the
 // migrated org keeps its history even though responses aren't copied.
+// `importedBy` goes blank if the person who ran the import deletes their
+// account (migration 0063). The row must stay: org_migrated_activities
+// rows are deleted with it.
 export const orgMigrationsTable = pgTable("org_migrations", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organisationsTable.id, { onDelete: "cascade" }),
@@ -361,7 +366,7 @@ export const orgMigrationsTable = pgTable("org_migrations", {
   sourceOrgName: text("source_org_name").notNull(),
   sourceDataSharingMode: text("source_data_sharing_mode").notNull(),
   exportedAt: timestamp("exported_at").notNull(),
-  importedBy: text("imported_by").notNull().references(() => usersTable.id),
+  importedBy: text("imported_by").references(() => usersTable.id, { onDelete: "set null" }),
   membersInSource: integer("members_in_source").notNull().default(0),
   activitiesImported: integer("activities_imported").notNull().default(0),
   surveyAggregates: jsonb("survey_aggregates"),
