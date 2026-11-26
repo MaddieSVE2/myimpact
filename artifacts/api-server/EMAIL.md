@@ -69,7 +69,7 @@ because mail scanners follow links.
 
 ## Monthly "anything to add?" email
 
-`monthly-activity-prompt` (see SCHEDULING.md) emails members mid-month,
+`monthly-activity-prompt` (see SCHEDULING.md) emails members on the last day of each month,
 asking whether they have done anything that is not on their record yet
 (`src/jobs/monthlyActivityPrompt.ts`, who gets it in
 `src/lib/monthlyPrompt.ts`, the email in `src/lib/monthlyPromptEmail.ts`).
@@ -97,7 +97,7 @@ republish, then set `EMAIL_MONTHLY_PROMPT_TEST_TO` to your own account's
 address and, in GitHub, Actions, **Scheduled jobs**, **Run workflow** with
 `monthly-activity-prompt` selected. That sends it now, to you only. When
 the text is right, set `EMAIL_MONTHLY_PROMPT_LIVE` = `true` and republish.
-The scheduler then sends it from the 15th of each month; **Run workflow**
+The scheduler then sends it on the last day of each month; **Run workflow**
 sends it straight away. To stop it, remove `EMAIL_MONTHLY_PROMPT_LIVE`.
 
 ## Activity inbox

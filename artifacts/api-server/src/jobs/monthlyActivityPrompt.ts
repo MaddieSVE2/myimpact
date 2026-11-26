@@ -1,6 +1,6 @@
 /**
- * The monthly "anything to add?" email, run by the scheduler from the 15th
- * of each month (see SCHEDULING.md). It asks members whether they have done
+ * The monthly "anything to add?" email, run by the scheduler on the last
+ * day of each month (see SCHEDULING.md). It asks members whether they have done
  * anything this month that is not on their record yet. Who gets it is in
  * lib/monthlyPrompt.ts and the email in lib/monthlyPromptEmail.ts.
  *
