@@ -67,7 +67,9 @@ export default function Unsubscribe() {
           <p className="text-muted-foreground mb-2 leading-relaxed">
             {list === "activity-reminders"
               ? "We won't email you reminders about your regular activities any more."
-              : "We won't send you any more onboarding emails."}
+              : list === "monthly-prompt"
+                ? "We won't send you the monthly email asking if you have anything to add any more."
+                : "We won't send you any more onboarding emails."}
           </p>
           <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
             Changed your mind? You can switch emails back on any time from your settings.

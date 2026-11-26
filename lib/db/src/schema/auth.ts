@@ -9,6 +9,10 @@ export const usersTable = pgTable("users", {
   // Email reminders on the day a regular activity is due (jobs/activityReminders.ts).
   // A service email for something the member set up, so on by default.
   emailRemindersOptIn: boolean("email_reminders_opt_in").default(true).notNull(),
+  // The monthly "anything to add?" email (jobs/monthlyActivityPrompt.ts): on
+  // until the member opts out, and when it last went to them.
+  emailActivityPromptOptIn: boolean("email_activity_prompt_opt_in").default(true).notNull(),
+  lastActivityPromptSentAt: timestamp("last_activity_prompt_sent_at"),
   unsubscribeToken: text("unsubscribe_token").unique(),
   lastDigestSentAt: timestamp("last_digest_sent_at"),
   voiceEnabled: boolean("voice_enabled").default(false).notNull(),

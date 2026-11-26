@@ -32,6 +32,7 @@ on:
           - database-backup
           - retention-cleanup
           - activity-reminders
+          - monthly-activity-prompt
 
 permissions: {}
 

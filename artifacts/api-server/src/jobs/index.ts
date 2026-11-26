@@ -5,6 +5,7 @@ import type { ScheduledJobId } from "../lib/scheduledJobs.js";
 import { runActivityReminders } from "./activityReminders.js";
 import { runCalendarSync } from "./calendarSync.js";
 import { runDatabaseBackup } from "./databaseBackup.js";
+import { runMonthlyActivityPrompt } from "./monthlyActivityPrompt.js";
 import { runMonthlyDigest } from "./monthlyDigest.js";
 import { runOnboardingEmails } from "./onboardingEmails.js";
 import { runPushReminders } from "./pushReminders.js";
@@ -26,6 +27,7 @@ export const JOB_RUNNERS: Record<ScheduledJobId, (args: string[]) => Promise<boo
   "monthly-digest": runMonthlyDigest,
   "database-backup": runDatabaseBackup,
   "activity-reminders": runActivityReminders,
+  "monthly-activity-prompt": runMonthlyActivityPrompt,
   "retention-cleanup": async () => {
     await runRetentionCleanup();
     console.log(`[retention-cleanup] deleted ${await pruneEmailLog()} email log entries older than a year`);

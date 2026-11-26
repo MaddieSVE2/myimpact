@@ -21,6 +21,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   onboarding: "Onboarding",
   "monthly-digest": "Monthly recap",
   "activity-reminder": "Activity reminder",
+  "monthly-prompt": "Monthly activity prompt",
   "activity-log": "Activity inbox reply",
   "approval-digest": "Approval reminder",
   organisation: "Organisation",

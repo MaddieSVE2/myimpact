@@ -14,6 +14,8 @@ export type EmailCategory =
   | "onboarding"
   | "monthly-digest"
   | "activity-reminder"
+  /** The monthly "anything to add?" email (jobs/monthlyActivityPrompt.ts). */
+  | "monthly-prompt"
   | "approval-digest"
   | "organisation"
   | "account"
