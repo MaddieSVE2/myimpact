@@ -125,9 +125,9 @@ const SECTIONS: Section[] = [
             <p>We use a small set of named, trusted processors, each bound by a data processing agreement:</p>
             <ul style={{ marginTop: 12, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
               <li><strong>Managed cloud hosting (USA)</strong>: application hosting and managed PostgreSQL database.</li>
-              <li><strong>Resend</strong>: transactional email delivery (magic links, notifications).</li>
+              <li><strong>Resend</strong>: transactional email delivery (magic links, notifications), and receiving the emails people send to us.</li>
               <li><strong>Stripe</strong>: payment processing for paid plans (we never see card details).</li>
-              <li><strong>OpenAI</strong>: powers the optional Sidekick AI assistant via enterprise endpoints.</li>
+              <li><strong>OpenAI</strong>: powers the optional Sidekick AI assistant, and reads the activities members log by email, via enterprise endpoints.</li>
               <li><strong>Sentry</strong>: anonymised error monitoring with sensitive values scrubbed before sending.</li>
             </ul>
             <p style={{ marginTop: 12 }}>The full list with locations and safeguards is on our <Link href="/privacy" style={{ color: C.orange, fontWeight: 600, textDecoration: "none" }}>Privacy Policy</Link>.</p>
@@ -269,7 +269,7 @@ export default function Security() {
             This page summarises how My Impact protects organisation and member data, from where it's stored, to who can see it, to how we'd handle an incident. If you need a full DPA or our response to a security questionnaire, just <Link href="/contact" style={{ color: C.orange, fontWeight: 700, textDecoration: "none" }}>get in touch</Link>.
           </p>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>
-            Last updated: 25 November 2026
+            Last updated: 26 November 2026
           </p>
         </div>
       </section>
