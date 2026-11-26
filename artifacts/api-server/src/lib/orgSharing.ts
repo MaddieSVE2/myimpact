@@ -139,8 +139,21 @@ export async function getOrgSharingContext(orgId: string): Promise<OrgSharingCon
  * Normalise consent to the start of its UTC calendar day so an activity
  * logged later on the day consent was granted is included.
  */
-function startOfActivityDay(value: Date): Date {
+export function startOfActivityDay(value: Date): Date {
   return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+/**
+ * Org copies made by "Review & share" from a saved record. In a consented
+ * org these are how a member shares a record dated before their sharing
+ * date, so they count whatever their date.
+ */
+function savedRecordSharesCondition(orgId: string): SQL {
+  return sql`(
+    ${impactRecordsTable.source} = 'member-submitted'
+    AND ${impactRecordsTable.submittedToOrgId} = ${orgId}
+    AND ${impactRecordsTable.sourceReportId} IS NOT NULL
+  )`;
 }
 
 /** True when a record dated `entryDate` for `userId` is inside the member's shared window. */
@@ -155,7 +168,8 @@ export function recordInSharedWindow(ctx: OrgSharingContext, userId: string, ent
 /**
  * Drizzle condition selecting the impact records shared with the org.
  * Explicit-submission orgs: all active members' records (legacy behaviour).
- * Consented orgs: per-member (userId = X AND entryDate >= shareFrom).
+ * Consented orgs: per-member (userId = X AND entryDate >= shareFrom), plus
+ * the earlier saved records that member chose to share (Review & share).
  * Returns undefined when no members share anything (caller should short-circuit).
  */
 export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined {
@@ -167,6 +181,7 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
   // one IN list. One clause per member would have Postgres test thousands of
   // separate conditions against every record in a large organisation.
   const currentMembersByShareDay = new Map<number, string[]>();
+  const savedRecordShares = savedRecordSharesCondition(ctx.orgId);
   for (const userId of [...ctx.memberIds, ...ctx.formerMembers.keys()]) {
     const from = ctx.shareFromByUser.get(userId);
     if (!from) continue;
@@ -176,7 +191,7 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
       // A deactivated member has a cut-off of their own, so stays separate.
       const cond = and(
         eq(impactRecordsTable.userId, userId),
-        gte(impactRecordsTable.entryDate, shareDay),
+        or(gte(impactRecordsTable.entryDate, shareDay), savedRecordShares),
         lte(impactRecordsTable.createdAt, deactivatedAt),
       );
       if (cond) parts.push(cond);
@@ -193,6 +208,13 @@ export function sharedRecordsCondition(ctx: OrgSharingContext): SQL | undefined 
         : inArray(impactRecordsTable.userId, userIds),
       gte(impactRecordsTable.entryDate, new Date(shareDay)),
     );
+    if (cond) parts.push(cond);
+  }
+  const currentSharers = [...currentMembersByShareDay.values()].flat();
+  if (currentSharers.length > 0) {
+    // Only these members, whose consent is active: withdrawing it takes their
+    // shared records out of the organisation's totals with everything else.
+    const cond = and(inArray(impactRecordsTable.userId, currentSharers), savedRecordShares);
     if (cond) parts.push(cond);
   }
   if (parts.length === 0) return undefined;

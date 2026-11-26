@@ -31,6 +31,8 @@ function useMyConsent(enabled: boolean) {
  * - consented_logging (automatic visibility): the activity is already
  *   visible to the organisation, so asking "share with organisation?" would
  *   be redundant — we show an informational note instead.
+ *   A saved entry dated before the member's sharing date is the exception:
+ *   it is not shared automatically, so it gets "Review & share" as below.
  * - explicit_submission: nothing reaches the organisation's named feed
  *   unless the member submits it, so we offer "Review & share": a checklist
  *   pre-populated from the saved report (never the blank submission form),
@@ -79,39 +81,43 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
     const consent = consentData?.consent;
     if (!consent || consent.status !== "active" || !consent.shareFrom) return null;
     const recordTime = entryDate ? new Date(`${entryDate}T23:59:59Z`).getTime() : NaN;
-    if (!Number.isFinite(recordTime) || recordTime < new Date(consent.shareFrom).getTime()) return null;
-    return (
-      <motion.div
-        className="mb-4 bg-muted/40 border border-border rounded-xl px-4 py-3 flex items-start gap-3"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        data-testid="share-with-org-auto-note"
-      >
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          <Eye className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">Automatically shared</p>
-          <p className="text-xs text-muted-foreground">
-            This activity is in your personal history and has been automatically shared with <span className="font-semibold">{org.name}</span>. No separate approval is needed.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setDismissed(true)}
-          aria-label="Dismiss"
-          className="text-muted-foreground hover:text-foreground shrink-0"
-          data-testid="share-with-org-auto-note-dismiss"
+    if (!Number.isFinite(recordTime)) return null;
+    if (recordTime >= new Date(consent.shareFrom).getTime()) {
+      return (
+        <motion.div
+          className="mb-4 bg-muted/40 border border-border rounded-xl px-4 py-3 flex items-start gap-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="share-with-org-auto-note"
         >
-          <X className="w-4 h-4" />
-        </button>
-      </motion.div>
-    );
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Eye className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Automatically shared</p>
+            <p className="text-xs text-muted-foreground">
+              This activity is in your personal history and has been automatically shared with <span className="font-semibold">{org.name}</span>. No separate approval is needed.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            aria-label="Dismiss"
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            data-testid="share-with-org-auto-note-dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      );
+    }
+    // Dated before the member's sharing date: it is not shared automatically,
+    // so offer Review & share below instead of leaving it to be entered again.
   }
 
-  // Explicit submission: offer "Review & share" from the saved report. The
-  // review screen is populated from the persisted record, so it can only be
-  // offered once the report has been saved.
+  // Offer "Review & share" from the saved record. The review screen is
+  // populated from the persisted record, so it can only be offered once the
+  // record has been saved.
   if (!saved || savedRecordId == null) return null;
   return (
     <motion.div
@@ -126,7 +132,10 @@ export function ShareWithOrgPrompt({ result, saved = false, entryDate = null, sa
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">Review this saved record for {org.name}?</p>
         <p className="text-xs text-muted-foreground">
-          This activity is already in your personal history. Choose what to send without entering it again. Your personal record stays unchanged.
+          {org.dataSharingMode === "consented_logging"
+            ? `This activity is dated before you started sharing with ${org.name}, so it has not been shared automatically. `
+            : "This activity is already in your personal history. "}
+          Choose what to send without entering it again. Your personal record stays unchanged.
         </p>
       </div>
       <div className="flex items-center gap-2 ml-auto">

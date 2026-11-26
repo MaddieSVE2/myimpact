@@ -8,7 +8,7 @@ import {
 import { db, impactRecordsTable, orgMembersTable, orgDeactivatedMembersTable, organisationsTable, orgMatchRatesTable, journalEntriesTable, recurringTemplatesTable, userProfilesTable, recordVerificationsTable, orgMemberConsentsTable, orgGroupMembersTable } from "@workspace/db";
 import { eq, desc, inArray, and, gte, lte, lt, sql, asc, isNotNull, ilike, or } from "drizzle-orm";
 import { getVerifiedTotalsForOrg } from "./org.js";
-import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, recordInSharedWindow, onlyThisOrgsSubmissionsCondition, notOrgTwinCondition, startOfActivityDay, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
 import { ACTIVITIES, CATEGORIES, calculateImpact, ONE_OFF_KINDS } from "../lib/impactData.js";
 import { authenticate, type AuthenticatedRequest } from "../middleware/authenticate.js";
 import { calculateStreak } from "../lib/streak.js";
@@ -1132,7 +1132,8 @@ router.get("/history", authenticate, async (req: AuthenticatedRequest, res) => {
         // If the record is already explicitly "Shared with" the same org,
         // skip the automatic badge — it would be redundant.
         if (existingShare && existingShare.orgId === consent.orgId) continue;
-        if (r.entryDate.getTime() >= consent.shareFrom.getTime()) {
+        // From the start of the consent day, the rule organisation views use.
+        if (r.entryDate.getTime() >= startOfActivityDay(consent.shareFrom).getTime()) {
           visibleToMap.set(r.id, { orgId: consent.orgId, orgName: consent.orgName });
           break; // First matching consent wins (users typically have at most one)
         }

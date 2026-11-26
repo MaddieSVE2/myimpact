@@ -3,7 +3,8 @@ import { Link, useLocation, useRoute } from "wouter";
 import {
   Building2, ArrowLeft, Check, Loader2, ShieldCheck, AlertCircle, Camera, Trash2, CalendarRange, MapPin,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { SHAREABLE_RECORDS_KEY } from "@/lib/shareable-records";
 import { useGetActivities } from "@workspace/api-client-react";
 import { ANALYTICS_EVENTS, track } from "@/lib/analytics";
 import { useMyOrg } from "@/lib/org-export";
@@ -80,6 +81,7 @@ export default function OrgShareReport() {
   const recordId = params?.recordId ? parseInt(params.recordId, 10) : NaN;
   const validId = Number.isFinite(recordId) && recordId > 0 ? recordId : null;
 
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { data: orgData, isLoading: orgLoading } = useMyOrg();
   const { data: report, isLoading: reportLoading, error: reportError } = useHistoryRecord(validId);
@@ -266,6 +268,9 @@ export default function OrgShareReport() {
         has_evidence: evidence.length > 0,
         share_surface: "saved_record_review",
       });
+      // This record is shared now: drop it from the lists that offer it.
+      queryClient.invalidateQueries({ queryKey: SHAREABLE_RECORDS_KEY });
+      queryClient.invalidateQueries({ queryKey: [`/api/impact/history`] });
       setDone({
         recordId: data?.record?.id,
         status: approvalMode === "pending" ? "pending" : "approved",

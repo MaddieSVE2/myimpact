@@ -21,6 +21,8 @@ import { VerificationQueue } from "@/components/VerificationQueue";
 import { useAuth } from "@/lib/auth-context";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
 import { MyGroupsCard } from "@/components/org/MyGroupsCard";
+import { ShareSavedRecordsCard } from "@/components/org/ShareSavedRecordsCard";
+import { SHAREABLE_RECORDS_KEY } from "@/lib/shareable-records";
 import { linkGroupParam } from "@/lib/org-groups";
 import { BASE, apiJson } from "@/lib/api";
 import { describeDomains } from "@/lib/email-domains";
@@ -631,6 +633,7 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-org-consent"] });
+      queryClient.invalidateQueries({ queryKey: SHAREABLE_RECORDS_KEY });
     },
   });
 
@@ -665,6 +668,7 @@ function MemberConsentCard({ orgName }: { orgName: string }) {
     onSuccess: () => {
       setRegrantOpen(false);
       queryClient.invalidateQueries({ queryKey: ["my-org-consent"] });
+      queryClient.invalidateQueries({ queryKey: SHAREABLE_RECORDS_KEY });
     },
   });
 
@@ -941,6 +945,7 @@ function JoinOrgPanel() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-org"] });
+      queryClient.invalidateQueries({ queryKey: SHAREABLE_RECORDS_KEY });
       queryClient.invalidateQueries({ queryKey: ["org-stats"] });
       queryClient.invalidateQueries({ queryKey: ["org-my-groups"] });
       // What the server did: null when the group could not be used after all.
@@ -994,6 +999,10 @@ function JoinOrgPanel() {
         >
           View dashboard
         </button>
+        {/* Records made before joining can be sent as they are. */}
+        <div className="mt-6 empty:hidden">
+          <ShareSavedRecordsCard testIdPrefix="joined" />
+        </div>
       </motion.div>
     );
   }
@@ -2042,6 +2051,8 @@ export default function OrgPortal() {
             challengeHref={memberChallengeHref}
             testIdPrefix="member"
           />
+
+          <ShareSavedRecordsCard testIdPrefix="member" />
 
           <MyGroupsCard />
 

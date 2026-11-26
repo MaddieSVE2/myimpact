@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { HOME_CATEGORY_ARTWORK } from "@/lib/branded-artwork";
 import { BrandedArtwork } from "@/components/BrandedArtwork";
 import { OrgMemberActionCards } from "@/components/OrgMemberActionCards";
+import { ShareSavedRecordsCard } from "@/components/org/ShareSavedRecordsCard";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -813,6 +814,10 @@ export default function Intro() {
             <p style={{ fontSize: 14, color: "#5b6770", lineHeight: 1.6, marginBottom: 28, maxWidth: 720 }}>
               You're a member of <strong style={{ color: "#0E1922" }}>{myOrgQuery.data.org.name}</strong>. Record your activity for yourself first, then share it with your organisation when prompted or through your agreed automatic-sharing settings.
             </p>
+            {/* Records saved before joining: offered for sharing, not re-entry. */}
+            <div className="mb-5 empty:hidden">
+              <ShareSavedRecordsCard testIdPrefix="home" />
+            </div>
             <OrgMemberActionCards
               orgName={myOrgQuery.data.org.name}
               sharingMode={myOrgQuery.data.org.dataSharingMode}

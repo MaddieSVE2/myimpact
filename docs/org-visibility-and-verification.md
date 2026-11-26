@@ -20,6 +20,24 @@ configured visibility behaviour.
 
 Internal mode names and each org's configured mode are untouched.
 
+### Records made before joining
+
+A member never completes a record again to share it. `GET
+/api/org/my/shareable-records` lists their saved reports and Quick Log
+entries that "Review & share" would accept and the org has not been sent
+(the rule lives in `lib/recordShare.ts`, shared with the submit endpoint).
+The "Share what you've already recorded" card (`ShareSavedRecordsCard`)
+shows that list on the home page, the `/org` member view and after joining,
+and History shows "Review & share" on the same records.
+
+- `explicit_submission`: every qualifying record without a live share.
+- `consented_logging`: only records dated before the member's sharing date
+  (those dated from it are automatic and are refused with
+  `already_visible`), and only while consent is active. The org copy counts
+  in org totals whatever its date: `sharedRecordsCondition` includes org
+  copies with a `source_report_id` for members with active consent, so
+  withdrawing consent removes them along with everything else.
+
 The previous inline share flow on the Results page (removed in the earlier
 share-flow overhaul and left unmounted) was **not** reinstated: it created an
 org copy that was not twin-linked to the wizard's personal save, so explicit

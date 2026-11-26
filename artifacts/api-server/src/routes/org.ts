@@ -20,7 +20,8 @@ import { calculateImpact, ACTIVITIES, ONE_OFF_KINDS, pricingFromResult, YEARLY_H
 import { deleteAttachmentsForRecord } from "../lib/attachmentCleanup.js";
 import { endOfDay, getPeriodBounds } from "../lib/summaryPeriod.js";
 import { computeEstimateActualReconciliation, deriveReportingYear, redactLocationForOrg } from "../lib/contributionModel.js";
-import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, notWithdrawnCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { currentContributorCount, getOrgSharingContext, sharedRecordsCondition, notOrgTwinCondition, notWithdrawnCondition, onlyThisOrgsSubmissionsCondition, normalizeDashboardSections, startOfActivityDay, REVOKED_ORG_MESSAGE } from "../lib/orgSharing.js";
+import { shareSourceProblem, shareableLineCount } from "../lib/recordShare.js";
 import { computeOrgBreakdown, parseBreakdownDimension, BREAKDOWN_DIMENSIONS } from "../lib/orgBreakdown.js";
 import { applyPendingPlacements, canUseGroup, defaultGroupFor, forgetPendingPlacements, linkGroup, pendingGroupNames, placeFromLink, removeFromOrgGroups } from "../lib/orgGroups.js";
 import { resolveReportScope, groupCondition, groupNamesFor, scopeLabel, type ReportScope } from "../lib/orgReportScope.js";
@@ -3048,56 +3049,46 @@ router.post("/member-submit", authenticate, async (req: AuthenticatedRequest, re
         res.status(404).json({ error: "Report not found." });
         return;
       }
-      if (report.source === "member-submitted" || report.submittedToOrgId || report.attestedAt) {
+      // Which records qualify is decided in lib/recordShare.ts, shared with
+      // the list of records still to share.
+      const problem = shareSourceProblem(report);
+      if (problem === "not_personal") {
         res.status(400).json({ error: "Only your own personal Impact Report entries can be shared this way." });
         return;
       }
-      // Qualification: saved Full Impact Reports are period-level shareables,
-      // and quick logs are DATED shareables (the share carries the record's
-      // own activity date, never a period). Recurring confirmations, bulk
-      // retrospectives and API-attested rows are still excluded.
-      if (report.kind !== "annual_estimate" && report.kind !== "legacy" && report.kind !== "quick_log") {
+      if (problem) {
         res.status(400).json({ error: "Only a saved Impact Report can be shared this way — this record isn't a report." });
         return;
       }
-      // Legacy rows need extra qualification: kind='legacy' also covers
-      // pre-kind personal copies of ad-hoc member submissions (linked via
-      // resultJson.orgRecordId), recurring-template occurrences, and other
-      // report-share copies. Only genuine wizard-saved reports qualify.
-      if (report.kind === "legacy") {
-        // Ambiguous legacy rows are REJECTED, never guessed at: kind='legacy'
-        // also covers pre-kind quick logs and other dated personal records,
-        // which must never become period-level shares. The only authoritative
-        // discriminator for a historical Full Impact Report is a stored
-        // report period (reportStartDate/reportEndDate) — a dated record
-        // never has one. Everything else (personal submission copies, habit
-        // occurrences, share copies, non-user sources) is also excluded.
-        const rj = report.resultJson as Record<string, unknown> | null;
-        const isPersonalSubmissionCopy = rj !== null && typeof rj === "object" && rj.orgRecordId != null;
-        const isDatedOccurrence = report.habitTemplateId != null;
-        const isShareCopy = report.sourceReportId != null;
-        const hasAuthoritativePeriod = report.reportStartDate != null && report.reportEndDate != null;
-        if (
-          !hasAuthoritativePeriod ||
-          isPersonalSubmissionCopy || isDatedOccurrence || isShareCopy ||
-          (report.source !== "user" && report.source !== "retrospective")
-        ) {
-          res.status(400).json({ error: "Only a saved Impact Report can be shared this way — this record isn't a report." });
-          return;
-        }
-      }
-      // Review & share exists only for explicit-submission orgs. In
-      // consented-logging mode the whole report is already automatically
-      // visible; accepting a subset share here would let the twin exclusion
-      // suppress the source report and silently DROP the unselected
-      // activities from the org's automatic totals.
+      // In consented-logging mode a record dated on or after the member's
+      // sharing date is already automatically visible; accepting a subset
+      // share of it would let the twin exclusion suppress the source record
+      // and silently DROP the unselected activities from the org's automatic
+      // totals. Records dated before it (made before joining, say) are not
+      // visible at all, so those can be shared here instead of entered again.
       const shareOrg = await db.query.organisationsTable.findFirst({
         where: eq(organisationsTable.id, membership.orgId),
         columns: { dataSharingMode: true },
       });
       if (shareOrg?.dataSharingMode === "consented_logging") {
-        res.status(400).json({ error: "Your organisation sees your logged activity automatically — report sharing isn't needed or supported here." });
-        return;
+        const consent = await db.query.orgMemberConsentsTable.findFirst({
+          where: and(eq(orgMemberConsentsTable.orgId, membership.orgId), eq(orgMemberConsentsTable.userId, userId)),
+          columns: { status: true, shareFrom: true },
+        });
+        if (!consent || consent.status !== "active") {
+          res.status(400).json({
+            error: "You've withdrawn your data-sharing consent for this organisation. Start sharing again before sending a saved record.",
+            code: "consent_not_active",
+          });
+          return;
+        }
+        if (report.entryDate.getTime() >= startOfActivityDay(consent.shareFrom).getTime()) {
+          res.status(400).json({
+            error: "Your organisation already sees this record automatically, so it doesn't need sharing.",
+            code: "already_visible",
+          });
+          return;
+        }
       }
       // Reuse-aware: one live share per report per org. Withdrawing the share
       // deletes the org copy, which frees the report to be shared again.
@@ -3686,6 +3677,88 @@ router.get("/member-submissions", authenticate, async (req: AuthenticatedRequest
   } catch (err) {
     console.error("List member submissions error:", err);
     res.status(500).json({ error: "Failed to load member submissions" });
+  }
+});
+
+// ─── GET /api/org/my/shareable-records ────────────────────────────────────
+// The member's saved personal records their organisation can't see yet and
+// that "Review & share" would accept, so a record made before joining is
+// offered for sharing instead of being entered again. Summary fields only.
+router.get("/my/shareable-records", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.userId, userId),
+    });
+    if (!membership) {
+      res.json({ org: null, records: [] });
+      return;
+    }
+    const org = await db.query.organisationsTable.findFirst({
+      where: eq(organisationsTable.id, membership.orgId),
+      columns: { id: true, name: true, dataSharingMode: true, revokedAt: true },
+    });
+    if (!org || org.revokedAt) {
+      res.json({ org: null, records: [] });
+      return;
+    }
+    const consented = org.dataSharingMode === "consented_logging";
+    const orgSummary = { id: org.id, name: org.name, dataSharingMode: consented ? "consented_logging" : "explicit_submission" };
+
+    // Consented orgs already see everything dated from the member's sharing
+    // date; only earlier records are left to share, and only while consent
+    // is active (the submit endpoint applies the same rule).
+    let visibleFrom: Date | null = null;
+    if (consented) {
+      const consent = await db.query.orgMemberConsentsTable.findFirst({
+        where: and(eq(orgMemberConsentsTable.orgId, org.id), eq(orgMemberConsentsTable.userId, userId)),
+        columns: { status: true, shareFrom: true },
+      });
+      if (!consent || consent.status !== "active") {
+        res.json({ org: orgSummary, records: [] });
+        return;
+      }
+      visibleFrom = startOfActivityDay(consent.shareFrom);
+    }
+
+    const rows = await db
+      .select()
+      .from(impactRecordsTable)
+      .where(and(
+        eq(impactRecordsTable.userId, userId),
+        visibleFrom ? lt(impactRecordsTable.entryDate, visibleFrom) : undefined,
+      ))
+      .orderBy(desc(impactRecordsTable.entryDate), desc(impactRecordsTable.createdAt));
+
+    // One live share per record per org: a record already shared here is done.
+    const alreadyShared = new Set(
+      rows
+        .filter(r => r.source === "member-submitted" && r.submittedToOrgId === org.id && r.sourceReportId != null)
+        .map(r => r.sourceReportId),
+    );
+
+    const records = rows
+      .filter(r => shareSourceProblem(r) === null && !alreadyShared.has(r.id))
+      .map(r => ({ record: r, activityCount: shareableLineCount(r) }))
+      .filter(({ activityCount }) => activityCount > 0)
+      .map(({ record: r, activityCount }) => ({
+        id: r.id,
+        name: r.name,
+        kind: r.kind,
+        entryDate: r.entryDate.toISOString().slice(0, 10),
+        reportPeriod: r.reportStartDate && r.reportEndDate ? {
+          start: r.reportStartDate.toISOString().slice(0, 10),
+          end: r.reportEndDate.toISOString().slice(0, 10),
+        } : null,
+        activityCount,
+        totalHours: r.totalHours,
+        totalValue: Number(r.totalValue),
+      }));
+
+    res.json({ org: orgSummary, records });
+  } catch (err) {
+    console.error("List shareable records error:", err);
+    res.status(500).json({ error: "Failed to load your saved records." });
   }
 });
 
