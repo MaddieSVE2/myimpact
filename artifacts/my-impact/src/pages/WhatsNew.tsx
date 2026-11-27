@@ -26,6 +26,8 @@ import {
   Languages, Mic, Film, Camera,
   CalendarRange, ThumbsUp, MapPin, LineChart, FileSpreadsheet, Search,
   ChevronUp, ChevronDown, UserX,
+  Bell, MessagesSquare, Eye, Scale, Link2, ListChecks, Target, Images,
+  Gauge, Trash2, BadgeCheck, AtSign, FileText, Quote,
 } from "lucide-react";
 
 const C = {
@@ -65,6 +67,199 @@ const BADGE_COLORS = {
 };
 
 const RELEASES: Release[] = [
+  {
+    id: "november-2026",
+    date: "November 2026",
+    title: "What's new",
+    intro: "Since September you can log what you did by email, see your whole year as one report, and ask a Sidekick that knows your record. Organisations get groups, and activity values follow the Social Value Engine's latest list.",
+    groups: [
+      {
+        heading: "Logging and your year",
+        badge: "For you",
+        badgeColor: BADGE_COLORS.forYou,
+        items: [
+          {
+            icon: <Mail className="w-5 h-5" />,
+            title: "Log an activity by email",
+            desc: "Email what you did to log@myimpact.uk from the address on your account and we'll add it to your record, or send a short question back if something is missing.",
+          },
+          {
+            icon: <LayoutDashboard className="w-5 h-5" />,
+            title: "Your full report for the year",
+            desc: "My impact now shows the whole report for your year so far, with charts, skills and evidence text, and your entries listed underneath.",
+          },
+          {
+            icon: <FileDown className="w-5 h-5" />,
+            title: "Download or share your year",
+            desc: "Get a PDF or PNG of your year, or share it, straight from My impact and History.",
+          },
+          {
+            icon: <History className="w-5 h-5" />,
+            title: "Reopen any entry's report",
+            desc: "Every entry in History now opens its full report, with its photos and receipts, and is only ever counted once.",
+          },
+          {
+            icon: <PoundSterling className="w-5 h-5" />,
+            title: "Fundraising in Quick Log",
+            desc: "Log the hours you spent fundraising and add the money you raised, which is counted pound for pound.",
+          },
+          {
+            icon: <CalendarRange className="w-5 h-5" />,
+            title: "Estimate hours by week or month",
+            desc: "Your impact report now takes hours by the week, month or year, asks how much of the year that covers, and works out the yearly total for you.",
+          },
+          {
+            icon: <Bell className="w-5 h-5" />,
+            title: "Reminders for regular activities",
+            desc: "We now email you on the morning a regular activity is due, and push reminders work in Chrome and on Android. Choose either in Settings.",
+          },
+          {
+            icon: <MapPin className="w-5 h-5" />,
+            title: "Set your location by town or postcode",
+            desc: "Type your town or postcode, choose it from the list, and we'll use it to find local charities and volunteering near you.",
+          },
+        ],
+      },
+      {
+        heading: "A Sidekick that knows your record",
+        badge: "Tools",
+        badgeColor: BADGE_COLORS.tools,
+        items: [
+          {
+            icon: <BookMarked className="w-5 h-5" />,
+            title: "Sidekick uses your saved record",
+            desc: "When you're signed in, Sidekick already knows your hours, activities and social value, so you don't have to type them out again.",
+          },
+          {
+            icon: <MessagesSquare className="w-5 h-5" />,
+            title: "Longer conversations",
+            desc: "Conversations now carry on after a long reply, and you can write up to 1,000 characters in a message.",
+          },
+          {
+            icon: <Eye className="w-5 h-5" />,
+            title: "Straight answers on who sees what",
+            desc: "Ask Sidekick who can see your score and it answers for the kind of organisation you're in, including that managers see what you share with your name.",
+          },
+          {
+            icon: <Building2 className="w-5 h-5" />,
+            title: "Sidekick for managers",
+            desc: "Managers asking on behalf of their organisation now get answers based on the organisation's figures, not their own.",
+          },
+        ],
+      },
+      {
+        heading: "Fairer, up-to-date values",
+        badge: "All users",
+        badgeColor: BADGE_COLORS.all,
+        items: [
+          {
+            icon: <Scale className="w-5 h-5" />,
+            title: "Values in line with the Social Value Engine",
+            desc: "New entries use the Social Value Engine's latest values. Entries you've already saved keep the values they were calculated with.",
+          },
+          {
+            icon: <Quote className="w-5 h-5" />,
+            title: "Activities in your own words",
+            desc: "Something you describe in your own words only gets a £ value when there's a close match, and we tell you when there isn't one.",
+          },
+          {
+            icon: <RefreshCw className="w-5 h-5" />,
+            title: "One-off entries valued for the time you gave",
+            desc: "Logging a single visit or session now counts the hours you gave, not a whole year of benefit each time.",
+          },
+        ],
+      },
+      {
+        heading: "For organisations",
+        badge: "Organisations",
+        badgeColor: BADGE_COLORS.orgs,
+        items: [
+          {
+            icon: <Users className="w-5 h-5" />,
+            title: "Groups",
+            desc: "Set up groups such as clubs, teams or departments, give each one a lead, and see a report for each group.",
+          },
+          {
+            icon: <Link2 className="w-5 h-5" />,
+            title: "Invite links for a group",
+            desc: "Share a group's own invite link and everyone who joins with it goes straight into that group.",
+          },
+          {
+            icon: <ListChecks className="w-5 h-5" />,
+            title: "Add people to groups in bulk",
+            desc: "Tick several members at once or upload a list from a spreadsheet, and check what will change before you confirm.",
+          },
+          {
+            icon: <Target className="w-5 h-5" />,
+            title: "Challenges and surveys for groups",
+            desc: "Send a challenge or pulse survey to everyone, or only to the groups you choose.",
+          },
+          {
+            icon: <Share2 className="w-5 h-5" />,
+            title: "Share what you'd already recorded",
+            desc: "Members who recorded their impact before joining can now share it with their organisation without entering it again.",
+          },
+          {
+            icon: <BadgeCheck className="w-5 h-5" />,
+            title: "Approved hours stay approved",
+            desc: "Once a manager approves a record, its hours, activities and date can't be changed, so verified totals stay verified.",
+          },
+          {
+            icon: <UserPlus className="w-5 h-5" />,
+            title: "Approve new members automatically",
+            desc: "Organisations can now let people join straight away with their join link, so nobody waits for a manager to come back online.",
+          },
+          {
+            icon: <UserX className="w-5 h-5" />,
+            title: "Deactivate members",
+            desc: "Managers can now deactivate a member from the Members list. They lose access and can't rejoin with the join link, the hours they've logged stay in your totals, and you can reactivate them at any time.",
+          },
+          {
+            icon: <AtSign className="w-5 h-5" />,
+            title: "Several email domains",
+            desc: "Limit who can join to as many as 10 email domains, not only one.",
+          },
+          {
+            icon: <Images className="w-5 h-5" />,
+            title: "A fuller activities feed",
+            desc: "Members' photos and the activities they describe in their own words now show in your activities feed and review queue.",
+          },
+          {
+            icon: <Monitor className="w-5 h-5" />,
+            title: "Bigger example dashboards",
+            desc: "The demo dashboards now show organisations with thousands of members and over £1m of social value.",
+          },
+        ],
+      },
+      {
+        heading: "Privacy, accounts and speed",
+        badge: "All users",
+        badgeColor: BADGE_COLORS.all,
+        items: [
+          {
+            icon: <FileText className="w-5 h-5" />,
+            title: "Clearer privacy pages",
+            desc: "The Privacy, Security and Terms pages now say what Sidekick sends to OpenAI and what happens to emails you send us.",
+          },
+          {
+            icon: <Trash2 className="w-5 h-5" />,
+            title: "Account deletion fixed for managers",
+            desc: "Managers with an invitation still waiting to be accepted can now delete their account like anyone else.",
+          },
+          {
+            icon: <Gauge className="w-5 h-5" />,
+            title: "Faster and safer",
+            desc: "Pages load faster on phones, and the site now sends stricter security headers.",
+          },
+          {
+            icon: <Camera className="w-5 h-5" />,
+            title: "Journal photos show straight away",
+            desc: "A photo you add to a new journal entry now appears as soon as you save it.",
+          },
+        ],
+      },
+    ],
+  },
   {
     id: "september-2026",
     date: "September 2026",
@@ -113,11 +308,6 @@ const RELEASES: Release[] = [
             title: "Preview before you save",
             desc: "Photo Quick Log lets you check or retake your picture before attaching it to your activity.",
           },
-          {
-            icon: <CalendarRange className="w-5 h-5" />,
-            title: "Estimate hours by week or month",
-            desc: "Your impact report now takes hours by the week, month or year, asks how much of the year that covers, and works out the yearly total for you.",
-          },
         ],
       },
       {
@@ -140,11 +330,6 @@ const RELEASES: Release[] = [
             title: "More dependable local searches",
             desc: "Local charity searches now keep useful routes available even when a location lookup cannot return everything we expect.",
           },
-          {
-            icon: <MapPin className="w-5 h-5" />,
-            title: "Set your location by town or postcode",
-            desc: "Type your town or postcode, choose it from the list, and we'll use it to find local charities and volunteering near you.",
-          },
         ],
       },
       {
@@ -156,16 +341,6 @@ const RELEASES: Release[] = [
             icon: <Building2 className="w-5 h-5" />,
             title: "Clearer organisation actions",
             desc: "Organisation members now get plainer guidance on recording for themselves, sharing evidence, answering pulses and joining challenges.",
-          },
-          {
-            icon: <UserPlus className="w-5 h-5" />,
-            title: "Approve new members automatically",
-            desc: "Organisations can now let people join straight away with their join link, so nobody waits for a manager to come back online.",
-          },
-          {
-            icon: <UserX className="w-5 h-5" />,
-            title: "Deactivate members",
-            desc: "Managers can now deactivate a member from the Members list. They lose access and can't rejoin with the join link, the hours they've logged stay in your totals, and you can reactivate them at any time.",
           },
           {
             icon: <Share2 className="w-5 h-5" />,

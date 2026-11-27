@@ -117,6 +117,7 @@ test("slug SSR remains complete beyond the public per-IP request limit", async (
     assert.deepEqual(schemas(methodologyHtml).map(schema => schema["@type"]), ["Article"]);
     const whatsNewHtml = await (await fetch(`http://127.0.0.1:${WEB_PORT}/whats-new`)).text();
     assert.deepEqual(schemas(whatsNewHtml).map(schema => schema["@id"]), [
+      "https://myimpact.uk/whats-new#november-2026",
       "https://myimpact.uk/whats-new#september-2026",
       "https://myimpact.uk/whats-new#july-2026",
       "https://myimpact.uk/whats-new#may-2026",

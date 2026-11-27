@@ -159,6 +159,18 @@ export const WHATS_NEW_META: PageMetadata = {
     {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
+      "@id": `${SITE_ORIGIN}/whats-new#november-2026`,
+      "url": `${SITE_ORIGIN}/whats-new#november-2026`,
+      "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
+      "headline": "What's new in My Impact — November 2026",
+      "description": "Logging by email, a full report for the year, a Sidekick that uses your saved record, organisation groups, updated activity values, and privacy and speed improvements shipped by My Impact through November 2026.",
+      "datePublished": "2026-11",
+      "dateModified": "2026-11",
+      "publisher": PUBLISHER,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
       "@id": `${SITE_ORIGIN}/whats-new#september-2026`,
       "url": `${SITE_ORIGIN}/whats-new#september-2026`,
       "mainEntityOfPage": `${SITE_ORIGIN}/whats-new`,
